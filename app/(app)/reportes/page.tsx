@@ -2,6 +2,7 @@ import Link from "next/link";
 const reports = [
   ["Libro diario", "Asientos contables por período.", "/reportes/diario"],
   ["Balance de sumas y saldos", "Débitos, créditos y saldos por cuenta.", "/reportes/balance"],
+  ["Libro mayor", "Movimientos detallados por cuenta.", "/reportes/mayor"],
   ["Estado de resultados", "Ingresos, egresos y resultado del período.", "/reportes/resultados"],
   ["Situación patrimonial", "Activo, pasivo y patrimonio neto.", "/reportes/patrimonial"],
 ];
