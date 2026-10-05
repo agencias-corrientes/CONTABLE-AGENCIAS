@@ -1,16 +1,25 @@
 import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
 import { createAgent } from "./actions";
+
 export default async function AgenciaPage(){
- const {supabase:rawSupabase,organization}=await getCurrentContext(); const supabase:any=rawSupabase; if(!organization)return null; const id=organization.id;
- const [agents,rends,pays,cash]=await Promise.all([
+ const {supabase:rawSupabase,organization}=await getCurrentContext();
+ const supabase:any=rawSupabase;
+ if(!organization)return null;
+ const id=organization.id;
+ const [agents,rends,pays,cashMovements]=await Promise.all([
   supabase.from("agency_agents").select("id,kind,full_name,code,phone,whatsapp").eq("organization_id",id).eq("is_active",true).order("kind").order("full_name"),
   supabase.from("agency_renditions").select("id,agent_id,rendition_date,amount_due,status,agency_agents(full_name,kind)").eq("organization_id",id).neq("status","void").order("rendition_date",{ascending:false}).limit(100),
   supabase.from("agency_rendition_payments").select("amount").eq("organization_id",id),
   supabase.from("cash_movements").select("direction,amount").eq("organization_id",id)
  ]);
- const due=(rends.data??[]).reduce((s,r)=>s+Number(r.amount_due),0),received=(pays.data??[]).reduce((s,r)=>s+Number(r.amount),0),pending=Math.max(due-received,0),cash=(cash.data??[]).reduce((s,r)=>s+(r.direction==="incoming"?1:-1)*Number(r.amount),0);
- const sub=(agents.data??[]).filter(a=>a.kind==="subagent").length,amb=(agents.data??[]).filter(a=>a.kind==="ambulant").length;
+ const due=(rends.data??[]).reduce((s,r)=>s+Number(r.amount_due),0);
+ const received=(pays.data??[]).reduce((s,r)=>s+Number(r.amount),0);
+ const pending=Math.max(due-received,0);
+ const cash=(cashMovements.data??[]).reduce((s,r)=>s+(r.direction==="incoming"?1:-1)*Number(r.amount),0);
+ const sub=(agents.data??[]).filter(a=>a.kind==="subagent").length;
+ const amb=(agents.data??[]).filter(a=>a.kind==="ambulant").length;
+
  return <div className="page">
   <div className="topbar"><div><p className="eyebrow">AGENCIA OFICIAL</p><h1>Agencia {organization.name}</h1><p className="muted">Centro de control de subagentes, ambulantes y rendiciones.</p></div><div><Link href="/agencia/cierre" className="button ghost">Cierre diario</Link></div></div>
   <div className="stats-grid"><div className="stat-card"><span>Subagentes</span><strong>{sub}</strong><small>activos</small></div><div className="stat-card"><span>Ambulantes</span><strong>{amb}</strong><small>activos</small></div><div className="stat-card stat-card-pending"><span>Pendiente de rendición</span><strong>{money(pending,organization.currency_code)}</strong><small>total abierto</small></div><div className="stat-card"><span>Saldo de caja</span><strong>{money(cash,organization.currency_code)}</strong><small>movimientos registrados</small></div></div>
