@@ -73,3 +73,32 @@ export async function recordAgencyRenditionAndReceive(formData: FormData) {
   revalidatePath("/dashboard");
   redirect("/agentes/" + agentId);
 }
+
+
+export async function updateAgencyAgent(formData: FormData) {
+  const { supabase, organization } = await getCurrentContext();
+  if (!organization) redirect("/setup");
+
+  const db = supabase as any;
+  const agentId = String(formData.get("agent_id") ?? "");
+  const { error } = await db.from("agency_agents")
+    .update({
+      full_name: String(formData.get("full_name") ?? "").trim(),
+      code: String(formData.get("code") ?? "").trim() || null,
+      phone: String(formData.get("phone") ?? "").trim() || null,
+      whatsapp: String(formData.get("whatsapp") ?? "").trim() || null,
+      address: String(formData.get("address") ?? "").trim() || null,
+      notes: String(formData.get("notes") ?? "").trim() || null,
+      is_active: String(formData.get("is_active") ?? "true") === "true",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", agentId)
+    .eq("organization_id", organization.id);
+
+  if (error) redirect("/agentes/" + agentId + "?error=" + encodeURIComponent(error.message));
+
+  revalidatePath("/agentes");
+  revalidatePath("/agentes/" + agentId);
+  revalidatePath("/dashboard");
+  redirect("/agentes/" + agentId);
+}
