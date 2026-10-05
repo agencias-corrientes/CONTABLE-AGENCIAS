@@ -16,10 +16,10 @@ export async function createPayment(formData: FormData) {
 
   const { error } = await supabase.rpc("create_payment", {
     p_organization_id: member.organization_id,
-    p_contact_id: String(formData.get("contact_id")??"") || undefined,
-    p_cash_account_id: String(formData.get("cash_account_id")??"") || undefined,
-    p_sales_invoice_id: String(formData.get("sales_invoice_id")??"") || undefined,
-    p_purchase_bill_id: String(formData.get("purchase_bill_id")??"") || undefined,
+    p_contact_id: (String(formData.get("contact_id")??"") || null) as unknown as string,
+    p_cash_account_id: (String(formData.get("cash_account_id")??"") || null) as unknown as string,
+    p_sales_invoice_id: (String(formData.get("sales_invoice_id")??"") || null) as unknown as string,
+    p_purchase_bill_id: (String(formData.get("purchase_bill_id")??"") || null) as unknown as string,
     p_direction: String(formData.get("direction")??"incoming") as "incoming" | "outgoing",
     p_payment_date: String(formData.get("payment_date")??""),
     p_amount: Number(formData.get("amount")??0),
