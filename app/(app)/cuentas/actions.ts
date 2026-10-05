@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function createAccount(formData: FormData) {
   const supabase = await createClient();
-  const { data: claims } = await supabase.auth.getClaims();
+  const { data: authData } = await supabase.auth.getClaims();
+  const claims = authData?.claims;
 
   if (!claims?.sub) throw new Error("Sesión no válida.");
 
