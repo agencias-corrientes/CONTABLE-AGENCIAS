@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function getCurrentContext() {
   const supabase = await createClient();
-  const { data: { claims } } = await supabase.auth.getClaims();
+  const { data: claims } = await supabase.auth.getClaims();
 
   if (!claims?.sub) redirect("/login");
 
