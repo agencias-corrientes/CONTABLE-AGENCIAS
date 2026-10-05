@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function bootstrapOrganization(formData: FormData) {
   const supabase = await createClient();
-  const { data: { claims } } = await supabase.auth.getClaims();
+  const { data: claims } = await supabase.auth.getClaims();
 
   if (!claims?.sub) redirect("/login");
 
@@ -17,8 +17,8 @@ export async function bootstrapOrganization(formData: FormData) {
 
   const { data, error } = await supabase.rpc("bootstrap_organization", {
     p_name: name,
-    p_legal_name: legalName || null,
-    p_tax_id: taxId || null,
+    p_legal_name: legalName || undefined,
+    p_tax_id: taxId || undefined,
   });
 
   if (error) throw new Error(error.message);
