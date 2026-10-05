@@ -1000,6 +1000,8 @@ export type Database = {
         }
         Returns: string
       }
+      issue_purchase_bill: { Args: { p_bill_id: string }; Returns: boolean }
+      issue_sales_invoice: { Args: { p_invoice_id: string }; Returns: boolean }
       post_journal_entry: { Args: { p_entry_id: string }; Returns: boolean }
       set_member_role: {
         Args: {
