@@ -1,0 +1,2 @@
+export default function ResultadosPage() { return <Report title="Estado de resultados" text="El reporte se alimentará de los asientos contables publicados del período seleccionado." />; }
+function Report({title,text}:{title:string;text:string}) { return <div className="page"><div className="topbar"><div><p className="eyebrow">REPORTE</p><h1>{title}</h1><p className="muted">{text}</p></div></div><section className="panel empty-state">Todavía no hay movimientos publicados para mostrar.</section></div>; }
