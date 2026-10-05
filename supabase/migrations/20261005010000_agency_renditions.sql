@@ -87,11 +87,19 @@ drop policy if exists agency_rendition_payments_insert on public.agency_renditio
 create policy agency_rendition_payments_insert on public.agency_rendition_payments for insert to authenticated with check(private.is_org_accounting(organization_id,(select auth.uid())));
 
 create or replace function public.receive_agency_rendition(
-  p_organization_id uuid,p_rendition_id uuid,p_payment_date date,p_amount numeric,p_cash_account_id uuid,p_reference text default null,p_notes text default null
+  p_organization_id uuid,
+  p_rendition_id uuid,
+  p_payment_date date,
+  p_amount numeric,
+  p_cash_account_id uuid,
+  p_reference text default null,
+  p_notes text default null
 ) returns uuid language plpgsql set search_path=public,pg_temp as $$
 declare v_payment_id uuid; v_movement_id uuid; v_due numeric; v_paid numeric; v_agent_name text;
 begin
-  if not private.is_org_accounting(p_organization_id,auth.uid()) then raise exception 'Sin permisos'; end if;
+  if not exists(select 1 from public.organization_members where organization_id=p_organization_id and user_id=auth.uid() and role in ('owner','admin','accountant')) then
+    raise exception 'Sin permisos';
+  end if;
   if p_amount<=0 then raise exception 'El importe debe ser mayor que cero'; end if;
   select r.amount_due,a.full_name into v_due,v_agent_name from public.agency_renditions r join public.agency_agents a on a.id=r.agent_id
   where r.id=p_rendition_id and r.organization_id=p_organization_id and r.status='open' for update;
@@ -104,7 +112,9 @@ begin
   insert into public.cash_movements(organization_id,cash_account_id,movement_date,direction,amount,description)
   values(p_organization_id,p_cash_account_id,p_payment_date,'incoming',p_amount,coalesce(p_reference,'Rendición de '||v_agent_name)) returning id into v_movement_id;
   update public.agency_rendition_payments set cash_movement_id=v_movement_id where id=v_payment_id;
-  if v_paid+p_amount=v_due then update public.agency_renditions set status='closed',closed_at=now(),updated_at=now() where id=p_rendition_id; end if;
+  if v_paid+p_amount=v_due then
+    update public.agency_renditions set status='closed',closed_at=now(),updated_at=now() where id=p_rendition_id;
+  end if;
   return v_payment_id;
 end;
 $$;
