@@ -1,27 +1,40 @@
 import { getCurrentContext, money } from "@/lib/accounting";
+import { createSalesInvoice } from "./actions";
 
 export default async function VentasPage() {
   const { supabase, organization } = await getCurrentContext();
   if (!organization) return null;
 
-  const { data: invoices } = await supabase
-    .from("sales_invoices")
-    .select("id,invoice_number,issue_date,due_date,status,total_amount,contacts(display_name)")
-    .eq("organization_id", organization.id)
-    .order("issue_date", { ascending: false })
-    .limit(100);
+  const [{ data: invoices }, { data: contacts }] = await Promise.all([
+    supabase.from("sales_invoices").select("id,invoice_number,issue_date,due_date,status,total_amount,contacts(display_name)").eq("organization_id", organization.id).order("issue_date", { ascending: false }).limit(100),
+    supabase.from("contacts").select("id,display_name").eq("organization_id", organization.id).eq("type", "customer").eq("is_active", true).order("display_name"),
+  ]);
 
-  return <SimpleDocumentPage title="Ventas" eyebrow="INGRESOS" description="Facturación, cuentas por cobrar y seguimiento de ventas." rows={invoices ?? []} currency={organization.currency_code} numberKey="invoice_number" contactKey="contacts" action="Nueva factura" />;
-}
-
-function SimpleDocumentPage({ title, eyebrow, description, rows, currency, numberKey, contactKey, action }: { title: string; eyebrow: string; description: string; rows: any[]; currency: string; numberKey: string; contactKey: string; action: string }) {
-  return (
-    <div className="page">
-      <div className="topbar"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="muted">{description}</p></div><button className="button primary">{action}</button></div>
-      <section className="panel table-panel"><div className="panel-head"><h2>Últimos registros</h2><span className="muted">{rows.length} registros</span></div>
-        <div className="table-wrap"><table><thead><tr><th>Comprobante</th><th>Fecha</th><th>Contacto</th><th>Estado</th><th>Total</th></tr></thead>
-        <tbody>{rows.map((row) => { const contact = Array.isArray(row[contactKey]) ? row[contactKey][0] : row[contactKey]; return <tr key={row.id}><td className="mono">{row[numberKey]}</td><td>{row.issue_date}</td><td>{contact?.display_name || "—"}</td><td>{row.status}</td><td className="mono">{money(row.total_amount, currency)}</td></tr>; })}</tbody></table></div>
-      </section>
-    </div>
-  );
+  return <div className="page">
+    <div className="topbar"><div><p className="eyebrow">INGRESOS</p><h1>Ventas</h1><p className="muted">Facturación y cuentas por cobrar.</p></div></div>
+    <section className="panel">
+      <div className="panel-head"><h2>Nueva factura en borrador</h2></div>
+      <form action={createSalesInvoice} className="form-stack">
+        <div className="detail-grid">
+          <label>Número<input name="invoice_number" placeholder="0001-00000123" required /></label>
+          <label>Fecha<input type="date" name="issue_date" required /></label>
+          <label>Vencimiento<input type="date" name="due_date" /></label>
+        </div>
+        <div className="detail-grid">
+          <label>Cliente<select name="contact_id" defaultValue=""><option value="">Sin cliente</option>{(contacts??[]).map(c=><option value={c.id} key={c.id}>{c.display_name}</option>)}</select></label>
+          <label>Concepto<input name="item_description" placeholder="Servicio / producto" required /></label>
+          <label>Cantidad<input type="number" name="quantity" min="0.01" step="0.01" defaultValue="1" required /></label>
+        </div>
+        <div className="detail-grid">
+          <label>Precio unitario<input type="number" name="unit_price" min="0" step="0.01" required /></label>
+          <label>IVA %<input type="number" name="tax_rate" min="0" step="0.01" defaultValue="0" /></label>
+          <label>Notas<input name="notes" placeholder="Observaciones" /></label>
+        </div>
+        <button className="button primary">Guardar factura</button>
+      </form>
+    </section>
+    <section className="panel table-panel"><div className="panel-head"><h2>Últimas facturas</h2><span className="muted">{invoices?.length??0} registros</span></div>
+      <div className="table-wrap"><table><thead><tr><th>Comprobante</th><th>Fecha</th><th>Cliente</th><th>Estado</th><th>Total</th></tr></thead><tbody>{(invoices??[]).map(row=>{const c=Array.isArray(row.contacts)?row.contacts[0]:row.contacts;return <tr key={row.id}><td className="mono">{row.invoice_number}</td><td>{row.issue_date}</td><td>{c?.display_name||"—"}</td><td>{row.status}</td><td className="mono">{money(row.total_amount,organization.currency_code)}</td></tr>})}</tbody></table></div>
+    </section>
+  </div>;
 }
