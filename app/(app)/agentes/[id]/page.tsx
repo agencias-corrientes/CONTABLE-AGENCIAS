@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentContext, money } from "@/lib/accounting";
-import { createAgencyRendition, receiveAgencyRendition, recordAgencyRenditionAndReceive } from "./actions";
+import { createAgencyRendition, receiveAgencyRendition, recordAgencyRenditionAndReceive, updateAgencyAgent } from "./actions";
 
 const today=()=>new Date().toISOString().slice(0,10);
 
@@ -88,5 +88,20 @@ export default async function AgentDetailPage({params,searchParams}:{params:Prom
       {ownPayments.slice(0,20).map((p:any)=>{const c=Array.isArray(p.cash_accounts)?p.cash_accounts[0]:p.cash_accounts;return <tr key={p.id}><td>{p.payment_date}</td><td className="mono">{money(p.amount,organization.currency_code)}</td><td>{c?.name||"—"}</td><td>{p.reference||"—"}</td></tr>})}
       {!ownPayments.length?<tr><td colSpan={4}>Todavía no hay recepciones registradas.</td></tr>:null}
     </tbody></table></div></section>
+
+    <section className="panel table-panel">
+      <div className="panel-head"><div><h2>Datos de la persona</h2><p className="muted">Podés actualizar los datos sin borrar su historial de rendiciones.</p></div></div>
+      <form action={updateAgencyAgent} className="agent-edit-form">
+        <input type="hidden" name="agent_id" value={agent.id}/>
+        <label>Nombre y apellido<input name="full_name" defaultValue={agent.full_name} required/></label>
+        <label>Código interno<input name="code" defaultValue={agent.code||""}/></label>
+        <label>Teléfono<input name="phone" defaultValue={agent.phone||""}/></label>
+        <label>WhatsApp<input name="whatsapp" defaultValue={agent.whatsapp||""}/></label>
+        <label>Domicilio<input name="address" defaultValue={agent.address||""}/></label>
+        <label>Estado<select name="is_active" defaultValue={agent.is_active?"true":"false"}><option value="true">Activo</option><option value="false">Inactivo</option></select></label>
+        <label className="form-wide">Observaciones<input name="notes" defaultValue={agent.notes||""}/></label>
+        <button className="button primary form-wide">Guardar datos</button>
+      </form>
+    </section>
   </div>;
 }
