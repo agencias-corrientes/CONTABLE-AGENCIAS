@@ -2,7 +2,9 @@ import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
 import { createAgencyAgent } from "./actions";
 
-export default async function AgentesPage({searchParams}:{searchParams:Promise<{error?:string}>}) {
+type PageProps = { searchParams?: Promise<{ [key: string]: string | string[] | undefined }> };
+
+export default async function AgentesPage({searchParams}: PageProps) {
   const { supabase, organization } = await getCurrentContext();
   if (!organization) return null;
   const db = supabase as any;
@@ -18,10 +20,11 @@ export default async function AgentesPage({searchParams}:{searchParams:Promise<{
   const pendingByAgent=new Map<string,number>();
   for(const r of renditions??[]) if(r.status==="open") pendingByAgent.set(r.agent_id,(pendingByAgent.get(r.agent_id)??0)+Math.max(0,Number(r.amount_due??0)-(paid.get(r.id)??0)));
   const params=await searchParams;
+  const errorMessage=typeof params?.error==="string"?decodeURIComponent(params.error):null;
 
   return <div className="page">
     <div className="topbar"><div><p className="eyebrow">RED DE AGENCIA</p><h1>Subagentes y ambulantes</h1><p className="muted">Un panel individual para cada persona que trabaja con la agencia oficial.</p></div></div>
-    {params.error?<div className="message">{decodeURIComponent(params.error)}</div>:null}
+    {errorMessage?<div className="message">{errorMessage}</div>:null}
     <section className="panel">
       <div className="panel-head"><div><h2>Agregar subagente o ambulante</h2><p className="muted">La persona queda asociada únicamente a esta agencia.</p></div></div>
       <form action={createAgencyAgent} className="agency-agent-form">
