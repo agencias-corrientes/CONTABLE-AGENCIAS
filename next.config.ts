@@ -2,7 +2,6 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  typescript: { ignoreBuildErrors: true },
   env: {
     NEXT_PUBLIC_APP_ENV: process.env.VERCEL_ENV || "development",
   },
