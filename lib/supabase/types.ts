@@ -68,6 +68,278 @@ export type Database = {
           },
         ]
       }
+      agency_agents: {
+        Row: {
+          address: string | null
+          code: string | null
+          created_at: string
+          created_by: string
+          dni: string | null
+          email: string | null
+          full_name: string
+          id: string
+          is_active: boolean
+          kind: Database["public"]["Enums"]["agency_agent_kind"]
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          address?: string | null
+          code?: string | null
+          created_at?: string
+          created_by?: string
+          dni?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          is_active?: boolean
+          kind: Database["public"]["Enums"]["agency_agent_kind"]
+          notes?: string | null
+          organization_id: string
+          phone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          address?: string | null
+          code?: string | null
+          created_at?: string
+          created_by?: string
+          dni?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          kind?: Database["public"]["Enums"]["agency_agent_kind"]
+          notes?: string | null
+          organization_id?: string
+          phone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_agents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agency_daily_closings: {
+        Row: {
+          cash_balance: number
+          closed_at: string | null
+          closed_by: string | null
+          closing_date: string
+          created_at: string
+          created_by: string
+          expected_amount: number
+          id: string
+          notes: string | null
+          organization_id: string
+          pending_amount: number
+          received_amount: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cash_balance?: number
+          closed_at?: string | null
+          closed_by?: string | null
+          closing_date: string
+          created_at?: string
+          created_by?: string
+          expected_amount?: number
+          id?: string
+          notes?: string | null
+          organization_id: string
+          pending_amount?: number
+          received_amount?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cash_balance?: number
+          closed_at?: string | null
+          closed_by?: string | null
+          closing_date?: string
+          created_at?: string
+          created_by?: string
+          expected_amount?: number
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          pending_amount?: number
+          received_amount?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_daily_closings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agency_rendition_payments: {
+        Row: {
+          amount: number
+          cash_account_id: string | null
+          cash_movement_id: string | null
+          created_at: string
+          created_by: string
+          id: string
+          notes: string | null
+          organization_id: string
+          payment_date: string
+          reference: string | null
+          rendition_id: string
+        }
+        Insert: {
+          amount: number
+          cash_account_id?: string | null
+          cash_movement_id?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          notes?: string | null
+          organization_id: string
+          payment_date?: string
+          reference?: string | null
+          rendition_id: string
+        }
+        Update: {
+          amount?: number
+          cash_account_id?: string | null
+          cash_movement_id?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          payment_date?: string
+          reference?: string | null
+          rendition_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_rendition_payments_cash_account_id_fkey"
+            columns: ["cash_account_id"]
+            isOneToOne: false
+            referencedRelation: "cash_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_rendition_payments_cash_movement_id_fkey"
+            columns: ["cash_movement_id"]
+            isOneToOne: false
+            referencedRelation: "cash_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_rendition_payments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_rendition_payments_rendition_id_fkey"
+            columns: ["rendition_id"]
+            isOneToOne: false
+            referencedRelation: "agency_renditions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_rendition_payments_rendition_org_fkey"
+            columns: ["rendition_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "agency_renditions"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      agency_renditions: {
+        Row: {
+          agent_id: string
+          amount_due: number
+          closed_at: string | null
+          created_at: string
+          created_by: string
+          id: string
+          notes: string | null
+          organization_id: string
+          period_end: string | null
+          period_start: string | null
+          reference: string | null
+          rendition_date: string
+          status: Database["public"]["Enums"]["agency_rendition_status"]
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          amount_due: number
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          notes?: string | null
+          organization_id: string
+          period_end?: string | null
+          period_start?: string | null
+          reference?: string | null
+          rendition_date?: string
+          status?: Database["public"]["Enums"]["agency_rendition_status"]
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          amount_due?: number
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          period_end?: string | null
+          period_start?: string | null
+          reference?: string | null
+          rendition_date?: string
+          status?: Database["public"]["Enums"]["agency_rendition_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_renditions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agency_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_renditions_agent_org_fkey"
+            columns: ["agent_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "agency_agents"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "agency_renditions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -921,6 +1193,41 @@ export type Database = {
         }
         Returns: string
       }
+      close_agency_day: {
+        Args: {
+          p_closing_date: string
+          p_notes?: string
+          p_organization_id: string
+        }
+        Returns: string
+      }
+      create_agency_agent: {
+        Args: {
+          p_address?: string
+          p_code?: string
+          p_dni?: string
+          p_full_name: string
+          p_kind: Database["public"]["Enums"]["agency_agent_kind"]
+          p_notes?: string
+          p_organization_id: string
+          p_phone?: string
+          p_whatsapp?: string
+        }
+        Returns: string
+      }
+      create_agency_rendition: {
+        Args: {
+          p_agent_id: string
+          p_amount_due: number
+          p_notes?: string
+          p_organization_id: string
+          p_period_end: string
+          p_period_start: string
+          p_reference?: string
+          p_rendition_date: string
+        }
+        Returns: string
+      }
       create_cash_movement: {
         Args: {
           p_amount: number
@@ -969,7 +1276,7 @@ export type Database = {
       create_purchase_bill: {
         Args: {
           p_bill_number: string
-          p_contact_id: string
+          p_contact_id?: string
           p_due_date?: string
           p_issue_date: string
           p_item_description?: string
@@ -985,7 +1292,7 @@ export type Database = {
       }
       create_sales_invoice: {
         Args: {
-          p_contact_id: string
+          p_contact_id?: string
           p_due_date?: string
           p_invoice_number: string
           p_issue_date: string
@@ -1003,6 +1310,33 @@ export type Database = {
       issue_purchase_bill: { Args: { p_bill_id: string }; Returns: boolean }
       issue_sales_invoice: { Args: { p_invoice_id: string }; Returns: boolean }
       post_journal_entry: { Args: { p_entry_id: string }; Returns: boolean }
+      receive_agency_rendition: {
+        Args: {
+          p_amount: number
+          p_cash_account_id: string
+          p_notes?: string
+          p_organization_id: string
+          p_payment_date: string
+          p_reference?: string
+          p_rendition_id: string
+        }
+        Returns: string
+      }
+      record_agency_rendition: {
+        Args: {
+          p_agent_id: string
+          p_amount_due: number
+          p_amount_received?: number
+          p_cash_account_id?: string
+          p_notes?: string
+          p_organization_id: string
+          p_period_end: string
+          p_period_start: string
+          p_reference?: string
+          p_rendition_date: string
+        }
+        Returns: string
+      }
       set_member_role: {
         Args: {
           p_organization_id: string
@@ -1014,6 +1348,8 @@ export type Database = {
     }
     Enums: {
       account_type: "asset" | "liability" | "equity" | "income" | "expense"
+      agency_agent_kind: "subagent" | "ambulant"
+      agency_rendition_status: "open" | "closed" | "void"
       cash_account_type: "cash" | "bank" | "digital_wallet"
       contact_type: "customer" | "vendor" | "employee" | "other"
       document_status: "draft" | "issued" | "paid" | "void"
@@ -1149,6 +1485,8 @@ export const Constants = {
   public: {
     Enums: {
       account_type: ["asset", "liability", "equity", "income", "expense"],
+      agency_agent_kind: ["subagent", "ambulant"],
+      agency_rendition_status: ["open", "closed", "void"],
       cash_account_type: ["cash", "bank", "digital_wallet"],
       contact_type: ["customer", "vendor", "employee", "other"],
       document_status: ["draft", "issued", "paid", "void"],

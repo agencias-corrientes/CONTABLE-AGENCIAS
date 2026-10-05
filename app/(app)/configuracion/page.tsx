@@ -3,11 +3,13 @@ import { getCurrentContext } from "@/lib/accounting";
 
 export default async function ConfiguracionPage() {
   const { organization } = await getCurrentContext();
-  return <div className="page"><div className="topbar"><div><p className="eyebrow">SISTEMA</p><h1>Configuración</h1><p className="muted">Parámetros de {organization?.name || "la empresa"}.</p></div></div>
+  return <div className="page">
+    <div className="topbar">
+      <div><p className="eyebrow">ADMINISTRACIÓN</p><h1>Configuración</h1><p className="muted">Datos y accesos de {organization?.name || "la agencia"}.</p></div>
+    </div>
     <div className="settings-grid">
-      <Link href="/configuracion/organizacion" className="settings-card"><strong>Empresa</strong><span>Datos generales y fiscales.</span></Link>
-      <Link href="/configuracion/usuarios" className="settings-card"><strong>Usuarios y roles</strong><span>Accesos, permisos y perfiles.</span></Link>
-      <Link href="/configuracion/periodos" className="settings-card"><strong>Períodos fiscales</strong><span>Apertura y control de ejercicios.</span></Link>
+      <Link href="/configuracion/organizacion" className="settings-card"><strong>Agencia oficial</strong><span>Nombre, razón social, identificación y datos generales.</span></Link>
+      <Link href="/configuracion/usuarios" className="settings-card"><strong>Usuarios y roles</strong><span>Quién puede administrar la agencia y registrar rendiciones.</span></Link>
     </div>
   </div>;
 }
