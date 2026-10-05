@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentContext, money } from "@/lib/accounting";
-import { createAgencyRendition, receiveAgencyRendition } from "./actions";
+import { createAgencyRendition, receiveAgencyRendition, recordAgencyRenditionAndReceive } from "./actions";
 
 const today=()=>new Date().toISOString().slice(0,10);
 
@@ -28,6 +28,23 @@ export default async function AgentDetailPage({params,searchParams}:{params:Prom
     <Link href="/agentes" className="back-link">← Volver a subagentes y ambulantes</Link>
     <div className="agent-hero"><div><p className="eyebrow">{agent.kind==="subagent"?"SUBAGENTE":"AMBULANTE"}</p><h1>{agent.full_name}</h1><p className="muted">{agent.code?"Código: "+agent.code+" · ":""}{agent.is_active?"Activo":"Inactivo"}</p></div><div className="agent-hero-contact"><span>{agent.whatsapp||agent.phone||"Sin teléfono"}</span>{agent.address?<span>{agent.address}</span>:null}</div></div>
     {query.error?<div className="message">{decodeURIComponent(query.error)}</div>:null}
+
+    <section className="panel quick-rendition-panel">
+      <div className="panel-head"><div><p className="eyebrow">OPERACIÓN DIARIA</p><h2>Registrar rendición recibida</h2><p className="muted">Cuando el subagente o ambulante viene a rendir, cargá lo que debía entregar y cuánto dinero recibiste.</p></div></div>
+      <form action={recordAgencyRenditionAndReceive} className="agency-rendition-form">
+        <input type="hidden" name="agent_id" value={agent.id}/>
+        <label>Fecha<input name="rendition_date" type="date" defaultValue={today()} required/></label>
+        <label>Desde<input name="period_start" type="date"/></label>
+        <label>Hasta<input name="period_end" type="date"/></label>
+        <label>A rendir<input name="amount_due" type="number" min="0.01" step="0.01" placeholder="0,00" required/></label>
+        <label>Recibido<input name="amount_received" type="number" min="0" step="0.01" placeholder="0,00" required/></label>
+        <label>Caja / cuenta<select name="cash_account_id" required><option value="">Seleccionar cuenta</option>{(cashAccounts??[]).map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+        <label>Referencia<input name="reference" placeholder="Turno, cierre, etc."/></label>
+        <label className="form-wide">Observaciones<input name="notes" placeholder="Detalle opcional"/></label>
+        <button className="button primary form-wide" disabled={!cashAccounts?.length}>Registrar rendición</button>
+      </form>
+      <p className="form-hint">Si lo recibido es menor a lo rendido, la diferencia queda pendiente. Si coincide, la rendición se cierra automáticamente.</p>
+    </section>
 
     <div className="stats-grid">
       <div className="stat-card"><span>Total a rendir</span><strong>{money(totalDue,organization.currency_code)}</strong><small>histórico no anulado</small></div>
