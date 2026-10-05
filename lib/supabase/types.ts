@@ -942,7 +942,73 @@ export type Database = {
         }
         Returns: string
       }
+      create_fiscal_period: {
+        Args: {
+          p_end_date: string
+          p_name: string
+          p_organization_id: string
+          p_start_date: string
+        }
+        Returns: string
+      }
+      create_payment: {
+        Args: {
+          p_amount?: number
+          p_cash_account_id: string
+          p_contact_id: string
+          p_direction?: Database["public"]["Enums"]["payment_direction"]
+          p_notes?: string
+          p_organization_id: string
+          p_payment_date?: string
+          p_purchase_bill_id?: string
+          p_reference?: string
+          p_sales_invoice_id?: string
+        }
+        Returns: string
+      }
+      create_purchase_bill: {
+        Args: {
+          p_bill_number: string
+          p_contact_id: string
+          p_due_date?: string
+          p_issue_date: string
+          p_item_description?: string
+          p_notes?: string
+          p_organization_id: string
+          p_quantity?: number
+          p_subtotal?: number
+          p_tax_amount?: number
+          p_tax_rate?: number
+          p_unit_price?: number
+        }
+        Returns: string
+      }
+      create_sales_invoice: {
+        Args: {
+          p_contact_id: string
+          p_due_date?: string
+          p_invoice_number: string
+          p_issue_date: string
+          p_item_description?: string
+          p_notes?: string
+          p_organization_id: string
+          p_quantity?: number
+          p_subtotal?: number
+          p_tax_amount?: number
+          p_tax_rate?: number
+          p_unit_price?: number
+        }
+        Returns: string
+      }
       post_journal_entry: { Args: { p_entry_id: string }; Returns: boolean }
+      set_member_role: {
+        Args: {
+          p_organization_id: string
+          p_role: Database["public"]["Enums"]["organization_role"]
+          p_user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       account_type: "asset" | "liability" | "equity" | "income" | "expense"
