@@ -19,7 +19,6 @@ export default async function SetupPage() {
           <label>Nombre de la agencia<input name="name" required placeholder="AGENCIA 251" /></label>
           <label>Razón social<input name="legal_name" placeholder="Razón social" /></label>
           <label>CUIT / identificación fiscal<input name="tax_id" placeholder="20-00000000-0" /></label>
-          <label>Inicio de control<input name="start_date" type="date" /></label>
           <button className="button primary full">Crear agencia y comenzar</button>
         </form>
       </div>
