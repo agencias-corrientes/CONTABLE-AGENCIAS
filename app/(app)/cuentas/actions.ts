@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function createAccount(formData: FormData) {
   const supabase = await createClient();
-  const { data: { claims } } = await supabase.auth.getClaims();
+  const { data: claims } = await supabase.auth.getClaims();
 
   if (!claims?.sub) throw new Error("Sesión no válida.");
 
@@ -21,7 +21,7 @@ export async function createAccount(formData: FormData) {
 
   const code = String(formData.get("code") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
-  const type = String(formData.get("type") ?? "expense");
+  const type = String(formData.get("type") ?? "expense") as "asset" | "liability" | "equity" | "income" | "expense";
 
   if (!code || !name) throw new Error("Código y nombre son obligatorios.");
 
