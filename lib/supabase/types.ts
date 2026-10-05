@@ -921,6 +921,28 @@ export type Database = {
         }
         Returns: string
       }
+      create_cash_movement: {
+        Args: {
+          p_amount: number
+          p_cash_account_id: string
+          p_description: string
+          p_direction: Database["public"]["Enums"]["payment_direction"]
+          p_movement_date: string
+          p_organization_id: string
+        }
+        Returns: string
+      }
+      create_draft_journal_entry: {
+        Args: {
+          p_description: string
+          p_entry_date: string
+          p_lines?: Json
+          p_organization_id: string
+          p_reference?: string
+        }
+        Returns: string
+      }
+      post_journal_entry: { Args: { p_entry_id: string }; Returns: boolean }
     }
     Enums: {
       account_type: "asset" | "liability" | "equity" | "income" | "expense"
