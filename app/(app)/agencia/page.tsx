@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
 import { createAgent } from "./actions";
 export default async function AgenciaPage(){
- const {supabase,organization}=await getCurrentContext(); if(!organization)return null; const id=organization.id;
+ const {supabase:rawSupabase,organization}=await getCurrentContext(); const supabase:any=rawSupabase; if(!organization)return null; const id=organization.id;
  const [agents,rends,pays,cash]=await Promise.all([
   supabase.from("agency_agents").select("id,kind,full_name,code,phone,whatsapp").eq("organization_id",id).eq("is_active",true).order("kind").order("full_name"),
   supabase.from("agency_renditions").select("id,agent_id,rendition_date,amount_due,status,agency_agents(full_name,kind)").eq("organization_id",id).neq("status","void").order("rendition_date",{ascending:false}).limit(100),
