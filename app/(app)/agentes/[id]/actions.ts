@@ -38,3 +38,38 @@ export async function receiveAgencyRendition(formData:FormData) {
   revalidatePath("/agentes"); revalidatePath("/agentes/"+rendition.agent_id); revalidatePath("/rendiciones"); revalidatePath("/movimientos"); revalidatePath("/dashboard");
   redirect("/agentes/"+rendition.agent_id);
 }
+
+
+export async function recordAgencyRenditionAndReceive(formData: FormData) {
+  const { supabase, organization } = await getCurrentContext();
+  if (!organization) redirect("/setup");
+
+  const db = supabase as any;
+  const agentId = String(formData.get("agent_id") ?? "");
+  const amountDue = Number(formData.get("amount_due") ?? 0);
+  const amountReceived = Number(formData.get("amount_received") ?? 0);
+  const cashAccountId = String(formData.get("cash_account_id") ?? "") || null;
+
+  const { data, error } = await db.rpc("record_agency_rendition", {
+    p_organization_id: organization.id,
+    p_agent_id: agentId,
+    p_rendition_date: String(formData.get("rendition_date") ?? ""),
+    p_period_start: String(formData.get("period_start") ?? "") || null,
+    p_period_end: String(formData.get("period_end") ?? "") || null,
+    p_amount_due: amountDue,
+    p_amount_received: amountReceived,
+    p_cash_account_id: cashAccountId,
+    p_reference: String(formData.get("reference") ?? "").trim() || null,
+    p_notes: String(formData.get("notes") ?? "").trim() || null,
+  });
+
+  if (error) redirect("/agentes/" + agentId + "?error=" + encodeURIComponent(error.message));
+  if (!data) redirect("/agentes/" + agentId + "?error=" + encodeURIComponent("No se pudo registrar la rendición."));
+
+  revalidatePath("/agentes");
+  revalidatePath("/agentes/" + agentId);
+  revalidatePath("/rendiciones");
+  revalidatePath("/movimientos");
+  revalidatePath("/dashboard");
+  redirect("/agentes/" + agentId);
+}
