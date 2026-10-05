@@ -116,9 +116,10 @@ begin
   if v_paid+p_amount=v_due then
     update public.agency_renditions set status='closed',closed_at=now(),updated_at=now() where id=p_rendition_id;
   end if;
+  insert into public.audit_log(organization_id,user_id,action,entity,entity_id,payload) values(p_organization_id,auth.uid(),'receive','agency_rendition',p_rendition_id,jsonb_build_object('payment_id',v_payment_id,'amount',p_amount,'agent_name',v_agent_name,'closed',(v_paid+p_amount=v_due)));
   return v_payment_id;
 end;
-$$;
+$;
 revoke execute on function public.receive_agency_rendition(uuid,uuid,date,numeric,uuid,text,text) from public,anon;
 grant execute on function public.receive_agency_rendition(uuid,uuid,date,numeric,uuid,text,text) to authenticated;
 
