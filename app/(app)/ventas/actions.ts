@@ -20,7 +20,7 @@ export async function createSalesInvoice(formData:FormData){
   const subtotal=Math.round(quantity*unitPrice*100)/100, taxAmount=Math.round(subtotal*taxRate/100*100)/100;
   const {error}=await supabase.rpc("create_sales_invoice",{
     p_organization_id:(await supabase.from("organization_members").select("organization_id").eq("user_id",(await supabase.auth.getClaims()).data?.claims?.sub??"").order("created_at",{ascending:true}).limit(1).maybeSingle()).data?.organization_id??"",
-    p_contact_id:String(formData.get("contact_id")??"")||undefined,
+    p_contact_id:(String(formData.get("contact_id")??"")||null) as unknown as string,
     p_invoice_number:String(formData.get("invoice_number")??"").trim(),
     p_issue_date:String(formData.get("issue_date")??""),
     p_due_date:String(formData.get("due_date")??"")||undefined,
