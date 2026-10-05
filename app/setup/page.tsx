@@ -10,17 +10,17 @@ export default async function SetupPage() {
     <main className="auth-page">
       <div className="auth-card wide">
         <div className="brand-mark small">AC</div>
-        <p className="eyebrow">PRIMERA CONFIGURACIÓN</p>
-        <h1>Crear empresa</h1>
+        <p className="eyebrow">CONFIGURACIÓN DE AGENCIA</p>
+        <h1>Crear agencia oficial</h1>
         <p className="muted">
-          Vamos a crear la empresa, su primer período fiscal, centros de costos,
-          cuentas contables base y cuentas de caja y banco.
+          Registrá los datos de la agencia desde la que se controlan las rendiciones de subagentes y ambulantes.
         </p>
         <form action={bootstrapOrganization} className="form-stack">
-          <label>Nombre comercial<input name="name" required placeholder="Agencias Corrientes" /></label>
+          <label>Nombre de la agencia<input name="name" required placeholder="AGENCIA 251" /></label>
           <label>Razón social<input name="legal_name" placeholder="Razón social" /></label>
           <label>CUIT / identificación fiscal<input name="tax_id" placeholder="20-00000000-0" /></label>
-          <button className="button primary full">Crear empresa y comenzar</button>
+          <label>Inicio de control<input name="start_date" type="date" /></label>
+          <button className="button primary full">Crear agencia y comenzar</button>
         </form>
       </div>
     </main>
