@@ -97,9 +97,9 @@ export default function LoginPage() {
       <div className="auth-card">
         <Link href="/" className="back-link">← Volver</Link>
         <div className="brand-mark small">AC</div>
-        <p className="eyebrow">CONTABILIDAD</p>
+        <p className="eyebrow">AGENCIA OFICIAL</p>
         <h1>Acceso</h1>
-        <p className="muted">Ingresá para acceder a la empresa y a la información financiera.</p>
+        <p className="muted">Ingresá para administrar subagentes, ambulantes, rendiciones y caja.</p>
         <Suspense fallback={<div className="empty-state">Cargando acceso…</div>}>
           <LoginForm />
         </Suspense>
