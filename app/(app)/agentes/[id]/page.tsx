@@ -5,8 +5,15 @@ import { createAgencyRendition, receiveAgencyRendition, recordAgencyRenditionAnd
 
 const today=()=>new Date().toISOString().slice(0,10);
 
-export default async function AgentDetailPage({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{error?:string}>}) {
-  const {id}=await params; const query=await searchParams;
+type PageProps = {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+export default async function AgentDetailPage({params,searchParams}: PageProps) {
+  const {id}=await params;
+  const query=await searchParams;
+  const errorMessage=typeof query?.error==="string"?decodeURIComponent(query.error):null;
   const {supabase,organization}=await getCurrentContext(); if(!organization) return null; const db=supabase as any;
 
   const [{data:agent},{data:renditions},{data:payments},{data:cashAccounts}]=await Promise.all([
@@ -27,7 +34,7 @@ export default async function AgentDetailPage({params,searchParams}:{params:Prom
   return <div className="page">
     <Link href="/agentes" className="back-link">← Volver a subagentes y ambulantes</Link>
     <div className="agent-hero"><div><p className="eyebrow">{agent.kind==="subagent"?"SUBAGENTE":"AMBULANTE"}</p><h1>{agent.full_name}</h1><p className="muted">{agent.code?"Código: "+agent.code+" · ":""}{agent.is_active?"Activo":"Inactivo"}</p></div><div className="agent-hero-contact"><span>{agent.whatsapp||agent.phone||"Sin teléfono"}</span>{agent.address?<span>{agent.address}</span>:null}</div></div>
-    {query.error?<div className="message">{decodeURIComponent(query.error)}</div>:null}
+    {errorMessage?<div className="message">{errorMessage}</div>:null}
 
     <section className="panel quick-rendition-panel">
       <div className="panel-head"><div><p className="eyebrow">OPERACIÓN DIARIA</p><h2>Registrar rendición recibida</h2><p className="muted">Cuando el subagente o ambulante viene a rendir, cargá lo que debía entregar y cuánto dinero recibiste.</p></div></div>
