@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import type { Database } from "./types";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -8,7 +9,7 @@ export async function createClient() {
 
   if (!url || !key) throw new Error("Faltan las variables de Supabase.");
 
-  return createServerClient(url, key, {
+  return createServerClient<Database>(url, key, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
