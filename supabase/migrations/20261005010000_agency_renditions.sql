@@ -1,4 +1,6 @@
 -- Operational agency layer: subagents/ambulants and renditions.
+create unique index if not exists organization_members_one_agency_per_user on public.organization_members(user_id);
+
 -- This migration mirrors the Preview schema already applied while iterating.
 
 do $$
