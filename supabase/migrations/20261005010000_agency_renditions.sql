@@ -125,3 +125,49 @@ end;
 $$;
 revoke execute on function public.receive_agency_rendition(uuid,uuid,date,numeric,uuid,text,text) from public,anon;
 grant execute on function public.receive_agency_rendition(uuid,uuid,date,numeric,uuid,text,text) to authenticated;
+
+
+create or replace function public.record_agency_rendition(
+  p_organization_id uuid,
+  p_agent_id uuid,
+  p_rendition_date date,
+  p_period_start date,
+  p_period_end date,
+  p_amount_due numeric,
+  p_amount_received numeric default 0,
+  p_cash_account_id uuid default null,
+  p_reference text default null,
+  p_notes text default null
+) returns uuid language plpgsql set search_path=public,pg_temp as $$
+declare v_rendition_id uuid; v_payment_id uuid; v_movement_id uuid; v_agent_name text;
+begin
+  if not exists(select 1 from public.organization_members where organization_id=p_organization_id and user_id=auth.uid() and role in ('owner','admin','accountant')) then raise exception 'Sin permisos'; end if;
+  if p_amount_due<=0 then raise exception 'El importe a rendir debe ser mayor que cero'; end if;
+  if coalesce(p_amount_received,0)<0 then raise exception 'El importe recibido no puede ser negativo'; end if;
+  if coalesce(p_amount_received,0)>p_amount_due then raise exception 'El importe recibido supera lo rendido'; end if;
+  if p_period_start is not null and p_period_end is not null and p_period_start>p_period_end then raise exception 'El período es inválido'; end if;
+  select full_name into v_agent_name from public.agency_agents where id=p_agent_id and organization_id=p_organization_id and is_active;
+  if v_agent_name is null then raise exception 'Subagente o ambulante inválido'; end if;
+  if p_amount_received>0 and not exists(select 1 from public.cash_accounts where id=p_cash_account_id and organization_id=p_organization_id and is_active) then raise exception 'Debe seleccionarse una caja/cuenta válida'; end if;
+
+  insert into public.agency_renditions(organization_id,agent_id,rendition_date,period_start,period_end,amount_due,status,reference,notes)
+  values(p_organization_id,p_agent_id,p_rendition_date,p_period_start,p_period_end,p_amount_due,
+    case when p_amount_received=p_amount_due then 'closed'::agency_rendition_status else 'open'::agency_rendition_status end,
+    p_reference,p_notes)
+  returning id into v_rendition_id;
+
+  if p_amount_received>0 then
+    insert into public.agency_rendition_payments(organization_id,rendition_id,payment_date,amount,cash_account_id,reference,notes)
+    values(p_organization_id,v_rendition_id,p_rendition_date,p_amount_received,p_cash_account_id,p_reference,p_notes)
+    returning id into v_payment_id;
+    insert into public.cash_movements(organization_id,cash_account_id,movement_date,direction,amount,description)
+    values(p_organization_id,p_cash_account_id,p_rendition_date,'incoming',p_amount_received,coalesce(p_reference,'Rendición de '||v_agent_name))
+    returning id into v_movement_id;
+    update public.agency_rendition_payments set cash_movement_id=v_movement_id where id=v_payment_id;
+    if p_amount_received=p_amount_due then update public.agency_renditions set closed_at=now() where id=v_rendition_id; end if;
+  end if;
+  return v_rendition_id;
+end;
+$$;
+revoke execute on function public.record_agency_rendition(uuid,uuid,date,date,date,numeric,numeric,uuid,text,text) from public,anon;
+grant execute on function public.record_agency_rendition(uuid,uuid,date,date,date,numeric,numeric,uuid,text,text) to authenticated;
