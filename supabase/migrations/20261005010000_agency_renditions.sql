@@ -72,14 +72,14 @@ create policy agency_agents_update on public.agency_agents for update to authent
 drop policy if exists agency_renditions_select on public.agency_renditions;
 create policy agency_renditions_select on public.agency_renditions for select to authenticated using(private.is_org_member(organization_id,(select auth.uid())));
 drop policy if exists agency_renditions_insert on public.agency_renditions;
-create policy agency_renditions_insert on public.agency_renditions for insert to authenticated with check(private.is_org_accounting(organization_id,(select auth.uid())) and exists(select 1 from public.agency_agents a where a.id=agent_id and a.organization_id=organization_id and a.is_active));
+create policy agency_renditions_insert on public.agency_renditions for insert to authenticated with check(private.is_org_accounting(agency_renditions.organization_id,(select auth.uid())) and exists(select 1 from public.agency_agents a where a.id=agency_renditions.agent_id and a.organization_id=agency_renditions.organization_id and a.is_active));
 drop policy if exists agency_renditions_update on public.agency_renditions;
 create policy agency_renditions_update on public.agency_renditions for update to authenticated using(private.is_org_accounting(organization_id,(select auth.uid()))) with check(private.is_org_accounting(organization_id,(select auth.uid())));
 
 drop policy if exists agency_rendition_payments_select on public.agency_rendition_payments;
 create policy agency_rendition_payments_select on public.agency_rendition_payments for select to authenticated using(private.is_org_member(organization_id,(select auth.uid())));
 drop policy if exists agency_rendition_payments_insert on public.agency_rendition_payments;
-create policy agency_rendition_payments_insert on public.agency_rendition_payments for insert to authenticated with check(private.is_org_accounting(organization_id,(select auth.uid())) and exists(select 1 from public.agency_renditions r where r.id=rendition_id and r.organization_id=organization_id and r.status='open'));
+create policy agency_rendition_payments_insert on public.agency_rendition_payments for insert to authenticated with check(private.is_org_accounting(agency_rendition_payments.organization_id,(select auth.uid())) and exists(select 1 from public.agency_renditions r where r.id=agency_rendition_payments.rendition_id and r.organization_id=agency_rendition_payments.organization_id and r.status='open'));
 
 create or replace function public.receive_agency_rendition(
   p_organization_id uuid,p_rendition_id uuid,p_payment_date date,p_amount numeric,p_cash_account_id uuid,p_reference text default null,p_notes text default null
