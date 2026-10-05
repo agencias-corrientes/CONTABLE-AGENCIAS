@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
 import { receiveRendition, createRendition } from "../actions";
 export default async function AgentPage({params}:{params:Promise<{id:string}>}){
- const {id}=await params; const {supabase,organization}=await getCurrentContext(); if(!organization)return null;
+ const {id}=await params; const {supabase:rawSupabase,organization}=await getCurrentContext(); const supabase:any=rawSupabase; if(!organization)return null;
  const [a,r,c]=await Promise.all([supabase.from("agency_agents").select("*").eq("id",id).eq("organization_id",organization.id).single(),supabase.from("agency_renditions").select("id,rendition_date,period_start,period_end,amount_due,status,reference").eq("agent_id",id).eq("organization_id",organization.id).order("rendition_date",{ascending:false}),supabase.from("cash_accounts").select("id,name,currency_code").eq("organization_id",organization.id).eq("is_active",true).order("name")]);
  if(!a.data)return <div className="page"><p>No se encontró el operador.</p><Link href="/agencia">Volver</Link></div>;
  const rows=r.data??[], ids=rows.map(x=>x.id); const {data:p}=ids.length?await supabase.from("agency_rendition_payments").select("rendition_id,amount").in("rendition_id",ids):{data:[]}; const pm=new Map<string,number>();for(const x of p??[])pm.set(x.rendition_id,(pm.get(x.rendition_id)||0)+Number(x.amount));
