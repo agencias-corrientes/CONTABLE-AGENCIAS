@@ -1,3 +1,4 @@
+alter table public.agency_agents add column if not exists dni text, add column if not exists email text;
 -- Operational agency layer: subagents/ambulants and renditions.
 -- This migration mirrors the Preview schema already applied while iterating.
 
