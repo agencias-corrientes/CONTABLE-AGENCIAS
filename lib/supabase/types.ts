@@ -189,6 +189,102 @@ export type Database = {
           },
         ]
       }
+      agency_game_types: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string
+          enabled: boolean
+          id: string
+          name: string
+          organization_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string
+          enabled?: boolean
+          id?: string
+          name: string
+          organization_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          organization_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_game_types_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agency_rendition_game_amounts: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          game_type_id: string
+          id: string
+          organization_id: string
+          rendition_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string
+          game_type_id: string
+          id?: string
+          organization_id: string
+          rendition_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          game_type_id?: string
+          id?: string
+          organization_id?: string
+          rendition_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_rendition_game_amounts_game_type_id_fkey"
+            columns: ["game_type_id"]
+            isOneToOne: false
+            referencedRelation: "agency_game_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_rendition_game_amounts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_rendition_game_amounts_rendition_id_fkey"
+            columns: ["rendition_id"]
+            isOneToOne: false
+            referencedRelation: "agency_renditions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agency_rendition_payments: {
         Row: {
           amount: number
@@ -1219,6 +1315,7 @@ export type Database = {
         Args: {
           p_agent_id: string
           p_amount_due: number
+          p_game_breakdown?: Json
           p_notes?: string
           p_organization_id: string
           p_period_end: string
