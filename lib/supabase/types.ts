@@ -285,6 +285,48 @@ export type Database = {
           },
         ]
       }
+      agency_rendition_tickets: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          organization_id: string
+          rendition_id: string
+          ticket_number: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          organization_id: string
+          rendition_id: string
+          ticket_number: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          organization_id?: string
+          rendition_id?: string
+          ticket_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_rendition_tickets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_rendition_tickets_rendition_id_fkey"
+            columns: ["rendition_id"]
+            isOneToOne: false
+            referencedRelation: "agency_renditions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agency_rendition_payments: {
         Row: {
           amount: number
@@ -433,6 +475,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_rendition_tickets_rendition_id_fkey"
+            columns: ["id"]
+            isOneToOne: false
+            referencedRelation: "agency_rendition_tickets"
+            referencedColumns: ["rendition_id"]
           },
           {
             foreignKeyName: "agency_rendition_game_amounts_rendition_id_fkey"
@@ -1323,6 +1372,7 @@ export type Database = {
           p_agent_id: string
           p_amount_due: number
           p_game_breakdown?: Json
+          p_ticket_numbers?: Json
           p_notes?: string
           p_organization_id: string
           p_period_end: string
