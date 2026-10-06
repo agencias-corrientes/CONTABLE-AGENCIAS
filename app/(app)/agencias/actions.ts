@@ -49,6 +49,11 @@ export async function createAgencyRendition(formData: FormData) {
     .map(([key, value]) => ({ game_type_id: key.slice(5), amount: Number(value) }))
     .filter((item) => Number.isFinite(item.amount) && item.amount > 0);
   const totalDue = breakdown.reduce((sum, item) => sum + item.amount, 0);
+  const ticketNumbers = String(formData.get("ticket_numbers") ?? "")
+    .split(/[\\n,;]+/)
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .filter((value, index, values) => values.indexOf(value) === index);
   if (!renditionDate) throw new Error("La fecha de rendición es obligatoria.");
   if (breakdown.length === 0 || totalDue <= 0) throw new Error("Ingresá al menos un importe por juego.");
 
@@ -62,6 +67,7 @@ export async function createAgencyRendition(formData: FormData) {
     p_reference: String(formData.get("reference") ?? "").trim() || undefined,
     p_notes: String(formData.get("notes") ?? "").trim() || undefined,
     p_game_breakdown: breakdown,
+    p_ticket_numbers: ticketNumbers,
   });
   if (error) throw new Error(error.message);
   revalidatePath("/agencias");
