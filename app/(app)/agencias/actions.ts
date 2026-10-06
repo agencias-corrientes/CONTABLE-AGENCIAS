@@ -43,12 +43,14 @@ export async function createAgencyAgent(formData: FormData) {
 export async function createAgencyRendition(formData: FormData) {
   const { supabase, organizationId } = await getOrg();
   const agentId = String(formData.get("agent_id") ?? "");
+  const periodStart = String(formData.get("period_start") ?? "").trim();
+  const periodEnd = String(formData.get("period_end") ?? "").trim();
   const { error } = await supabase.rpc("create_agency_rendition", {
     p_organization_id: organizationId,
     p_agent_id: agentId,
     p_rendition_date: String(formData.get("rendition_date") ?? ""),
-    p_period_start: String(formData.get("period_start") ?? ""),
-    p_period_end: String(formData.get("period_end") ?? ""),
+    p_period_start: periodStart || null,
+    p_period_end: periodEnd || null,
     p_amount_due: Number(formData.get("amount_due") ?? 0),
     p_reference: String(formData.get("reference") ?? "").trim() || undefined,
     p_notes: String(formData.get("notes") ?? "").trim() || undefined,
@@ -63,12 +65,35 @@ export async function receiveAgencyRendition(formData: FormData) {
   const { supabase, organizationId } = await getOrg();
   const renditionId = String(formData.get("rendition_id") ?? "");
   const agentId = String(formData.get("agent_id") ?? "");
+  const { data: cashAccount, error: cashLookupError } = await supabase
+    .from("cash_accounts")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("is_active", true)
+    .eq("name", "Caja")
+    .maybeSingle();
+  if (cashLookupError) throw new Error(cashLookupError.message);
+
+  let cajaId = cashAccount?.id ?? null;
+  if (!cajaId) {
+    const { data: fallbackCash, error: fallbackError } = await supabase
+      .from("cash_accounts")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("is_active", true)
+      .eq("name", "Caja principal")
+      .maybeSingle();
+    if (fallbackError) throw new Error(fallbackError.message);
+    cajaId = fallbackCash?.id ?? null;
+  }
+  if (!cajaId) throw new Error("No hay una cuenta Caja configurada.");
+
   const { error } = await supabase.rpc("receive_agency_rendition", {
     p_organization_id: organizationId,
     p_rendition_id: renditionId,
     p_payment_date: String(formData.get("payment_date") ?? ""),
     p_amount: Number(formData.get("amount") ?? 0),
-    p_cash_account_id: String(formData.get("cash_account_id") ?? ""),
+    p_cash_account_id: cajaId,
     p_reference: String(formData.get("reference") ?? "").trim() || undefined,
     p_notes: String(formData.get("notes") ?? "").trim() || undefined,
   });
