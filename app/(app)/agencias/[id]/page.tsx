@@ -10,7 +10,7 @@ export default async function AgencyDetailPage({ params }: { params: Promise<{ i
 
   const [{ data: agent }, { data: renditions }, { data: cash }] = await Promise.all([
     supabase.from("agency_agents").select("id,kind,code,full_name,dni,email,phone,whatsapp,address,notes,is_active,created_at").eq("id", id).eq("organization_id", organization.id).maybeSingle(),
-    supabase.from("agency_renditions").select("id,rendition_date,period_start,period_end,amount_due,status,reference,notes,agency_rendition_payments(id,payment_date,amount,reference,cash_account_id,cash_accounts(name))").eq("agent_id", id).eq("organization_id", organization.id).neq("status", "void").order("rendition_date", { ascending: false }),
+    supabase.from("agency_renditions").select("id,rendition_date,period_start,period_end,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference,cash_account_id,cash_accounts(name))").eq("agent_id", id).eq("organization_id", organization.id).neq("status", "void").order("rendition_date", { ascending: false }),
     supabase.from("cash_accounts").select("id,name,currency_code,is_active").eq("organization_id", organization.id).eq("is_active", true).order("name"),
   ]);
   if (!agent) notFound();
