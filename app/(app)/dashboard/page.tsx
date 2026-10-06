@@ -6,12 +6,13 @@ export default async function DashboardPage() {
   if (!organization) return null;
 
   const orgId = organization.id;
-  const [accounts, contacts, sales, purchases, cashMovements] = await Promise.all([
+  const [accounts, contacts, sales, purchases, cashMovements, agencyAgents] = await Promise.all([
     supabase.from("accounts").select("id", { count: "exact", head: true }).eq("organization_id", orgId),
     supabase.from("contacts").select("id", { count: "exact", head: true }).eq("organization_id", orgId),
     supabase.from("sales_invoices").select("total_amount").eq("organization_id", orgId),
     supabase.from("purchase_bills").select("total_amount").eq("organization_id", orgId),
     supabase.from("cash_movements").select("direction,amount").eq("organization_id", orgId),
+    supabase.from("agency_agents").select("id,kind", { count: "exact", head: false }).eq("organization_id", orgId),
   ]);
 
   const salesTotal = (sales.data ?? []).reduce((sum, row) => sum + Number(row.total_amount ?? 0), 0);
@@ -46,6 +47,7 @@ export default async function DashboardPage() {
             <Link href="/ventas" className="quick-card"><strong>Registrar venta</strong><span>Factura y cuenta por cobrar</span></Link>
             <Link href="/compras" className="quick-card"><strong>Registrar compra</strong><span>Comprobante y cuenta por pagar</span></Link>
             <Link href="/movimientos" className="quick-card"><strong>Movimiento de caja</strong><span>Ingresos y egresos</span></Link>
+            <Link href="/agencias" className="quick-card quick-card-agencies"><strong>Subagentes y ambulantes</strong><span>{agencyAgents.data?.filter(a => a.kind === "subagent").length ?? 0} subagentes · {agencyAgents.data?.filter(a => a.kind === "ambulant").length ?? 0} ambulantes</span></Link>
             <Link href="/pagos" className="quick-card"><strong>Registrar pago</strong><span>Cobros y pagos</span></Link>
           </div>
         </div>
