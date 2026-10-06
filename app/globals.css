@@ -44,3 +44,15 @@
 .dashboard-game-card>small{font-size:11px;color:var(--muted)}
 @media(max-width:1000px){.nav-list{grid-template-columns:repeat(4,minmax(0,1fr))}.game-edit-row{grid-template-columns:1fr 1fr}.game-actions{justify-content:flex-start}}
 @media(max-width:640px){.nav-list{grid-template-columns:repeat(2,minmax(0,1fr))}.game-create-form,.game-rendition-row,.game-edit-row{grid-template-columns:1fr}.dashboard-game-grid{grid-template-columns:1fr}.game-rendition-head{flex-direction:column}}
+
+/* Buscador global */
+.global-search-panel{border-top:6px solid var(--primary);background:linear-gradient(180deg,#fff8e8 0,#fff 170px);margin-bottom:20px}
+.global-search-form{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+.global-search-form input{min-height:48px;font-size:15px}
+.search-empty-panel{margin-top:20px}
+.ticket-input-block{display:grid;gap:7px;padding:13px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.ticket-input-block>span{font-size:13px;font-weight:800}
+.ticket-input-block textarea{width:100%;resize:vertical;min-height:82px;border:1px solid var(--line);border-radius:10px;padding:11px 13px;font:inherit;background:#fff;color:var(--text);outline:none}
+.ticket-input-block textarea:focus{border-color:#a77716;box-shadow:0 0 0 3px rgba(167,119,22,.10)}
+.ticket-input-block small{font-size:11px;color:var(--muted);line-height:1.4}
+@media(max-width:640px){.global-search-form{grid-template-columns:1fr}.global-search-form .button{width:100%}}
