@@ -434,6 +434,13 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "agency_rendition_game_amounts_rendition_id_fkey"
+            columns: ["id"]
+            isOneToOne: false
+            referencedRelation: "agency_rendition_game_amounts"
+            referencedColumns: ["rendition_id"]
+          },
         ]
       }
       audit_log: {
