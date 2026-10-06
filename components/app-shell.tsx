@@ -8,6 +8,7 @@ const nav = [
   ["dashboard", "Inicio", "▦"],
   ["agencias", "Subagentes y ambulantes", "♟"],
   ["pagos", "Cobranzas", "↔"],
+  ["juegos", "Juegos", "◎"],
 ];
 
 export function AppShell({children,organizationName,userEmail}:{children:React.ReactNode;organizationName:string;userEmail:string}) {
