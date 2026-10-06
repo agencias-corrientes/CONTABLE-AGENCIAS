@@ -14,3 +14,33 @@
 .agency-profile{background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px;display:grid;grid-template-columns:1.1fr 1.9fr;gap:24px;box-shadow:0 8px 24px rgba(24,43,77,.05);margin-bottom:20px;border-top:6px solid #a77716}.detail-ambulant .agency-profile{border-top-color:#7c3347}.agency-profile-main{display:flex;gap:16px;align-items:center}.agency-profile-main h2{margin:6px 0}.agency-profile-main p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}.agency-avatar{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:#f2e8c7;color:#765b10;font-weight:900;font-size:15px;margin:18px 0 10px}.agency-ambulant .agency-avatar{background:#ead6dd;color:#7c3347}.agency-avatar.large{width:68px;height:68px;font-size:20px;margin:0}.agency-profile-data{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.agency-profile-data span,.agency-notes-grid span{display:block;color:var(--muted);font-size:11px;margin-bottom:5px}.agency-profile-data strong,.agency-notes-grid strong{font-size:13px;word-break:break-word}.agency-admin-grid{display:grid;grid-template-columns:2fr 1fr;gap:18px}.agency-notes-grid{grid-template-columns:1fr 1fr}.agency-pay-details summary{cursor:pointer;color:#765b10;font-weight:800;font-size:12px}.agency-pay-form{display:grid;grid-template-columns:130px 110px 150px 130px auto;gap:7px;margin-top:9px;min-width:650px}.agency-pay-form .button{padding:9px 12px;min-height:38px} .agency-cash-fixed{display:flex;align-items:center;justify-content:center;padding:9px 12px;border:1px solid rgba(124,51,71,.35);border-radius:8px;background:#f4ead2;color:#572538;font-weight:700;min-height:38px;box-sizing:border-box}
 @media(max-width:1100px){.agency-create-grid{grid-template-columns:1fr 1fr}.agency-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.agency-profile{grid-template-columns:1fr}.agency-admin-grid{grid-template-columns:1fr}}@media(max-width:640px){.agency-create-grid,.agency-card-grid,.agency-profile-data,.agency-admin-grid{grid-template-columns:1fr}.agency-section{padding:14px}.agency-card-metrics{grid-template-columns:1fr}.agency-profile-main{align-items:flex-start}.agency-pay-form{grid-template-columns:1fr;min-width:0}}
 .app-shell:after{content:"";position:fixed;left:260px;right:0;bottom:0;height:6px;background:#7c3347;z-index:20;pointer-events:none}@media(max-width:1000px){.app-shell:after{left:0}}
+
+/* Juegos */
+.game-management-panel{border-top:6px solid var(--mustard);background:linear-gradient(180deg,#fffaf0 0,#fff 180px)}
+.game-create-form{grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) auto}
+.game-edit-row{display:grid;grid-template-columns:minmax(200px,1.3fr) minmax(180px,1fr) auto auto;gap:10px;align-items:center}
+.game-enabled{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;white-space:nowrap}
+.game-enabled input{width:auto}
+.game-actions{display:flex;gap:8px;justify-content:flex-end}
+.danger-button{background:#fae8e8;color:var(--danger)}
+.game-breakdown-details summary{cursor:pointer;font-weight:800;color:var(--primary);font-size:12px}
+.game-agent-breakdown{margin-top:9px;display:grid;gap:6px;min-width:280px}
+.game-agent-breakdown>div{display:flex;justify-content:space-between;gap:16px;padding:7px 9px;border-radius:8px;background:#f7f0d9}
+.game-rendition-block{border:1px solid var(--line);border-radius:14px;background:#fbf7e8;padding:14px}
+.game-rendition-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}
+.game-rendition-head h3{margin:0 0 4px;font-size:15px}
+.game-rendition-head p{margin:0;font-size:12px;line-height:1.45}
+.game-rendition-list{display:grid;gap:8px}
+.game-rendition-row{display:grid;grid-template-columns:1fr 150px;gap:12px;align-items:center;padding:10px 12px;background:#fff;border:1px solid var(--line);border-radius:10px}
+.game-rendition-row span{display:grid;gap:3px}
+.game-rendition-row strong{font-size:13px}
+.game-rendition-row small{font-size:11px;color:var(--muted)}
+.dashboard-games-panel{margin-top:20px}
+.dashboard-game-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.dashboard-game-card{border:1px solid var(--line);border-radius:14px;padding:15px;background:#fffaf0;display:grid;gap:6px}
+.dashboard-game-card>span{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.dashboard-game-card>strong{font-size:16px}
+.dashboard-game-card>em{font-style:normal;font:800 22px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--primary)}
+.dashboard-game-card>small{font-size:11px;color:var(--muted)}
+@media(max-width:1000px){.nav-list{grid-template-columns:repeat(4,minmax(0,1fr))}.game-edit-row{grid-template-columns:1fr 1fr}.game-actions{justify-content:flex-start}}
+@media(max-width:640px){.nav-list{grid-template-columns:repeat(2,minmax(0,1fr))}.game-create-form,.game-rendition-row,.game-edit-row{grid-template-columns:1fr}.dashboard-game-grid{grid-template-columns:1fr}.game-rendition-head{flex-direction:column}}
