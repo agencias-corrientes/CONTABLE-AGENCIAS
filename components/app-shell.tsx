@@ -9,6 +9,7 @@ const nav = [
   ["agencias", "Subagentes y ambulantes", "♟"],
   ["pagos", "Cobranzas", "↔"],
   ["juegos", "Juegos", "◎"],
+  ["buscar", "Buscar", "⌕"],
 ];
 
 export function AppShell({children,organizationName,userEmail}:{children:React.ReactNode;organizationName:string;userEmail:string}) {
