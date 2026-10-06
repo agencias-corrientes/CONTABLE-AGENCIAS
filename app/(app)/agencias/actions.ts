@@ -44,17 +44,24 @@ export async function createAgencyRendition(formData: FormData) {
   const { supabase, organizationId } = await getOrg();
   const agentId = String(formData.get("agent_id") ?? "");
   const renditionDate = String(formData.get("rendition_date") ?? "").trim();
-  const periodStart = String(formData.get("period_start") ?? "").trim() || renditionDate;
-  const periodEnd = String(formData.get("period_end") ?? "").trim() || renditionDate;
+  const breakdown = Array.from(formData.entries())
+    .filter(([key]) => key.startsWith("game_"))
+    .map(([key, value]) => ({ game_type_id: key.slice(5), amount: Number(value) }))
+    .filter((item) => Number.isFinite(item.amount) && item.amount > 0);
+  const totalDue = breakdown.reduce((sum, item) => sum + item.amount, 0);
+  if (!renditionDate) throw new Error("La fecha de rendición es obligatoria.");
+  if (breakdown.length === 0 || totalDue <= 0) throw new Error("Ingresá al menos un importe por juego.");
+
   const { error } = await supabase.rpc("create_agency_rendition", {
     p_organization_id: organizationId,
     p_agent_id: agentId,
     p_rendition_date: renditionDate,
-    p_period_start: periodStart,
-    p_period_end: periodEnd,
-    p_amount_due: Number(formData.get("amount_due") ?? 0),
+    p_period_start: renditionDate,
+    p_period_end: renditionDate,
+    p_amount_due: totalDue,
     p_reference: String(formData.get("reference") ?? "").trim() || undefined,
     p_notes: String(formData.get("notes") ?? "").trim() || undefined,
+    p_game_breakdown: breakdown,
   });
   if (error) throw new Error(error.message);
   revalidatePath("/agencias");
