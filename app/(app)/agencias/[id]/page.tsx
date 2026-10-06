@@ -10,7 +10,7 @@ export default async function AgencyDetailPage({ params }: { params: Promise<{ i
 
   const [{ data: agent }, { data: renditions }, { data: gameTypes }] = await Promise.all([
     supabase.from("agency_agents").select("id,kind,code,full_name,dni,email,phone,whatsapp,address,notes,is_active,created_at").eq("id", id).eq("organization_id", organization.id).maybeSingle(),
-    supabase.from("agency_renditions").select("id,rendition_date,period_start,period_end,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference,cash_account_id,cash_accounts(name)),agency_rendition_game_amounts(id,game_type_id,amount,agency_game_types(id,name,category))").eq("agent_id", id).eq("organization_id", organization.id).neq("status", "void").order("rendition_date", { ascending: false }),
+    supabase.from("agency_renditions").select("id,rendition_date,period_start,period_end,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference,cash_account_id,cash_accounts(name)),agency_rendition_game_amounts(id,game_type_id,amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number)").eq("agent_id", id).eq("organization_id", organization.id).neq("status", "void").order("rendition_date", { ascending: false }),
     supabase.from("agency_game_types").select("id,name,category").eq("organization_id", organization.id).eq("enabled", true).order("sort_order").order("name"),
   ]);
   if (!agent) notFound();
@@ -61,6 +61,7 @@ export default async function AgencyDetailPage({ params }: { params: Promise<{ i
                 {!gameTypes?.length && <div className="message">No hay juegos activos. Agregalos desde <Link href="/juegos"><strong>Juegos</strong></Link>.</div>}
               </div>
             </div>
+            <label className="ticket-input-block"><span>Números de ticket</span><textarea name="ticket_numbers" rows={3} placeholder={"Uno por línea o separados por coma\nEj.: 00123456, 00123457"} /><small>Cargá los tickets asociados a esta rendición para poder encontrarlos después desde el buscador.</small></label>
             <button className="button primary" disabled={!gameTypes?.length}>Registrar rendición</button>
           </form>
         </div>
