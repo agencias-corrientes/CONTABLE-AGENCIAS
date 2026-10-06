@@ -28,7 +28,7 @@ export default async function AgenciasPage() {
 
   const [{ data: agents }, { data: renditions }] = await Promise.all([
     supabase.from("agency_agents").select("id,kind,code,full_name,is_active,phone,whatsapp").eq("organization_id", organization.id).order("kind").order("full_name"),
-    supabase.from("agency_renditions").select("id,agent_id,rendition_date,amount_due,status,agency_rendition_payments(amount)").eq("organization_id", organization.id).neq("status", "void").order("rendition_date", { ascending: false }),
+    supabase.from("agency_renditions").select("id,agent_id,rendition_date,amount_due,status,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(amount)").eq("organization_id", organization.id).neq("status", "void").order("rendition_date", { ascending: false }),
   ]);
 
   const pending = new Map<string, number>();
