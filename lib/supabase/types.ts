@@ -1276,7 +1276,7 @@ export type Database = {
       create_purchase_bill: {
         Args: {
           p_bill_number: string
-          p_contact_id?: string
+          p_contact_id: string
           p_due_date?: string
           p_issue_date: string
           p_item_description?: string
@@ -1292,7 +1292,7 @@ export type Database = {
       }
       create_sales_invoice: {
         Args: {
-          p_contact_id?: string
+          p_contact_id: string
           p_due_date?: string
           p_invoice_number: string
           p_issue_date: string
