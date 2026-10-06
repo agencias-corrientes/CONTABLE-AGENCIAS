@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const nav = [
   ["dashboard", "Dashboard", "▦"],
+  ["agencias", "Agencias", "♟"],
   ["asientos", "Asientos", "≡"],
   ["cuentas", "Plan de cuentas", "◇"],
   ["contactos", "Contactos", "◎"],
