@@ -10,14 +10,7 @@ async function getOrg() {
   const claims = authData?.claims;
   if (!claims?.sub) redirect("/login");
 
-  const { data: member } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .eq("user_id", claims.sub)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
+  const { data: member } = await supabase.from("organization_members").select("organization_id").eq("user_id", claims.sub).order("created_at", { ascending: true }).limit(1).maybeSingle();
   if (!member) throw new Error("No hay una empresa configurada.");
   return { supabase, organizationId: member.organization_id };
 }
@@ -25,11 +18,17 @@ async function getOrg() {
 export async function createAgencyAgent(formData: FormData) {
   const { supabase, organizationId } = await getOrg();
   const kind = String(formData.get("kind") ?? "subagent") as "subagent" | "ambulant";
+  const code = String(formData.get("code") ?? "").trim();
+  if (!["subagent", "ambulant"].includes(kind)) throw new Error("Tipo de agencia inválido.");
+  if (!/^\d{3}-\d{3}-\d{2}$/.test(code)) throw new Error("El código debe tener el formato 251-010-01.");
+  const fullName = String(formData.get("full_name") ?? "").trim();
+  if (!fullName) throw new Error("El nombre es obligatorio.");
+
   const { error } = await supabase.rpc("create_agency_agent", {
     p_organization_id: organizationId,
     p_kind: kind,
-    p_full_name: String(formData.get("full_name") ?? "").trim(),
-    p_code: String(formData.get("code") ?? "").trim() || undefined,
+    p_full_name: fullName,
+    p_code: code,
     p_dni: String(formData.get("dni") ?? "").trim() || undefined,
     p_phone: String(formData.get("phone") ?? "").trim() || undefined,
     p_whatsapp: String(formData.get("whatsapp") ?? "").trim() || undefined,
