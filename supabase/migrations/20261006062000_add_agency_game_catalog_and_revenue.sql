@@ -8,7 +8,7 @@ create table if not exists public.agency_game_types (
   category text not null default 'Quiniela',
   enabled boolean not null default true,
   sort_order integer not null default 0,
-  created_by uuid not null,
+  created_by uuid not null default auth.uid();
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
