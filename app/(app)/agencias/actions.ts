@@ -43,14 +43,15 @@ export async function createAgencyAgent(formData: FormData) {
 export async function createAgencyRendition(formData: FormData) {
   const { supabase, organizationId } = await getOrg();
   const agentId = String(formData.get("agent_id") ?? "");
-  const periodStart = String(formData.get("period_start") ?? "").trim();
-  const periodEnd = String(formData.get("period_end") ?? "").trim();
+  const renditionDate = String(formData.get("rendition_date") ?? "").trim();
+  const periodStart = String(formData.get("period_start") ?? "").trim() || renditionDate;
+  const periodEnd = String(formData.get("period_end") ?? "").trim() || renditionDate;
   const { error } = await supabase.rpc("create_agency_rendition", {
     p_organization_id: organizationId,
     p_agent_id: agentId,
-    p_rendition_date: String(formData.get("rendition_date") ?? ""),
-    p_period_start: periodStart || null,
-    p_period_end: periodEnd || null,
+    p_rendition_date: renditionDate,
+    p_period_start: periodStart,
+    p_period_end: periodEnd,
     p_amount_due: Number(formData.get("amount_due") ?? 0),
     p_reference: String(formData.get("reference") ?? "").trim() || undefined,
     p_notes: String(formData.get("notes") ?? "").trim() || undefined,
