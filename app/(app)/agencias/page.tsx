@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
+import { formatAgencyDateTime } from "@/lib/agency-datetime";
 import { createAgencyAgent } from "./actions";
 
 function AgentCard({ agent, pending, lastDate }: { agent: any; pending: number; lastDate: string | null }) {
@@ -29,13 +30,13 @@ export default async function AgenciasPage() {
 
   const [{ data: agents }, { data: renditions }] = await Promise.all([
     supabase.from("agency_agents").select("id,kind,code,full_name,is_active,phone,whatsapp").eq("organization_id", organization.id).order("kind").order("code"),
-    supabase.from("agency_renditions").select("id,agent_id,rendition_date,amount_due,status,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(amount)").eq("organization_id", organization.id).neq("status", "void").order("rendition_date", { ascending: false }),
+    supabase.from("agency_renditions").select("id,agent_id,rendition_date,created_at,amount_due,status,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(amount)").eq("organization_id", organization.id).neq("status", "void").order("created_at", { ascending: false }),
   ]);
 
   const pending = new Map<string, number>();
   const lastDate = new Map<string, string>();
   for (const row of renditions ?? []) {
-    if (!lastDate.has(row.agent_id)) lastDate.set(row.agent_id, row.rendition_date);
+    if (!lastDate.has(row.agent_id)) lastDate.set(row.agent_id, formatAgencyDateTime(row.created_at ?? row.rendition_date));
     const received = (Array.isArray(row.agency_rendition_payments) ? row.agency_rendition_payments : []).reduce((s, p) => s + Number(p.amount ?? 0), 0);
     pending.set(row.agent_id, (pending.get(row.agent_id) ?? 0) + Math.max(0, Number(row.amount_due ?? 0) - received));
   }

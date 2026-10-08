@@ -1,0 +1,57 @@
+/* Operational design for Agencias Corrientes: matte yellow subagent cards + burgundy footer stripe. */
+.agency-agent-card.agency-subagent {
+  background: #f0dc78;
+  border-color: #d3bd5f;
+  color: #332b14;
+  padding-bottom: 25px;
+}
+.agency-agent-card.agency-subagent:before {
+  width: 7px;
+  background: #b59327;
+}
+.agency-agent-card.agency-subagent:after,
+.agency-agent-card.agency-ambulant:after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 7px;
+  background: #7c3347;
+}
+.agency-agent-card.agency-subagent .agency-kind {
+  color: #6f5810;
+}
+.agency-agent-card.agency-subagent .agency-code-block {
+  background: #e7cb4f;
+  border-color: #cfb344;
+  color: #352b12;
+}
+.agency-agent-card.agency-subagent .agency-card-metrics {
+  border-top-color: rgba(89, 68, 12, .25);
+}
+.agency-agent-card.agency-subagent .agency-card-metrics span {
+  color: #68571e;
+}
+.agency-agent-card.agency-subagent .agency-card-metrics strong {
+  color: #2d2717;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.agency-agent-card.agency-subagent .agency-enter {
+  color: #7c3347;
+}
+.agency-agent-card.agency-ambulant {
+  background: #f8eef0;
+  border-color: #d8bec5;
+  padding-bottom: 25px;
+}
+.agency-agent-card.agency-ambulant .agency-card-metrics {
+  border-top-color: #ddc6cc;
+}
+.agency-rendition-time {
+  display: block;
+  margin-top: 4px;
+  color: #756a70;
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+}

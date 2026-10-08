@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentContext, money } from "@/lib/accounting";
+import { formatAgencyDateTime, todayInAgencyTimeZone } from "@/lib/agency-datetime";
 import { createAgencyRendition, receiveAgencyRendition } from "../actions";
 
 export default async function AgencyDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -10,7 +11,7 @@ export default async function AgencyDetailPage({ params }: { params: Promise<{ i
 
   const [{ data: agent }, { data: renditions }, { data: gameTypes }] = await Promise.all([
     supabase.from("agency_agents").select("id,kind,code,full_name,dni,email,phone,whatsapp,address,notes,is_active,created_at").eq("id", id).eq("organization_id", organization.id).maybeSingle(),
-    supabase.from("agency_renditions").select("id,rendition_date,period_start,period_end,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference,cash_account_id,cash_accounts(name)),agency_rendition_game_amounts(id,game_type_id,amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number)").eq("agent_id", id).eq("organization_id", organization.id).neq("status", "void").order("rendition_date", { ascending: false }),
+    supabase.from("agency_renditions").select("id,rendition_date,created_at,period_start,period_end,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference,cash_account_id,cash_accounts(name)),agency_rendition_game_amounts(id,game_type_id,amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number)").eq("agent_id", id).eq("organization_id", organization.id).neq("status", "void").order("created_at", { ascending: false }),
     supabase.from("agency_game_types").select("id,name,category").eq("organization_id", organization.id).eq("enabled", true).order("sort_order").order("name"),
   ]);
   if (!agent) notFound();
@@ -45,10 +46,10 @@ export default async function AgencyDetailPage({ params }: { params: Promise<{ i
 
       <section className="agency-admin-grid">
         <div className="panel">
-          <div className="panel-head"><div><h2>Nueva rendición</h2><p className="muted">Generá la rendición del {typeLabel.toLowerCase()} {code}.</p></div></div>
+          <div className="panel-head"><div><h2>Rendición diaria</h2><p className="muted">Se guarda en la base de datos con fecha, hora, juegos e importes del {typeLabel.toLowerCase()} {code}.</p></div></div>
           <form action={createAgencyRendition} className="form-stack">
             <input type="hidden" name="agent_id" value={agent.id} />
-            <div className="detail-grid"><label>Fecha<input type="date" name="rendition_date" required /></label><label>Referencia<input name="reference" placeholder="Ej. turno / período" /></label><label>Observaciones<input name="notes" /></label></div>
+            <div className="detail-grid"><label>Fecha<input type="date" name="rendition_date" defaultValue={todayInAgencyTimeZone()} required /></label><label>Referencia<input name="reference" placeholder="Ej. turno / período" /></label><label>Observaciones<input name="notes" /></label></div>
             <div className="game-rendition-block">
               <div className="game-rendition-head"><div><h3>Recaudación por juego</h3><p className="muted">Ingresá cuánto recaudó este {typeLabel.toLowerCase()} en cada juego. El total de la rendición se calcula automáticamente.</p></div><Link href="/juegos" className="button ghost">Administrar juegos</Link></div>
               <div className="game-rendition-list">
@@ -68,9 +69,9 @@ export default async function AgencyDetailPage({ params }: { params: Promise<{ i
         <div className="panel"><div className="panel-head"><div><h2>Datos del {typeLabel.toLowerCase()}</h2><p className="muted">Información administrativa.</p></div></div><div className="detail-grid agency-notes-grid"><div><span>Dirección</span><strong>{agent.address || "—"}</strong></div><div><span>Notas</span><strong>{agent.notes || "—"}</strong></div></div></div>
       </section>
 
-      <section className="panel table-panel"><div className="panel-head"><div><h2>Rendiciones de {typeLabel.toLowerCase()} {code}</h2><p className="muted">Historial de importes generados y cobrados.</p></div><span className="muted">{rows.length} registros</span></div>
-        <div className="table-wrap"><table><thead><tr><th>Fecha</th><th>Juegos</th><th>Importe</th><th>Cobrado</th><th>Pendiente</th><th>Estado</th><th>Administrar</th></tr></thead>
-        <tbody>{rows.map(row => <tr key={row.id}><td>{row.rendition_date}</td><td>{Array.isArray(row.agency_rendition_game_amounts) && row.agency_rendition_game_amounts.length ? row.agency_rendition_game_amounts.map((game) => game.agency_game_types?.name).filter(Boolean).join(", ") : "—"}</td><td className="mono">{money(row.amount_due, organization.currency_code)}</td><td className="mono">{money(row.received, organization.currency_code)}</td><td className="mono">{money(row.pending, organization.currency_code)}</td><td><span className={row.pending <= 0 ? "badge success" : "badge"}>{row.pending <= 0 ? "Cobrada" : row.status === "closed" ? "Cerrada" : "Pendiente"}</span></td><td>{row.pending > 0 ? <details className="agency-pay-details"><summary>Registrar cobro</summary><form action={receiveAgencyRendition} className="agency-pay-form"><input type="hidden" name="rendition_id" value={row.id}/><input type="hidden" name="agent_id" value={agent.id}/><input type="date" name="payment_date" required/><input type="number" name="amount" min="0.01" max={row.pending} step="0.01" placeholder="Importe" required/><span className="agency-cash-fixed">Caja</span><input name="reference" placeholder="Referencia"/><button className="button primary">Cobrar</button></form></details> : "—"}</td></tr>)}</tbody></table></div>
+      <section className="panel table-panel"><div className="panel-head"><div><h2>Rendiciones de {typeLabel.toLowerCase()} {code}</h2><p className="muted">Historial diario con fecha y hora de registro, juegos e importes cobrados.</p></div><span className="muted">{rows.length} registros</span></div>
+        <div className="table-wrap"><table><thead><tr><th>Fecha y hora</th><th>Detalle por juego</th><th>Importe</th><th>Cobrado</th><th>Pendiente</th><th>Estado</th><th>Administrar</th></tr></thead>
+        <tbody>{rows.map(row => <tr key={row.id}><td><strong>{row.rendition_date}</strong><small className="agency-rendition-time">Registrada {formatAgencyDateTime(row.created_at)}</small></td><td>{Array.isArray(row.agency_rendition_game_amounts) && row.agency_rendition_game_amounts.length ? row.agency_rendition_game_amounts.map((game) => `${game.agency_game_types?.name ?? "Juego"}: ${money(game.amount, organization.currency_code)}`).join(", ") : "—"}</td><td className="mono">{money(row.amount_due, organization.currency_code)}</td><td className="mono">{money(row.received, organization.currency_code)}</td><td className="mono">{money(row.pending, organization.currency_code)}</td><td><span className={row.pending <= 0 ? "badge success" : "badge"}>{row.pending <= 0 ? "Cobrada" : row.status === "closed" ? "Cerrada" : "Pendiente"}</span></td><td>{row.pending > 0 ? <details className="agency-pay-details"><summary>Registrar cobro</summary><form action={receiveAgencyRendition} className="agency-pay-form"><input type="hidden" name="rendition_id" value={row.id}/><input type="hidden" name="agent_id" value={agent.id}/><input type="date" name="payment_date" required/><input type="number" name="amount" min="0.01" max={row.pending} step="0.01" placeholder="Importe" required/><span className="agency-cash-fixed">Caja</span><input name="reference" placeholder="Referencia"/><button className="button primary">Cobrar</button></form></details> : "—"}</td></tr>)}</tbody></table></div>
       </section>
     </div>
   );

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { todayInAgencyTimeZone } from "@/lib/agency-datetime";
 
 async function getOrg() {
   const supabase = await createClient();
@@ -43,7 +44,8 @@ export async function createAgencyAgent(formData: FormData) {
 export async function createAgencyRendition(formData: FormData) {
   const { supabase, organizationId } = await getOrg();
   const agentId = String(formData.get("agent_id") ?? "");
-  const renditionDate = String(formData.get("rendition_date") ?? "").trim();
+  const submittedDate = String(formData.get("rendition_date") ?? "").trim();
+  const renditionDate = submittedDate || todayInAgencyTimeZone();
   const breakdown = Array.from(formData.entries())
     .filter(([key]) => key.startsWith("game_"))
     .map(([key, value]) => ({ game_type_id: key.slice(5), amount: Number(value) }))
@@ -54,7 +56,10 @@ export async function createAgencyRendition(formData: FormData) {
     .map((value) => value.trim())
     .filter(Boolean)
     .filter((value, index, values) => values.indexOf(value) === index);
-  if (!renditionDate) throw new Error("La fecha de rendición es obligatoria.");
+  const parsedRenditionDate = new Date(`${renditionDate}T00:00:00.000Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(renditionDate) || Number.isNaN(parsedRenditionDate.getTime()) || parsedRenditionDate.toISOString().slice(0, 10) !== renditionDate) {
+    throw new Error("Ingresá una fecha de rendición válida.");
+  }
   if (breakdown.length === 0 || totalDue <= 0) throw new Error("Ingresá al menos un importe por juego.");
 
   const { error } = await supabase.rpc("create_agency_rendition", {
