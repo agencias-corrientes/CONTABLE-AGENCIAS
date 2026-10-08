@@ -293,6 +293,7 @@ export type Database = {
           organization_id: string
           rendition_id: string
           ticket_number: string
+          ticket_qr_payload: string | null
         }
         Insert: {
           created_at?: string
@@ -301,6 +302,7 @@ export type Database = {
           organization_id: string
           rendition_id: string
           ticket_number: string
+          ticket_qr_payload?: string | null
         }
         Update: {
           created_at?: string
@@ -309,6 +311,7 @@ export type Database = {
           organization_id?: string
           rendition_id?: string
           ticket_number?: string
+          ticket_qr_payload?: string | null
         }
         Relationships: [
           {
@@ -412,6 +415,9 @@ export type Database = {
           closed_at: string | null
           created_at: string
           created_by: string
+          capture_method: string
+          draw_number: string | null
+          game_period: string | null
           id: string
           notes: string | null
           organization_id: string
@@ -428,6 +434,9 @@ export type Database = {
           closed_at?: string | null
           created_at?: string
           created_by?: string
+          capture_method?: string
+          draw_number?: string | null
+          game_period?: string | null
           id?: string
           notes?: string | null
           organization_id: string
@@ -444,6 +453,9 @@ export type Database = {
           closed_at?: string | null
           created_at?: string
           created_by?: string
+          capture_method?: string
+          draw_number?: string | null
+          game_period?: string | null
           id?: string
           notes?: string | null
           organization_id?: string
@@ -1379,6 +1391,23 @@ export type Database = {
           p_period_start: string
           p_reference?: string
           p_rendition_date: string
+        }
+        Returns: string
+      }
+      create_agency_rendition_with_capture: {
+        Args: {
+          p_agent_id: string
+          p_amount_due: number
+          p_capture_method?: string
+          p_draw_number?: string | null
+          p_game_breakdown?: Json
+          p_game_period?: string | null
+          p_notes?: string
+          p_organization_id: string
+          p_reference?: string
+          p_rendition_date: string
+          p_ticket_numbers?: Json
+          p_ticket_qr_payload?: string | null
         }
         Returns: string
       }

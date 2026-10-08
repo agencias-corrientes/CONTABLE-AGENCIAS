@@ -55,3 +55,121 @@
   line-height: 1.3;
   white-space: nowrap;
 }
+
+
+/* Daily rendition workstation: rectangular cards, yellow/red agents and expandable records. */
+.agency-card-open{display:block;color:inherit;text-decoration:none;min-width:0}
+.agency-card-main{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.agency-card-main h3{font-size:17px;line-height:1.25}
+.agency-card-main p{margin:3px 0 8px!important}
+.agency-card-open-arrow{font-size:19px;color:#7c3347;flex-shrink:0}
+.agency-agent-card{position:relative;min-height:172px;padding:14px 15px 28px;border-radius:12px;overflow:visible}
+.agency-agent-card.agency-subagent{background:#f0dc78;border-color:#d3bd5f}
+.agency-agent-card.agency-subagent:before{width:7px;background:#b59327}
+.agency-agent-card.agency-subagent:after,.agency-agent-card.agency-ambulant:after{content:"";position:absolute;inset:auto 0 0;height:7px;background:#9c2838;border-radius:0 0 12px 12px}
+.agency-agent-card.agency-ambulant{background:#f8d8d3;border-color:#d7aaa3;padding-bottom:28px}
+.agency-agent-card.agency-ambulant:before{background:#d6b544;width:7px}
+.agency-agent-card.agency-ambulant:after{background:#d4b344}
+.agency-card-open .agency-enter{margin-top:10px}
+.agency-delete-control{position:absolute;top:9px;right:10px;z-index:2}
+.agency-delete-control>summary{list-style:none;cursor:pointer;font-size:11px;font-weight:800;padding:5px 8px;border-radius:6px;background:rgba(124,51,71,.12);color:#7c3347}
+.agency-delete-control>summary::-webkit-details-marker{display:none}
+.agency-delete-content{position:absolute;right:0;top:31px;width:250px;padding:12px;background:#fffdf6;border:1px solid #d7c2b9;border-radius:10px;box-shadow:0 10px 30px rgba(55,30,30,.18);font-size:12px}
+.agency-delete-content p{margin:0 0 9px}
+.agency-delete-content label{display:flex;align-items:flex-start;gap:6px;margin-bottom:10px}
+.agency-delete-content input[type=checkbox]{margin-top:2px}
+.agency-card-grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.agency-create-grid{grid-template-columns:1.1fr 1fr 1.5fr 1fr 1fr 1fr auto}
+.agency-create-grid input[name=code]{font-family:ui-monospace,monospace;letter-spacing:.03em}
+.agency-create-grid button{white-space:nowrap}
+.rendition-agents-panel .rendition-agent-list,.archived-rendition-panel .rendition-agent-list{display:grid;gap:10px}
+.rendition-agent-accordion{border:1px solid #d9c782;border-radius:12px;overflow:hidden;background:#fffaf0}
+.rendition-agent-summary{display:grid;grid-template-columns:auto auto minmax(120px,1fr) minmax(135px,auto) minmax(155px,auto) auto;align-items:center;gap:13px;padding:13px 16px;cursor:pointer;list-style:none;background:#f0dc78;color:#352c13}
+.rendition-agent-summary::-webkit-details-marker{display:none}
+.rendition-subagent .rendition-agent-summary{background:#f0dc78;border-bottom:4px solid #9c2838}
+.rendition-ambulant .rendition-agent-summary{background:#f8d8d3;border-bottom:4px solid #d4b344;color:#4a2028}
+.rendition-agent-kind{font-size:9px;font-weight:900;letter-spacing:.1em;color:#795d12}
+.rendition-agent-code{font:900 15px/1.1 ui-monospace,monospace;padding:7px 9px;background:rgba(255,255,255,.55);border:1px solid rgba(100,50,20,.16);border-radius:7px;white-space:nowrap}
+.rendition-agent-name{font-size:14px;font-weight:850}
+.rendition-agent-balance small,.rendition-agent-latest small{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.05em;opacity:.75}
+.rendition-agent-balance strong,.rendition-agent-latest strong{display:block;font-size:12px;margin-top:3px}
+.rendition-open-label{font-size:11px;font-weight:850;color:#7c3347;white-space:nowrap}
+.rendition-agent-expanded{padding:18px;background:#fffdf6}
+.rendition-agent-expanded-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:15px}
+.rendition-agent-expanded-head h3{margin:3px 0;font-size:18px}
+.rendition-mode-switch{display:flex;gap:7px;padding:5px;background:#f5efd9;border:1px solid #e1d6b4;border-radius:10px;width:max-content;max-width:100%}
+.rendition-mode-switch button{background:transparent;border:0;border-radius:7px;padding:9px 12px;font-size:12px;font-weight:800;color:#6e5e37;cursor:pointer}
+.rendition-mode-switch button.active{background:#7c3347;color:white}
+.ticket-capture-panel{display:grid;gap:8px}
+.ticket-photo-picker{display:grid;justify-items:center;text-align:center;gap:8px;padding:22px 15px;border:2px dashed #c6ab54;border-radius:12px;background:#fcf4ce;cursor:pointer}
+.ticket-photo-picker strong{font-size:15px;color:#4e3e0e}
+.ticket-photo-picker>span:not(.ticket-photo-icon){max-width:520px;color:#6b5c32;font-size:12px;line-height:1.5}
+.ticket-photo-icon{font-size:28px;color:#8b1e32}
+.ticket-photo-picker input[type=file]{max-width:100%;font-size:12px;margin-top:5px}
+.small-text{font-size:11px}
+.ticket-file-label,.ticket-read-progress,.ticket-read-notice,.ticket-read-error{margin:0;padding:9px 11px;border-radius:8px;background:#f3eedc;font-size:12px}
+.ticket-read-progress{color:#6a4e00}
+.ticket-read-notice{background:#f9eec0;color:#5f4a0b}
+.ticket-read-error{background:#f9e2e2;color:#932c3c}
+.qr-detected{display:grid;gap:5px;padding:10px;border:1px solid #a4c6ae;border-radius:8px;background:#edf8ef;font-size:12px}
+.qr-detected code{overflow-wrap:anywhere;font-size:11px}
+.qr-detected button{justify-self:start}
+.ticket-ocr-text pre{white-space:pre-wrap;max-height:210px;overflow:auto;padding:10px;background:#f8f5eb;border-radius:8px;font-size:11px}
+.rendition-meta-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.rendition-live-total{font-size:15px;font-weight:900;white-space:nowrap;color:#7c3347}
+.rendition-entry-form .game-rendition-row{align-items:center}
+.rendition-entry-form .game-rendition-row input{max-width:145px}
+.rendition-history-list{display:grid;gap:8px}
+.rendition-record{border:1px solid #e0d7c6;border-radius:10px;background:#fff;overflow:hidden}
+.rendition-record>summary{display:grid;grid-template-columns:minmax(105px,auto) minmax(130px,1fr) minmax(120px,auto) auto;align-items:center;gap:12px;list-style:none;padding:12px 14px;cursor:pointer}
+.rendition-record>summary::-webkit-details-marker{display:none}
+.rendition-record-date{font-weight:850;font-size:13px}
+.rendition-record-date small,.rendition-record-period small,.rendition-record-amount small{display:block;color:#766d68;font-size:10px;font-weight:500;margin-top:4px}
+.rendition-record-period{font-size:12px;font-weight:800}
+.rendition-record-amount{font-size:13px;font-weight:900;text-align:right}
+.rendition-record-detail{padding:14px;border-top:1px solid #eee4d2;background:#fffdf7}
+.rendition-detail-columns{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.rendition-detail-columns h4,.rendition-record-detail h4{margin:0 0 10px;font-size:13px}
+.rendition-game-amounts{margin:0;padding:0;list-style:none;display:grid;gap:7px}
+.rendition-game-amounts li{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #eee5d2;padding-bottom:6px;font-size:12px}
+.rendition-game-amounts strong{white-space:nowrap}
+.rendition-grand-total,.rendition-payment-summary{display:flex;justify-content:space-between;gap:12px;margin:12px 0 0;padding-top:10px;border-top:2px solid #d8c16f}
+.rendition-metadata{display:grid;gap:7px;margin:0}
+.rendition-metadata div{display:grid;grid-template-columns:minmax(110px,auto) 1fr;gap:8px;font-size:12px}
+.rendition-metadata dt{color:#756c64}
+.rendition-metadata dd{margin:0;font-weight:750;overflow-wrap:anywhere}
+.ticket-saved-list{display:grid;gap:7px;margin-top:12px;font-size:12px}
+.ticket-saved-list>div{display:grid;gap:3px}
+.ticket-saved-list code,.ticket-saved-list small{font-size:11px;overflow-wrap:anywhere}
+.ticket-saved-list small{font-size:10px;color:#766d68}
+.rendition-saved-notes{margin-top:10px;font-size:12px}
+.rendition-payment-summary{margin:16px 0}
+.rendition-history-empty{padding:16px;border:1px dashed #d7c9a8;border-radius:10px;color:#7d7163;font-size:12px}
+.rendition-agent-history{margin-top:22px}
+.rendition-agent-history h3{margin:0 0 4px}
+.agency-pay-form label{display:grid;gap:4px;font-size:11px;color:#766d68}
+.lottery-board{margin-top:18px}
+.lottery-feed-meta{display:flex;align-items:center;flex-wrap:wrap;gap:10px;font-size:11px;color:#776f63;margin:-3px 0 15px}
+.lottery-latest-title{font-size:13px;font-weight:850;padding:10px 12px;border-left:4px solid #9c2838;background:#fbf0e9}
+.lottery-schedule-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin:14px 0}
+.lottery-schedule-item{padding:12px;border:1px solid #e1d6bd;border-radius:10px;background:#fffaf0}
+.lottery-schedule-item>span{font-size:9px;text-transform:uppercase;font-weight:900;letter-spacing:.08em;color:#7c3347}
+.lottery-schedule-item>strong{display:block;font-size:13px;margin:6px 0 10px}
+.lottery-schedule-item dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0}
+.lottery-schedule-item dl div{background:#f4edcf;border-radius:7px;padding:7px}
+.lottery-schedule-item dt{font-size:9px;color:#74664d}
+.lottery-schedule-item dd{font-size:11px;font-weight:800;margin:4px 0 0}
+.lottery-archives{border-top:1px solid #e5d9bd;padding-top:14px}
+.lottery-archives>summary{cursor:pointer;font-size:13px;font-weight:900;color:#7c3347}
+.lottery-archive-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px}
+.lottery-archive-group{padding:12px;border:1px solid #e8dfc9;border-radius:10px}
+.lottery-archive-group>div{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.lottery-archive-group strong{font-size:12px}
+.lottery-archive-group a{font-size:11px;color:#7c3347;font-weight:800}
+.lottery-archive-group ul{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.lottery-archive-group li a{display:inline-block;padding:6px 8px;background:#f5efda;border-radius:6px;text-decoration:none}
+.lottery-archive-group p{font-size:11px;margin:10px 0 0}
+.lottery-source-note{font-size:10px;color:#786d63;margin:14px 0 0}
+.success-message{background:#eef6ed;border:1px solid #c7dec7;color:#30603c;padding:11px 13px;border-radius:8px}
+@media(max-width:1050px){.rendition-agent-summary{grid-template-columns:auto auto 1fr auto;gap:8px}.rendition-agent-latest{display:none}.agency-create-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.agency-create-grid button{grid-column:1/-1}.agency-card-grid{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}}
+@media(max-width:700px){.rendition-agent-summary{grid-template-columns:auto 1fr auto;gap:7px;padding:11px}.rendition-agent-kind{grid-column:1/-1}.rendition-agent-code{grid-column:1}.rendition-agent-name{grid-column:2}.rendition-agent-balance{grid-column:1/3}.rendition-open-label{grid-column:3;grid-row:2/4;font-size:10px;white-space:normal}.rendition-record>summary{grid-template-columns:1fr auto;gap:6px}.rendition-record-period{grid-column:1}.rendition-record-amount{text-align:left;grid-column:1}.rendition-record>summary .badge{grid-column:2;grid-row:1/4;max-width:120px;white-space:normal}.rendition-detail-columns{grid-template-columns:1fr}.rendition-agent-expanded{padding:12px}.rendition-agent-expanded-head{align-items:flex-start;flex-direction:column}.rendition-mode-switch{width:100%}.rendition-mode-switch button{flex:1;padding:8px 6px;font-size:11px}.ticket-photo-picker{padding:16px 10px}.agency-create-grid{grid-template-columns:1fr}.agency-create-grid button{grid-column:auto}.agency-card-grid{grid-template-columns:1fr}.lottery-schedule-grid,.lottery-archive-groups{grid-template-columns:1fr}.agency-agent-card{min-height:160px}.agency-delete-content{width:min(250px,calc(100vw - 50px))}}

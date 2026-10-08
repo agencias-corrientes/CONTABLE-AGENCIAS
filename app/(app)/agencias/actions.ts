@@ -43,7 +43,7 @@ export async function createAgencyAgent(formData: FormData) {
 
 export async function createAgencyRendition(formData: FormData) {
   const { supabase, organizationId } = await getOrg();
-  const agentId = String(formData.get("agent_id") ?? "");
+  const agentId = String(formData.get("agent_id") ?? "").trim();
   const submittedDate = String(formData.get("rendition_date") ?? "").trim();
   const renditionDate = submittedDate || todayInAgencyTimeZone();
   const breakdown = Array.from(formData.entries())
@@ -52,32 +52,43 @@ export async function createAgencyRendition(formData: FormData) {
     .filter((item) => Number.isFinite(item.amount) && item.amount > 0);
   const totalDue = breakdown.reduce((sum, item) => sum + item.amount, 0);
   const ticketNumbers = String(formData.get("ticket_numbers") ?? "")
-    .split(/[\\n,;]+/)
+    .split(/[\n,;]+/)
     .map((value) => value.trim())
     .filter(Boolean)
     .filter((value, index, values) => values.indexOf(value) === index);
-  const parsedRenditionDate = new Date(`${renditionDate}T00:00:00.000Z`);
+  const parsedRenditionDate = new Date(renditionDate + "T00:00:00.000Z");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(renditionDate) || Number.isNaN(parsedRenditionDate.getTime()) || parsedRenditionDate.toISOString().slice(0, 10) !== renditionDate) {
-    throw new Error("Ingresá una fecha de rendición válida.");
+    throw new Error("Ingresá una fecha de juego válida.");
   }
-  if (breakdown.length === 0 || totalDue <= 0) throw new Error("Ingresá al menos un importe por juego.");
+  if (!agentId) throw new Error("Seleccioná un subagente o ambulante.");
+  if (breakdown.length === 0 || totalDue <= 0) throw new Error("Ingresá o reconocé al menos un importe por juego.");
 
-  const { error } = await supabase.rpc("create_agency_rendition", {
+  const qrPayload = String(formData.get("ticket_qr_payload") ?? "").trim() || null;
+  const gamePeriod = String(formData.get("game_period") ?? "").trim() || null;
+  const drawNumber = String(formData.get("draw_number") ?? "").trim() || null;
+  const requestedCaptureMethod = String(formData.get("capture_method") ?? "manual");
+  const captureMethod = ["manual", "photo", "qr"].includes(requestedCaptureMethod) ? requestedCaptureMethod : "manual";
+
+  const { error } = await supabase.rpc("create_agency_rendition_with_capture", {
     p_organization_id: organizationId,
     p_agent_id: agentId,
     p_rendition_date: renditionDate,
-    p_period_start: renditionDate,
-    p_period_end: renditionDate,
     p_amount_due: totalDue,
-    p_reference: String(formData.get("reference") ?? "").trim() || undefined,
-    p_notes: String(formData.get("notes") ?? "").trim() || undefined,
     p_game_breakdown: breakdown,
     p_ticket_numbers: ticketNumbers,
+    p_ticket_qr_payload: qrPayload,
+    p_game_period: gamePeriod,
+    p_draw_number: drawNumber,
+    p_capture_method: captureMethod,
+    p_reference: String(formData.get("reference") ?? "").trim() || undefined,
+    p_notes: String(formData.get("notes") ?? "").trim() || undefined,
   });
   if (error) throw new Error(error.message);
+
   revalidatePath("/agencias");
-  revalidatePath(`/agencias/${agentId}`);
-  redirect(`/agencias/${agentId}`);
+  revalidatePath("/agencias/" + agentId);
+  revalidatePath("/pagos");
+  redirect("/pagos?agent=" + agentId);
 }
 
 export async function receiveAgencyRendition(formData: FormData) {
@@ -122,4 +133,51 @@ export async function receiveAgencyRendition(formData: FormData) {
   revalidatePath("/movimientos");
   revalidatePath("/dashboard");
   redirect(`/agencias/${agentId}`);
+}
+
+export async function deleteAgencyAgent(formData: FormData) {
+  const { supabase, organizationId } = await getOrg();
+  const agentId = String(formData.get("agent_id") ?? "").trim();
+  if (!agentId || formData.get("confirm_delete") !== "yes") {
+    throw new Error("Confirmá la eliminación del subagente o ambulante.");
+  }
+
+  const { data: agent, error: agentError } = await supabase
+    .from("agency_agents")
+    .select("id,code,full_name")
+    .eq("id", agentId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (agentError) throw new Error(agentError.message);
+  if (!agent) throw new Error("No se encontró ese subagente o ambulante.");
+
+  const { data: existingRenditions, error: renditionError } = await supabase
+    .from("agency_renditions")
+    .select("id")
+    .eq("agent_id", agentId)
+    .eq("organization_id", organizationId)
+    .limit(1);
+  if (renditionError) throw new Error(renditionError.message);
+
+  if ((existingRenditions ?? []).length > 0) {
+    const { error } = await supabase
+      .from("agency_agents")
+      .update({ is_active: false })
+      .eq("id", agentId)
+      .eq("organization_id", organizationId);
+    if (error) throw new Error(error.message);
+    revalidatePath("/agencias");
+    revalidatePath("/pagos");
+    redirect("/agencias?resultado=archivado&codigo=" + encodeURIComponent(agent.code ?? ""));
+  }
+
+  const { error } = await supabase
+    .from("agency_agents")
+    .delete()
+    .eq("id", agentId)
+    .eq("organization_id", organizationId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/agencias");
+  revalidatePath("/pagos");
+  redirect("/agencias?resultado=eliminado&codigo=" + encodeURIComponent(agent.code ?? ""));
 }

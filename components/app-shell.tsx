@@ -6,8 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 
 const nav = [
   ["dashboard", "Inicio", "▦"],
+  ["pagos", "Rendiciones", "↔"],
   ["agencias", "Subagentes y ambulantes", "♟"],
-  ["pagos", "Cobranzas", "↔"],
   ["juegos", "Juegos", "◎"],
   ["buscar", "Buscar", "⌕"],
 ];
