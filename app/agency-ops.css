@@ -804,3 +804,19 @@
   .team-role-form{align-items:stretch;display:grid;grid-template-columns:1fr}
   .team-role-form label,.team-role-form select,.team-role-form .button{width:100%;min-width:0}
 }
+
+
+/* Personal y permisos: un solo lugar para alta, roles y bajas. */
+.team-permissions-panel{order:-1}
+.team-add-member{margin:12px 0 16px;padding:12px;border:1px solid #ded3b4;border-left:4px solid #7c3347;border-radius:10px;background:#fffdf6}
+.team-add-member .panel-head{margin-bottom:10px}
+.team-add-member h3{margin:0 0 4px;font-size:15px;color:#572632}
+.team-add-member .team-add-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;gap:10px}
+.team-add-member .team-add-form>label{display:grid;gap:5px;min-width:0;font-size:12px;font-weight:800;color:#5a4b32}
+.team-add-member .team-add-form input,.team-add-member .team-add-form select{width:100%;min-width:0;padding:9px 10px;border:1px solid #cbbd93;border-radius:7px;background:#fff;color:#2a2020;font-size:12px}
+.team-add-member .team-add-form .button{grid-column:1/-1;width:max-content;max-width:100%}
+@media(max-width:700px){
+ .team-add-member{padding:10px}
+ .team-add-member .team-add-form{grid-template-columns:1fr}
+ .team-add-member .team-add-form .button{grid-column:1;width:100%}
+}
