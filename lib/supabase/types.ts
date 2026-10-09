@@ -356,6 +356,51 @@ export type Database = {
           },
         ]
       }
+      agency_agent_daily_status: {
+        Row: {
+          agent_id: string
+          notes: string | null
+          operational_date: string
+          organization_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agent_id: string
+          notes?: string | null
+          operational_date: string
+          organization_id: string
+          status: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agent_id?: string
+          notes?: string | null
+          operational_date?: string
+          organization_id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_agent_daily_status_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agency_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_agent_daily_status_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agency_rendition_backup_outbox: {
         Row: {
           attempt_count: number
@@ -1867,6 +1912,16 @@ export type Database = {
           p_rendition_date: string
         }
         Returns: string
+      }
+      set_agency_agent_daily_status: {
+        Args: {
+          p_agent_id: string
+          p_notes?: string
+          p_operational_date: string
+          p_organization_id: string
+          p_status: string
+        }
+        Returns: undefined
       }
       set_member_role: {
         Args: {
