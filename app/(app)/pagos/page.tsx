@@ -325,7 +325,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "backup-no-enviado": "El backup sigue guardado, pero el proveedor rechazó el envío. Revisá el correo configurado y la configuración de Resend."
       } as Record<string,string>)[params.error] ?? "La operación no se pudo completar. Verificá permisos y datos."}</p>}
 
-      <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={drawPeriods.map((period) => period.time).filter((time): time is string => Boolean(time))} />
+      <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={drawPeriods.map((period) => period.time).filter((time): time is string => Boolean(time))} renderedAt={new Date().toISOString()} />
       <RenditionScrollHelper />
       <div className="stats-grid compact rendition-stats">
         <div className="stat-card"><span>Rendido hoy</span><strong>{money(todayRendido, activeOrganization.currency_code)}</strong><small>{todayRows.length} registros</small></div>
