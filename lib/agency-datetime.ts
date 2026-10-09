@@ -1,4 +1,4 @@
-const AGENCY_TIME_ZONE = "America/Argentina/Cordoba";
+const AGENCY_TIME_ZONE = "America/Argentina/Buenos_Aires";
 
 function agencyDateParts(value: Date) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -51,11 +51,17 @@ export function formatAgencyDateTime(value: string | null | undefined): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("es-AR", {
+  const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: AGENCY_TIME_ZONE,
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? "00";
+  return part("day") + "/" + part("month") + "/" + part("year") + " " + part("hour") + ":" + part("minute") + " (Buenos Aires, Argentina)";
 }
 
 
