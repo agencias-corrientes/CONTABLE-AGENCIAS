@@ -89,7 +89,7 @@ export default async function TeamPermissionsPage({
       {params.resultado === "acceso-revocado" && <p className="message success-message">Se revocó el acceso del empleado a esta agencia. Su cuenta general de autenticación no fue eliminada.</p>}
       {params.resultado === "backup-email-guardado" && <p className="message success-message">Se guardó el correo de respaldo. Las nuevas rendiciones se encolarán para enviarse a esa dirección.</p>}
       {params.resultado === "backup-reintento" && <p className="message success-message">Se solicitó nuevamente el envío del respaldo.</p>}
-      {params.resultado === "limpieza-completada" && <p className="message success-message">Limpieza finalizada. Se borraron los registros operativos de prueba y se vació el correo de backup guardado. Se conservaron la agencia, tu acceso, el catálogo de juegos y las cuentas de Caja.</p>}
+      {params.resultado === "limpieza-completada" && <p className="message success-message">Limpieza finalizada. Se borraron los registros operativos listados y se vació el correo de backup guardado. Se conservaron la agencia, tu acceso, el catálogo de juegos y las cuentas de Caja.</p>}
       {params.resultado === "limpieza-completada-fotos-pendientes" && <p className="message error-message">La base quedó limpia, pero no se pudieron quitar todas las fotos privadas de prueba. Revisá el almacenamiento antes del uso oficial.</p>}
       {params.error && <p className="message error-message">{errorMessages[params.error] ?? "No se pudo completar la operación. Revisá los datos e intentá nuevamente."}</p>}
 
@@ -128,10 +128,10 @@ export default async function TeamPermissionsPage({
 
       <section className="panel team-cleanup-panel">
         <div className="panel-head">
-          <div><h2>Preparar la puesta en marcha oficial</h2><p className="muted">Antes de cargar datos reales, revisá y eliminá de una vez los registros que se generaron durante las pruebas.</p></div>
+          <div><h2>Preparar la puesta en marcha oficial</h2><p className="muted">La limpieza alcanza a todos los registros operativos actuales, sin distinguir entre datos de prueba y datos reales. Usala únicamente antes de comenzar la operación oficial.</p></div>
           <span className="badge warning">Acción irreversible</span>
         </div>
-        <p className="team-security-note">Esta limpieza borra rendiciones, cobros, movimientos de caja, agentes de prueba, tickets, respaldos, registros de auditoría y datos de los antiguos módulos contables. También desconecta a los empleados de prueba y vacía el correo de backup configurado. Conserva la agencia, tu acceso de titular, los juegos configurados, las cuentas de Caja y los catálogos base.</p>
+        <p className="team-security-note">Esta limpieza borra todos los agentes, rendiciones, cobros, movimientos de caja, tickets, respaldos, registros de auditoría y registros operativos de los antiguos módulos contables que pertenezcan a esta agencia. No distingue si son de prueba o reales. También desconecta a los empleados que no sean titulares y vacía el correo de backup configurado. Conserva la agencia, tu acceso de titular, los juegos configurados, las cuentas de Caja y los catálogos base.</p>
         {cleanupPreviewError && <p className="message error-message">No se pudo obtener el inventario de datos. No ejecutes la limpieza hasta que el inventario esté disponible.</p>}
         {!cleanupPreviewError && <>
           <h3>Inventario actual de registros que se limpiarían</h3>
@@ -142,7 +142,7 @@ export default async function TeamPermissionsPage({
             <label>Para habilitar la limpieza, escribí exactamente: <strong>LIMPIAR DATOS DE PRUEBA</strong>
               <input type="text" name="confirmation" placeholder="LIMPIAR DATOS DE PRUEBA" autoComplete="off" required />
             </label>
-            <label className="team-cleanup-confirm"><input type="checkbox" name="confirm_cleanup" value="yes" required /> Confirmo que esto se hará antes de cargar rendiciones reales y que los registros borrados no se podrán recuperar desde la aplicación.</label>
+            <label className="team-cleanup-confirm"><input type="checkbox" name="confirm_cleanup" value="yes" required /> Confirmo que se eliminarán todos los registros operativos que muestra el inventario, no solo los de prueba, y que no se podrán recuperar desde la aplicación.</label>
             <button className="button danger" type="submit">Limpiar los datos de prueba</button>
           </form>
         </>}
