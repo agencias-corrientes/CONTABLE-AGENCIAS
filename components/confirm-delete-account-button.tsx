@@ -1,6 +1,8 @@
 "use client";
 
-export function ConfirmDeleteAccountButton({ className, children }: { className?: string; children: React.ReactNode }) {
+import type { ReactNode } from "react";
+
+export function ConfirmDeleteAccountButton({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <button
       type="submit"
