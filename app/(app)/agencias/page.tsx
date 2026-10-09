@@ -123,7 +123,7 @@ export default async function AgenciasPage({
       <section className="agency-section agency-section-ambulants">
         <div className="agency-section-head"><div><span>02</span><div><h2>Ambulantes</h2><p>Tarjetas con colores alternados y acceso a su historial</p></div></div><strong>{ambulants.length}</strong></div>
         <div className="agency-card-grid">
-          {ambulants.map((agent) => <AgentCard key={agent.id} agent={agent} pending={pending.get(agent.id) ?? 0} lastDate={lastDate.get(agent.id) ?? null} />)}
+          {ambulants.map((agent) => <AgentCard key={agent.id} agent={agent} pending={pending.get(agent.id) ?? 0} lastDate={lastDate.get(agent.id) ?? null} canDelete={canDeleteAgents} />)}
           {!ambulants.length && <div className="agency-empty">Todavía no hay ambulantes activos cargados.</div>}
         </div>
       </section>
@@ -132,7 +132,7 @@ export default async function AgenciasPage({
         <section className="agency-section archived-agents-section">
           <div className="agency-section-head"><div><span>03</span><div><h2>Agentes inactivos</h2><p>Se conservan acá si tenían rendiciones registradas</p></div></div><strong>{archived.length}</strong></div>
           <div className="agency-card-grid">
-            {archived.map((agent) => <AgentCard key={agent.id} agent={agent} pending={pending.get(agent.id) ?? 0} lastDate={lastDate.get(agent.id) ?? null} />)}
+            {archived.map((agent) => <AgentCard key={agent.id} agent={agent} pending={pending.get(agent.id) ?? 0} lastDate={lastDate.get(agent.id) ?? null} canDelete={canDeleteAgents} />)}
           </div>
         </section>
       )}
