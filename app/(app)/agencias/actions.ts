@@ -351,9 +351,17 @@ export async function voidAgencyRendition(formData: FormData) {
     if (message.includes("permiso")) redirect("/pagos?error=sin-permiso-anular&agent=" + encodeURIComponent(agentId));
     redirect("/pagos?error=anulacion-fallida&agent=" + encodeURIComponent(agentId));
   }
+
+  try {
+    await supabase.functions.invoke("send-rendition-backup", { body: { rendition_id: renditionId } });
+  } catch {
+    // The annulment is preserved; any unsent backup remains available for retry by the owner.
+  }
+
   revalidatePath("/agencias");
   revalidatePath("/agencias/" + agentId);
   revalidatePath("/pagos");
+  revalidatePath("/equipo");
   revalidatePath("/dashboard");
   redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=rendicion-anulada");
 }
