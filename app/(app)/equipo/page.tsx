@@ -93,7 +93,7 @@ export default async function TeamPermissionsPage({
       {params.resultado === "acceso-revocado" && <p className="message success-message">Se revocó el acceso del empleado a esta agencia. Su cuenta general de autenticación no fue eliminada.</p>}
       {params.resultado === "backup-email-guardado" && <p className="message success-message">Se guardó el correo de respaldo. Las nuevas rendiciones se encolarán para enviarse a esa dirección.</p>}
       {params.resultado === "backup-reintento" && <p className="message success-message">Se solicitó nuevamente el envío del respaldo.</p>}
-      {params.resultado === "limpieza-completada" && <p className="message success-message">Limpieza finalizada. Se borraron los registros operativos listados y se vació el correo de backup guardado. Se conservaron la agencia, tu acceso, el catálogo de juegos y las cuentas de Caja.</p>}
+      {params.resultado === "limpieza-completada" && <p className="message success-message">Limpieza finalizada. Se borraron los registros operativos listados y se vació el correo de backup guardado. Se conservaron la agencia, el acceso del titular, el catálogo de juegos y las cuentas de Caja.</p>}
       {params.resultado === "limpieza-completada-fotos-pendientes" && <p className="message error-message">La base quedó limpia, pero no se pudieron quitar todas las fotos privadas de prueba. Revisá el almacenamiento antes del uso oficial.</p>}
       {params.error && <p className="message error-message">{errorMessages[params.error] ?? "No se pudo completar la operación. Revisá los datos e intentá nuevamente."}</p>}
 
@@ -150,7 +150,7 @@ export default async function TeamPermissionsPage({
             <button className="button danger" type="submit">Limpiar los datos de prueba</button>
           </form>
         </>}
-        <p className="muted team-cleanup-footnote">La acción solo la puede ejecutar el titular y vuelve a comprobarlo en Supabase. Conserva tu usuario principal. Las cuentas de autenticación de empleados que se hayan creado no se borran de Auth: se les quita el acceso a esta agencia y, si son cuentas ficticias, después deben eliminarse individualmente en Supabase → Authentication → Users.</p>
+        <p className="muted team-cleanup-footnote">La acción solo la puede ejecutar el titular y vuelve a comprobarlo en Supabase. Esta limpieza no elimina la cuenta de acceso del titular ni las cuentas de autenticación de empleados: a los empleados se les quita la membresía de esta agencia; si son cuentas ficticias, deben eliminarse después en Supabase → Authentication → Users.</p>
       </section>
 
       <section className="panel team-permissions-panel">
@@ -167,7 +167,7 @@ export default async function TeamPermissionsPage({
                 <span className={"badge " + (isOwner ? "success" : "")}>{isOwner ? "Titular" : isAdmin ? "Administrador" : "Empleado"}</span>
               </div>
               {isOwner ? (
-                <p className="muted">Cuenta principal de la agencia. Para quitar al titular actual, primero transferí el rol de Propietario en Usuarios y roles.</p>
+                <p className="muted">Cuenta principal de la agencia.</p>
               ) : (
                 <>
                   {isAdmin && <p className="message">Esta cuenta tiene rol Administrador y privilegios amplios. Podés quitarle el acceso desde esta misma tarjeta.</p>}
