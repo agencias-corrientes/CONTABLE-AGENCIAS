@@ -215,7 +215,7 @@ export async function deleteAgencyAgent(formData: FormData) {
   if (!permissions.can_delete_agents) redirect("/agencias?error=sin-permiso-baja");
   const agentId = String(formData.get("agent_id") ?? "").trim();
   if (!agentId || formData.get("confirm_delete") !== "yes") {
-    throw new Error("Confirmá la eliminación del subagente o ambulante.");
+    redirect("/agencias?error=baja-no-confirmada");
   }
 
   const { data: agent, error: agentError } = await supabase
@@ -236,12 +236,15 @@ export async function deleteAgencyAgent(formData: FormData) {
   if (renditionError) redirect("/agencias?error=baja-fallida");
 
   if ((existingRenditions ?? []).length > 0) {
-    const { error } = await supabase
-      .from("agency_agents")
-      .update({ is_active: false })
-      .eq("id", agentId)
-      .eq("organization_id", organizationId);
-    if (error) redirect("/agencias?error=baja-fallida");
+    const { error } = await supabase.rpc("archive_agency_agent", {
+      p_organization_id: organizationId,
+      p_agent_id: agentId,
+      p_reason: "Baja solicitada desde la administración de agentes",
+    });
+    if (error) {
+      if (error.message.toLowerCase().includes("permiso")) redirect("/agencias?error=sin-permiso-baja");
+      redirect("/agencias?error=baja-fallida");
+    }
     revalidatePath("/agencias");
     revalidatePath("/pagos");
     redirect("/agencias?resultado=archivado&codigo=" + encodeURIComponent(agent.code ?? ""));
