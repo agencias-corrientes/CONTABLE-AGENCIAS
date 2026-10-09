@@ -286,6 +286,67 @@ export async function removeEmployeeAccess(formData: FormData) {
   redirect("/equipo?resultado=acceso-revocado");
 }
 
+
+export async function deleteUnlinkedAuthAccount(formData: FormData) {
+  const { supabase, organizationId } = await getOwnerContext();
+  const email = String(formData.get("target_email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("owner_password") ?? "");
+  const confirmation = String(formData.get("confirmation") ?? "");
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    redirect("/equipo?error=email-invalido");
+  }
+  if (formData.get("confirm_delete_account") !== "yes" || confirmation !== "ELIMINAR CUENTA: " + email) {
+    redirect("/equipo?error=confirmacion-cuenta-no-valida");
+  }
+
+  const { data: authData } = await supabase.auth.getClaims();
+  const claims = authData?.claims;
+  const ownerEmail = typeof claims?.email === "string" ? claims.email : "";
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!ownerEmail || !url || !publishableKey || !password) {
+    redirect("/equipo?error=verificacion-fallida");
+  }
+
+  const verifier = createPublicAuthClient(url, publishableKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  const { error: authError } = await verifier.auth.signInWithPassword({ email: ownerEmail, password });
+  if (authError) redirect("/equipo?error=contrasena-incorrecta");
+
+  const { data, error } = await supabase.functions.invoke("delete-unlinked-auth-account", {
+    body: {
+      organization_id: organizationId,
+      email,
+      confirmation,
+    },
+  });
+
+  if (error) {
+    let code = "";
+    try {
+      const response = (error as any).context;
+      if (response && typeof response.json === "function") {
+        const payload = await response.json();
+        code = String(payload?.code ?? "");
+      }
+    } catch {
+      // Keep a generic message if the Edge Function did not return structured JSON.
+    }
+    if (code === "account_not_found") redirect("/equipo?error=cuenta-no-encontrada");
+    if (code === "account_still_linked") redirect("/equipo?error=cuenta-vinculada");
+    if (code === "confirmation_mismatch") redirect("/equipo?error=confirmacion-cuenta-no-valida");
+    if (code === "owner_required") redirect("/equipo?error=solo-titular");
+    if (code === "cannot_delete_current_owner") redirect("/equipo?error=no-borrar-usuario-actual");
+    redirect("/equipo?error=cuenta-no-eliminada");
+  }
+  if (!data?.ok) redirect("/equipo?error=cuenta-no-eliminada");
+
+  revalidatePath("/equipo");
+  redirect("/equipo?resultado=cuenta-eliminada");
+}
+
 export async function saveBackupEmail(formData: FormData) {
   const { supabase, organizationId, userId } = await getOwnerContext();
   const email = String(formData.get("recipient_email") ?? "").trim().toLowerCase();
