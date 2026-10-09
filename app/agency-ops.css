@@ -1085,3 +1085,76 @@
     font-size: 16.5px !important;
   }
 }
+
+
+/* Preview: +20% en selectores de operadores; estado compacto para evitar desfases. */
+.rendition-agents-panel .rendition-agent-accordion:not([open]) > .rendition-agent-summary,
+.rendition-agents-panel .rendition-agent-accordion[open] > .rendition-agent-summary {
+  display: inline-flex !important;
+  flex-wrap: nowrap !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 260px !important;
+  min-width: 260px !important;
+  max-width: 100% !important;
+  height: 60px !important;
+  min-height: 60px !important;
+  padding: 8px 12px !important;
+  box-sizing: border-box !important;
+}
+.rendition-agents-panel .rendition-agent-accordion:not([open]) .rendition-agent-code,
+.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-code {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 17.5px !important;
+  line-height: 1.15 !important;
+  white-space: nowrap;
+}
+.rendition-agents-panel .rendition-agent-summary .rendition-status-badge {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+  height: 21px;
+  min-height: 21px;
+  padding: 3px 6px;
+  box-sizing: border-box;
+  font-size: 9px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.rendition-confirm-amount-label {
+  display: grid;
+  gap: 5px;
+  min-width: 180px;
+  flex: 1 1 210px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #5c4a27;
+}
+.rendition-confirm-amount-label input {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid #cbbd93;
+  border-radius: 7px;
+  background: #fff;
+  color: #2a2020;
+  font-size: 14px;
+  font-weight: 700;
+}
+.rendition-confirmed-amount {
+  color: #2f5a3d;
+  font-size: 12px;
+}
+@media (max-width: 700px) {
+  .rendition-agents-panel .rendition-agent-accordion:not([open]) > .rendition-agent-summary,
+  .rendition-agents-panel .rendition-agent-accordion[open] > .rendition-agent-summary {
+    width: 260px !important;
+    min-width: min(260px, 100%) !important;
+    max-width: 100% !important;
+    height: 58px !important;
+    min-height: 58px !important;
+    padding: 8px 10px !important;
+  }
+}

@@ -60,13 +60,35 @@ async function storeRenditionTicketPhoto(supabase: any, organizationId: string, 
   return attachError ? "failed" : "saved";
 }
 
-async function sendRenditionBackup(supabase: any, renditionId: string): Promise<"enviado" | "pendiente"> {
+async function sendRenditionBackup(supabase: any, renditionId: string): Promise<"enviado" | "pendiente" | "dominio-no-verificado"> {
+  let invocationDetails = "";
   try {
     const { data, error } = await supabase.functions.invoke("send-rendition-backup", { body: { rendition_id: renditionId } });
-    return error || data?.status !== "sent" ? "pendiente" : "enviado";
-  } catch {
-    return "pendiente";
+    if (!error && data?.status === "sent") return "enviado";
+    invocationDetails = [error?.message, data?.message, data?.detail].filter(Boolean).join(" ");
+  } catch (cause) {
+    invocationDetails = cause instanceof Error ? cause.message : String(cause ?? "");
   }
+
+  // The provider rejection is persisted in the outbox; translate Resend's test-mode
+  // restriction into an actionable state for the UI instead of exposing raw JSON.
+  try {
+    const { data: backup } = await supabase
+      .from("agency_rendition_backup_outbox")
+      .select("last_error")
+      .eq("rendition_id", renditionId)
+      .maybeSingle();
+    const providerError = [invocationDetails, String(backup?.last_error ?? "")].join(" ").toLowerCase();
+    if (
+      providerError.includes("you can only send testing emails to your own email address")
+      || providerError.includes("verify a domain at resend.com/domains")
+    ) {
+      return "dominio-no-verificado";
+    }
+  } catch {
+    // Keep the original pending state if the owner cannot read the outbox record.
+  }
+  return "pendiente";
 }
 
 export async function createAgencyAgent(formData: FormData) {
@@ -418,6 +440,8 @@ export async function setAgencyDailyRenditionStatus(formData: FormData) {
   const operationalDate = String(formData.get("operational_date") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
+  const reportedAmountRaw = String(formData.get("reported_amount") ?? "").trim();
+  const reportedAmount = Number(reportedAmountRaw.replace(",", "."));
 
   if (!permissions.can_create_renditions) redirect("/pagos?error=sin-permiso-rendicion");
   if (!agentId || !/^\d{4}-\d{2}-\d{2}$/.test(operationalDate) || !["complete", "incomplete"].includes(status)) {
@@ -428,17 +452,24 @@ export async function setAgencyDailyRenditionStatus(formData: FormData) {
   if (Number.isNaN(dateValue.getTime()) || dateValue.toISOString().slice(0, 10) !== operationalDate) {
     redirect("/pagos?error=estado-diario-fallido&agent=" + encodeURIComponent(agentId));
   }
+  if (status === "complete" && (
+    !reportedAmountRaw || !Number.isFinite(reportedAmount) || reportedAmount <= 0 || reportedAmount > 999999999999.99
+  )) {
+    redirect("/pagos?error=monto-rendido-invalido&agent=" + encodeURIComponent(agentId));
+  }
 
-  const { error } = await supabase.rpc("set_agency_agent_daily_status", {
+  const { error } = await supabase.rpc("set_agency_agent_daily_status_with_amount", {
     p_organization_id: organizationId,
     p_agent_id: agentId,
     p_operational_date: operationalDate,
     p_status: status,
     p_notes: notes || undefined,
+    p_reported_amount: status === "complete" ? reportedAmount : null,
   });
 
   if (error) {
     const message = String(error.message ?? "").toLowerCase();
+    if (message.includes("monto rendido") || message.includes("ingresá un monto")) redirect("/pagos?error=monto-rendido-invalido&agent=" + encodeURIComponent(agentId));
     if (message.includes("no tenés permiso")) redirect("/pagos?error=sin-permiso-rendicion&agent=" + encodeURIComponent(agentId));
     if (message.includes("jornada operativa cambió")) redirect("/pagos?error=jornada-cambio&agent=" + encodeURIComponent(agentId));
     if (message.includes("no hay una rendición registrada")) redirect("/pagos?error=sin-rendicion-para-confirmar&agent=" + encodeURIComponent(agentId));

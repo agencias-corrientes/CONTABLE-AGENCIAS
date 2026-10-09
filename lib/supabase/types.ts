@@ -362,6 +362,7 @@ export type Database = {
           notes: string | null
           operational_date: string
           organization_id: string
+          reported_amount: number | null
           status: string
           updated_at: string
           updated_by: string | null
@@ -371,6 +372,7 @@ export type Database = {
           notes?: string | null
           operational_date: string
           organization_id: string
+          reported_amount?: number | null
           status: string
           updated_at?: string
           updated_by?: string | null
@@ -380,6 +382,7 @@ export type Database = {
           notes?: string | null
           operational_date?: string
           organization_id?: string
+          reported_amount?: number | null
           status?: string
           updated_at?: string
           updated_by?: string | null
@@ -1919,6 +1922,17 @@ export type Database = {
           p_notes?: string
           p_operational_date: string
           p_organization_id: string
+          p_status: string
+        }
+        Returns: undefined
+      }
+      set_agency_agent_daily_status_with_amount: {
+        Args: {
+          p_agent_id: string
+          p_notes?: string | null
+          p_operational_date: string
+          p_organization_id: string
+          p_reported_amount?: number | null
           p_status: string
         }
         Returns: undefined
