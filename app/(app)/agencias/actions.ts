@@ -135,7 +135,8 @@ export async function createAgencyRendition(formData: FormData) {
     .filter(Boolean)
     .filter((value, index, values) => values.indexOf(value) === index);
   const operationalDate = String(formData.get("operational_date") ?? "").trim();
-  const dailyStatus = String(formData.get("daily_status") ?? "").trim();
+  const dailyStatus = String(formData.get("draw_status") ?? "").trim();
+  const drawPeriod = String(formData.get("draw_period") ?? "").trim();
   const dailyStatusNotes = String(formData.get("daily_status_notes") ?? "").trim();
   const reportedAmountRaw = String(formData.get("reported_amount") ?? "").trim();
   const reportedAmount = dailyStatus === "complete" ? totalDue : Number(reportedAmountRaw.replace(",", "."));
@@ -147,10 +148,11 @@ export async function createAgencyRendition(formData: FormData) {
   if (breakdown.length === 0 || totalDue <= 0) throw new Error("Ingresá o reconocé al menos un importe por juego.");
   if (
     !/^\d{4}-\d{2}-\d{2}$/.test(operationalDate) ||
-    !["complete", "incomplete"].includes(dailyStatus)
+    !["complete", "incomplete"].includes(dailyStatus) || !drawPeriod
   ) {
-    redirect("/pagos?error=estado-diario-fallido&agent=" + encodeURIComponent(agentId));
+    redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
   }
+  if (renditionDate !== operationalDate) redirect("/pagos?error=fecha-sorteo-invalida&agent=" + encodeURIComponent(agentId));
   if (dailyStatus === "incomplete" && (
     !reportedAmountRaw ||
     !Number.isFinite(reportedAmount) ||
@@ -162,7 +164,6 @@ export async function createAgencyRendition(formData: FormData) {
   }
 
   const qrPayload = String(formData.get("ticket_qr_payload") ?? "").trim() || null;
-  const gamePeriod = String(formData.get("game_period") ?? "").trim() || null;
   const drawNumber = String(formData.get("draw_number") ?? "").trim() || null;
   const requestedCaptureMethod = String(formData.get("capture_method") ?? "manual");
   const captureMethod = ["manual", "photo", "qr"].includes(requestedCaptureMethod) ? requestedCaptureMethod : "manual";
@@ -181,22 +182,22 @@ export async function createAgencyRendition(formData: FormData) {
   if (cashLookupError || !cashAccount?.id) {
     redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
   }
-  const { data: renditionId, error } = await supabase.rpc("create_agency_rendition_with_capture_and_daily_status", {
+  const { data: renditionId, error } = await supabase.rpc("create_agency_rendition_with_capture_and_draw_status", {
     p_organization_id: organizationId,
     p_agent_id: agentId,
     p_rendition_date: renditionDate,
     p_amount_due: totalDue,
     p_operational_date: operationalDate,
-    p_daily_status: dailyStatus,
+    p_draw_period: drawPeriod,
+    p_draw_status: dailyStatus,
     p_game_breakdown: breakdown,
     p_ticket_numbers: ticketNumbers,
     p_ticket_qr_payload: qrPayload ?? undefined,
-    p_game_period: gamePeriod ?? undefined,
     p_draw_number: drawNumber ?? undefined,
     p_capture_method: captureMethod,
     p_reference: String(formData.get("reference") ?? "").trim() || undefined,
     p_notes: String(formData.get("notes") ?? "").trim() || undefined,
-    p_daily_status_notes: dailyStatus === "incomplete" ? (dailyStatusNotes || undefined) : undefined,
+    p_status_notes: dailyStatus === "incomplete" ? (dailyStatusNotes || undefined) : undefined,
     p_reported_amount: reportedAmount,
   });
   if (error) {
@@ -204,6 +205,10 @@ export async function createAgencyRendition(formData: FormData) {
     if (message.includes("permiso")) redirect("/pagos?error=sin-permiso-rendicion&agent=" + encodeURIComponent(agentId));
     if (message.includes("monto rendido")) redirect("/pagos?error=monto-rendido-invalido&agent=" + encodeURIComponent(agentId));
     if (message.includes("jornada operativa cambió")) redirect("/pagos?error=jornada-cambio&agent=" + encodeURIComponent(agentId));
+    if (message.includes("ya existe una rendición para este sorteo")) redirect("/pagos?error=sorteo-ya-rendido&agent=" + encodeURIComponent(agentId));
+    if (message.includes("juegos que no corresponden al período")) redirect("/pagos?error=juegos-periodo-invalido&agent=" + encodeURIComponent(agentId));
+    if (message.includes("fecha del sorteo debe coincidir")) redirect("/pagos?error=fecha-sorteo-invalida&agent=" + encodeURIComponent(agentId));
+    if (message.includes("día no está programado")) redirect("/pagos?error=sorteo-no-programado&agent=" + encodeURIComponent(agentId));
     redirect("/pagos?error=rendicion-fallida&agent=" + encodeURIComponent(agentId));
   }
 
@@ -476,12 +481,12 @@ export async function setAgencyDailyRenditionStatus(formData: FormData) {
 
   if (!permissions.can_create_renditions) redirect("/pagos?error=sin-permiso-rendicion");
   if (!agentId || !/^\d{4}-\d{2}-\d{2}$/.test(operationalDate) || !["complete", "incomplete"].includes(status)) {
-    redirect("/pagos?error=estado-diario-fallido&agent=" + encodeURIComponent(agentId));
+    redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
   }
 
   const dateValue = new Date(operationalDate + "T00:00:00.000Z");
   if (Number.isNaN(dateValue.getTime()) || dateValue.toISOString().slice(0, 10) !== operationalDate) {
-    redirect("/pagos?error=estado-diario-fallido&agent=" + encodeURIComponent(agentId));
+    redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
   }
   if (status === "incomplete" && (
     !reportedAmountRaw || !Number.isFinite(reportedAmount) || reportedAmount <= 0 || reportedAmount > 999999999999.99
@@ -504,11 +509,43 @@ export async function setAgencyDailyRenditionStatus(formData: FormData) {
     if (message.includes("no tenés permiso")) redirect("/pagos?error=sin-permiso-rendicion&agent=" + encodeURIComponent(agentId));
     if (message.includes("jornada operativa cambió")) redirect("/pagos?error=jornada-cambio&agent=" + encodeURIComponent(agentId));
     if (message.includes("no hay una rendición registrada")) redirect("/pagos?error=sin-rendicion-para-confirmar&agent=" + encodeURIComponent(agentId));
-    redirect("/pagos?error=estado-diario-fallido&agent=" + encodeURIComponent(agentId));
+    redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
   }
 
   revalidatePath("/pagos");
   redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=" + (status === "complete" ? "estado-rendida" : "estado-incompleta"));
+}
+
+export async function setAgencyDrawRenditionStatus(formData: FormData) {
+  const { supabase, organizationId, permissions } = await getOrg();
+  const agentId = String(formData.get("agent_id") ?? "").trim();
+  const operationalDate = String(formData.get("operational_date") ?? "").trim();
+  const drawPeriod = String(formData.get("draw_period") ?? "").trim();
+  const status = String(formData.get("status") ?? "").trim();
+
+  if (!permissions.can_create_renditions) redirect("/pagos?error=sin-permiso-rendicion&agent=" + encodeURIComponent(agentId));
+  if (!agentId || !/^\\d{4}-\\d{2}-\\d{2}$/.test(operationalDate) || !drawPeriod || !["complete", "incomplete"].includes(status)) {
+    redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
+  }
+
+  const { error } = await supabase.rpc("set_agency_agent_draw_status", {
+    p_organization_id: organizationId,
+    p_agent_id: agentId,
+    p_operational_date: operationalDate,
+    p_draw_period: drawPeriod,
+    p_status: status,
+  });
+  if (error) {
+    const message = String(error.message ?? "").toLowerCase();
+    if (message.includes("jornada operativa cambió")) redirect("/pagos?error=jornada-cambio&agent=" + encodeURIComponent(agentId));
+    if (message.includes("no hay una rendición activa")) redirect("/pagos?error=sorteo-sin-rendicion&agent=" + encodeURIComponent(agentId));
+    if (message.includes("permiso")) redirect("/pagos?error=sin-permiso-rendicion&agent=" + encodeURIComponent(agentId));
+    redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
+  }
+
+  revalidatePath("/pagos");
+  revalidatePath("/agencias");
+  redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=sorteo-rendido");
 }
 
 export async function sendAgencyBackupManually() {

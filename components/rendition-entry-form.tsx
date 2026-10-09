@@ -3,6 +3,7 @@
 import { useId, useMemo, useState } from "react";
 import jsQR from "jsqr";
 import { createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
+import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod } from "@/lib/agency-draw-schedule";
 
 type Game = { id: string; name: string; category: string };
 type InitialRendition = {
@@ -105,9 +106,17 @@ function parseTicketText(text: string, games: Game[]) {
 
   const drawMatch = normalText.match(/\bSORTEO\s*(?:NRO|NUMERO|N|#)?\s*[:.°º-]?\s*(\d{3,7})\b/);
   const periodOptions = [
+    ["QUINIELA POCEADA", "Quiniela Poceada Correntina"],
+    ["POCEADA", "Quiniela Poceada Correntina"],
+    ["LOTO 5 PLUS", "Loto 5 Plus"],
+    ["LOTO PLUS", "Loto Plus"],
+    ["QUINI 6", "Quini 6"],
+    ["QUINI6", "Quini 6"],
+    ["BRINCO", "Brinco"],
+    ["AL TOQUE", "Al Toque (acumulado diario)"],
     ["LA PREVIA", "La Previa"],
-    ["EL PRIMERO", "Primera"],
-    ["PRIMERA", "Primera"],
+    ["EL PRIMERO", "El Primero"],
+    ["PRIMERA", "El Primero"],
     ["MATUTINA", "Matutina"],
     ["VESPERTINA", "Vespertina"],
     ["NOCTURNA", "Nocturna"],
@@ -182,10 +191,13 @@ function structuredQr(payload: string) {
   }
 }
 
-export function RenditionEntryForm({ agentId, games, today, initialRendition }: { agentId: string; games: Game[]; today: string; initialRendition?: InitialRendition }) {
+export function RenditionEntryForm({ agentId, games, today, periods, allPeriods, defaultPeriod, initialRendition }: { agentId: string; games: Game[]; today: string; periods: OfficialDrawPeriod[]; allPeriods?: OfficialDrawPeriod[]; defaultPeriod?: string; initialRendition?: InitialRendition }) {
   const [mode, setMode] = useState<"photo" | "manual">(initialRendition?.captureMethod === "manual" ? "manual" : "photo");
   const [date, setDate] = useState(initialRendition?.renditionDate ?? today);
-  const [period, setPeriod] = useState(initialRendition?.period ?? "");
+  const [period, setPeriod] = useState(initialRendition?.period ?? defaultPeriod ?? periods[0]?.label ?? "");
+  const [detectedPeriodMismatch, setDetectedPeriodMismatch] = useState("");
+  const selectedPeriodDefinition = periods.find((candidate) => candidate.label === period) ?? (initialRendition?.period ? (allPeriods ?? periods).find((candidate) => candidate.label === initialRendition.period) ?? null : null);
+  const periodGames = useMemo(() => getGamesForDrawPeriod(selectedPeriodDefinition, games), [selectedPeriodDefinition, games]);
   const [drawNumber, setDrawNumber] = useState(initialRendition?.drawNumber ?? "");
   const [amounts, setAmounts] = useState<Record<string, string>>(initialRendition?.amounts ?? {});
   const [ticketNumbers, setTicketNumbers] = useState((initialRendition?.ticketNumbers ?? []).join("\n"));
@@ -226,12 +238,20 @@ export function RenditionEntryForm({ agentId, games, today, initialRendition }: 
         setQrPayload(detectedQr);
         const qr = structuredQr(detectedQr);
         if (qr.date) setDate(qr.date);
-        if (qr.period) setPeriod(qr.period);
+        if (qr.period) {
+          const recognized = resolveRecognizedDrawPeriod(qr.period, allPeriods ?? periods);
+          if (recognized && recognized.label !== period) {
+            setDetectedPeriodMismatch(recognized.label);
+            setNotice("El QR indica " + recognized.label + ", pero está seleccionado " + period + ". Cambiá al sorteo indicado y volvé a leer el ticket.");
+          } else if (recognized && recognized.label === period) {
+            setDetectedPeriodMismatch("");
+          }
+        }
         if (qr.drawNumber) setDrawNumber(qr.drawNumber);
         if (qr.ticketNumber) setTicketNumbers((previous) => previous ? previous + "\n" + qr.ticketNumber : qr.ticketNumber);
         if (qr.amount && qr.game) {
           const normalizedGame = normalize(qr.game);
-          const target = games.find((game) => aliasesFor(game).some((alias) => normalizedGame.includes(alias)));
+          const target = periodGames.find((game) => aliasesFor(game).some((alias) => normalizedGame.includes(alias)));
           if (target) setAmounts((previous) => ({ ...previous, [target.id]: qr.amount!.toFixed(2) }));
         }
       }
@@ -254,17 +274,25 @@ export function RenditionEntryForm({ agentId, games, today, initialRendition }: 
       }
 
       setOcrText(recognizedText);
-      const parsed = parseTicketText(recognizedText, games);
+      const parsed = parseTicketText(recognizedText, periodGames);
       setAmounts((previous) => ({ ...previous, ...parsed.amountMap }));
       if (parsed.date) setDate(parsed.date);
-      if (parsed.period) setPeriod(parsed.period);
+      if (parsed.period) {
+        const recognized = resolveRecognizedDrawPeriod(parsed.period, allPeriods ?? periods);
+        if (recognized && recognized.label !== period) {
+          setDetectedPeriodMismatch(recognized.label);
+          setNotice("El ticket indica " + recognized.label + ", pero está seleccionado " + period + ". Cambiá al sorteo indicado y volvé a leer el ticket.");
+        } else {
+          setDetectedPeriodMismatch("");
+        }
+      }
       if (parsed.drawNumber) setDrawNumber(parsed.drawNumber);
       if (parsed.ticketNumber && !ticketNumbers.includes(parsed.ticketNumber)) {
         setTicketNumbers((previous) => previous ? previous + "\n" + parsed.ticketNumber : parsed.ticketNumber);
       }
       const qr = detectedQr ? structuredQr(detectedQr) : null;
-      if (qr?.amount && parsed.detectedGames.length === 1 && !parsed.amountMap[games.find((game) => game.name === parsed.detectedGames[0])?.id ?? ""]) {
-        const target = games.find((game) => game.name === parsed.detectedGames[0]);
+      if (qr?.amount && parsed.detectedGames.length === 1 && !parsed.amountMap[periodGames.find((game) => game.name === parsed.detectedGames[0])?.id ?? ""]) {
+        const target = periodGames.find((game) => game.name === parsed.detectedGames[0]);
         if (target) setAmounts((previous) => ({ ...previous, [target.id]: qr.amount!.toFixed(2) }));
       }
 
@@ -301,12 +329,13 @@ export function RenditionEntryForm({ agentId, games, today, initialRendition }: 
       <input type="hidden" name="rendition_id" value={initialRendition?.id ?? ""} />
       <input type="hidden" name="ticket_qr_payload" value={qrPayload} />
       <input type="hidden" name="game_period" value={period} />
+      <input type="hidden" name="draw_period" value={period} />
       <input type="hidden" name="draw_number" value={drawNumber} />
       <input type="hidden" name="capture_method" value={mode === "manual" ? "manual" : qrPayload ? "qr" : fileName ? "photo" : initialRendition?.captureMethod === "photo" ? "photo" : initialRendition?.captureMethod === "qr" ? "qr" : "manual"} />
       {!initialRendition && (
         <>
           <input type="hidden" name="operational_date" value={today} />
-          <input type="hidden" name="daily_status" value={dailyStatusChoice} />
+          <input type="hidden" name="draw_status" value={dailyStatusChoice} />
           <input type="hidden" name="reported_amount" value={dailyStatusChoice === "incomplete" ? reportedAmount : total.toFixed(2)} />
         </>
       )}
@@ -340,17 +369,42 @@ export function RenditionEntryForm({ agentId, games, today, initialRendition }: 
       )}
 
       <div className="detail-grid rendition-meta-grid">
-        <label>Fecha del juego<input type="date" name="rendition_date" value={date} onChange={(event) => setDate(event.target.value)} required /></label>
-        <label>Período / turno<input value={period} onChange={(event) => setPeriod(event.target.value)} placeholder="La Previa, Primera, Matutina..." /></label>
+        <label>Fecha de la jornada<input type="date" name="rendition_date" value={date} onChange={(event) => setDate(event.target.value)} required /></label>
+        <label>Período oficial del sorteo
+          <select value={period} onChange={(event) => {
+            const nextPeriod = event.target.value;
+            if (nextPeriod !== period) {
+              setAmounts({});
+              setTicketNumbers("");
+              setQrPayload("");
+              setDrawNumber("");
+              setReference("");
+              setFileName("");
+              setOcrText("");
+              setPhotoPreviewUrl("");
+              setDetectedPeriodMismatch("");
+              setNotice("Cambiaste de sorteo: se limpiaron los importes, tickets y lecturas anteriores para no mezclar períodos.");
+            }
+            setPeriod(nextPeriod);
+          }} required disabled={Boolean(initialRendition)}>
+            <option value="" disabled>Seleccioná un sorteo</option>
+            {initialRendition && period && !(allPeriods ?? periods).some((item) => item.label === period) && <option value={period}>{period} · histórico</option>}
+            {periods.map((item) => <option key={item.label} value={item.label}>{item.label}{item.time ? " · " + item.time : " · acumulado diario"}</option>)}
+          </select>
+          {initialRendition && <span className="muted small-text">El período histórico queda bloqueado.</span>}
+        </label>
         <label>Número de sorteo<input value={drawNumber} onChange={(event) => setDrawNumber(event.target.value)} placeholder="Se detecta de la foto" /></label>
         <label>Referencia<input name="reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Opcional" /></label>
       </div>
+      {detectedPeriodMismatch && <p className="message error-message">El ticket corresponde a <strong>{detectedPeriodMismatch}</strong>. Cambiá al período indicado y volvé a leerlo antes de guardar.</p>}
+      {period && periods.length > 0 && <p className="muted small-text">Esta rendición corresponde exclusivamente a <strong>{period}</strong>; no se mezclan importes de otros sorteos.</p>}
 
       <div className="game-rendition-block">
         <div className="game-rendition-head"><div><h3>Juegos e importes</h3><p className="muted">{mode === "photo" ? "El lector completa lo que reconoce. Corregí o agregá importes antes de guardar." : "Cargá manualmente los importes por juego."}</p></div><span className="rendition-live-total">{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(total)}</span></div>
         <div className="game-rendition-list">
-          {games.map((game) => <label className="game-rendition-row" key={game.id}><span><strong>{game.name}</strong><small>{game.category}</small></span><input type="number" name={"game_" + game.id} min="0" step="0.01" inputMode="decimal" placeholder="0,00" value={amounts[game.id] ?? ""} onChange={(event) => setAmounts((previous) => ({ ...previous, [game.id]: event.target.value }))} /></label>)}
-          {!games.length && <p className="message">No hay juegos activos para cargar la rendición.</p>}
+          {periodGames.map((game) => <label className="game-rendition-row" key={game.id}><span><strong>{game.name}</strong><small>{game.category}</small></span><input type="number" name={"game_" + game.id} min="0" step="0.01" inputMode="decimal" placeholder="0,00" value={amounts[game.id] ?? ""} onChange={(event) => setAmounts((previous) => ({ ...previous, [game.id]: event.target.value }))} /></label>)}
+          {!period && <p className="message">Elegí el período del sorteo.</p>}
+          {period && !periodGames.length && <p className="message">No hay un juego activo asignado a este turno; no se mezclarán juegos de otros sorteos.</p>}
         </div>
       </div>
 
@@ -360,7 +414,7 @@ export function RenditionEntryForm({ agentId, games, today, initialRendition }: 
         className="button primary"
         type={initialRendition ? "submit" : "button"}
         onClick={initialRendition ? undefined : () => setConfirmationOpen(true)}
-        disabled={!games.length || busy || total <= 0}
+        disabled={!periodGames.length || !period || busy || total <= 0 || Boolean(detectedPeriodMismatch)}
       >
         {busy ? "Leyendo ticket…" : initialRendition ? "Guardar cambios de la rendición" : "Registrar rendición diaria"}
       </button>
@@ -378,7 +432,7 @@ export function RenditionEntryForm({ agentId, games, today, initialRendition }: 
               <p className="eyebrow">CONFIRMAR RENDICIÓN DIARIA</p>
               <h3 id={confirmationId + "-title"}>¿Cómo querés registrar esta rendición?</h3>
               <p id={confirmationId + "-description"} className="muted">
-                Elegí el estado ahora. La rendición y su estado diario se guardarán juntos.
+                Elegí el estado ahora. La rendición y el estado de este sorteo se guardarán juntos, sin alterar otros períodos.
               </p>
             </div>
 

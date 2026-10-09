@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentContext, money } from "@/lib/accounting";
 import { agencyBusinessDateForCutoff, formatAgencyDateTime } from "@/lib/agency-datetime";
+import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, drawPeriodHasPassed, getUnmappedOfficialGameNames, OFFICIAL_QUINIELA_SCHEDULE_URL, OFFICIAL_EXTRACTS_SCHEDULE_URL } from "@/lib/agency-draw-schedule";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
+import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
 import { receiveAgencyRendition, saveAgentGameCommissions } from "../actions";
 
 export default async function AgencyDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ error?: string; resultado?: string }> }) {
@@ -35,10 +37,19 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
   const totalCommission = rows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_game_amounts) ? row.agency_rendition_game_amounts : []).reduce((acc, game) => acc + Number(game.commission_amount ?? 0), 0), 0);
   const typeLabel = agent.kind === "subagent" ? "Subagente" : "Ambulante";
   const code = agent.code ?? "SIN CÓDIGO";
+  const allOfficialDrawPeriods = getAllOfficialDrawPeriods();
+  const currentDrawPeriods = getOfficialDrawPeriodsForDate(today);
+  const drawNow = new Date();
+  const pendingDrawPeriods = currentDrawPeriods.filter((period) =>
+    !rows.some((row: any) => String(row.rendition_date) === today && String(row.game_period ?? "").trim() === period.label) &&
+    (!period.time || drawPeriodHasPassed(period, today, drawNow))
+  );
+  const unmappedGameNames = getUnmappedOfficialGameNames((gameTypes ?? []).filter((game) => game.enabled).map((game) => ({ name: game.name })));
   const defaultCommissionByGame = new Map((defaultCommissionRows ?? []).map((row) => [row.game_type_id, Number(row.commission_percent ?? 0)]));
 
   return (
     <div className={"page agency-detail-page " + (agent.kind === "subagent" ? "detail-subagent" : "detail-ambulant")}>
+      <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={currentDrawPeriods.map((period) => period.time).filter((time): time is string => Boolean(time))} />
       <div className="topbar">
         <div><Link href="/pagos" className="back-link">← Volver a Rendiciones</Link><p className="eyebrow">{typeLabel.toUpperCase()}</p><h1>{code}</h1><p className="muted">{typeLabel} · {agent.full_name} · {agent.is_active ? "Activo" : "Inactivo"}</p></div>
       </div>
@@ -79,8 +90,11 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
 
       {!agent.is_active ? <div className="message">Este agente está inactivo. Se conserva su historial, pero no se pueden crear rendiciones nuevas.</div> : (
         <section className="panel">
-          <div className="panel-head"><div><h2>Rendición diaria</h2><p className="muted">Foto/QR primero; la carga manual sigue disponible.</p></div></div>
-          <RenditionEntryForm agentId={agent.id} games={(gameTypes ?? []).filter((game) => game.enabled).map((game) => ({ id: game.id, name: game.name, category: game.category }))} today={today} />
+          <div className="panel-head"><div><h2>Rendición por sorteo</h2><p className="muted">Cada turno es una rendición independiente. El formulario solo ofrece sorteos vencidos que todavía no tienen un registro para esta jornada.</p><p className="muted small-text"><a href={OFFICIAL_QUINIELA_SCHEDULE_URL} target="_blank" rel="noreferrer">Programa oficial de sorteos</a> · <a href={OFFICIAL_EXTRACTS_SCHEDULE_URL} target="_blank" rel="noreferrer">Resultados publicados</a></p></div></div>
+          {unmappedGameNames.length > 0 && <p className="message">Estos juegos aún no tienen un período de sorteo verificado y no aparecen en los formularios por turno: {unmappedGameNames.join(", ")}. Verificá el programa oficial antes de habilitarlos.</p>}
+          {pendingDrawPeriods.length > 0
+            ? <RenditionEntryForm agentId={agent.id} games={(gameTypes ?? []).filter((game) => game.enabled).map((game) => ({ id: game.id, name: game.name, category: game.category, enabled: game.enabled }))} today={today} periods={pendingDrawPeriods} allPeriods={allOfficialDrawPeriods} defaultPeriod={pendingDrawPeriods[0]?.label} />
+            : <p className="message">No hay sorteos vencidos pendientes para esta jornada. Los próximos turnos se habilitan al llegar su horario oficial.</p>}
         </section>
       )}
 

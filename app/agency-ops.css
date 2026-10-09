@@ -1370,3 +1370,27 @@
 .operational-schedule-grid .small-text{font-size:11px;font-weight:400;line-height:1.35}
 .operational-schedule-form>.button{align-self:flex-start;min-height:36px;padding:8px 13px}
 @media(max-width:640px){.operational-schedule-grid{grid-template-columns:1fr;gap:10px}.operational-schedule-panel{padding:12px}.operational-schedule-grid input[type=time]{max-width:100%}}
+
+
+/* Clear, compact status labels for each independent lottery draw. */
+.draw-period-chip-list,.agency-agent-draw-status-list{display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-width:0;margin-top:7px}
+.draw-period-chip,.agency-agent-draw-chip{display:inline-flex;align-items:center;max-width:100%;padding:4px 7px;border:1px solid #d7c7a1;border-radius:6px;background:#fffaf0;color:#48333a;font-size:10px;font-weight:800;line-height:1.25;white-space:normal}
+.draw-period-chip.status-complete,.agency-agent-draw-chip.status-complete{background:#e3eddf;border-color:#a7c2a4;color:#285238}
+.draw-period-chip.status-incomplete,.agency-agent-draw-chip.status-incomplete{background:#fff0b9;border-color:#d4b344;color:#654c0f}
+.draw-period-chip.status-pending,.agency-agent-draw-chip.status-pending{background:#f5e6e8;border-color:#d8aab4;color:#702f3e}
+.draw-period-chip.status-review,.agency-agent-draw-chip.status-review{background:#f4e0ca;border-color:#d4a674;color:#7a421d}
+.draw-period-chip.status-upcoming,.agency-agent-draw-chip.status-upcoming{background:#f2f0e9;border-color:#d7d0c3;color:#6f655b}
+.draw-period-status-actions{display:flex;flex-wrap:wrap;gap:7px;margin:7px 0 12px}
+.draw-period-status-actions form{display:inline-flex}
+.draw-period-status-actions .button{font-size:11px;padding:6px 9px;min-height:30px}
+.draw-period-note{margin:7px 0;padding:9px 11px;border:1px solid #d7c7a1;border-radius:7px;background:#fffaf0;font-size:12px;line-height:1.5}
+.draw-period-note a{color:#6b283b;font-weight:800;text-decoration:underline}
+.agency-agent-button-row{flex-wrap:wrap}
+.agency-agent-draw-status-list{flex:1 1 100%;padding-left:2px}
+.agency-agent-draw-chip{font-size:9px;padding:3px 6px;max-width:100%}
+@media(max-width:700px){
+ .draw-period-chip-list,.agency-agent-draw-status-list{gap:4px}
+ .draw-period-chip,.agency-agent-draw-chip{font-size:9px;padding:4px 6px}
+ .draw-period-status-actions{display:grid;grid-template-columns:1fr}
+ .draw-period-status-actions .button{width:100%}
+}

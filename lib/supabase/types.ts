@@ -407,6 +407,67 @@ export type Database = {
           },
         ]
       }
+      agency_agent_draw_status: {
+        Row: {
+          agent_id: string
+          draw_period: string
+          notes: string | null
+          operational_date: string
+          organization_id: string
+          reported_amount: number | null
+          rendition_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agent_id: string
+          draw_period: string
+          notes?: string | null
+          operational_date: string
+          organization_id: string
+          reported_amount?: number | null
+          rendition_id: string
+          status: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agent_id?: string
+          draw_period?: string
+          notes?: string | null
+          operational_date?: string
+          organization_id?: string
+          reported_amount?: number | null
+          rendition_id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_agent_draw_status_agent_org_fkey"
+            columns: ["agent_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "agency_agents"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "agency_agent_draw_status_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_agent_draw_status_rendition_org_fkey"
+            columns: ["rendition_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "agency_renditions"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
       agency_rendition_backup_outbox: {
         Row: {
           attempt_count: number
@@ -1806,6 +1867,38 @@ export type Database = {
           p_ticket_qr_payload?: string
         }
         Returns: string
+      }
+      create_agency_rendition_with_capture_and_draw_status: {
+        Args: {
+          p_agent_id: string
+          p_amount_due: number
+          p_capture_method?: string
+          p_draw_number?: string
+          p_draw_period: string
+          p_draw_status: string
+          p_game_breakdown?: Json
+          p_notes?: string
+          p_operational_date: string
+          p_organization_id: string
+          p_reference?: string
+          p_rendition_date: string
+          p_reported_amount?: number
+          p_status_notes?: string
+          p_ticket_numbers?: Json
+          p_ticket_qr_payload?: string
+        }
+        Returns: string
+      }
+      set_agency_agent_draw_status: {
+        Args: {
+          p_agent_id: string
+          p_draw_period: string
+          p_notes?: string
+          p_operational_date: string
+          p_organization_id: string
+          p_status: string
+        }
+        Returns: undefined
       }
       create_cash_movement: {
         Args: {
