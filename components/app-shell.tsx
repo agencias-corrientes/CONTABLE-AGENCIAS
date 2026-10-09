@@ -50,7 +50,16 @@ export function AppShell({
           {visibleNav.map(([slug, label, icon]) => {
             const href = `/${slug}`;
             return (
-              <Link key={slug} href={href} className={pathname.startsWith(href) ? "nav-item active" : "nav-item"}>
+              <Link
+                key={slug}
+                href={href}
+                onClick={slug === "pagos" ? (event) => {
+                  event.preventDefault();
+                  router.push("/pagos");
+                  router.refresh();
+                } : undefined}
+                className={pathname.startsWith(href) ? "nav-item active" : "nav-item"}
+              >
                 <span className="nav-icon">{icon}</span>{label}
               </Link>
             );
