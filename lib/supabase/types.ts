@@ -963,6 +963,7 @@ export type Database = {
           id: string
           organization_id: string
           rendition_id: string
+          revision_no: number
           recipient_email: string
           subject: string
           text_body: string
@@ -991,6 +992,7 @@ export type Database = {
           id?: string
           organization_id?: string
           rendition_id?: string
+          revision_no?: number
           recipient_email?: string
           subject?: string
           text_body?: string
