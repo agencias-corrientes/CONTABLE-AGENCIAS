@@ -20,7 +20,7 @@ function reply(payload: Record<string, unknown>, status = 200) {
 const DAILY_CLOSE_CRON_SECRET_SHA256 =
   "eb9a0fcfbf3e942ea3530ced14b5976aff59c6a64f426d10577a875ac804cceb";
 
-const AGENCY_TIME_ZONE = "America/Argentina/Buenos_Aires";
+const AGENCY_TIME_ZONE = "America/Argentina/Cordoba";
 
 async function matchesDailyCloseSecret(candidate: string): Promise<boolean> {
   if (!candidate) return false;
@@ -596,6 +596,105 @@ async function sendDailyCloseBackups(
   });
 }
 
+
+async function sendScheduledDailyBackups(
+  admin: any,
+  resendApiKey: string | undefined,
+  resendFromEmail: string | undefined,
+) {
+  const now = new Date();
+  const currentTime = new Intl.DateTimeFormat("en-GB", {
+    timeZone: AGENCY_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(now);
+
+  const { data: backupSettings, error: backupSettingsError } = await admin
+    .from("organization_backup_settings")
+    .select("organization_id,recipient_email")
+    .eq("enabled", true)
+    .not("recipient_email", "is", null);
+
+  if (backupSettingsError) {
+    return reply({ error: "scheduled_backup_settings_lookup_failed" }, 500);
+  }
+
+  const organizationIds = Array.from(new Set(
+    (backupSettings ?? [])
+      .filter((row: any) => String(row.recipient_email ?? "").trim())
+      .map((row: any) => String(row.organization_id)),
+  ));
+
+  if (!organizationIds.length) {
+    return reply({ status: "no_backup_recipients", time: currentTime, batches: [] });
+  }
+
+  const { data: operationalSettings, error: operationalSettingsError } = await admin
+    .from("agency_operational_settings")
+    .select("organization_id,backup_send_time")
+    .in("organization_id", organizationIds);
+
+  if (operationalSettingsError) {
+    return reply({ error: "scheduled_backup_times_lookup_failed" }, 500);
+  }
+
+  const scheduleByOrganization = new Map<string, string>();
+  for (const setting of operationalSettings ?? []) {
+    scheduleByOrganization.set(
+      String(setting.organization_id),
+      String(setting.backup_send_time ?? "23:50").slice(0, 5),
+    );
+  }
+
+  // Mantiene 23:50 como horario predeterminado para una organización sin configuración guardada.
+  const dueOrganizations = organizationIds.filter(
+    (organizationId) => (scheduleByOrganization.get(organizationId) ?? "23:50") === currentTime,
+  );
+
+  if (!dueOrganizations.length) {
+    return reply({
+      status: "not_scheduled_time",
+      time: currentTime,
+      batches: [],
+    });
+  }
+
+  const batches: Array<Record<string, unknown>> = [];
+  for (const organizationId of dueOrganizations) {
+    const response = await sendDailyCloseBackups(
+      admin,
+      resendApiKey,
+      resendFromEmail,
+      organizationId,
+    );
+
+    let result: Record<string, unknown> = {};
+    try {
+      result = await response.json();
+    } catch {
+      result = { status: "invalid_scheduler_response" };
+    }
+
+    batches.push({
+      organization_id: organizationId,
+      http_status: response.status,
+      ...result,
+    });
+  }
+
+  const failed = batches.some((batch) =>
+    (typeof batch.http_status === "number" && batch.http_status >= 400) ||
+    ["failed", "failed_no_recipient", "invalid_scheduler_response"].includes(String(batch.status ?? "")),
+  );
+
+  return reply({
+    status: failed ? "daily_close_processed_with_errors" : "daily_close_processed",
+    time: currentTime,
+    batches,
+  }, failed ? 500 : 200);
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -679,7 +778,7 @@ Deno.serve(async (request: Request) => {
   });
 
   if (cronAuthorized) {
-    return await sendDailyCloseBackups(admin, resendApiKey, resendFromEmail);
+    return await sendScheduledDailyBackups(admin, resendApiKey, resendFromEmail);
   }
 
   if (payload.manual_close === true) {
