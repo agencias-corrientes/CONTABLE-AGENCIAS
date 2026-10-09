@@ -1327,3 +1327,26 @@
   border-color: #c5a02b;
   color: #30250b;
 }
+
+
+/* Ajuste final solicitado: el botón completo del subagente usa un amarillo intenso uniforme. */
+.agency-agent-button-row.agency-subagent .agency-agent-code-button,
+.agency-agent-button-row.agency-subagent .agency-agent-code-button:hover,
+.agency-agent-button-row.agency-subagent .agency-agent-code-button:focus-visible {
+  background: #ffdf00 !important;
+  border-color: #c5a000 !important;
+  color: #302500 !important;
+}
+.rendition-agents-panel .rendition-agent-accordion.rendition-subagent:not([open]) > .rendition-agent-summary,
+.rendition-agents-panel .rendition-agent-accordion.rendition-subagent[open] > .rendition-agent-summary,
+.rendition-agents-panel .rendition-agent-accordion.rendition-subagent > .rendition-agent-summary:hover {
+  background: #ffdf00 !important;
+  border-bottom-color: #8e263c !important;
+  color: #302500 !important;
+}
+.rendition-agents-panel .rendition-agent-accordion.rendition-subagent .rendition-agent-code {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: #302500 !important;
+  box-shadow: none !important;
+}
