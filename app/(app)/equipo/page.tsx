@@ -9,7 +9,6 @@ const permissionLabels = [
   ["can_edit_renditions", "Corregir rendiciones"],
   ["can_delete_renditions", "Anular rendiciones sin cobros"],
   ["can_register_payments", "Registrar cobros en Caja"],
-  ["can_manage_backups", "Administrar configuración de backups"],
 ] as const;
 
 export default async function TeamPermissionsPage({
