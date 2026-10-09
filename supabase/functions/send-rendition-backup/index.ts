@@ -90,6 +90,15 @@ async function sendDailyCloseBackups(admin: any, resendApiKey: string | undefine
 
   if (!pendingRows.length) return reply({ status: "nothing_to_send", date: dateInfo.displayDay, renditions: 0 });
 
+  // Use the original rendition timestamp for each email section, not the time the outbox row was queued.
+  const renditionIds = Array.from(new Set(pendingRows.map((row) => String(row.rendition_id))));
+  const { data: renditionMetadata, error: renditionMetadataError } = await admin
+    .from("agency_renditions")
+    .select("id,created_at,rendition_date")
+    .in("id", renditionIds);
+  if (renditionMetadataError) return reply({ error: "daily_backup_rendition_metadata_failed" }, 500);
+  const renditionMetadataById = new Map((renditionMetadata ?? []).map((row: any) => [String(row.id), row]));
+
   const batches = new Map<string, any[]>();
   for (const row of pendingRows) {
     const key = String(row.organization_id);
@@ -128,7 +137,7 @@ async function sendDailyCloseBackups(admin: any, resendApiKey: string | undefine
 
     const sections = claimed.map((row, index) =>
       "========== RENDICIÓN " + (index + 1) + " DE " + claimed.length + " ==========\n" +
-      formatDailyBackupItem(String(row.text_body ?? "(sin detalle de respaldo)"), String(row.created_at ?? now.toISOString()))
+      formatDailyBackupItem(String(row.text_body ?? "(sin detalle de respaldo)"), String(renditionMetadataById.get(String(row.rendition_id))?.created_at ?? row.created_at ?? now.toISOString()))
     );
     let textBody = "BACKUP DIARIO DE RENDICIONES - AGENCIAS CORRIENTES\n" +
       "Fecha del cierre: " + dateInfo.displayDay + "\n" +
