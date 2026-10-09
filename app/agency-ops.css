@@ -222,3 +222,24 @@
   .team-member-header{align-items:flex-start}
   .game-readonly-row{flex-wrap:wrap}
 }
+
+
+/* Rendition correction, retained void history and text-backup log. */
+.team-backup-log{margin-top:20px}
+.team-backup-record{border:1px solid #dccd91;border-radius:8px;margin:8px 0;padding:10px;background:#fffdf6}
+.team-backup-record>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;font-weight:650}
+.team-backup-record-body{padding-top:12px}
+.team-backup-record-body pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f8f7f1;padding:12px;border-radius:8px;max-height:420px;overflow:auto;font-size:12px;line-height:1.5}
+.rendition-edit-details,.rendition-void-details{margin-top:12px;border-top:1px solid #e5dcc0;padding-top:10px}
+.rendition-edit-details>summary,.rendition-void-details>summary{cursor:pointer;font-weight:750}
+.rendition-correction-panel{padding:12px;background:#fcfaf0;border-radius:10px;margin-top:8px}
+.rendition-void-details>summary{color:#842c3c}
+.rendition-void-form{display:grid;gap:10px;background:#fff6f6;padding:12px;border:1px solid #eccdd2;border-radius:10px;margin-top:8px}
+.rendition-void-form label{display:grid;gap:5px;font-size:13px}
+.rendition-void-form label:has(input[type="checkbox"]){display:flex;align-items:flex-start;gap:8px}
+.voided-record{opacity:.9;border-left:4px solid #8f394a}
+.voided-record>summary{color:#6e2637}
+@media(max-width:700px){
+  .team-backup-record>summary{align-items:flex-start;flex-direction:column}
+  .rendition-correction-panel{padding:8px}
+}
