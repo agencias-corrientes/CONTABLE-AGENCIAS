@@ -15,10 +15,10 @@ export default async function ConfiguracionPage({
 
   const { data: operationalSettings } = await supabase
     .from("agency_operational_settings")
-    .select("rendition_cutoff_time,updated_at")
+    .select("rendition_cutoff_time,backup_send_time,updated_at")
     .eq("organization_id", organization.id)
     .maybeSingle();
-  const cutoff = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);
+  const cutoff = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);\n  const backupSendTime = String(operationalSettings?.backup_send_time ?? "23:50").slice(0, 5);
 
   return (
     <div className="page">
@@ -31,21 +31,27 @@ export default async function ConfiguracionPage({
         <Link href="/pagos" className="button primary">Volver a rendiciones</Link>
       </div>
 
-      {params.resultado === "horario-corte-guardado" && <p className="message success-message">Horario de corte guardado. La nueva jornada empieza a esa hora; el histórico anterior se conserva.</p>}
-      {params.error === "horario-corte-invalido" && <p className="message error-message">Elegí una hora válida en formato HH:MM.</p>}
-      {params.error === "horario-corte-no-guardado" && <p className="message error-message">No se pudo guardar el horario de corte. No se aplicaron cambios.</p>}
+      {params.resultado === "horarios-guardados" && <p className="message success-message">Horarios guardados. El reinicio diario y el envío automático del backup quedan configurados con las horas indicadas.</p>}\n      {params.resultado === "horario-corte-guardado" && <p className="message success-message">Horario de corte guardado.</p>}
+      {params.error === "horario-configuracion-invalida" && <p className="message error-message">Elegí horarios válidos en formato HH:MM.</p>}\n      {params.error === "horario-corte-invalido" && <p className="message error-message">Elegí una hora válida en formato HH:MM.</p>}
+      {params.error === "horarios-no-guardados" && <p className="message error-message">No se pudieron guardar los horarios. No se aplicaron cambios.</p>}\n      {params.error === "horario-corte-no-guardado" && <p className="message error-message">No se pudo guardar el horario de corte. No se aplicaron cambios.</p>}
 
-      <section className="panel operational-cutoff-panel">
+      <section className="panel operational-schedule-panel">
         <div className="panel-head">
-          <div><h2>Reinicio de la rendición diaria</h2><p className="muted">El reinicio pone en cero los totales del día operativo, sin borrar rendiciones ni cobros anteriores.</p></div>
-          <span className="badge success">Solo administrador</span>
+          <div><h2>Horarios de la agencia</h2><p className="muted">Configurá el cambio de jornada y el envío automático del respaldo desde el mismo bloque.</p></div>
+          <span className="badge success">Solo titular</span>
         </div>
-        <form action={saveRenditionCutoff} className="operational-cutoff-form">
-          <label>Hora de corte diaria
-            <input type="time" name="rendition_cutoff_time" defaultValue={cutoff} required />
-          </label>
-          <p className="muted small-text">Por defecto es 00:00. Si elegís 03:00, por ejemplo, lo registrado entre medianoche y las 02:59 sigue contando en la jornada anterior. La pantalla se actualiza automáticamente al comenzar la nueva jornada.</p>
-          <button className="button primary" type="submit">Guardar horario de corte</button>
+        <form action={saveRenditionCutoff} className="operational-schedule-form">
+          <div className="operational-schedule-grid">
+            <label>Reinicio de la rendición diaria
+              <input type="time" name="rendition_cutoff_time" defaultValue={cutoff} required />
+              <span className="muted small-text">Cambia el día operativo sin borrar el historial.</span>
+            </label>
+            <label>Envío automático del backup
+              <input type="time" name="backup_send_time" defaultValue={backupSendTime} required />
+              <span className="muted small-text">Hora local de Argentina; se envía cada día.</span>
+            </label>
+          </div>
+          <button className="button primary" type="submit">Guardar horarios</button>
         </form>
       </section>
 
