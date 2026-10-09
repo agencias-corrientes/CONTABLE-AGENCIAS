@@ -60,35 +60,10 @@ async function storeRenditionTicketPhoto(supabase: any, organizationId: string, 
   return attachError ? "failed" : "saved";
 }
 
-async function sendRenditionBackup(supabase: any, renditionId: string): Promise<"enviado" | "pendiente" | "dominio-no-verificado"> {
-  let invocationDetails = "";
-  try {
-    const { data, error } = await supabase.functions.invoke("send-rendition-backup", { body: { rendition_id: renditionId } });
-    if (!error && data?.status === "sent") return "enviado";
-    invocationDetails = [error?.message, data?.message, data?.detail].filter(Boolean).join(" ");
-  } catch (cause) {
-    invocationDetails = cause instanceof Error ? cause.message : String(cause ?? "");
-  }
-
-  // The provider rejection is persisted in the outbox; translate Resend's test-mode
-  // restriction into an actionable state for the UI instead of exposing raw JSON.
-  try {
-    const { data: backup } = await supabase
-      .from("agency_rendition_backup_outbox")
-      .select("last_error")
-      .eq("rendition_id", renditionId)
-      .maybeSingle();
-    const providerError = [invocationDetails, String(backup?.last_error ?? "")].join(" ").toLowerCase();
-    if (
-      providerError.includes("you can only send testing emails to your own email address")
-      || providerError.includes("verify a domain at resend.com/domains")
-    ) {
-      return "dominio-no-verificado";
-    }
-  } catch {
-    // Keep the original pending state if the owner cannot read the outbox record.
-  }
-  return "pendiente";
+async function sendRenditionBackup(_supabase: any, _renditionId: string): Promise<"cierre-diario"> {
+  // The audit trigger has already stored this revision in the outbox.
+  // All queued revisions are sent together by the scheduled end-of-day job.
+  return "cierre-diario";
 }
 
 export async function createAgencyAgent(formData: FormData) {
@@ -452,7 +427,7 @@ export async function setAgencyDailyRenditionStatus(formData: FormData) {
   if (Number.isNaN(dateValue.getTime()) || dateValue.toISOString().slice(0, 10) !== operationalDate) {
     redirect("/pagos?error=estado-diario-fallido&agent=" + encodeURIComponent(agentId));
   }
-  if (status === "complete" && (
+  if (status === "incomplete" && (
     !reportedAmountRaw || !Number.isFinite(reportedAmount) || reportedAmount <= 0 || reportedAmount > 999999999999.99
   )) {
     redirect("/pagos?error=monto-rendido-invalido&agent=" + encodeURIComponent(agentId));
@@ -464,7 +439,7 @@ export async function setAgencyDailyRenditionStatus(formData: FormData) {
     p_operational_date: operationalDate,
     p_status: status,
     p_notes: notes || undefined,
-    p_reported_amount: status === "complete" ? reportedAmount : null,
+    p_reported_amount: status === "incomplete" ? reportedAmount : null,
   });
 
   if (error) {
