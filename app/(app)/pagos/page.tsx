@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
-import { agencyBusinessDateForCutoff, formatAgencyDateTime } from "@/lib/agency-datetime";
+import { agencyBusinessDateForCutoff, formatAgencyDate, formatAgencyDateTime } from "@/lib/agency-datetime";
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
 import { receiveAgencyRendition, voidAgencyRendition } from "../agencias/actions";
