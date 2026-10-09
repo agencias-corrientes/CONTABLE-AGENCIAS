@@ -132,9 +132,9 @@ export async function saveDefaultGameCommissions(formData: FormData) {
     redirect("/juegos?error=comisiones-generales-invalidas");
   }
 
-  const { data: games, error: gamesError } = await supabase.from("agency_game_types").select("id").eq("organization_id", organizationId);
+  const { data: games, error: gamesError } = await supabase.from("agency_game_types").select("id,name").eq("organization_id", organizationId);
   if (gamesError) redirect("/juegos?error=comisiones-generales-no-guardadas");
-  const allowed = new Set((games ?? []).map((game) => game.id));
+  const allowed = new Set((games ?? []).filter((game) => Boolean(getOfficialAgencyGame(game.name))).map((game) => game.id));
   if (submitted.some((row) => !allowed.has(row.game_type_id))) redirect("/juegos?error=comisiones-generales-invalidas");
 
   const { error } = await supabase.from("agency_game_commission_defaults").upsert(submitted, { onConflict: "organization_id,game_type_id" });

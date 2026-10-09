@@ -38,7 +38,8 @@ export default async function GamesPage({ searchParams }: { searchParams?: Promi
     supabase.from("agency_game_commission_defaults").select("game_type_id,commission_percent").eq("organization_id", organization.id),
   ]);
 
-  const gameRows = games ?? [];
+  const gameRows = (games ?? []).map((game) => getOfficialAgencyGame(game.name) ? game : { ...game, enabled: false });
+  const officialGameRows = gameRows.filter((game) => Boolean(getOfficialAgencyGame(game.name)));
   const gameCatalog = OFFICIAL_AGENCY_GAME_CATALOG;
   const missingOfficialGames = gameCatalog.filter((entry) => !gameRows.some((game) => game.name.trim().toLocaleUpperCase("es-AR") === entry.name.toLocaleUpperCase("es-AR")));
   const agentRows = agents ?? [];
@@ -93,7 +94,7 @@ export default async function GamesPage({ searchParams }: { searchParams?: Promi
         </div>
         {canManageGames ? <form action={saveDefaultGameCommissions} className="agent-commission-form">
           <div className="agent-commission-list">
-            {gameRows.map((game) => <label className="agent-commission-row" key={game.id}>
+            {officialGameRows.map((game) => <label className="agent-commission-row" key={game.id}>
               <span><strong>{game.name}</strong><small>{game.category}{game.enabled ? "" : " · Inactivo"}</small></span>
               <span className="commission-percent-input"><input type="number" name={"default_commission_" + game.id} min="0" max="100" step="0.01" inputMode="decimal" defaultValue={(generalCommissionByGame.get(game.id) ?? 0).toFixed(2)} aria-label={"Comisión general de " + game.name} /><em>%</em></span>
             </label>)}
@@ -101,7 +102,7 @@ export default async function GamesPage({ searchParams }: { searchParams?: Promi
           <p className="muted small-text">Se aplicará a todos los operadores por igual, salvo que configures una excepción en la ficha del subagente o ambulante. 0 % también es un valor válido.</p>
           <button className="button primary" type="submit">Guardar comisiones generales</button>
         </form> : <div className="agent-commission-list">
-          {gameRows.map((game) => <div className="agent-commission-row" key={game.id}><span><strong>{game.name}</strong><small>{game.category}</small></span><strong>{(generalCommissionByGame.get(game.id) ?? 0).toFixed(2)} %</strong></div>)}
+          {officialGameRows.map((game) => <div className="agent-commission-row" key={game.id}><span><strong>{game.name}</strong><small>{game.category}</small></span><strong>{(generalCommissionByGame.get(game.id) ?? 0).toFixed(2)} %</strong></div>)}
         </div>}
       </section>
 

@@ -138,6 +138,7 @@ export async function createAgencyRendition(formData: FormData) {
     .filter((item) => Number.isFinite(item.amount) && item.amount > 0);
   const totalDue = breakdown.reduce((sum, item) => sum + item.amount, 0);
   const submittedGameIds = Array.from(new Set(breakdown.map((item) => item.game_type_id)));
+  if (!submittedGameIds.length) redirect("/pagos?error=importe-invalido&agent=" + encodeURIComponent(agentId));
   const { data: submittedGames, error: submittedGamesError } = await supabase
     .from("agency_game_types")
     .select("id,name,enabled")
