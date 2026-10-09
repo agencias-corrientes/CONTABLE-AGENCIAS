@@ -2,11 +2,11 @@ import Link from "next/link";
 import { getCurrentContext } from "@/lib/accounting";
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
 import { agencyBusinessDateForCutoff } from "@/lib/agency-datetime";
-import { getOfficialDrawPeriodsForDate, getDrawPeriodStatus, OFFICIAL_QUINIELA_SCHEDULE_URL, OFFICIAL_EXTRACTS_SCHEDULE_URL } from "@/lib/agency-draw-schedule";
+import { getOfficialDrawPeriodsForDate, OFFICIAL_QUINIELA_SCHEDULE_URL, OFFICIAL_EXTRACTS_SCHEDULE_URL } from "@/lib/agency-draw-schedule";
 import { AgencyCodeInput } from "@/components/agency-code-input";
 import { createAgencyAgent, deleteAgencyAgent } from "./actions";
 
-function AgentCard({ agent, canDelete, drawStatuses = [] }: { agent: any; canDelete: boolean; drawStatuses?: Array<{ label: string; status: string; description: string }> }) {
+function AgentCard({ agent, canDelete }: { agent: any; canDelete: boolean }) {
   const subagent = agent.kind === "subagent";
   const typeLabel = subagent ? "subagente" : "ambulante";
   return (
@@ -19,9 +19,6 @@ function AgentCard({ agent, canDelete, drawStatuses = [] }: { agent: any; canDel
       >
         {agent.code || "SIN CÓDIGO"}
       </Link>
-      <div className="agency-agent-draw-status-list">
-        {drawStatuses.map((entry) => <span key={entry.label} className={"agency-agent-draw-chip status-" + entry.status} title={entry.description}>{entry.label}</span>)}
-      </div>
       <details className="agency-agent-actions">
         <summary aria-label={"Opciones de " + typeLabel + " " + agent.code} title="Opciones">⋯</summary>
         <div className="agency-agent-actions-menu">
@@ -68,26 +65,7 @@ export default async function AgenciasPage({
   const cutoffTime = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);
   const today = agencyBusinessDateForCutoff(cutoffTime);
   const periods = getOfficialDrawPeriodsForDate(today);
-  const [{ data: periodRenditions }, { data: periodStatusRows }] = await Promise.all([
-    supabase.from("agency_renditions")
-      .select("id,agent_id,rendition_date,game_period,status")
-      .eq("organization_id", organization.id)
-      .eq("rendition_date", today)
-      .neq("status", "void")
-      .limit(1000),
-    supabase.from("agency_agent_draw_status")
-      .select("agent_id,draw_period,rendition_id,status,notes")
-      .eq("organization_id", organization.id)
-      .eq("operational_date", today),
-  ]);
-  const periodStatusByKey = new Map((periodStatusRows ?? []).map((row: any) => [String(row.agent_id) + "|" + String(row.draw_period), row]));
-  const periodRenditionRows = periodRenditions ?? [];
-  const drawNow = new Date();
-  const statusForAgent = (agentId: string) => periods.map((period) => {
-    const active = periodRenditionRows.find((row: any) => String(row.agent_id) === agentId && String(row.game_period ?? "").trim() === period.label);
-    const saved = periodStatusByKey.get(agentId + "|" + period.label) as any;
-    return { period, ...getDrawPeriodStatus(period, today, active ? { id: String(active.id), game_period: active.game_period } : null, saved ?? null, drawNow) };
-  });
+
 
   const allAgents = agents ?? [];
   const subagents = allAgents.filter((agent) => agent.kind === "subagent" && agent.is_active);
@@ -135,7 +113,7 @@ export default async function AgenciasPage({
       <section className="agency-section agency-section-subagents">
         <div className="agency-section-head"><div><span>01</span><div><h2>Subagentes</h2><p>Botones compactos · un clic para rendir</p></div></div><strong>{subagents.length}</strong></div>
         <div className="agency-agent-button-list">
-          {subagents.map((agent) => <AgentCard key={agent.id} agent={agent} canDelete={canDeleteAgents} drawStatuses={statusForAgent(String(agent.id)).map((entry) => ({ label: entry.label, status: entry.status, description: entry.description }))} />)}
+          {subagents.map((agent) => <AgentCard key={agent.id} agent={agent} canDelete={canDeleteAgents}  />)}
           {!subagents.length && <div className="agency-empty">Todavía no hay subagentes activos cargados.</div>}
         </div>
       </section>
