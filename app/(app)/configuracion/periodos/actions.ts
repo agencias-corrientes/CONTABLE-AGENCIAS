@@ -8,7 +8,7 @@ function parseFiscalDate(rawValue: string): string | null {
   const value = rawValue.trim();
   let iso = value;
   const local = value.match(/^([0-9]{2})\/([0-9]{2})\/([0-9]{4})$/);
-  if (local) iso = \`\${local[3]}-\${local[2]}-\${local[1]}\`;
+  if (local) iso = local[3] + "-" + local[2] + "-" + local[1];
   if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(iso)) return null;
   const date = new Date(iso + "T00:00:00.000Z");
   if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== iso) return null;
