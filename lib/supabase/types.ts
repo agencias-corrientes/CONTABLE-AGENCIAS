@@ -1832,6 +1832,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      remove_organization_member: {
+        Args: { p_organization_id: string; p_user_id: string }
+        Returns: undefined
+      }
       post_journal_entry: { Args: { p_entry_id: string }; Returns: boolean }
       preview_agency_launch_cleanup: {
         Args: { p_organization_id: string }
