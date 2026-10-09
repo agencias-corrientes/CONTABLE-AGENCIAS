@@ -121,7 +121,7 @@ export default async function AgenciasPage({
       <section className="agency-section agency-section-ambulants">
         <div className="agency-section-head"><div><span>02</span><div><h2>Ambulantes</h2><p>Botones compactos · un clic para rendir</p></div></div><strong>{ambulants.length}</strong></div>
         <div className="agency-agent-button-list">
-          {ambulants.map((agent) => <AgentCard key={agent.id} agent={agent} canDelete={canDeleteAgents} drawStatuses={statusForAgent(String(agent.id)).map((entry) => ({ label: entry.label, status: entry.status, description: entry.description }))} />)}
+          {ambulants.map((agent) => <AgentCard key={agent.id} agent={agent} canDelete={canDeleteAgents} />)}
           {!ambulants.length && <div className="agency-empty">Todavía no hay ambulantes activos cargados.</div>}
         </div>
       </section>
