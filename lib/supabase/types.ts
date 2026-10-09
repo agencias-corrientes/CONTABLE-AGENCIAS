@@ -923,6 +923,101 @@ export type Database = {
           },
         ]
       }
+      organization_backup_settings: {
+        Row: {
+          organization_id: string
+          recipient_email: string | null
+          enabled: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          organization_id: string
+          recipient_email?: string | null
+          enabled?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          organization_id?: string
+          recipient_email?: string | null
+          enabled?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_backup_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agency_rendition_backup_outbox: {
+        Row: {
+          id: string
+          organization_id: string
+          rendition_id: string
+          recipient_email: string
+          subject: string
+          text_body: string
+          status: string
+          attempt_count: number
+          last_attempt_at: string | null
+          sent_at: string | null
+          last_error: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          rendition_id: string
+          recipient_email: string
+          subject: string
+          text_body: string
+          status?: string
+          attempt_count?: number
+          last_attempt_at?: string | null
+          sent_at?: string | null
+          last_error?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          rendition_id?: string
+          recipient_email?: string
+          subject?: string
+          text_body?: string
+          status?: string
+          attempt_count?: number
+          last_attempt_at?: string | null
+          sent_at?: string | null
+          last_error?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_rendition_backup_outbox_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_rendition_backup_outbox_rendition_org_fkey"
+            columns: ["rendition_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "agency_renditions"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
       organization_member_permissions: {
         Row: {
           can_create_agents: boolean
