@@ -69,8 +69,8 @@ export default async function TeamPermissionsPage({
     "no-cambiar-rol-propio": "No podés cambiar tu propio rol desde tu sesión actual.",
     "rol-no-guardado": "No se pudo guardar el rol. No se modificaron los permisos.",
     "email-invalido": "Ingresá un correo válido.",
-    "cuenta-no-registrada": "El empleado primero debe crear su cuenta de acceso con ese correo y luego podrás vincularlo a la agencia.",
-    "empleado-existente": "Ya existe una cuenta con ese correo. No se creó un usuario duplicado.",
+    "cuenta-no-registrada": "No se pudo encontrar la cuenta después del registro. No se creó la membresía; verificá el correo e intentá nuevamente.",
+    "empleado-existente": "Ese correo ya está vinculado a esta agencia. Buscalo en la lista para modificar el rol, los permisos o quitarle el acceso.",
     "contrasena-corta": "La contraseña inicial debe tener al menos 12 caracteres.",
     "alta-empleado-fallida": "No se pudo agregar al empleado.",
     "usuario-invalido": "La operación solicitada no es válida.",
@@ -96,7 +96,7 @@ export default async function TeamPermissionsPage({
         <div><p className="eyebrow">SEGURIDAD DE LA AGENCIA</p><h1>Personal y permisos</h1><p className="muted">El titular decide a qué módulos puede entrar cada empleado y qué operaciones puede realizar.</p></div>
         <span className="badge success">Titular</span>
       </div>
-      {params.resultado === "empleado-creado" && <p className="message success-message">Acceso del empleado creado. Sus permisos operativos están desactivados hasta que los habilites. Si Supabase solicita confirmar el correo, deberá abrir ese mensaje antes del primer ingreso.</p>}
+      {params.resultado === "empleado-creado" && <p className="message success-message">Cuenta vinculada a esta agencia. Si el correo ya tenía cuenta, debe ingresar con su contraseña habitual; si era nuevo, usará la contraseña inicial y confirmará el correo si Supabase lo solicita.</p>}
       {params.resultado === "permisos-guardados" && <p className="message success-message">Permisos guardados correctamente.</p>}
       {params.resultado === "rol-guardado" && <p className="message success-message">El rol se actualizó correctamente.</p>}
       {params.resultado === "acceso-revocado" && <p className="message success-message">Se revocó el acceso del empleado a esta agencia. Su cuenta general de autenticación no fue eliminada.</p>}
@@ -109,10 +109,10 @@ export default async function TeamPermissionsPage({
       <section className="panel team-permissions-panel">
         <div className="panel-head"><div><h2>Personal de la agencia</h2><p className="muted">Creá cuentas, asigná roles y configurá qué puede hacer cada persona. Todo se administra desde este bloque.</p></div><span className="muted">{employees?.length ?? 0} {(employees?.length ?? 0) === 1 ? "cuenta" : "cuentas"}</span></div>
         <section className="team-add-member">
-          <div className="panel-head"><div><h3>Agregar una cuenta</h3><p className="muted">Para habilitar otro titular y luego retirar tu cuenta de prueba, elegí “Propietario” como rol inicial. Para personal común, usá Contador o Consulta.</p></div></div>
+          <div className="panel-head"><div><h3>Agregar una cuenta</h3><p className="muted">Si el correo ya existe, se vincula sin crear otro usuario y no hace falta contraseña. Si es nuevo, ingresá una contraseña inicial de al menos 12 caracteres. Desde la tarjeta de cada empleado podrás modificar el rol, ajustar permisos y eliminar su acceso a esta agencia.</p></div></div>
           <form action={addEmployeeByEmail} className="inline-form team-add-form">
             <label>Correo de acceso<input type="email" name="email" placeholder="correo@empleado.com" required autoComplete="off" /></label>
-            <label>Contraseña inicial<input type="password" name="password" placeholder="Mínimo 12 caracteres" minLength={12} required autoComplete="new-password" /></label>
+            <label>Contraseña inicial (solo cuenta nueva)<input type="password" name="password" placeholder="Solo para correo nuevo · 12 caracteres" minLength={12} autoComplete="new-password" /></label>
             <label>Rol inicial
               <select name="role" defaultValue="accountant">
                 <option value="owner">Propietario</option>
@@ -142,15 +142,15 @@ export default async function TeamPermissionsPage({
               ) : (
                 <form action={saveEmployeeRole} className="team-role-form">
                   <input type="hidden" name="user_id" value={employee.user_id} />
-                  <label>Rol de acceso
-                    <select name="role" defaultValue={employee.role} aria-label={"Rol de " + employee.email}>
+                  <label>Modificar rol de acceso
+                    <select name="role" defaultValue={employee.role} aria-label={"Modificar rol de " + employee.email}>
                       <option value="owner">Propietario</option>
                       <option value="admin">Administrador</option>
                       <option value="accountant">Contador</option>
                       <option value="viewer">Consulta</option>
                     </select>
                   </label>
-                  <button className="button primary small" type="submit">Guardar rol</button>
+                  <button className="button primary small" type="submit">Guardar cambios de rol</button>
                 </form>
               )}
               {isOwner && isCurrentUser && ownerCount <= 1 && (
@@ -174,22 +174,22 @@ export default async function TeamPermissionsPage({
                   {!isAdmin && (
                     <form action={saveEmployeePermissions} className="team-permissions-form">
                       <input type="hidden" name="user_id" value={employee.user_id} />
-                      <h4>Permisos habilitados</h4>
+                      <h4>Modificar permisos del empleado</h4>
                       <div className="team-permission-grid">
                         {permissionLabels.map(([name, label]) => <label key={name} className="team-permission-option"><input type="checkbox" name={name} defaultChecked={employee[name]} /><span>{label}</span></label>)}
                       </div>
                       <p className="team-security-note">El catálogo de juegos y sus valores no se incluyen en los permisos de empleados. Solo Propietario o Administrador puede cambiar el catálogo y los precios.</p>
-                      <button className="button primary" type="submit">Guardar permisos</button>
+                      <button className="button primary" type="submit">Guardar cambios de permisos</button>
                     </form>
                   )}
                   <div className="team-remove-access-visible">
-                    <strong>Eliminar acceso a esta agencia</strong>
-                    <p>Quita su membresía y permisos en esta agencia; conserva su cuenta de acceso general y no borra las rendiciones históricas.</p>
+                    <strong>Eliminar empleado de esta agencia</strong>
+                    <p>Quita su acceso y permisos en esta agencia. No elimina su usuario general de inicio de sesión ni las rendiciones históricas.</p>
                     <form action={removeEmployeeAccess}>
                       <input type="hidden" name="user_id" value={employee.user_id} />
                       <label>Contraseña actual del titular<input type="password" name="password" autoComplete="current-password" required aria-label={"Contraseña para quitar a " + employee.email} /></label>
                       <label><input type="checkbox" name="confirm_remove" value="yes" required /> Confirmo quitar el acceso de {employee.email}</label>
-                      <button className="button danger small" type="submit">Eliminar acceso</button>
+                      <button className="button danger small" type="submit">Eliminar empleado de la agencia</button>
                     </form>
                   </div>
                 </>
