@@ -40,7 +40,7 @@ async function getOrg() {
         .eq("user_id", claims.sub)
         .maybeSingle();
 
-  return { supabase, organizationId: member.organization_id, role: member.role, permissions: permissions ?? noPermissions };
+  return { supabase, organizationId: member.organization_id, role: member.role, userId: String(claims.sub), permissions: permissions ?? noPermissions };
 }
 
 
