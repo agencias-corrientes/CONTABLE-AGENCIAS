@@ -54,7 +54,7 @@ export async function addEmployeeByEmail(formData: FormData) {
     }
 
     // Solo pedimos contraseña cuando el correo todavía no tiene cuenta.
-    if (password.length < 12) redirect("/equipo?error=contrasena-corta");
+    if (password.length < 8) redirect("/equipo?error=contrasena-corta");
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
     if (!url || !publishableKey) redirect("/equipo?error=alta-empleado-fallida");
