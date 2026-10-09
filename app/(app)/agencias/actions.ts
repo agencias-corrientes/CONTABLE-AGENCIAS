@@ -134,12 +134,31 @@ export async function createAgencyRendition(formData: FormData) {
     .map((value) => value.trim())
     .filter(Boolean)
     .filter((value, index, values) => values.indexOf(value) === index);
+  const operationalDate = String(formData.get("operational_date") ?? "").trim();
+  const dailyStatus = String(formData.get("daily_status") ?? "").trim();
+  const dailyStatusNotes = String(formData.get("daily_status_notes") ?? "").trim();
+  const reportedAmountRaw = String(formData.get("reported_amount") ?? "").trim();
+  const reportedAmount = Number(reportedAmountRaw.replace(",", "."));
   const parsedRenditionDate = new Date(renditionDate + "T00:00:00.000Z");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(renditionDate) || Number.isNaN(parsedRenditionDate.getTime()) || parsedRenditionDate.toISOString().slice(0, 10) !== renditionDate) {
     throw new Error("Ingresá una fecha de juego válida.");
   }
   if (!agentId) throw new Error("Seleccioná un subagente o ambulante.");
   if (breakdown.length === 0 || totalDue <= 0) throw new Error("Ingresá o reconocé al menos un importe por juego.");
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(operationalDate) ||
+    !["complete", "incomplete"].includes(dailyStatus)
+  ) {
+    redirect("/pagos?error=estado-diario-fallido&agent=" + encodeURIComponent(agentId));
+  }
+  if (dailyStatus === "incomplete" && (
+    !reportedAmountRaw ||
+    !Number.isFinite(reportedAmount) ||
+    reportedAmount <= 0 ||
+    reportedAmount > 999999999999.99
+  )) {
+    redirect("/pagos?error=monto-rendido-invalido&agent=" + encodeURIComponent(agentId));
+  }
 
   const qrPayload = String(formData.get("ticket_qr_payload") ?? "").trim() || null;
   const gamePeriod = String(formData.get("game_period") ?? "").trim() || null;
@@ -147,11 +166,13 @@ export async function createAgencyRendition(formData: FormData) {
   const requestedCaptureMethod = String(formData.get("capture_method") ?? "manual");
   const captureMethod = ["manual", "photo", "qr"].includes(requestedCaptureMethod) ? requestedCaptureMethod : "manual";
 
-  const { data: renditionId, error } = await supabase.rpc("create_agency_rendition_with_capture", {
+  const { data: renditionId, error } = await supabase.rpc("create_agency_rendition_with_capture_and_daily_status", {
     p_organization_id: organizationId,
     p_agent_id: agentId,
     p_rendition_date: renditionDate,
     p_amount_due: totalDue,
+    p_operational_date: operationalDate,
+    p_daily_status: dailyStatus,
     p_game_breakdown: breakdown,
     p_ticket_numbers: ticketNumbers,
     p_ticket_qr_payload: qrPayload ?? undefined,
@@ -160,9 +181,14 @@ export async function createAgencyRendition(formData: FormData) {
     p_capture_method: captureMethod,
     p_reference: String(formData.get("reference") ?? "").trim() || undefined,
     p_notes: String(formData.get("notes") ?? "").trim() || undefined,
+    p_daily_status_notes: dailyStatus === "incomplete" ? (dailyStatusNotes || null) : null,
+    p_reported_amount: dailyStatus === "incomplete" ? reportedAmount : null,
   });
   if (error) {
-    if (error.message.toLowerCase().includes("permiso")) redirect("/pagos?error=sin-permiso-rendicion");
+    const message = String(error.message ?? "").toLowerCase();
+    if (message.includes("permiso")) redirect("/pagos?error=sin-permiso-rendicion&agent=" + encodeURIComponent(agentId));
+    if (message.includes("monto rendido")) redirect("/pagos?error=monto-rendido-invalido&agent=" + encodeURIComponent(agentId));
+    if (message.includes("jornada operativa cambió")) redirect("/pagos?error=jornada-cambio&agent=" + encodeURIComponent(agentId));
     redirect("/pagos?error=rendicion-fallida&agent=" + encodeURIComponent(agentId));
   }
 

@@ -257,11 +257,14 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             <div className="rendition-daily-status-copy">
               <strong>Estado diario: {dailyStatusLabels[dailyStatus.status]}</strong>
               <p className="muted">{dailyStatusDescriptions[dailyStatus.status]}</p>
+              <p className="muted small-text">Al registrar una nueva rendición, el estado se guarda en el mismo paso. La corrección manual queda disponible solo si necesitás cambiarlo después.</p>
               {dailyStatus.reportedAmount !== null && <p className="rendition-confirmed-amount">{dailyStatus.status === "incomplete" ? "Monto declarado al guardar como incompleta:" : "Monto informado al confirmar:"} <strong>{money(dailyStatus.reportedAmount, activeOrganization.currency_code)}</strong></p>}
               {dailyStatus.status === "incomplete" && dailyStatus.note && <p className="rendition-status-note"><strong>Observación:</strong> {dailyStatus.note}</p>}
             </div>
             {canCreateRenditions ? (
-              <div className="rendition-daily-status-actions">
+              <details className="rendition-daily-status-editor">
+                <summary>Corregir estado manualmente</summary>
+                <div className="rendition-daily-status-actions">
                 <form action={setAgencyDailyRenditionStatus}>
                   <input type="hidden" name="agent_id" value={agent.id} />
                   <input type="hidden" name="operational_date" value={today} />
@@ -282,7 +285,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                     <button className="button primary small" type="submit">Confirmar como rendida</button>
                   </form>
                 )}
-              </div>
+                </div>
+              </details>
             ) : <p className="muted">El titular debe habilitarte el permiso para cambiar el estado diario.</p>}
           </section>
           {canCreateRenditions

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import jsQR from "jsqr";
 import { createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
 
@@ -200,6 +200,11 @@ export function RenditionEntryForm({ agentId, games, today, initialRendition }: 
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const confirmationId = useId();
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">("complete");
+  const [reportedAmount, setReportedAmount] = useState("");
+  const [dailyStatusNotes, setDailyStatusNotes] = useState("");
 
   const total = useMemo(() =>
     Object.values(amounts).reduce((sum, value) => sum + (Number(value) > 0 ? Number(value) : 0), 0),
@@ -283,13 +288,30 @@ export function RenditionEntryForm({ agentId, games, today, initialRendition }: 
   }
 
   return (
-    <form action={initialRendition ? updateAgencyRendition : createAgencyRendition} className="form-stack rendition-entry-form">
+    <form
+      action={initialRendition ? updateAgencyRendition : createAgencyRendition}
+      className="form-stack rendition-entry-form"
+      onSubmit={(event) => {
+        if (!initialRendition && !confirmationOpen) {
+          event.preventDefault();
+          setConfirmationOpen(true);
+        }
+      }}
+    >
       <input type="hidden" name="agent_id" value={agentId} />
       <input type="hidden" name="rendition_id" value={initialRendition?.id ?? ""} />
       <input type="hidden" name="ticket_qr_payload" value={qrPayload} />
       <input type="hidden" name="game_period" value={period} />
       <input type="hidden" name="draw_number" value={drawNumber} />
       <input type="hidden" name="capture_method" value={mode === "manual" ? "manual" : qrPayload ? "qr" : fileName ? "photo" : initialRendition?.captureMethod === "photo" ? "photo" : initialRendition?.captureMethod === "qr" ? "qr" : "manual"} />
+      {!initialRendition && (
+        <>
+          <input type="hidden" name="operational_date" value={today} />
+          <input type="hidden" name="daily_status" value={dailyStatusChoice} />
+          <input type="hidden" name="daily_status_notes" value={dailyStatusChoice === "incomplete" ? dailyStatusNotes : ""} />
+          <input type="hidden" name="reported_amount" value={dailyStatusChoice === "incomplete" ? reportedAmount : ""} />
+        </>
+      )}
 
       <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
         <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => setMode("photo")}>Foto / QR (automático)</button>
@@ -336,7 +358,109 @@ export function RenditionEntryForm({ agentId, games, today, initialRendition }: 
 
       <label className="ticket-input-block"><span>Número(s) de ticket / cupón</span><textarea name="ticket_numbers" rows={2} value={ticketNumbers} onChange={(event) => setTicketNumbers(event.target.value)} placeholder="Se completa desde la lectura o ingresalo manualmente." /></label>
       <label className="ticket-input-block"><span>Observaciones</span><textarea name="notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Opcional." /></label>
-      <button className="button primary" disabled={!games.length || busy || total <= 0}>{busy ? "Leyendo ticket…" : initialRendition ? "Guardar cambios de la rendición" : "Registrar rendición diaria"}</button>
+      <button
+        className="button primary"
+        type={initialRendition ? "submit" : "button"}
+        onClick={initialRendition ? undefined : () => setConfirmationOpen(true)}
+        disabled={!games.length || busy || total <= 0}
+      >
+        {busy ? "Leyendo ticket…" : initialRendition ? "Guardar cambios de la rendición" : "Registrar rendición diaria"}
+      </button>
+
+      {!initialRendition && confirmationOpen && (
+        <div className="rendition-confirmation-overlay">
+          <section
+            className="rendition-confirmation-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={confirmationId + "-title"}
+            aria-describedby={confirmationId + "-description"}
+          >
+            <div className="rendition-confirmation-heading">
+              <p className="eyebrow">CONFIRMAR RENDICIÓN DIARIA</p>
+              <h3 id={confirmationId + "-title"}>¿Cómo querés registrar esta rendición?</h3>
+              <p id={confirmationId + "-description"} className="muted">
+                Elegí el estado ahora. La rendición y su estado diario se guardarán juntos.
+              </p>
+            </div>
+
+            <div className="rendition-confirmation-options" role="radiogroup" aria-label="Estado diario">
+              <label className={"rendition-confirmation-option" + (dailyStatusChoice === "complete" ? " is-selected" : "")}>
+                <input
+                  type="radio"
+                  name={confirmationId + "-visible-status"}
+                  checked={dailyStatusChoice === "complete"}
+                  onChange={() => setDailyStatusChoice("complete")}
+                />
+                <span>
+                  <strong>Confirmar como rendida</strong>
+                  <small>La rendición queda confirmada como completa para esta jornada.</small>
+                </span>
+              </label>
+              <label className={"rendition-confirmation-option" + (dailyStatusChoice === "incomplete" ? " is-selected" : "")}>
+                <input
+                  type="radio"
+                  name={confirmationId + "-visible-status"}
+                  checked={dailyStatusChoice === "incomplete"}
+                  onChange={() => setDailyStatusChoice("incomplete")}
+                />
+                <span>
+                  <strong>Guardar como incompleta</strong>
+                  <small>Indicá cuánto rindió hasta el momento; podrás completar lo que falta después.</small>
+                </span>
+              </label>
+            </div>
+
+            {dailyStatusChoice === "incomplete" && (
+              <div className="rendition-confirmation-fields">
+                <label className="rendition-confirm-amount-label">
+                  Monto rendido hasta el momento
+                  <input
+                    type="number"
+                    min="0.01"
+                    max="999999999999.99"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={reportedAmount}
+                    onChange={(event) => setReportedAmount(event.target.value)}
+                    placeholder="Ej.: 12500.00"
+                    required
+                  />
+                </label>
+                <label className="rendition-confirm-notes-label">
+                  Qué falta (opcional)
+                  <input
+                    type="text"
+                    maxLength={500}
+                    value={dailyStatusNotes}
+                    onChange={(event) => setDailyStatusNotes(event.target.value)}
+                    placeholder="Ej.: falta el turno vespertino"
+                  />
+                </label>
+              </div>
+            )}
+
+            <div className="rendition-confirmation-actions">
+              <button type="button" className="button ghost" onClick={() => setConfirmationOpen(false)}>
+                Volver a revisar
+              </button>
+              <button
+                type="submit"
+                className="button primary"
+                disabled={dailyStatusChoice === "incomplete" && (
+                  !reportedAmount.trim() ||
+                  !Number.isFinite(Number(reportedAmount.replace(",", "."))) ||
+                  Number(reportedAmount.replace(",", ".")) <= 0 ||
+                  Number(reportedAmount.replace(",", ".")) > 999999999999.99
+                )}
+              >
+                {dailyStatusChoice === "complete" ? "Confirmar y registrar" : "Guardar incompleta"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
       <small className="muted">Se guardan fecha y hora de registro, fecha del juego, período, sorteo, importes y el QR leído. La lectura se debe revisar antes de confirmar.</small>
     </form>
   );
