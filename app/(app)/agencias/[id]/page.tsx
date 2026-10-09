@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentContext, money } from "@/lib/accounting";
 import { agencyBusinessDateForCutoff, formatAgencyDateTime } from "@/lib/agency-datetime";
-import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, drawPeriodHasPassed, getPreferredPendingDrawPeriod, getUnmappedOfficialGameNames, OFFICIAL_QUINIELA_SCHEDULE_URL, OFFICIAL_EXTRACTS_SCHEDULE_URL } from "@/lib/agency-draw-schedule";
+import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, drawPeriodHasPassed, getPreferredPendingDrawPeriod } from "@/lib/agency-draw-schedule";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
 import { receiveAgencyRendition, saveAgentGameCommissions, saveAgentRenditionPolicy, setAgencyDailyRenditionStatus } from "../actions";
@@ -57,7 +57,6 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
       (!period.time || drawPeriodHasPassed(period, today, drawNow))
     );
   const defaultPendingDrawPeriod = getPreferredPendingDrawPeriod(pendingDrawPeriods);
-  const unmappedGameNames = getUnmappedOfficialGameNames((gameTypes ?? []).filter((game) => game.enabled).map((game) => ({ name: game.name })));
   const defaultCommissionByGame = new Map((defaultCommissionRows ?? []).map((row) => [row.game_type_id, Number(row.commission_percent ?? 0)]));
 
   return (
@@ -132,8 +131,8 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
 
       {!agent.is_active ? <div className="message">Este agente está inactivo. Se conserva su historial, pero no se pueden crear rendiciones nuevas.</div> : (
         <section className="panel">
-          <div className="panel-head"><div><h2>{renditionPolicy === "daily" ? "Rendición única de cierre diario" : renditionPolicy === "selected_draws" ? "Rendición de sorteos seleccionados" : "Rendición por sorteo"}</h2><p className="muted">{renditionPolicy === "daily" ? "Un único registro reúne los importes de todos los juegos al cierre. Podés cargar varios tickets dentro del mismo formulario." : renditionPolicy === "selected_draws" ? "Solo se controlan los turnos que el titular seleccionó para este operador." : "Cada turno tiene una rendición independiente; se muestran solo los sorteos vencidos que siguen pendientes."}</p><p className="muted small-text"><a href={OFFICIAL_QUINIELA_SCHEDULE_URL} target="_blank" rel="noreferrer">Programa oficial de sorteos</a> · <a href={OFFICIAL_EXTRACTS_SCHEDULE_URL} target="_blank" rel="noreferrer">Resultados publicados</a></p></div></div>
-          {renditionPolicy !== "daily" && unmappedGameNames.length > 0 && <p className="message">Estos juegos aún no tienen un período de sorteo verificado y no aparecen en los formularios por turno: {unmappedGameNames.join(", ")}. Verificá el programa oficial antes de habilitarlos.</p>}
+          <div className="panel-head"><div><h2>{renditionPolicy === "daily" ? "Rendición única de cierre diario" : renditionPolicy === "selected_draws" ? "Rendición de sorteos seleccionados" : "Rendición por sorteo"}</h2><p className="muted">{renditionPolicy === "daily" ? "Un único registro reúne los importes de todos los juegos al cierre. Podés cargar varios tickets dentro del mismo formulario." : renditionPolicy === "selected_draws" ? "Solo se controlan los turnos que el titular seleccionó para este operador." : "Cada turno tiene una rendición independiente; se muestran solo los sorteos vencidos que siguen pendientes."}</p></div></div>
+
           {renditionPolicy === "daily" ? (
             dailyRendition ? (
               <div className="daily-closure-existing">

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
 import { agencyBusinessDateForCutoff, formatAgencyDate, formatAgencyDateTime } from "@/lib/agency-datetime";
-import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, getAgencyLocalClock, getDrawPeriodStatus, getPreferredPendingDrawPeriod, getUnmappedOfficialGameNames, drawPeriodHasPassed, OFFICIAL_QUINIELA_SCHEDULE_URL, OFFICIAL_EXTRACTS_SCHEDULE_URL } from "@/lib/agency-draw-schedule";
+import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, getAgencyLocalClock, getDrawPeriodStatus, getPreferredPendingDrawPeriod, drawPeriodHasPassed } from "@/lib/agency-draw-schedule";
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
 import { RenditionScrollHelper } from "@/components/rendition-scroll-helper";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
@@ -108,7 +108,6 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     return drawPeriods.map((period) => ({ period, ...drawPeriodStateForAgent(agentId, period) }));
   }
   const legacyUnlabelledTodayCount = todayRows.filter((row: any) => !String(row.game_period ?? "").trim()).length;
-  const unmappedGameNames = getUnmappedOfficialGameNames(games);
 
   function RenditionHistory({ agent, historyRows = rows }: { agent: any; historyRows?: any[] }) {
     const agentRows = historyRows.filter((row) => row.agent_id === agent.id);
@@ -355,11 +354,9 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       </form>
 
       <section className="panel rendition-agents-panel">
-        <div className="panel-head"><div><h2>Subagentes y ambulantes · rendición por sorteo</h2><p className="muted">Cada período tiene una rendición individual. Los sorteos que ya pasaron y aún no se registraron quedan marcados como PENDIENTE.</p></div>
-          <p className="muted small-text rendition-status-summary-hint">Abrí el botón de cada subagente o ambulante para ver sus sorteos, uno por uno.</p></div>
-        <p className="draw-period-note">Cronograma oficial: <a href={OFFICIAL_QUINIELA_SCHEDULE_URL} target="_blank" rel="noreferrer">Lotería Correntina · Programa de sorteos</a> · <a href={OFFICIAL_EXTRACTS_SCHEDULE_URL} target="_blank" rel="noreferrer">ver sorteos publicados</a>. Los períodos futuros se habilitan cuando llega su horario; los pendientes no se mezclan con otros turnos.</p>
+        <div className="panel-head"><h2>Subagentes y ambulantes</h2></div>
         {legacyUnlabelledTodayCount > 0 && <p className="message">Hay {legacyUnlabelledTodayCount} rendición(es) del día sin período identificado. Se conservan en el historial y no se asignan automáticamente a ningún sorteo.</p>}
-        {unmappedGameNames.length > 0 && <p className="message">Estos juegos aún no tienen un período de sorteo verificado y no se incorporan automáticamente a un turno: {unmappedGameNames.join(", ")}. Verificá el programa oficial antes de habilitarlos.</p>}
+
         <div className="rendition-agent-list">
           {filteredActiveAgents.map((agent) => <AgentAccordion key={agent.id} agent={agent} />)}
           {!filteredActiveAgents.length && <div className="agency-empty">{searchTerm ? "No hay subagentes ni ambulantes que coincidan con esa búsqueda." : "No hay agentes activos. "}<Link href="/agencias">Administrar subagentes y ambulantes</Link></div>}
