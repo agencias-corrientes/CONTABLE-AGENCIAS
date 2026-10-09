@@ -7,6 +7,7 @@ import { receiveAgencyRendition, voidAgencyRendition } from "../agencias/actions
 
 type GameAmount = {
   id: string;
+  game_type_id: string;
   amount: number | string;
   agency_game_types: { id: string; name: string; category: string } | null;
 };
