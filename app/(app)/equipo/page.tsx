@@ -66,7 +66,6 @@ export default async function TeamPermissionsPage({
     "datos-rol-invalidos": "Elegí un rol válido para la nueva cuenta.",
     "empleado-creado-rol-pendiente": "La cuenta se creó y quedó vinculada a esta agencia, pero no se pudo asignar el rol elegido. Buscala en la lista y guardá el rol desde su selector.",
     "ultimo-titular": "No se puede quitar ni bajar de rol al último Propietario. Primero asigná el rol Propietario a otra cuenta y guardá ese cambio.",
-    "datos-rol-invalidos": "Elegí un rol válido para el empleado.",
     "no-cambiar-rol-propio": "No podés cambiar tu propio rol desde tu sesión actual.",
     "rol-no-guardado": "No se pudo guardar el rol. No se modificaron los permisos.",
     "email-invalido": "Ingresá un correo válido.",
