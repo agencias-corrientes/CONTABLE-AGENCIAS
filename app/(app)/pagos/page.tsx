@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
+import { getOfficialAgencyGame } from "@/lib/agency-official-games";
 import { agencyBusinessDateForCutoff, formatAgencyDate, formatAgencyDateTime } from "@/lib/agency-datetime";
 import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, getAgencyLocalClock, getDrawPeriodStatus, getPreferredPendingDrawPeriod, drawPeriodHasPassed } from "@/lib/agency-draw-schedule";
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
@@ -80,7 +81,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const todayRendido = todayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
   const todayCobrado = todayRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_payments) ? row.agency_rendition_payments : []).reduce((subtotal: number, payment: any) => subtotal + Number(payment.amount ?? 0), 0), 0);
   const todayPendiente = Math.max(0, todayRendido - todayCobrado);
-  const allGames = (gameTypes ?? []).map((game) => ({ id: game.id, name: game.name, category: game.category, enabled: game.enabled }));
+  const allGames = (gameTypes ?? []).filter((game) => Boolean(getOfficialAgencyGame(game.name))).map((game) => ({ id: game.id, name: game.name, category: game.category, enabled: game.enabled }));
   const games = allGames.filter((game) => game.enabled).map(({ id, name, category }) => ({ id, name, category }));
   const agentLabel = (agent: any) => agent.kind === "subagent" ? "Subagente" : "Ambulante";
   const rowTotals = (row: any) => {

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getOfficialAgencyGame } from "@/lib/agency-official-games";
 import { todayInAgencyTimeZone } from "@/lib/agency-datetime";
 import { drawPeriodHasPassed, getOfficialDrawPeriodsForDate } from "@/lib/agency-draw-schedule";
 
@@ -136,6 +137,16 @@ export async function createAgencyRendition(formData: FormData) {
     .map(([key, value]) => ({ game_type_id: key.slice(5), amount: Number(value) }))
     .filter((item) => Number.isFinite(item.amount) && item.amount > 0);
   const totalDue = breakdown.reduce((sum, item) => sum + item.amount, 0);
+  const submittedGameIds = Array.from(new Set(breakdown.map((item) => item.game_type_id)));
+  const { data: submittedGames, error: submittedGamesError } = await supabase
+    .from("agency_game_types")
+    .select("id,name,enabled")
+    .eq("organization_id", organizationId)
+    .in("id", submittedGameIds);
+  if (submittedGamesError || (submittedGames ?? []).length !== submittedGameIds.length ||
+      (submittedGames ?? []).some((game) => !game.enabled || !getOfficialAgencyGame(game.name))) {
+    redirect("/pagos?error=juegos-periodo-invalido&agent=" + encodeURIComponent(agentId));
+  }
   const ticketNumbers = String(formData.get("ticket_numbers") ?? "")
     .split(/[\n,;]+/)
     .map((value) => value.trim())
