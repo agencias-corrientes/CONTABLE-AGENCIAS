@@ -4,7 +4,7 @@ import { agencyBusinessDateForCutoff, formatAgencyDate, formatAgencyDateTime } f
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
 import { RenditionScrollHelper } from "@/components/rendition-scroll-helper";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
-import { receiveAgencyRendition, voidAgencyRendition, setAgencyDailyRenditionStatus } from "../agencias/actions";
+import { receiveAgencyRendition, voidAgencyRendition, setAgencyDailyRenditionStatus, sendAgencyBackupManually } from "../agencias/actions";
 
 type GameAmount = {
   id: string;
@@ -15,7 +15,7 @@ type GameAmount = {
   agency_game_types: { id: string; name: string; category: string } | null;
 };
 
-export default async function PagosPage({ searchParams }: { searchParams?: Promise<{ agent?: string; busqueda?: string; resultado?: string; error?: string; backup?: string; foto?: string }> }) {
+export default async function PagosPage({ searchParams }: { searchParams?: Promise<{ agent?: string; busqueda?: string; resultado?: string; error?: string; backup?: string; foto?: string; copias?: string }> }) {
   const params = searchParams ? await searchParams : {};
   const selectedAgentId = params.agent ?? "";
   const searchTerm = (params.busqueda ?? "").trim();
@@ -277,10 +277,14 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         <div><p className="eyebrow">CONTROL OPERATIVO DIARIO</p><h1>Rendiciones</h1><p className="muted">Elegí un subagente o ambulante. Los botones compactos abren la carga de rendición del subagente o ambulante seleccionado.</p></div>
         <div className="topbar-actions">
           {selectedAgentId && <Link href="/pagos" className="button ghost">Volver a todas las rendiciones</Link>}
-          <Link href="/agencias" className="button ghost">Administrar agentes</Link>
+          {manager && <form action={sendAgencyBackupManually} className="rendition-manual-backup-form">
+            <button className="button primary" type="submit" title="Enviar ahora las copias pendientes de esta agencia">Enviar backup manual</button>
+          </form>}
         </div>
       </div>
 
+      {params.resultado === "backup-manual-enviado" && <p className="message success-message">Backup manual enviado al correo configurado: {Math.max(0, Number(params.copias ?? 0))} rendición(es). El cierre automático continúa programado.</p>}
+      {params.resultado === "backup-sin-pendientes" && <p className="message">No había respaldos pendientes para enviar. Las copias guardadas siguen disponibles en el historial.</p>}
       {params.resultado === "rendicion-creada" && <p className={(params.backup === "enviado" || params.backup === "cierre-diario") ? "message success-message" : "message backup-pending-message"}>Rendición registrada correctamente. {params.backup === "cierre-diario" ? "La copia quedó acumulada para enviarse en un único correo al cierre de la jornada." : params.backup === "enviado" ? "El backup de texto se envió al correo configurado para el titular." : params.backup === "dominio-no-verificado" ? "La rendición y su copia de texto se conservaron, pero Resend bloqueó el envío porque falta verificar un dominio y usarlo en la dirección del remitente. Configurá el dominio en Resend y RESEND_FROM_EMAIL en los secretos de la función de Supabase; después reintentá desde Personal y permisos." : "El respaldo quedó guardado, pero el correo no confirmó la entrega. Revisá el estado en Personal y permisos."}{params.foto === "no-adjunta" ? " La foto no se adjuntó; el respaldo de texto se conserva." : ""}</p>}
       {params.resultado === "rendicion-corregida" && <p className={(params.backup === "enviado" || params.backup === "cierre-diario") ? "message success-message" : "message backup-pending-message"}>Rendición corregida. Se conserva la auditoría y se creó una nueva revisión del respaldo. {params.backup === "cierre-diario" ? "La nueva revisión quedó acumulada para el correo único de cierre diario." : params.backup === "enviado" ? "El correo se envió." : params.backup === "dominio-no-verificado" ? "Resend rechazó el envío porque falta verificar un dominio y usar una dirección remitente de ese dominio. La copia permanece guardada; configurá Resend y reintentá desde Personal y permisos." : "El correo no confirmó entrega; la revisión permanece guardada para reintento."}</p>}
       {params.resultado === "rendicion-anulada" && <p className={(params.backup === "enviado" || params.backup === "cierre-diario") ? "message success-message" : "message backup-pending-message"}>Rendición anulada con historial conservado. {params.backup === "cierre-diario" ? "El respaldo actualizado quedó acumulado para el correo único de cierre diario." : params.backup === "enviado" ? "El respaldo actualizado se envió al correo del titular." : params.backup === "dominio-no-verificado" ? "La rendición anulada y su respaldo siguen registrados, pero Resend requiere verificar un dominio y configurar la dirección remitente antes de enviar. Reintentá después de esa configuración." : "El respaldo quedó registrado, pero el correo no confirmó entrega."}</p>}
@@ -305,7 +309,12 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "caja-no-configurada": "No se registró la rendición porque no hay una cuenta Caja activa configurada.",
         "cobro-inicial-fallido": "La rendición se guardó, pero el cobro inicial no se pudo registrar. No vuelvas a crearla; revisá la rendición y registrá el cobro pendiente.",
         "jornada-cambio": "La jornada operativa cambió. Actualizá la pantalla y volvé a marcar el estado.",
-        "sin-rendicion-para-confirmar": "Primero registrá al menos una rendición de esta jornada para poder confirmarla como completa."
+        "sin-rendicion-para-confirmar": "Primero registrá al menos una rendición de esta jornada para poder confirmarla como completa.",
+        "backup-solo-titular": "Solo el titular de la agencia puede enviar respaldos manuales.",
+        "backup-configuracion": "Falta configurar RESEND_API_KEY en los secretos de la función de Supabase.",
+        "backup-dominio-no-verificado": "Resend no permite enviar a ese destinatario sin verificar un dominio. Durante la prueba, usá el correo titular de Resend; para otros destinatarios, verificá un dominio y configurá RESEND_FROM_EMAIL.",
+        "backup-destinatario": "No hay un correo de respaldo configurado para la agencia. Abrí Personal y permisos y guardá el correo del titular.",
+        "backup-no-enviado": "El backup sigue guardado, pero el proveedor rechazó el envío. Revisá el correo configurado y la configuración de Resend."
       } as Record<string,string>)[params.error] ?? "La operación no se pudo completar. Verificá permisos y datos."}</p>}
 
       <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} />
