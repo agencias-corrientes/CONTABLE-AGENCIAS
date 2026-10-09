@@ -329,18 +329,21 @@ export type Database = {
       }
       agency_operational_settings: {
         Row: {
+          backup_send_time: string
           organization_id: string
           rendition_cutoff_time: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          backup_send_time?: string
           organization_id: string
           rendition_cutoff_time?: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          backup_send_time?: string
           organization_id?: string
           rendition_cutoff_time?: string
           updated_at?: string
