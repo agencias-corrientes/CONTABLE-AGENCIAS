@@ -71,6 +71,60 @@ export async function addEmployeeByEmail(formData: FormData) {
   revalidatePath("/equipo");
   redirect("/equipo?resultado=empleado-creado");
 }
+
+export async function saveEmployeeRole(formData: FormData) {
+  const { supabase, organizationId, userId } = await getOwnerContext();
+  const targetUserId = String(formData.get("user_id") ?? "").trim();
+  const role = String(formData.get("role") ?? "").trim();
+  if (!targetUserId || !["owner", "admin", "accountant", "viewer"].includes(role)) {
+    redirect("/equipo?error=datos-rol-invalidos");
+  }
+  if (targetUserId === userId) redirect("/equipo?error=no-cambiar-rol-propio");
+
+  const { data: target, error: targetError } = await supabase
+    .from("organization_members")
+    .select("role")
+    .eq("organization_id", organizationId)
+    .eq("user_id", targetUserId)
+    .maybeSingle();
+  if (targetError || !target) redirect("/equipo?error=usuario-no-encontrado");
+
+  if (target.role === "owner" && role !== "owner") {
+    const { count, error: ownerCountError } = await supabase
+      .from("organization_members")
+      .select("user_id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .eq("role", "owner");
+    if (ownerCountError || (count ?? 0) <= 1) redirect("/equipo?error=ultimo-titular");
+  }
+
+  const { error } = await supabase.rpc("set_member_role", {
+    p_organization_id: organizationId,
+    p_user_id: targetUserId,
+    p_role: role,
+  });
+  if (error) {
+    const message = error.message.toLowerCase();
+    if (message.includes("permission denied for schema private")) redirect("/equipo?error=permisos-supabase-pendientes");
+    if (message.includes("organization must keep at least one owner") || message.includes("único titular")) redirect("/equipo?error=ultimo-titular");
+    if (message.includes("only an owner") || message.includes("insufficient permissions") || error.code === "42501") redirect("/equipo?error=solo-titular");
+    if (message.includes("member not found")) redirect("/equipo?error=usuario-no-encontrado");
+    redirect("/equipo?error=rol-no-guardado");
+  }
+
+  await supabase.from("audit_log").insert({
+    organization_id: organizationId,
+    user_id: userId,
+    action: "update_member_role",
+    entity: "organization_member",
+    entity_id: targetUserId,
+    payload: { role },
+  });
+  revalidatePath("/equipo");
+  revalidatePath("/configuracion/usuarios");
+  redirect("/equipo?resultado=rol-guardado");
+}
+
 export async function saveEmployeePermissions(formData: FormData) {
   const { supabase, organizationId, userId } = await getOwnerContext();
   const targetUserId = String(formData.get("user_id") ?? "").trim();
@@ -130,7 +184,7 @@ export async function removeEmployeeAccess(formData: FormData) {
   const { supabase, organizationId, userId } = await getOwnerContext();
   const targetUserId = String(formData.get("user_id") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  if (!targetUserId || targetUserId === userId || formData.get("confirm_remove") !== "yes" || !password) {
+  if (!targetUserId || formData.get("confirm_remove") !== "yes" || !password) {
     redirect("/equipo?error=usuario-invalido");
   }
 
@@ -154,7 +208,14 @@ export async function removeEmployeeAccess(formData: FormData) {
     .eq("user_id", targetUserId)
     .maybeSingle();
   if (targetError || !target) redirect("/equipo?error=usuario-no-encontrado");
-  if (target.role === "owner") redirect("/equipo?error=no-se-puede-modificar-titular");
+  if (target.role === "owner") {
+    const { count, error: ownerCountError } = await supabase
+      .from("organization_members")
+      .select("user_id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .eq("role", "owner");
+    if (ownerCountError || (count ?? 0) <= 1) redirect("/equipo?error=ultimo-titular");
+  }
 
   const { error } = await supabase.rpc("remove_organization_member", {
     p_organization_id: organizationId,
@@ -165,6 +226,7 @@ export async function removeEmployeeAccess(formData: FormData) {
     if (message.includes("could not find the function") || error.code === "42883" || error.code === "PGRST202") {
       redirect("/equipo?error=funcion-remocion-pendiente");
     }
+    if (error.code === "42501" && message.includes("único titular")) redirect("/equipo?error=ultimo-titular");
     if (error.code === "42501") redirect("/equipo?error=sin-permiso-eliminar");
     redirect("/equipo?error=acceso-no-revocado");
   }
