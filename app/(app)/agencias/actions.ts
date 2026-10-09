@@ -511,6 +511,66 @@ export async function setAgencyDailyRenditionStatus(formData: FormData) {
   redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=" + (status === "complete" ? "estado-rendida" : "estado-incompleta"));
 }
 
+export async function sendAgencyBackupManually() {
+  const { supabase, organizationId, role } = await getOrg();
+  if (role !== "owner") redirect("/pagos?error=backup-solo-titular");
+
+  const { data, error } = await supabase.functions.invoke("send-rendition-backup", {
+    body: { manual_close: true, organization_id: organizationId },
+  });
+
+  let failurePayload: any = data ?? {};
+  if (error) {
+    const response = (error as any).context;
+    if (response && typeof response.json === "function") {
+      try {
+        const readable = typeof response.clone === "function" ? response.clone() : response;
+        failurePayload = { ...failurePayload, ...(await readable.json()) };
+      } catch {
+        // Keep the safe generic message if the response body is unavailable.
+      }
+    }
+  }
+
+  const batches = Array.isArray(failurePayload?.batches) ? failurePayload.batches : [];
+  const failedBatch = batches.find((batch: any) => batch?.status !== "sent");
+  const reason = [
+    failurePayload?.message,
+    failurePayload?.error,
+    failedBatch?.error,
+  ].filter(Boolean).map(String).join(" ");
+
+  if (failurePayload?.status === "nothing_to_send" && !error) {
+    revalidatePath("/pagos");
+    redirect("/pagos?resultado=backup-sin-pendientes");
+  }
+
+  if (error || failurePayload?.status !== "daily_close_processed" || failedBatch) {
+    if (/You can only send testing emails|verify a domain|domain.*verified/i.test(reason)) {
+      redirect("/pagos?error=backup-dominio-no-verificado");
+    }
+    if (/RESEND_API_KEY|email_provider_not_configured/i.test(reason)) {
+      redirect("/pagos?error=backup-configuracion");
+    }
+    if (/No hay correo de respaldo configurado/i.test(reason)) {
+      redirect("/pagos?error=backup-destinatario");
+    }
+    redirect("/pagos?error=backup-no-enviado");
+  }
+
+  const copiedRenditions = batches.reduce(
+    (total: number, batch: any) => total + Math.max(0, Number(batch?.renditions ?? 0)),
+    0,
+  );
+  if (copiedRenditions <= 0) redirect("/pagos?resultado=backup-sin-pendientes");
+
+  revalidatePath("/pagos");
+  revalidatePath("/equipo");
+  revalidatePath("/dashboard");
+  redirect("/pagos?resultado=backup-manual-enviado&copias=" + copiedRenditions);
+}
+
+
 export async function voidAgencyRendition(formData: FormData) {
   const { supabase, organizationId, permissions } = await getOrg();
   const agentId = String(formData.get("agent_id") ?? "").trim();
