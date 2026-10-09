@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import jsQR from "jsqr";
 import { createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
 import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod } from "@/lib/agency-draw-schedule";
@@ -195,6 +195,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [mode, setMode] = useState<"photo" | "manual">(initialRendition?.captureMethod === "manual" ? "manual" : "photo");
   const [date, setDate] = useState(initialRendition?.renditionDate ?? today);
   const [period, setPeriod] = useState(initialRendition?.period ?? defaultPeriod ?? periods[0]?.label ?? "");
+  const [periodManuallySelected, setPeriodManuallySelected] = useState(Boolean(initialRendition));
   const [detectedPeriodMismatch, setDetectedPeriodMismatch] = useState("");
   const selectedPeriodDefinition = periods.find((candidate) => candidate.label === period) ?? (initialRendition?.period ? (allPeriods ?? periods).find((candidate) => candidate.label === initialRendition.period) ?? null : null);
   const periodGames = useMemo(() => getGamesForDrawPeriod(selectedPeriodDefinition, games), [selectedPeriodDefinition, games]);
@@ -222,6 +223,36 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     [amounts]
   );
 
+  // Refresh the proposed period at draw boundaries only while the form is untouched.
+  useEffect(() => {
+    if (
+      initialRendition ||
+      periodManuallySelected ||
+      !defaultPeriod ||
+      defaultPeriod === period ||
+      !periods.some((candidate) => candidate.label === defaultPeriod)
+    ) return;
+
+    const hasStartedEntry = date !== today || Boolean(
+      fileName ||
+      photoPreviewUrl ||
+      qrPayload ||
+      drawNumber.trim() ||
+      reference.trim() ||
+      notes.trim() ||
+      ticketNumbers.trim() ||
+      Object.values(amounts).some((value) => Number(value) > 0) ||
+      dailyStatusChoice !== "complete" ||
+      confirmationOpen ||
+      busy
+    );
+    if (!hasStartedEntry) {
+      setPeriod(defaultPeriod);
+      setDetectedPeriodMismatch("");
+      setNotice("");
+    }
+  }, [amounts, busy, confirmationOpen, dailyStatusChoice, date, defaultPeriod, drawNumber, fileName, initialRendition, notes, period, periodManuallySelected, periods, photoPreviewUrl, qrPayload, reference, ticketNumbers, today]);
+
   async function processTicket(file: File) {
     setBusy(true);
     setError("");
@@ -240,10 +271,13 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         if (qr.date) setDate(qr.date);
         if (qr.period) {
           const recognized = resolveRecognizedDrawPeriod(qr.period, allPeriods ?? periods);
-          if (recognized && recognized.label !== period) {
+          if (!recognized) {
+            setDetectedPeriodMismatch("__UNRECOGNIZED__:" + qr.period);
+            setNotice("El QR contiene un período que no está reconocido en el cronograma oficial. Elegí manualmente el sorteo correcto.");
+          } else if (recognized.label !== period) {
             setDetectedPeriodMismatch(recognized.label);
             setNotice("El QR indica " + recognized.label + ", pero está seleccionado " + period + ". Cambiá al sorteo indicado y volvé a leer el ticket.");
-          } else if (recognized && recognized.label === period) {
+          } else {
             setDetectedPeriodMismatch("");
           }
         }
@@ -279,7 +313,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       if (parsed.date) setDate(parsed.date);
       if (parsed.period) {
         const recognized = resolveRecognizedDrawPeriod(parsed.period, allPeriods ?? periods);
-        if (recognized && recognized.label !== period) {
+        if (!recognized) {
+          setDetectedPeriodMismatch("__UNRECOGNIZED__:" + parsed.period);
+          setNotice("El texto del ticket contiene un período que no está reconocido en el cronograma oficial. Elegí manualmente el sorteo correcto.");
+        } else if (recognized.label !== period) {
           setDetectedPeriodMismatch(recognized.label);
           setNotice("El ticket indica " + recognized.label + ", pero está seleccionado " + period + ". Cambiá al sorteo indicado y volvé a leer el ticket.");
         } else {
@@ -373,6 +410,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <label>Período oficial del sorteo
           <select value={period} onChange={(event) => {
             const nextPeriod = event.target.value;
+            setPeriodManuallySelected(true);
             if (nextPeriod !== period) {
               setAmounts({});
               setTicketNumbers("");
@@ -396,7 +434,13 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <label>Número de sorteo<input value={drawNumber} onChange={(event) => setDrawNumber(event.target.value)} placeholder="Se detecta de la foto" /></label>
         <label>Referencia<input name="reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Opcional" /></label>
       </div>
-      {detectedPeriodMismatch && <p className="message error-message">El ticket corresponde a <strong>{detectedPeriodMismatch}</strong>. Cambiá al período indicado y volvé a leerlo antes de guardar.</p>}
+      {detectedPeriodMismatch && <p className="message error-message">
+        {detectedPeriodMismatch.startsWith("__UNRECOGNIZED__:") ? (
+          <>El ticket contiene el período <strong>{detectedPeriodMismatch.slice("__UNRECOGNIZED__:".length)}</strong>, que no está en el cronograma oficial. Seleccioná manualmente el sorteo oficial correcto y volvé a leer el ticket antes de guardar.</>
+        ) : (
+          <>El ticket corresponde a <strong>{detectedPeriodMismatch}</strong>. Cambiá al sorteo indicado y volvé a leerlo antes de guardar.</>
+        )}
+      </p>}
       {period && periods.length > 0 && <p className="muted small-text">Esta rendición corresponde exclusivamente a <strong>{period}</strong>; no se mezclan importes de otros sorteos.</p>}
 
       <div className="game-rendition-block">

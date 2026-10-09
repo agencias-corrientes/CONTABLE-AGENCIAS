@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
 import { agencyBusinessDateForCutoff, formatAgencyDate, formatAgencyDateTime } from "@/lib/agency-datetime";
-import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, getAgencyLocalClock, getDrawPeriodStatus, getUnmappedOfficialGameNames, OFFICIAL_QUINIELA_SCHEDULE_URL, OFFICIAL_EXTRACTS_SCHEDULE_URL } from "@/lib/agency-draw-schedule";
+import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, getAgencyLocalClock, getDrawPeriodStatus, getPreferredPendingDrawPeriod, getUnmappedOfficialGameNames, OFFICIAL_QUINIELA_SCHEDULE_URL, OFFICIAL_EXTRACTS_SCHEDULE_URL } from "@/lib/agency-draw-schedule";
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
 import { RenditionScrollHelper } from "@/components/rendition-scroll-helper";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
@@ -214,10 +214,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     const formPeriods = agentPeriodStates
       .filter((entry) => entry.status === "pending" && !entry.hasRendition)
       .map((entry) => entry.period);
-    const defaultPeriod =
-      agentPeriodStates.find((entry) => entry.period.time && entry.status === "pending" && !entry.hasRendition)?.period.label ??
-      agentPeriodStates.find((entry) => !entry.hasRendition && entry.status === "pending")?.period.label ??
-      "";
+    const defaultPeriod = getPreferredPendingDrawPeriod(formPeriods)?.label ?? "";
     const due = todayAgentRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
     const commission = todayAgentRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_game_amounts) ? row.agency_rendition_game_amounts : []).reduce((acc: number, game: any) => acc + Number(game.commission_amount ?? 0), 0), 0);
     const netDue = Math.max(0, due - commission);

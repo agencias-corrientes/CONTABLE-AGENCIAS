@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentContext, money } from "@/lib/accounting";
 import { agencyBusinessDateForCutoff, formatAgencyDateTime } from "@/lib/agency-datetime";
-import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, drawPeriodHasPassed, getUnmappedOfficialGameNames, OFFICIAL_QUINIELA_SCHEDULE_URL, OFFICIAL_EXTRACTS_SCHEDULE_URL } from "@/lib/agency-draw-schedule";
+import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, drawPeriodHasPassed, getPreferredPendingDrawPeriod, getUnmappedOfficialGameNames, OFFICIAL_QUINIELA_SCHEDULE_URL, OFFICIAL_EXTRACTS_SCHEDULE_URL } from "@/lib/agency-draw-schedule";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
 import { receiveAgencyRendition, saveAgentGameCommissions } from "../actions";
@@ -44,6 +44,7 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
     !rows.some((row: any) => String(row.rendition_date) === today && String(row.game_period ?? "").trim() === period.label) &&
     (!period.time || drawPeriodHasPassed(period, today, drawNow))
   );
+  const defaultPendingDrawPeriod = getPreferredPendingDrawPeriod(pendingDrawPeriods);
   const unmappedGameNames = getUnmappedOfficialGameNames((gameTypes ?? []).filter((game) => game.enabled).map((game) => ({ name: game.name })));
   const defaultCommissionByGame = new Map((defaultCommissionRows ?? []).map((row) => [row.game_type_id, Number(row.commission_percent ?? 0)]));
 
@@ -93,7 +94,7 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
           <div className="panel-head"><div><h2>Rendición por sorteo</h2><p className="muted">Cada turno es una rendición independiente. El formulario solo ofrece sorteos vencidos que todavía no tienen un registro para esta jornada.</p><p className="muted small-text"><a href={OFFICIAL_QUINIELA_SCHEDULE_URL} target="_blank" rel="noreferrer">Programa oficial de sorteos</a> · <a href={OFFICIAL_EXTRACTS_SCHEDULE_URL} target="_blank" rel="noreferrer">Resultados publicados</a></p></div></div>
           {unmappedGameNames.length > 0 && <p className="message">Estos juegos aún no tienen un período de sorteo verificado y no aparecen en los formularios por turno: {unmappedGameNames.join(", ")}. Verificá el programa oficial antes de habilitarlos.</p>}
           {pendingDrawPeriods.length > 0
-            ? <RenditionEntryForm agentId={agent.id} games={(gameTypes ?? []).filter((game) => game.enabled).map((game) => ({ id: game.id, name: game.name, category: game.category, enabled: game.enabled }))} today={today} periods={pendingDrawPeriods} allPeriods={allOfficialDrawPeriods} defaultPeriod={pendingDrawPeriods[0]?.label} />
+            ? <RenditionEntryForm agentId={agent.id} games={(gameTypes ?? []).filter((game) => game.enabled).map((game) => ({ id: game.id, name: game.name, category: game.category, enabled: game.enabled }))} today={today} periods={pendingDrawPeriods} allPeriods={allOfficialDrawPeriods} defaultPeriod={defaultPendingDrawPeriod?.label} />
             : <p className="message">No hay sorteos vencidos pendientes para esta jornada. Los próximos turnos se habilitan al llegar su horario oficial.</p>}
         </section>
       )}

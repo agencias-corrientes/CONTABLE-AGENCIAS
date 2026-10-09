@@ -114,6 +114,19 @@ export function getUnmappedOfficialGameNames(games: Array<{ name: string; enable
     .map((game) => game.name);
 }
 
+/** Choose the latest pending traditional Quiniela turn first, not the earliest unresolved turn. */
+export function getPreferredPendingDrawPeriod(periods: OfficialDrawPeriod[]): OfficialDrawPeriod | null {
+  if (!periods.length) return null;
+  const minutes = (period: OfficialDrawPeriod) =>
+    period.time ? Number(period.time.slice(0, 2)) * 60 + Number(period.time.slice(3, 5)) : -1;
+  const traditional = periods.filter((period) => period.gameName === "Quiniela Correntina" && period.time);
+  const timed = traditional.length ? traditional : periods.filter((period) => period.time);
+  if (timed.length) {
+    return timed.reduce((latest, current) => minutes(current) > minutes(latest) ? current : latest);
+  }
+  return periods.find((period) => period.kind === "daily") ?? periods[0] ?? null;
+}
+
 export function getDrawPeriodStatus(
   period: OfficialDrawPeriod,
   businessDate: string,
