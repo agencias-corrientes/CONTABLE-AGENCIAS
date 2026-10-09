@@ -67,11 +67,11 @@ function agencyDateInfo(now: Date) {
 
 function normalizeBackupText(rawText: string): string {
   return rawText
-    .replace(/\\\\\\\\\\\\\\\\n/g, "\n")
-    .replace(/\\\\n/g, "\n")
+    // Las copias antiguas pueden guardar saltos de línea como texto literal.
+    .replace(/\\+r\\+n/g, "\n")
+    .replace(/\\+n/g, "\n")
     .replace(/\r\n?/g, "\n");
 }
-
 function formatDailyBackupItem(rawText: string, createdAt: string): string {
   let normalized = normalizeBackupText(rawText);
 
@@ -122,16 +122,115 @@ function escapeHtml(value: string): string {
 }
 
 function formatBackupHtml(text: string): string {
-  return (
-    '<!doctype html><html lang="es"><head>' +
-    '<meta charset="utf-8"></head><body>' +
-    '<pre style="font-family:Arial,sans-serif;white-space:pre-wrap;' +
-    'overflow-wrap:anywhere;">' +
-    escapeHtml(text) +
-    "</pre></body></html>"
-  );
-}
+  const lines = normalizeBackupText(text).trim().split("\n").map((line) => line.trim());
+  let html =
+    '<!doctype html><html lang="es"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
+    '<body style="margin:0;padding:0;background:#f0eee8;font-family:Arial,Helvetica,sans-serif;color:#30272a;">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#f0eee8;"><tr><td align="center" style="padding:20px 8px;">' +
+    '<table role="presentation" width="680" cellpadding="0" cellspacing="0" style="width:100%;max-width:680px;border-collapse:collapse;background:#ffffff;">' +
+    '<tr><td style="height:7px;background:#ffdf00;font-size:0;">&nbsp;</td></tr>' +
+    '<tr><td style="padding:20px 22px;background:#6b283b;color:#ffffff;">' +
+    '<div style="font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:#ffdf00;font-weight:800;">Agencias Corrientes</div>' +
+    '<div style="font-size:23px;line-height:1.25;font-weight:800;margin-top:6px;">Respaldo de rendiciones</div>' +
+    '<div style="font-size:12px;line-height:1.5;color:#f3e5e9;margin-top:6px;">Copia para control y consulta</div>' +
+    '</td></tr><tr><td style="padding:18px 16px 10px;">' +
+    '<div style="font-size:12px;line-height:1.6;color:#6f655b;margin-bottom:12px;">El detalle se organiza por rendición, con importes y observaciones destacados.</div>' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:16px;"><tr>';
 
+  let inSummary = true;
+  let inRendition = false;
+  let number = 0;
+  for (const line of lines) {
+    if (!line) continue;
+    if (line.startsWith("BACKUP DIARIO DE RENDICIONES") || line.startsWith("BACKUP DE RENDICIÓN -")) continue;
+
+    if (line.startsWith("Fecha del cierre:") || line.startsWith("Generado:") || line.startsWith("Cantidad de rendiciones incluidas:")) {
+      const split = line.indexOf(":");
+      const label = split >= 0 ? line.slice(0, split) : "Resumen";
+      const value = split >= 0 ? line.slice(split + 1).trim() : line;
+      html += '<td width="33.33%" valign="top" style="padding:10px;border:1px solid #e6d9bd;background:#faf6e9;">' +
+        '<div style="font-size:10px;line-height:1.35;letter-spacing:.5px;text-transform:uppercase;color:#827668;margin-bottom:5px;">' +
+        escapeHtml(label) + '</div><div style="font-size:13px;line-height:1.4;font-weight:800;color:#6b283b;overflow-wrap:anywhere;">' +
+        escapeHtml(value) + '</div></td>';
+      continue;
+    }
+
+    if (line.startsWith("========== RENDICIÓN ")) {
+      if (inSummary) {
+        html += '</tr></table>';
+        inSummary = false;
+      }
+      if (inRendition) html += '</td></tr></table>';
+      number++;
+      const sectionTitle = line.replace(/^=+|=+$/g, "").trim();
+      html += '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin:0 0 18px;border:1px solid #e5dac8;">' +
+        '<tr><td style="padding:13px 16px;background:#6b283b;color:#ffffff;font-size:16px;font-weight:800;">' +
+        escapeHtml(sectionTitle || ("Rendición " + number)) +
+        '</td></tr><tr><td style="padding:13px 14px;background:#ffffff;">';
+      inRendition = true;
+      continue;
+    }
+
+    if (line === "DETALLE POR JUEGO" || line === "TICKETS / CUPONES" || line === "OBSERVACIONES / MOTIVO") {
+      html += '<div style="margin:16px 0 7px;padding-bottom:6px;border-bottom:1px solid #e8dfd1;font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#6b283b;">' +
+        escapeHtml(line === "OBSERVACIONES / MOTIVO" ? "Observaciones" : line) + '</div>';
+      continue;
+    }
+
+    if (/^- /.test(line)) {
+      const detail = line.slice(2);
+      const game = detail.match(/^(.*?): venta (.*?) · comisión (.*?) · neto (.*)$/);
+      if (game) {
+        html += '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:5px 0;background:#faf8f2;"><tr>' +
+          '<td style="padding:9px;border-bottom:1px solid #e8dfd1;font-size:12px;color:#30272a;">' + escapeHtml(game[1]) +
+          '<div style="font-size:10px;color:#827668;margin-top:4px;">Comisión ' + escapeHtml(game[3]) + '</div></td>' +
+          '<td align="right" valign="middle" style="padding:9px;border-bottom:1px solid #e8dfd1;font-size:12px;font-weight:800;white-space:nowrap;color:#30272a;">' + escapeHtml(game[2]) +
+          '<div style="font-size:10px;color:#6b283b;margin-top:4px;">Neto ' + escapeHtml(game[4]) + '</div></td>' +
+          '</tr></table>';
+      } else {
+        html += '<div style="padding:8px 10px;margin:4px 0;background:#faf8f2;border-left:3px solid #c4a453;font-size:12px;line-height:1.5;">' + escapeHtml(detail) + '</div>';
+      }
+      continue;
+    }
+
+    if (line.startsWith("TOTAL VENDIDO:") || line.startsWith("TOTAL COMISIÓN:") || line.startsWith("NETO ESTIMADO:")) {
+      const idx = line.indexOf(":");
+      const label = line.slice(0, idx);
+      const value = line.slice(idx + 1).trim();
+      const net = label === "NETO ESTIMADO";
+      html += '<div style="display:block;margin:6px 0;padding:11px 12px;background:' + (net ? "#f5ebd1" : "#f8f6f0") +
+        ';border-left:4px solid ' + (net ? "#6b283b" : "#c1a356") + ';font-size:12px;line-height:1.4;color:#30272a;">' +
+        '<span style="font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:#766958;">' + escapeHtml(label) +
+        '</span><div style="font-size:17px;font-weight:800;color:' + (net ? "#6b283b" : "#30272a") + ';margin-top:3px;">' +
+        escapeHtml(value) + '</div></div>';
+      continue;
+    }
+
+    if (line.startsWith("ID DE RENDICIÓN:")) {
+      const idx = line.indexOf(":");
+      html += '<div style="padding-top:10px;margin-top:12px;border-top:1px solid #eee8dc;font-size:10px;line-height:1.5;color:#958878;overflow-wrap:anywhere;">' +
+        escapeHtml(line.slice(0, idx)) + ': ' + escapeHtml(line.slice(idx + 1).trim()) + '</div>';
+      continue;
+    }
+
+    const idx = line.indexOf(":");
+    if (idx > 0 && idx < 38) {
+      html += '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;"><tr>' +
+        '<td width="38%" valign="top" style="padding:7px 8px;border-bottom:1px solid #f0eade;font-size:11px;color:#827668;">' + escapeHtml(line.slice(0, idx)) + '</td>' +
+        '<td valign="top" style="padding:7px 8px;border-bottom:1px solid #f0eade;font-size:12px;font-weight:700;line-height:1.45;color:#30272a;overflow-wrap:anywhere;">' + escapeHtml(line.slice(idx + 1).trim() || "—") + '</td>' +
+        '</tr></table>';
+    } else {
+      html += '<div style="padding:5px 2px;font-size:12px;line-height:1.6;color:#827668;">' + escapeHtml(line) + '</div>';
+    }
+  }
+
+  if (inSummary) html += '</tr></table>';
+  if (inRendition) html += '</td></tr></table>';
+  html += '<div style="padding:13px 8px 10px;border-top:1px solid #e8dfd1;color:#8c8071;font-size:10px;line-height:1.6;">Mensaje automático de respaldo de Agencias Corrientes. Conservá este correo para consulta y control de caja.</div>' +
+    '</td></tr><tr><td style="height:6px;background:#6b283b;font-size:0;">&nbsp;</td></tr></table></td></tr></table></body></html>';
+  return html;
+}
 async function sendDailyCloseBackups(
   admin: any,
   resendApiKey: string | undefined,
