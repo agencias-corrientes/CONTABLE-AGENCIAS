@@ -23,7 +23,7 @@ export async function saveRenditionCutoff(formData: FormData) {
 
   const cutoff = String(formData.get("rendition_cutoff_time") ?? "").trim();
   const backupSendTime = String(formData.get("backup_send_time") ?? "").trim();
-  const validTime = /^(?:[01]\\d|2[0-3]):[0-5]\\d$/;
+  const validTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
   if (!validTime.test(cutoff) || !validTime.test(backupSendTime)) {
     redirect("/configuracion?error=horario-configuracion-invalida");
   }
