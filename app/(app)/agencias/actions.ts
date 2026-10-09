@@ -181,8 +181,8 @@ export async function createAgencyRendition(formData: FormData) {
     p_capture_method: captureMethod,
     p_reference: String(formData.get("reference") ?? "").trim() || undefined,
     p_notes: String(formData.get("notes") ?? "").trim() || undefined,
-    p_daily_status_notes: dailyStatus === "incomplete" ? (dailyStatusNotes || null) : null,
-    p_reported_amount: dailyStatus === "incomplete" ? reportedAmount : null,
+    p_daily_status_notes: dailyStatus === "incomplete" ? (dailyStatusNotes || undefined) : undefined,
+    p_reported_amount: dailyStatus === "incomplete" ? reportedAmount : undefined,
   });
   if (error) {
     const message = String(error.message ?? "").toLowerCase();
