@@ -1357,3 +1357,16 @@
 .rendition-manual-backup-form{display:flex;align-items:center;margin:0}
 .rendition-manual-backup-form .button{white-space:nowrap;min-height:38px}
 @media(max-width:700px){.rendition-manual-backup-form{width:100%}.rendition-manual-backup-form .button{width:100%}}
+
+
+/* Compact combined controls for daily cutoff and automatic backup time. */
+.operational-schedule-panel{padding:14px 16px}
+.operational-schedule-panel>.panel-head{margin-bottom:10px;align-items:center}
+.operational-schedule-panel .panel-head h2{font-size:17px;margin-bottom:3px}
+.operational-schedule-form{display:flex;flex-direction:column;gap:10px}
+.operational-schedule-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.operational-schedule-grid label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;color:#443238;min-width:0}
+.operational-schedule-grid input[type=time]{width:100%;max-width:230px;min-height:38px;padding:6px 9px;border:1px solid #d7c7a1;border-radius:8px;background:#fffdf6;color:#332b14;font:inherit}
+.operational-schedule-grid .small-text{font-size:11px;font-weight:400;line-height:1.35}
+.operational-schedule-form>.button{align-self:flex-start;min-height:36px;padding:8px 13px}
+@media(max-width:640px){.operational-schedule-grid{grid-template-columns:1fr;gap:10px}.operational-schedule-panel{padding:12px}.operational-schedule-grid input[type=time]{max-width:100%}}
