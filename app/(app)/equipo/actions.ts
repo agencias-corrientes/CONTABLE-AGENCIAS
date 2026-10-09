@@ -241,6 +241,7 @@ export async function removeEmployeeAccess(formData: FormData) {
   });
   revalidatePath("/equipo");
   revalidatePath("/configuracion/usuarios");
+  if (targetUserId === userId) redirect("/login?mensaje=acceso-desvinculado");
   redirect("/equipo?resultado=acceso-revocado");
 }
 
