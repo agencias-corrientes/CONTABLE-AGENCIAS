@@ -22,21 +22,33 @@ export async function saveRenditionCutoff(formData: FormData) {
   if (member.role !== "owner") redirect("/pagos?error=solo-titular-configuracion");
 
   const cutoff = String(formData.get("rendition_cutoff_time") ?? "").trim();
-  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(cutoff)) {
-    redirect("/configuracion?error=horario-corte-invalido");
+  const backupSendTime = String(formData.get("backup_send_time") ?? "").trim();
+  const validTime = /^(?:[01]\\d|2[0-3]):[0-5]\\d$/;
+  if (!validTime.test(cutoff) || !validTime.test(backupSendTime)) {
+    redirect("/configuracion?error=horario-configuracion-invalida");
   }
 
   const { error } = await supabase.from("agency_operational_settings").upsert({
     organization_id: member.organization_id,
     rendition_cutoff_time: cutoff,
+    backup_send_time: backupSendTime,
     updated_by: String(userId),
     updated_at: new Date().toISOString(),
   }, { onConflict: "organization_id" });
 
-  if (error) redirect("/configuracion?error=horario-corte-no-guardado");
+  if (error) redirect("/configuracion?error=horarios-no-guardados");
+
+  await supabase.from("audit_log").insert({
+    organization_id: member.organization_id,
+    user_id: String(userId),
+    action: "update_agency_operational_schedules",
+    entity: "agency_operational_settings",
+    entity_id: String(member.organization_id),
+    payload: { rendition_cutoff_time: cutoff, backup_send_time: backupSendTime },
+  });
 
   revalidatePath("/configuracion");
   revalidatePath("/pagos");
   revalidatePath("/agencias");
-  redirect("/configuracion?resultado=horario-corte-guardado");
+  redirect("/configuracion?resultado=horarios-guardados");
 }
