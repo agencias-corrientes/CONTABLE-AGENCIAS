@@ -57,7 +57,7 @@ export default async function ConfiguracionPage({
           <Link href="/juegos" className="settings-card"><strong>Juegos y comisiones generales</strong><span>Editar catálogo y los porcentajes base para todos los agentes.</span></Link>
           <Link href="/loteria-correntina" className="settings-card"><strong>Lotería Correntina</strong><span>Consultar extractos y archivos oficiales.</span></Link>
           <Link href="/configuracion/organizacion" className="settings-card"><strong>Datos de la agencia</strong><span>Datos generales y fiscales.</span></Link>
-          <Link href="/configuracion/usuarios" className="settings-card"><strong>Usuarios y roles</strong><span>Revisión de cuentas y perfiles de acceso.</span></Link>
+          <Link href="/equipo" className="settings-card"><strong>Personal y permisos</strong><span>Crear accesos, cambiar roles y definir permisos de cada persona.</span></Link>
           <Link href="/configuracion/periodos" className="settings-card"><strong>Períodos fiscales</strong><span>Apertura y control de ejercicios.</span></Link>
         </div>
       </section>
