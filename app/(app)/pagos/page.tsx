@@ -145,7 +145,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                 <span className="rendition-record-agent-code" aria-label={"Código del operador " + agent.code} title={"Código del operador " + agent.code}>{agent.code}</span>
                 <span className="rendition-record-period">{row.game_period || "Período no identificado"}{row.draw_number ? <small>Sorteo {row.draw_number}</small> : null}</span>
                 <span className="rendition-record-amount">{money(row.amount_due, activeOrganization.currency_code)}<small>{row.capture_method === "manual" ? "Carga manual" : row.capture_method === "qr" ? "Foto / QR" : "Foto del ticket"}</small></span>
-                <span className={totals.pending <= 0 ? "badge success" : "badge"}>{totals.pending <= 0 ? "Saldada" : "Pendiente " + money(totals.pending, activeOrganization.currency_code)}</span>
+                <span className={totals.pending <= 0 ? "badge success" : "badge"}>{totals.pending <= 0 ? "Cobrada" : "Pendiente " + money(totals.pending, activeOrganization.currency_code)}</span>
               </summary>
               <div className="rendition-record-detail">
                 <div className="rendition-detail-columns">
@@ -253,42 +253,6 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             <div><span className="eyebrow">RENDICIÓN DIARIA</span><h3>{agentLabel(agent)} {agent.code} · {agent.full_name}</h3><p className="muted">Comisión acumulada: <strong>{money(commission, activeOrganization.currency_code)}</strong> · Neto estimado: <strong>{money(netDue, activeOrganization.currency_code)}</strong>. Revisá los importes detectados antes de guardar.</p></div>
             <Link href={"/agencias/" + agent.id} className="button ghost">Ficha del agente</Link>
           </div>
-          <section className="rendition-daily-status-control">
-            <div className="rendition-daily-status-copy">
-              <strong>Estado diario: {dailyStatusLabels[dailyStatus.status]}</strong>
-              <p className="muted">{dailyStatusDescriptions[dailyStatus.status]}</p>
-              <p className="muted small-text">Al registrar una nueva rendición, el estado se guarda en el mismo paso. La corrección manual queda disponible solo si necesitás cambiarlo después.</p>
-              {dailyStatus.reportedAmount !== null && <p className="rendition-confirmed-amount">{dailyStatus.status === "incomplete" ? "Monto declarado al guardar como incompleta:" : "Monto informado al confirmar:"} <strong>{money(dailyStatus.reportedAmount, activeOrganization.currency_code)}</strong></p>}
-              {dailyStatus.status === "incomplete" && dailyStatus.note && <p className="rendition-status-note"><strong>Observación:</strong> {dailyStatus.note}</p>}
-            </div>
-            {canCreateRenditions ? (
-              <details className="rendition-daily-status-editor">
-                <summary>Corregir estado manualmente</summary>
-                <div className="rendition-daily-status-actions">
-                <form action={setAgencyDailyRenditionStatus}>
-                  <input type="hidden" name="agent_id" value={agent.id} />
-                  <input type="hidden" name="operational_date" value={today} />
-                  <input type="hidden" name="status" value="incomplete" />
-                  <label>Qué falta (opcional)
-                    <input name="notes" defaultValue={dailyStatus.status === "incomplete" ? dailyStatus.note : ""} maxLength={500} placeholder="Ej.: falta el turno vespertino" />
-                  </label>
-                  <label className="rendition-confirm-amount-label">Monto rendido hasta ahora
-                    <input type="number" name="reported_amount" min="0.01" max="999999999999.99" step="0.01" inputMode="decimal" defaultValue={dailyStatus.reportedAmount ?? ""} placeholder="Ej.: 12500,00" required />
-                  </label>
-                  <button className="button ghost small" type="submit">{dailyStatus.status === "incomplete" ? "Guardar estado incompleto" : "Marcar como incompleta"}</button>
-                </form>
-                {todayAgentRows.length > 0 && dailyStatus.status !== "complete" && (
-                  <form action={setAgencyDailyRenditionStatus}>
-                    <input type="hidden" name="agent_id" value={agent.id} />
-                    <input type="hidden" name="operational_date" value={today} />
-                    <input type="hidden" name="status" value="complete" />
-                    <button className="button primary small" type="submit">Confirmar como rendida</button>
-                  </form>
-                )}
-                </div>
-              </details>
-            ) : <p className="muted">El titular debe habilitarte el permiso para cambiar el estado diario.</p>}
-          </section>
           {canCreateRenditions
             ? <RenditionEntryForm agentId={agent.id} games={games} today={today} />
             : <p className="message">No tenés permiso para registrar rendiciones. El titular debe habilitar esta operación.</p>}
@@ -329,6 +293,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "rendicion-fallida": "No se pudo registrar la rendición.",
         "estado-diario-fallido": "No se pudo guardar el estado diario. Volvé a intentarlo.",
         "monto-rendido-invalido": "Ingresá un monto rendido mayor que cero para guardar el estado incompleto.",
+        "caja-no-configurada": "No se registró la rendición porque no hay una cuenta Caja activa configurada.",
+        "cobro-inicial-fallido": "La rendición se guardó, pero el cobro inicial no se pudo registrar. No vuelvas a crearla; revisá la rendición y registrá el cobro pendiente.",
         "jornada-cambio": "La jornada operativa cambió. Actualizá la pantalla y volvé a marcar el estado.",
         "sin-rendicion-para-confirmar": "Primero registrá al menos una rendición de esta jornada para poder confirmarla como completa."
       } as Record<string,string>)[params.error] ?? "La operación no se pudo completar. Verificá permisos y datos."}</p>}

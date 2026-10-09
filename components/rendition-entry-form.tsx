@@ -204,7 +204,6 @@ export function RenditionEntryForm({ agentId, games, today, initialRendition }: 
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">("complete");
   const [reportedAmount, setReportedAmount] = useState("");
-  const [dailyStatusNotes, setDailyStatusNotes] = useState("");
 
   const total = useMemo(() =>
     Object.values(amounts).reduce((sum, value) => sum + (Number(value) > 0 ? Number(value) : 0), 0),
@@ -308,8 +307,7 @@ export function RenditionEntryForm({ agentId, games, today, initialRendition }: 
         <>
           <input type="hidden" name="operational_date" value={today} />
           <input type="hidden" name="daily_status" value={dailyStatusChoice} />
-          <input type="hidden" name="daily_status_notes" value={dailyStatusChoice === "incomplete" ? dailyStatusNotes : ""} />
-          <input type="hidden" name="reported_amount" value={dailyStatusChoice === "incomplete" ? reportedAmount : ""} />
+          <input type="hidden" name="reported_amount" value={dailyStatusChoice === "incomplete" ? reportedAmount : total.toFixed(2)} />
         </>
       )}
 
@@ -425,16 +423,6 @@ export function RenditionEntryForm({ agentId, games, today, initialRendition }: 
                     onChange={(event) => setReportedAmount(event.target.value)}
                     placeholder="Ej.: 12500.00"
                     required
-                  />
-                </label>
-                <label className="rendition-confirm-notes-label">
-                  Qué falta (opcional)
-                  <input
-                    type="text"
-                    maxLength={500}
-                    value={dailyStatusNotes}
-                    onChange={(event) => setDailyStatusNotes(event.target.value)}
-                    placeholder="Ej.: falta el turno vespertino"
                   />
                 </label>
               </div>

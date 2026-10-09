@@ -138,7 +138,7 @@ export async function createAgencyRendition(formData: FormData) {
   const dailyStatus = String(formData.get("daily_status") ?? "").trim();
   const dailyStatusNotes = String(formData.get("daily_status_notes") ?? "").trim();
   const reportedAmountRaw = String(formData.get("reported_amount") ?? "").trim();
-  const reportedAmount = Number(reportedAmountRaw.replace(",", "."));
+  const reportedAmount = dailyStatus === "complete" ? totalDue : Number(reportedAmountRaw.replace(",", "."));
   const parsedRenditionDate = new Date(renditionDate + "T00:00:00.000Z");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(renditionDate) || Number.isNaN(parsedRenditionDate.getTime()) || parsedRenditionDate.toISOString().slice(0, 10) !== renditionDate) {
     throw new Error("Ingresá una fecha de juego válida.");
@@ -155,6 +155,7 @@ export async function createAgencyRendition(formData: FormData) {
     !reportedAmountRaw ||
     !Number.isFinite(reportedAmount) ||
     reportedAmount <= 0 ||
+    reportedAmount > totalDue ||
     reportedAmount > 999999999999.99
   )) {
     redirect("/pagos?error=monto-rendido-invalido&agent=" + encodeURIComponent(agentId));
@@ -166,6 +167,20 @@ export async function createAgencyRendition(formData: FormData) {
   const requestedCaptureMethod = String(formData.get("capture_method") ?? "manual");
   const captureMethod = ["manual", "photo", "qr"].includes(requestedCaptureMethod) ? requestedCaptureMethod : "manual";
 
+
+  if (!permissions.can_register_payments) {
+    redirect("/pagos?error=sin-permiso-cobro&agent=" + encodeURIComponent(agentId));
+  }
+  const { data: cashAccount, error: cashLookupError } = await supabase
+    .from("cash_accounts")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("is_active", true)
+    .eq("name", "Caja")
+    .maybeSingle();
+  if (cashLookupError || !cashAccount?.id) {
+    redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
+  }
   const { data: renditionId, error } = await supabase.rpc("create_agency_rendition_with_capture_and_daily_status", {
     p_organization_id: organizationId,
     p_agent_id: agentId,
@@ -182,7 +197,7 @@ export async function createAgencyRendition(formData: FormData) {
     p_reference: String(formData.get("reference") ?? "").trim() || undefined,
     p_notes: String(formData.get("notes") ?? "").trim() || undefined,
     p_daily_status_notes: dailyStatus === "incomplete" ? (dailyStatusNotes || undefined) : undefined,
-    p_reported_amount: dailyStatus === "incomplete" ? reportedAmount : undefined,
+    p_reported_amount: reportedAmount,
   });
   if (error) {
     const message = String(error.message ?? "").toLowerCase();
@@ -192,6 +207,21 @@ export async function createAgencyRendition(formData: FormData) {
     redirect("/pagos?error=rendicion-fallida&agent=" + encodeURIComponent(agentId));
   }
 
+
+  // El mismo envío registra el cobro: total si se confirma, parcial si queda incompleta.
+  const paymentAmount = dailyStatus === "complete" ? totalDue : reportedAmount;
+  const { error: paymentError } = await supabase.rpc("receive_agency_rendition", {
+    p_organization_id: organizationId,
+    p_rendition_id: renditionId,
+    p_payment_date: todayInAgencyTimeZone(),
+    p_amount: paymentAmount,
+    p_cash_account_id: cashAccount.id,
+    p_reference: String(formData.get("reference") ?? "").trim() || undefined,
+    p_notes: dailyStatus === "incomplete" ? "Pago parcial al registrar rendición incompleta" : "Cobro al confirmar rendición diaria",
+  });
+  if (paymentError) {
+    redirect("/pagos?error=cobro-inicial-fallido&agent=" + encodeURIComponent(agentId));
+  }
   let backupStatus: "cierre-diario" | "enviado" | "pendiente" | "dominio-no-verificado" = "cierre-diario";
   let photoStatus: "saved" | "skipped" | "failed" = "skipped";
   if (renditionId) {
