@@ -1350,3 +1350,10 @@
   color: #302500 !important;
   box-shadow: none !important;
 }
+
+
+
+/* Enviar backup manual desde el encabezado de Rendiciones. */
+.rendition-manual-backup-form{display:flex;align-items:center;margin:0}
+.rendition-manual-backup-form .button{white-space:nowrap;min-height:38px}
+@media(max-width:700px){.rendition-manual-backup-form{width:100%}.rendition-manual-backup-form .button{width:100%}}
