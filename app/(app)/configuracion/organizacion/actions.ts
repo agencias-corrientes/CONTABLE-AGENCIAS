@@ -50,7 +50,7 @@ export async function updateAgencyProfile(formData: FormData) {
     redirect("/configuracion/organizacion?error=datos-invalidos");
   }
 
-  const { error } = await supabase.rpc("update_agency_profile", {
+  const { error } = await (supabase as any).rpc("update_agency_profile", {
     p_organization_id: organizationId,
     p_name: name,
     p_legal_name: legalName || null,
@@ -126,7 +126,7 @@ export async function deleteAgencyProfile(formData: FormData) {
     redirect("/configuracion/organizacion?error=archivos-no-eliminados");
   }
 
-  const { error } = await supabase.rpc("delete_agency_organization", {
+  const { error } = await (supabase as any).rpc("delete_agency_organization", {
     p_organization_id: organizationId,
     p_confirmation: confirmation,
   });
