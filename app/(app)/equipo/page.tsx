@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getCurrentContext } from "@/lib/accounting";
-import { addEmployeeByEmail, removeEmployeeAccess, saveBackupEmail, retryRenditionBackup, saveEmployeePermissions, cleanupAgencyTestData } from "./actions";
+import { addEmployeeByEmail, removeEmployeeAccess, saveBackupEmail, retryRenditionBackup, saveEmployeePermissions, saveEmployeeRole, cleanupAgencyTestData } from "./actions";
+
+const roleLabels: Record<string, string> = { owner: "Propietario", admin: "Administrador", accountant: "Contador", viewer: "Consulta" };
 
 const permissionLabels = [
   ["can_create_agents", "Dar de alta subagentes o ambulantes"],
@@ -17,7 +19,7 @@ export default async function TeamPermissionsPage({
   searchParams?: Promise<{ error?: string; resultado?: string }>;
 }) {
   const params = searchParams ? await searchParams : {};
-  const { supabase, organization, member } = await getCurrentContext();
+  const { supabase, organization, member, userId } = await getCurrentContext();
   if (!organization || !member) return null;
 
   if (member.role !== "owner") {
@@ -55,11 +57,16 @@ export default async function TeamPermissionsPage({
     permisos_empleados: "Permisos de empleados",
     registros_auditoria: "Registros de auditoría",
   };
+  const ownerCount = (employees ?? []).filter((employee: { role: string }) => employee.role === "owner").length;
   const cleanupRows = cleanupPreview && typeof cleanupPreview === "object" && !Array.isArray(cleanupPreview)
     ? Object.entries(cleanupPreview).filter((entry): entry is [string, number] => typeof entry[1] === "number" && entry[1] > 0)
     : [];
   const errorMessages: Record<string, string> = {
     "solo-titular": "Solo el titular de la agencia puede administrar empleados y permisos.",
+    "ultimo-titular": "No se puede quitar ni bajar de rol al último Propietario. Primero asigná el rol Propietario a otra cuenta y guardá ese cambio.",
+    "datos-rol-invalidos": "Elegí un rol válido para el empleado.",
+    "no-cambiar-rol-propio": "No podés cambiar tu propio rol desde tu sesión actual.",
+    "rol-no-guardado": "No se pudo guardar el rol. No se modificaron los permisos.",
     "email-invalido": "Ingresá un correo válido.",
     "cuenta-no-registrada": "El empleado primero debe crear su cuenta de acceso con ese correo y luego podrás vincularlo a la agencia.",
     "empleado-existente": "Ya existe una cuenta con ese correo. No se creó un usuario duplicado.",
@@ -90,6 +97,7 @@ export default async function TeamPermissionsPage({
       </div>
       {params.resultado === "empleado-creado" && <p className="message success-message">Acceso del empleado creado. Sus permisos operativos están desactivados hasta que los habilites. Si Supabase solicita confirmar el correo, deberá abrir ese mensaje antes del primer ingreso.</p>}
       {params.resultado === "permisos-guardados" && <p className="message success-message">Permisos guardados correctamente.</p>}
+      {params.resultado === "rol-guardado" && <p className="message success-message">El rol se actualizó correctamente.</p>}
       {params.resultado === "acceso-revocado" && <p className="message success-message">Se revocó el acceso del empleado a esta agencia. Su cuenta general de autenticación no fue eliminada.</p>}
       {params.resultado === "backup-email-guardado" && <p className="message success-message">Se guardó el correo de respaldo. Las nuevas rendiciones se encolarán para enviarse a esa dirección.</p>}
       {params.resultado === "backup-reintento" && <p className="message success-message">Se solicitó nuevamente el envío del respaldo.</p>}
@@ -98,7 +106,7 @@ export default async function TeamPermissionsPage({
       {params.error && <p className="message error-message">{errorMessages[params.error] ?? "No se pudo completar la operación. Revisá los datos e intentá nuevamente."}</p>}
 
       <section className="panel">
-        <div className="panel-head"><div><h2>Agregar empleado</h2><p className="muted">El titular crea el acceso con correo y contraseña inicial. Entregale las credenciales por un canal privado y pedile cambiar la contraseña luego.</p></div></div>
+        <div className="panel-head"><div><h2>Agregar empleado</h2><p className="muted">Creá el acceso acá. Después, en la tarjeta del empleado, vas a poder elegir el rol (incluido Propietario) y guardar el cambio. Entregá las credenciales por un canal privado.</p></div></div>
         <form action={addEmployeeByEmail} className="inline-form team-add-form">
           <input type="email" name="email" placeholder="correo@empleado.com" required autoComplete="off" />
           <input type="password" name="password" placeholder="Contraseña inicial (mín. 12 caracteres)" minLength={12} required autoComplete="new-password" />
@@ -158,19 +166,50 @@ export default async function TeamPermissionsPage({
         {employeeError && <p className="message error-message">No se pudo consultar la lista de empleados.</p>}
         {!employeeError && (!employees || !employees.length) && <p className="muted">Todavía no hay empleados vinculados a la agencia.</p>}
         <div className="team-member-list">
-          {(employees ?? []).map((employee) => {
+          {(employees ?? []).map((employee: any) => {
+            const isCurrentUser = employee.user_id === userId;
             const isOwner = employee.role === "owner";
             const isAdmin = employee.role === "admin";
+            const roleName = roleLabels[employee.role] ?? "Empleado";
             return <article className="team-member-card" key={employee.user_id}>
               <div className="team-member-header">
                 <div><h3>{employee.full_name || employee.email}</h3><p className="muted">{employee.email}</p></div>
-                <span className={"badge " + (isOwner ? "success" : "")}>{isOwner ? "Titular" : isAdmin ? "Administrador" : "Empleado"}</span>
+                <span className={"badge " + (isOwner ? "success" : "")}>{roleName}{isCurrentUser ? " · Tu sesión" : ""}</span>
               </div>
-              {isOwner ? (
-                <p className="muted">Cuenta principal de la agencia.</p>
+              {isCurrentUser ? (
+                <p className="team-role-note">Este es tu usuario actual. Para evitar bloquearte, el rol de tu propia sesión no se cambia desde acá.</p>
               ) : (
+                <form action={saveEmployeeRole} className="team-role-form">
+                  <input type="hidden" name="user_id" value={employee.user_id} />
+                  <label>Rol de acceso
+                    <select name="role" defaultValue={employee.role} aria-label={"Rol de " + employee.email}>
+                      <option value="owner">Propietario</option>
+                      <option value="admin">Administrador</option>
+                      <option value="accountant">Contador</option>
+                      <option value="viewer">Consulta</option>
+                    </select>
+                  </label>
+                  <button className="button primary small" type="submit">Guardar rol</button>
+                </form>
+              )}
+              {isOwner && isCurrentUser && ownerCount <= 1 && (
+                <p className="team-role-note">No se puede quitar este acceso porque es el único Propietario de la agencia. Primero agregá otra cuenta, elegí Propietario en su selector y guardá el cambio.</p>
+              )}
+              {isOwner && ownerCount > 1 && (
+                <div className="team-remove-access-visible">
+                  <strong>{isCurrentUser ? "Quitar mi acceso a esta agencia" : "Quitar acceso a esta agencia"}</strong>
+                  <p>La cuenta conservará su usuario global, pero dejará de entrar a esta agencia. Se mantienen las rendiciones y el historial.</p>
+                  <form action={removeEmployeeAccess}>
+                    <input type="hidden" name="user_id" value={employee.user_id} />
+                    <label>Contraseña actual del titular<input type="password" name="password" autoComplete="current-password" required aria-label={"Contraseña para quitar a " + employee.email} /></label>
+                    <label><input type="checkbox" name="confirm_remove" value="yes" required /> Confirmo quitar este acceso</label>
+                    <button className="button danger small" type="submit">{isCurrentUser ? "Quitar mi acceso" : "Eliminar acceso"}</button>
+                  </form>
+                </div>
+              )}
+              {!isOwner && (
                 <>
-                  {isAdmin && <p className="message">Esta cuenta tiene rol Administrador y privilegios amplios. Podés quitarle el acceso desde esta misma tarjeta.</p>}
+                  {isAdmin && <p className="message">Administrador: tiene acceso amplio a la gestión de la agencia y al catálogo. Revisá este rol antes de guardarlo.</p>}
                   {!isAdmin && (
                     <form action={saveEmployeePermissions} className="team-permissions-form">
                       <input type="hidden" name="user_id" value={employee.user_id} />
@@ -178,18 +217,18 @@ export default async function TeamPermissionsPage({
                       <div className="team-permission-grid">
                         {permissionLabels.map(([name, label]) => <label key={name} className="team-permission-option"><input type="checkbox" name={name} defaultChecked={employee[name]} /><span>{label}</span></label>)}
                       </div>
-                      <p className="team-security-note">El catálogo de juegos y sus valores no se incluyen en los permisos de empleados. Solo el titular o un administrador puede cambiar el catálogo/precios.</p>
+                      <p className="team-security-note">El catálogo de juegos y sus valores no se incluyen en los permisos de empleados. Solo Propietario o Administrador puede cambiar el catálogo y los precios.</p>
                       <button className="button primary" type="submit">Guardar permisos</button>
                     </form>
                   )}
                   <div className="team-remove-access-visible">
-                    <strong>Eliminar empleado de esta agencia</strong>
-                    <p>Quita su membresía y los permisos en esta agencia; conserva su cuenta de acceso general y no borra las rendiciones históricas.</p>
+                    <strong>Eliminar acceso a esta agencia</strong>
+                    <p>Quita su membresía y permisos en esta agencia; conserva su cuenta de acceso general y no borra las rendiciones históricas.</p>
                     <form action={removeEmployeeAccess}>
                       <input type="hidden" name="user_id" value={employee.user_id} />
-                      <label>Tu contraseña actual<input type="password" name="password" autoComplete="current-password" required aria-label={"Contraseña para quitar a "+employee.email} /></label>
+                      <label>Contraseña actual del titular<input type="password" name="password" autoComplete="current-password" required aria-label={"Contraseña para quitar a " + employee.email} /></label>
                       <label><input type="checkbox" name="confirm_remove" value="yes" required /> Confirmo quitar el acceso de {employee.email}</label>
-                      <button className="button danger small" type="submit">Eliminar acceso del empleado</button>
+                      <button className="button danger small" type="submit">Eliminar acceso</button>
                     </form>
                   </div>
                 </>
