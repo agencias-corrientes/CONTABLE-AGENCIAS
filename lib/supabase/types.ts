@@ -923,6 +923,59 @@ export type Database = {
           },
         ]
       }
+      organization_member_permissions: {
+        Row: {
+          can_create_agents: boolean
+          can_delete_agents: boolean
+          can_create_renditions: boolean
+          can_edit_renditions: boolean
+          can_delete_renditions: boolean
+          can_register_payments: boolean
+          can_manage_backups: boolean
+          created_at: string
+          created_by: string | null
+          organization_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_create_agents?: boolean
+          can_delete_agents?: boolean
+          can_create_renditions?: boolean
+          can_edit_renditions?: boolean
+          can_delete_renditions?: boolean
+          can_register_payments?: boolean
+          can_manage_backups?: boolean
+          created_at?: string
+          created_by?: string | null
+          organization_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_create_agents?: boolean
+          can_delete_agents?: boolean
+          can_create_renditions?: boolean
+          can_edit_renditions?: boolean
+          can_delete_renditions?: boolean
+          can_register_payments?: boolean
+          can_manage_backups?: boolean
+          created_at?: string
+          created_by?: string | null
+          organization_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_member_permissions_organization_id_user_id_fkey"
+            columns: ["organization_id", "user_id"]
+            isOneToOne: true
+            referencedRelation: "organization_members"
+            referencedColumns: ["organization_id", "user_id"]
+          },
+        ]
+      }
       organization_members: {
         Row: {
           created_at: string
@@ -1364,6 +1417,31 @@ export type Database = {
           p_organization_id: string
         }
         Returns: string
+      }
+      add_organization_member_by_email: {
+        Args: {
+          p_email: string
+          p_organization_id: string
+        }
+        Returns: string
+      }
+      list_organization_members_for_owner: {
+        Args: {
+          p_organization_id: string
+        }
+        Returns: {
+          can_create_agents: boolean
+          can_delete_agents: boolean
+          can_create_renditions: boolean
+          can_edit_renditions: boolean
+          can_delete_renditions: boolean
+          can_register_payments: boolean
+          can_manage_backups: boolean
+          email: string
+          full_name: string
+          role: Database["public"]["Enums"]["organization_role"]
+          user_id: string
+        }[]
       }
       create_agency_agent: {
         Args: {
