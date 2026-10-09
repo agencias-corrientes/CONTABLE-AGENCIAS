@@ -1515,6 +1515,14 @@ export type Database = {
         }
         Returns: string
       }
+      archive_agency_agent: {
+        Args: {
+          p_agent_id: string
+          p_organization_id: string
+          p_reason?: string | null
+        }
+        Returns: string
+      }
       add_organization_member_by_email: {
         Args: {
           p_email: string
