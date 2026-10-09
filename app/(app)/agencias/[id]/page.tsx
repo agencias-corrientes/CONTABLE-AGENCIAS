@@ -49,7 +49,7 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
 
   return (
     <div className={"page agency-detail-page " + (agent.kind === "subagent" ? "detail-subagent" : "detail-ambulant")}>
-      <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={currentDrawPeriods.map((period) => period.time).filter((time): time is string => Boolean(time))} />
+      <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={currentDrawPeriods.map((period) => period.time).filter((time): time is string => Boolean(time))} renderedAt={new Date().toISOString()} />
       <div className="topbar">
         <div><Link href="/pagos" className="back-link">← Volver a Rendiciones</Link><p className="eyebrow">{typeLabel.toUpperCase()}</p><h1>{code}</h1><p className="muted">{typeLabel} · {agent.full_name} · {agent.is_active ? "Activo" : "Inactivo"}</p></div>
       </div>
