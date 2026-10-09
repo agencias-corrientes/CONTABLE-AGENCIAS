@@ -16,12 +16,10 @@ export default async function HomePage() {
         <p className="lead">Elegí tu perfil para ingresar a las rendiciones diarias de subagentes y ambulantes.</p>
         <div className="landing-role-grid">
           <Link className="landing-role-choice landing-role-admin" href="/login?perfil=administrador">
-            <span className="landing-role-icon" aria-hidden="true">♙</span>
             <span className="landing-role-copy"><strong>Administrador</strong><small>Personal, permisos y configuración de la agencia</small></span>
             <span className="landing-role-enter">Ingresar →</span>
           </Link>
           <Link className="landing-role-choice landing-role-employee" href="/login?perfil=empleado">
-            <span className="landing-role-icon" aria-hidden="true">♟</span>
             <span className="landing-role-copy"><strong>Empleado</strong><small>Operaciones habilitadas por el titular</small></span>
             <span className="landing-role-enter">Ingresar →</span>
           </Link>

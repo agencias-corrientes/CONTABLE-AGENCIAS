@@ -78,6 +78,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     return [agent.code, agent.full_name, agent.phone ?? "", agent.kind === "subagent" ? "subagente" : "ambulante"]
       .some((value) => String(value).toLocaleLowerCase("es-AR").includes(normalizedSearch));
   });
+  const selectedAgent = activeAgents.find((agent) => String(agent.id) === selectedAgentId);
   const todayRendido = todayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
   const todayCobrado = todayRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_payments) ? row.agency_rendition_payments : []).reduce((subtotal: number, payment: any) => subtotal + Number(payment.amount ?? 0), 0), 0);
   const todayPendiente = Math.max(0, todayRendido - todayCobrado);
@@ -265,16 +266,11 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     const dailyStatusLabel = !dailyRendition ? "PENDIENTE: Cierre diario" : dailyStatusKind === "complete" ? "Cierre diario rendido" : dailyStatusKind === "incomplete" ? "Cierre diario incompleto" : "Cierre diario registrado · revisar estado";
 
     return (
-      <details className={"rendition-agent-accordion " + (subagent ? "rendition-subagent" : "rendition-ambulant")} open={selectedAgentId === agent.id}>
-        <summary className="rendition-agent-summary" aria-label={agentLabel(agent) + " " + agent.code + " — abrir rendiciones por sorteo"}>
-          <strong className="rendition-agent-code">{agent.code}</strong>
-          <span className="rendition-agent-name">{agent.full_name}</span>
-          <span className="rendition-open-label">Ver sorteos y rendiciones ▾</span>
-        </summary>
+      <div className={"rendition-agent-accordion " + (subagent ? "rendition-subagent" : "rendition-ambulant")}>
         <div className="rendition-agent-expanded">
           <div className="rendition-agent-expanded-head">
             <div><span className="eyebrow">{renditionPolicy === "daily" ? "CIERRE DIARIO" : renditionPolicy === "selected_draws" ? "SORTEOS SELECCIONADOS" : "RENDICIONES POR SORTEO"}</span><h3>{agentLabel(agent)} {agent.code} · {agent.full_name}</h3><p className="muted">{renditionPolicy === "daily" ? "Una sola rendición agrupa los importes de todos los juegos al cierre." : renditionPolicy === "selected_draws" ? "Solo se controlan los sorteos habilitados para este operador." : "Cada sorteo tiene su rendición independiente."} Comisión acumulada: <strong>{money(commission, activeOrganization.currency_code)}</strong> · Neto estimado: <strong>{money(netDue, activeOrganization.currency_code)}</strong>.</p></div>
-            <Link href={"/agencias/" + agent.id} className="button ghost">Ficha del agente</Link>
+            <Link href={"/agencias/" + agent.id} className="button ghost">Configurar</Link>
           </div>
           <div className="draw-period-chip-list expanded-draw-period-list" aria-label={"Estados de rendición de " + agent.code}>
             {renditionPolicy === "daily"
@@ -310,22 +306,41 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             <RenditionHistory agent={agent} historyRows={todayRows} />
           </section>
         </div>
-      </details>
+      </div>
     );
   }
 
   return (
-    <div className="page">
-      <div className="topbar">
-        <div><p className="eyebrow">CONTROL OPERATIVO DIARIO</p><h1>Rendiciones</h1><p className="muted">Elegí un subagente o ambulante. Los botones compactos abren la carga de rendición del subagente o ambulante seleccionado.</p></div>
-        <div className="topbar-actions">
-          {selectedAgentId && <Link href="/pagos" className="button ghost">Volver a todas las rendiciones</Link>}
-          {manager && <form action={sendAgencyBackupManually} className="rendition-manual-backup-form">
-            <button className="button primary" type="submit" title="Enviar ahora las copias pendientes de esta agencia">Enviar backup manual</button>
-          </form>}
-        </div>
-      </div>
-
+    <div className="page rendition-page-clean">
+      <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={drawPeriods.map((period) => period.time).filter((time): time is string => Boolean(time))} renderedAt={new Date().toISOString()} />
+      <RenditionScrollHelper />
+      {!selectedAgentId ? (
+        <section className="rendition-agent-code-list" aria-label="Elegir subagente o ambulante">
+          {filteredActiveAgents.map((agent) => (
+            <Link
+              key={agent.id}
+              href={"/pagos?agent=" + agent.id}
+              className={"rendition-agent-code-link " + (agent.kind === "subagent" ? "rendition-subagent" : "rendition-ambulant")}
+              aria-label={"Abrir rendición de " + (agent.kind === "subagent" ? "subagente " : "ambulante ") + agent.code}
+            >
+              {agent.code || "SIN CÓDIGO"}
+            </Link>
+          ))}
+          {!filteredActiveAgents.length && (
+            <div className="agency-empty">
+              {searchTerm ? "No hay subagentes ni ambulantes que coincidan con esa búsqueda." : "No hay subagentes ni ambulantes activos."}
+            </div>
+          )}
+        </section>
+      ) : (
+        <div className="rendition-selected-view">
+          <div className="rendition-selected-header">
+            <Link href="/pagos" className="back-link">← Volver a subagentes y ambulantes</Link>
+            <div>
+              <p className="eyebrow">RENDICIÓN DIARIA</p>
+              <h1>{selectedAgent?.code ?? "Operador"}</h1>
+            </div>
+          </div>
       {params.resultado === "backup-manual-enviado" && <p className="message success-message">Backup manual enviado al correo configurado: {Math.max(0, Number(params.copias ?? 0))} rendición(es). El cierre automático continúa programado.</p>}
       {params.resultado === "backup-sin-pendientes" && <p className="message">No había respaldos pendientes para enviar. Las copias guardadas siguen disponibles en el historial.</p>}
       {params.resultado === "sorteo-rendido" && <p className="message success-message">Se confirmó el estado de ese sorteo; los demás períodos no se modificaron.</p>}
@@ -370,126 +385,14 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "backup-no-enviado": "El backup sigue guardado, pero el proveedor rechazó el envío. Revisá el correo configurado y la configuración de Resend."
       } as Record<string,string>)[params.error] ?? "La operación no se pudo completar. Verificá permisos y datos."}</p>}
 
-      <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={drawPeriods.map((period) => period.time).filter((time): time is string => Boolean(time))} renderedAt={new Date().toISOString()} />
-      <RenditionScrollHelper />
-      <div className="stats-grid compact rendition-stats">
-        <div className="stat-card"><span>Rendido hoy</span><strong>{money(todayRendido, activeOrganization.currency_code)}</strong><small>{todayRows.length} registros</small></div>
-        <div className="stat-card"><span>Cobrado hoy</span><strong>{money(todayCobrado, activeOrganization.currency_code)}</strong><small>cobros registrados</small></div>
-        <div className="stat-card"><span>Pendiente hoy</span><strong>{money(todayPendiente, activeOrganization.currency_code)}</strong><small>saldo del día</small></div>
-        <div className="stat-card"><span>Agentes activos</span><strong>{activeAgents.length}</strong><small>{activeAgents.filter((agent) => agent.kind === "subagent").length} subagentes · {activeAgents.filter((agent) => agent.kind === "ambulant").length} ambulantes</small></div>
-      </div>
 
-      <section className="panel rendition-pending-inventory">
-        <div className="panel-head">
-          <div><h2>Inventario de faltantes a rendir</h2><p className="muted">Muestra los sorteos vencidos que todavía requieren atención según la modalidad configurada para cada subagente o ambulante.</p></div>
-          <span className={pendingInventory.length ? "badge warning" : "badge success"}>{pendingInventory.length} pendiente(s) / revisar</span>
+          {selectedAgent ? (
+            <AgentAccordion agent={selectedAgent} />
+          ) : (
+            <div className="message error-message">No encontramos ese subagente o ambulante. Volvé a la lista y seleccioná otro código.</div>
+          )}
         </div>
-        {pendingInventory.length
-          ? <div className="table-wrap"><table>
-              <thead><tr><th>Operador</th><th>Sorteo o cierre</th><th>Estado</th><th>Acciones</th></tr></thead>
-              <tbody>{pendingInventory.map((item: any) => <tr key={String(item.agent.id) + "|" + item.periodLabel}>
-                <td><strong>{agentLabel(item.agent)} {item.agent.code}</strong><small>{item.agent.full_name}</small></td>
-                <td><strong>{item.periodLabel}</strong><small>{item.time ? "Horario: " + item.time : "Acumulado de cierre diario"}</small><small>{item.description}</small></td>
-                <td><span className={item.status === "pending" ? "badge warning" : "badge"}>{item.status === "pending" ? "Pendiente" : item.status === "incomplete" ? "Incompleta" : "Revisar"}</span></td>
-                <td><div className="game-actions"><Link className="button ghost small" href={"/pagos?agent=" + item.agent.id}>Abrir rendición</Link><Link className="button ghost small" href={"/agencias/" + item.agent.id}>Configurar</Link></div></td>
-              </tr>)}</tbody>
-            </table></div>
-          : <p className="muted">No hay sorteos vencidos sin rendir ni estados incompletos o pendientes de revisión para las modalidades configuradas.</p>}
-      </section>
-
-      <form method="get" action="/pagos" className="rendition-agent-search" role="search">
-        <label htmlFor="rendition-agent-query">Buscar operador</label>
-        <input id="rendition-agent-query" name="busqueda" type="search" autoComplete="off" defaultValue={searchTerm} placeholder="Código, nombre o teléfono" />
-        <button className="button primary" type="submit">Buscar</button>
-        {searchTerm && <Link className="button ghost" href="/pagos">Limpiar</Link>}
-      </form>
-
-      <section className="panel rendition-agents-panel">
-        <div className="panel-head"><h2>Subagentes y ambulantes</h2></div>
-        {legacyUnlabelledTodayCount > 0 && <p className="message">Hay {legacyUnlabelledTodayCount} rendición(es) del día sin período identificado. Se conservan en el historial y no se asignan automáticamente a ningún sorteo.</p>}
-
-        <div className="rendition-agent-list">
-          {filteredActiveAgents.map((agent) => <AgentAccordion key={agent.id} agent={agent} />)}
-          {!filteredActiveAgents.length && <div className="agency-empty">{searchTerm ? "No hay subagentes ni ambulantes que coincidan con esa búsqueda." : "No hay agentes activos. "}<Link href="/agencias">Administrar subagentes y ambulantes</Link></div>}
-        </div>
-      </section>
-
-      <section className="panel rendition-general-history">
-        <div className="panel-head"><div><h2>Rendiciones generales</h2><p className="muted">Cada registro muestra el código del subagente o ambulante, la fecha y el importe rendido. El historial se separa por día operativo.</p></div><span className="muted">{historicalRows.length} rendiciones anteriores</span></div>
-        {historicalDays.length ? <div className="rendition-archive-days">
-          {historicalDays.map(([day, dayRows]) => {
-            const total = dayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
-            const ids = Array.from(new Set(dayRows.map((row) => String(row.agent_id))));
-            return <details className="rendition-archive-day" key={day}>
-              <summary><span><strong>{formatAgencyDate(day)}</strong><small>{dayRows.length} rendiciones</small></span><strong>{money(total, activeOrganization.currency_code)}</strong><span className="rendition-open-label">Ver día ▾</span></summary>
-              <div className="rendition-archive-agents">
-                {ids.map((id) => {
-                  const agent = agentRows.find((item) => item.id === id);
-                  if (!agent) return null;
-                  const count = dayRows.filter((row) => row.agent_id === id).length;
-                  return <details className="rendition-archive-agent" key={id}>
-                    <summary><span>{agent.kind === "subagent" ? "Subagente" : "Ambulante"}</span><strong>{agent.code} · {agent.full_name}</strong><small>{count} rendiciones</small></summary>
-                    <RenditionHistory agent={agent} historyRows={dayRows} />
-                  </details>;
-                })}
-              </div>
-            </details>;
-          })}
-        </div> : <p className="muted rendition-archive-empty">Todavía no hay rendiciones de jornadas anteriores. Se archivarán automáticamente al comenzar una nueva jornada.</p>}
-      </section>
-
-      {!!archivedAgents.length && (
-        <section className="panel archived-rendition-panel">
-          <div className="panel-head"><div><h2>Agentes inactivos con historial</h2><p className="muted">Sus rendiciones anteriores siguen disponibles; no se pueden crear nuevas.</p></div><span className="muted">{archivedAgents.length}</span></div>
-          <div className="rendition-agent-list">
-            {archivedAgents.map((agent) => (
-              <details key={agent.id} className="rendition-agent-accordion archived-rendition-agent">
-                <summary className="rendition-agent-summary"><span className="rendition-agent-kind">INACTIVO</span><strong className="rendition-agent-code">{agent.code}</strong><span className="rendition-agent-name">{agent.full_name}</span><span className="rendition-open-label">Ver historial ▾</span></summary>
-                <div className="rendition-agent-expanded"><RenditionHistory agent={agent} /></div>
-              </details>
-            ))}
-          </div>
-        </section>
       )}
-
-      {!!voidRows.length && (
-        <section className="panel rendition-void-history">
-          <div className="panel-head">
-            <div><h2>Rendiciones anuladas</h2><p className="muted">Se conservan para auditoría. No suman a los totales operativos ni se eliminan del historial.</p></div>
-            <span className="muted">{voidRows.length} registros</span>
-          </div>
-          <div className="rendition-history-list">
-            {voidRows.map((row) => {
-              const agent = agentRows.find((item) => item.id === row.agent_id);
-              const gameAmounts = (Array.isArray(row.agency_rendition_game_amounts) ? row.agency_rendition_game_amounts : []) as GameAmount[];
-              const tickets = Array.isArray(row.agency_rendition_tickets) ? row.agency_rendition_tickets : [];
-              return (
-                <details className="rendition-record voided-record" key={row.id}>
-                  <summary>
-                    <span className="rendition-record-date">{formatAgencyDate(row.rendition_date)}<small>{formatAgencyDateTime(row.created_at)}</small></span>
-                    <span className="rendition-record-period">{agent ? agent.code + " · " + agent.full_name : "Agente"}</span>
-                    <span className="rendition-record-amount">{money(row.amount_due, activeOrganization.currency_code)}<small>Anulada</small></span>
-                    <span className="badge">Historial</span>
-                  </summary>
-                  <div className="rendition-record-detail">
-                    <p><strong>Operador:</strong> {agent?.kind === "ambulant" ? "Ambulante" : "Subagente"} {agent?.code ?? "—"} · {agent?.full_name ?? "—"}</p>
-                    <p><strong>Período:</strong> {row.game_period || "—"} · <strong>Sorteo:</strong> {row.draw_number || "—"} · <strong>Referencia:</strong> {row.reference || "—"}</p>
-                    <h4>Importes guardados en la rendición anulada</h4>
-                    {gameAmounts.length
-                      ? <ul className="rendition-game-amounts">{gameAmounts.map((game) => <li key={game.id}><span>{game.agency_game_types?.name ?? "Juego"}</span><strong>{money(game.amount, activeOrganization.currency_code)}</strong></li>)}</ul>
-                      : <p className="muted">No hay desglose de juego asociado.</p>}
-                    {tickets.length > 0 && <div className="ticket-saved-list"><strong>Tickets guardados</strong>{tickets.map((ticket: any) => <div key={ticket.id}><code>{ticket.ticket_number}</code>{ticket.ticket_qr_payload && <small>QR: {ticket.ticket_qr_payload.slice(0, 100)}{ticket.ticket_qr_payload.length > 100 ? "…" : ""}</small>}</div>)}</div>}
-                    <p><strong>Motivo / observaciones:</strong> {row.notes || "No se indicó un motivo."}</p>
-                    {agent && <Link href={"/pagos?agent=" + agent.id} className="button ghost small">Volver a rendiciones de este operador</Link>}
-                  </div>
-                </details>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-
     </div>
   );
 }

@@ -68,12 +68,10 @@ function LoginForm() {
       <div className="form-stack login-role-selector">
         <p className="muted">Seleccioná tu perfil para continuar.</p>
         <Link className="landing-role-choice landing-role-admin" href="/login?perfil=administrador">
-          <span className="landing-role-icon" aria-hidden="true">🎟️</span>
           <span className="landing-role-copy"><strong>Administrador</strong><small>Acceso del titular y configuración de la agencia</small></span>
           <span className="landing-role-enter">Ingresar →</span>
         </Link>
         <Link className="landing-role-choice landing-role-employee" href="/login?perfil=empleado">
-          <span className="landing-role-icon" aria-hidden="true">🎲</span>
           <span className="landing-role-copy"><strong>Empleado</strong><small>Acceso según los permisos asignados</small></span>
           <span className="landing-role-enter">Ingresar →</span>
         </Link>

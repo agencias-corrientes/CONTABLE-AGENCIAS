@@ -117,3 +117,20 @@ html,body{background:var(--bg);color:var(--text)}
 .operational-cutoff-form{display:grid;gap:12px;max-width:620px}
 .operational-cutoff-form label{display:grid;gap:6px;font-size:13px;font-weight:750}
 @media(max-width:640px){.landing-role-grid{grid-template-columns:1fr}.landing-role-choice{padding:15px}.user-role-line{grid-template-columns:1fr}.landing-role-enter{white-space:normal}}
+
+
+/* Rendiciones: selector limpio de operadores y vista de rendición enfocada */
+.rendition-page-clean{max-width:1180px}
+.rendition-agent-code-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:12px;align-content:start}
+.rendition-agent-code-link{display:flex;min-height:58px;align-items:center;justify-content:center;padding:14px 12px;border:1px solid #d9c985;border-bottom:4px solid #7c3347;border-radius:10px;background:#f2e7ad;color:#4d2930;font-size:17px;font-weight:850;letter-spacing:.02em;text-decoration:none;box-shadow:0 3px 9px rgba(54,32,25,.06);transition:transform .15s ease,box-shadow .15s ease,background .15s ease}
+.rendition-agent-code-link:hover{transform:translateY(-1px);box-shadow:0 7px 14px rgba(54,32,25,.11);background:#f7edbf}
+.rendition-agent-code-link.rendition-ambulant{background:#f3e6dc;border-color:#dfc7b5;border-bottom-color:#7c3347}
+.rendition-agent-code-link.rendition-ambulant:hover{background:#faeee4}
+.rendition-selected-view{display:grid;gap:16px;max-width:1100px;margin:0 auto}
+.rendition-selected-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px}
+.rendition-selected-header h1{margin:2px 0 0;font-size:32px;line-height:1.1}
+.rendition-selected-view>.rendition-agent-accordion{width:100%}
+.rendition-selected-view .rendition-agent-expanded-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.rendition-selected-view .rendition-agent-expanded-head>div{min-width:0}
+.rendition-selected-view .rendition-agent-expanded-head .button{flex:0 0 auto}
+@media(max-width:640px){.rendition-agent-code-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.rendition-agent-code-link{min-height:52px;font-size:15px;padding:10px 6px}.rendition-selected-header h1{font-size:27px}.rendition-selected-view .rendition-agent-expanded-head{flex-direction:column}}

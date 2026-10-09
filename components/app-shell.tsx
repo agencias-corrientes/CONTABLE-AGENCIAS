@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const nav = [
   ["pagos", "Rendiciones", "↔"],
-  ["agencias", "Subagentes y ambulantes", "♟"],
+  ["agencias", "Subagentes y ambulantes", ""],
   ["buscar", "Buscar", "⌕"],
   ["juegos", "Juegos y comisiones", "◎"],
   ["loteria-correntina", "Lotería Correntina", "◉"],
@@ -60,7 +60,7 @@ export function AppShell({
                 } : undefined}
                 className={pathname.startsWith(href) ? "nav-item active" : "nav-item"}
               >
-                <span className="nav-icon">{icon}</span>{label}
+                {icon ? <span className="nav-icon">{icon}</span> : null}{label}
               </Link>
             );
           })}
