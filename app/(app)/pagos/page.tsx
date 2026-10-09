@@ -93,6 +93,17 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     const agentTodayRows = todayRows.filter((row) => String(row.agent_id) === agentId);
     const stored: any = dailyStatusByAgent.get(agentId);
     if (stored?.status === "incomplete") {
+      // Si el operador terminó de cobrar todos los registros de la jornada,
+      // el botón debe reflejar "Rendida" aunque el estado inicial se haya guardado incompleto.
+      const allCurrentRenditionsPaid = agentTodayRows.length > 0 &&
+        agentTodayRows.every((row: any) => rowTotals(row).pending <= 0);
+      if (allCurrentRenditionsPaid) {
+        return {
+          status: "complete" as const,
+          note: "La rendición diaria quedó completamente cobrada.",
+          reportedAmount: null as number | null,
+        };
+      }
       const reportedAmount = stored.reported_amount === null || stored.reported_amount === undefined
         ? null
         : Number(stored.reported_amount);
