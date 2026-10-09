@@ -21,8 +21,18 @@ async function getOrg() {
   if (memberError || !member) throw new Error("No hay una empresa configurada.");
 
   const manager = member.role === "owner" || member.role === "admin";
+  const fullPermissions = {
+    can_create_agents: true, can_delete_agents: true, can_create_renditions: true,
+    can_edit_renditions: true, can_delete_renditions: true,
+    can_register_payments: true, can_manage_backups: true,
+  };
+  const noPermissions = {
+    can_create_agents: false, can_delete_agents: false, can_create_renditions: false,
+    can_edit_renditions: false, can_delete_renditions: false,
+    can_register_payments: false, can_manage_backups: false,
+  };
   const { data: permissions } = manager
-    ? { data: { can_create_agents: true, can_delete_agents: true, can_create_renditions: true, can_edit_renditions: true, can_delete_renditions: true, can_register_payments: true, can_manage_backups: true } }
+    ? { data: fullPermissions }
     : await supabase
         .from("organization_member_permissions")
         .select("can_create_agents,can_delete_agents,can_create_renditions,can_edit_renditions,can_delete_renditions,can_register_payments,can_manage_backups")
@@ -30,7 +40,7 @@ async function getOrg() {
         .eq("user_id", claims.sub)
         .maybeSingle();
 
-  return { supabase, organizationId: member.organization_id, role: member.role, permissions: permissions ?? {} };
+  return { supabase, organizationId: member.organization_id, role: member.role, permissions: permissions ?? noPermissions };
 }
 
 export async function createAgencyAgent(formData: FormData) {
