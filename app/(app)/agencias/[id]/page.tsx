@@ -59,7 +59,7 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
       {pageParams.error && <p className="message error-message">{pageParams.error === "comision-invalida" ? "Cada comisión debe estar entre 0 y 100 %." : "No se pudieron guardar las comisiones. Revisá tus permisos y volvé a intentar."}</p>}
       {isOwner && (
         <section className="panel agent-commission-panel">
-          <div className="panel-head"><div><h2>Comisión por juego de este operador</h2><p className="muted">Dejá el campo vacío para heredar la comisión general de todos los agentes. Escribí un porcentaje solo cuando este subagente o ambulante tenga una excepción. El historial de cada rendición conserva el porcentaje aplicado.</p></div><span className="badge success">Solo titular</span></div>
+          <div className="panel-head"><div><h2>Comisión por juego de este operador</h2><p className="muted">Dejá el campo vacío para heredar la comisión general de todos los agentes. Escribí un porcentaje solo cuando este subagente o ambulante tenga una excepción. El historial de cada rendición conserva el porcentaje aplicado.</p></div><div className="agent-commission-head-actions"><span className="badge success">Solo titular</span><Link href="/juegos#comision-general" className="button ghost">Comisión general de todos</Link></div></div>
           <form action={saveAgentGameCommissions} className="agent-commission-form">
             <input type="hidden" name="agent_id" value={agent.id} />
             <div className="agent-commission-list">

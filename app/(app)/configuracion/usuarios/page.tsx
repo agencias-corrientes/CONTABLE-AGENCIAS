@@ -13,6 +13,15 @@ export default async function UsuariosPage({searchParams}:{searchParams?:Promise
   const params = searchParams ? await searchParams : {};
   return <div className="page">
     <div className="topbar"><div><p className="eyebrow">SEGURIDAD</p><h1>Usuarios y roles</h1><p className="muted">Controlá los roles y quitá el acceso a usuarios de {organization.name}. Para confirmar la eliminación se solicita tu contraseña actual. Esto desvincula el usuario de esta agencia; no elimina su cuenta global de inicio de sesión.</p></div></div>
+    <section className="panel owner-transfer-guide">
+      <h2>Cómo entregar la agencia y quitar tu usuario</h2>
+      <ol>
+        <li>Creá o vinculá primero la cuenta del nuevo responsable desde <strong>Personal y permisos</strong>.</li>
+        <li>En esta pantalla, cambiá su rol a <strong>Propietario</strong> y guardá el cambio.</li>
+        <li>Verificá que esa cuenta pueda ingresar. Después, en la columna <strong>Eliminar acceso</strong>, quitá tu propia membresía usando tu contraseña.</li>
+      </ol>
+      <p className="muted small-text">Esto quita tu acceso a esta agencia, no borra tu cuenta global ni los registros históricos. Nunca quites al único propietario.</p>
+    </section>
     {params.error==="contrasena-incorrecta" && <p className="message error-message">La contraseña no coincide. No se eliminó ningún acceso.</p>}
     {params.error==="sin-permiso-eliminar" && <p className="message error-message">No se puede quitar ese usuario. Si es el único titular, primero asigná otro titular.</p>}
     {params.error && !["contrasena-incorrecta","sin-permiso-eliminar"].includes(params.error) && <p className="message error-message">No se pudo quitar el acceso. No se modificaron los datos.</p>}

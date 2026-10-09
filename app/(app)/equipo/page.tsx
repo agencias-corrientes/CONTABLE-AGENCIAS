@@ -162,26 +162,33 @@ export default async function TeamPermissionsPage({
                 <div><h3>{employee.full_name || employee.email}</h3><p className="muted">{employee.email}</p></div>
                 <span className={"badge " + (isOwner ? "success" : "")}>{isOwner ? "Titular" : isAdmin ? "Administrador" : "Empleado"}</span>
               </div>
-              {isOwner ? <p className="muted">Cuenta principal de la agencia. Su acceso no se modifica desde esta lista.</p> : isAdmin ? <p className="message">Esta cuenta tiene el rol de administrador y conserva privilegios amplios. Para aplicar restricciones por tarea debe utilizar el rol de empleado.</p> : <>
-                <form action={saveEmployeePermissions} className="team-permissions-form">
-                  <input type="hidden" name="user_id" value={employee.user_id} />
-                  <h4>Permisos habilitados</h4>
-                  <div className="team-permission-grid">
-                    {permissionLabels.map(([name, label]) => <label key={name} className="team-permission-option"><input type="checkbox" name={name} defaultChecked={employee[name]} /><span>{label}</span></label>)}
+              {isOwner ? (
+                <p className="muted">Cuenta principal de la agencia. Para quitar al titular actual, primero transferí el rol de Propietario en Usuarios y roles.</p>
+              ) : (
+                <>
+                  {isAdmin && <p className="message">Esta cuenta tiene rol Administrador y privilegios amplios. Podés quitarle el acceso desde esta misma tarjeta.</p>}
+                  {!isAdmin && (
+                    <form action={saveEmployeePermissions} className="team-permissions-form">
+                      <input type="hidden" name="user_id" value={employee.user_id} />
+                      <h4>Permisos habilitados</h4>
+                      <div className="team-permission-grid">
+                        {permissionLabels.map(([name, label]) => <label key={name} className="team-permission-option"><input type="checkbox" name={name} defaultChecked={employee[name]} /><span>{label}</span></label>)}
+                      </div>
+                      <p className="team-security-note">El catálogo de juegos y sus valores no se incluyen en los permisos de empleados. Solo el titular o un administrador puede cambiar el catálogo/precios.</p>
+                      <button className="button primary" type="submit">Guardar permisos</button>
+                    </form>
+                  )}
+                  <div className="team-remove-access-visible">
+                    <strong>Eliminar empleado de esta agencia</strong>
+                    <p>Quita su membresía y los permisos en esta agencia; conserva su cuenta de acceso general y no borra las rendiciones históricas.</p>
+                    <form action={removeEmployeeAccess}>
+                      <input type="hidden" name="user_id" value={employee.user_id} />
+                      <label><input type="checkbox" name="confirm_remove" value="yes" required /> Confirmo quitar el acceso de {employee.email}</label>
+                      <button className="button danger small" type="submit">Eliminar acceso del empleado</button>
+                    </form>
                   </div>
-                  <p className="team-security-note">El catálogo de juegos y sus valores no se incluyen en los permisos de empleados. Solo el titular o un administrador puede cambiar el catálogo/precios.</p>
-                  <button className="button primary" type="submit">Guardar permisos</button>
-                </form>
-                <details className="team-remove-access">
-                  <summary>Revocar acceso de este empleado</summary>
-                  <p>Esto quita su membresía y sus permisos en esta agencia, pero no borra su cuenta general ni los registros históricos.</p>
-                  <form action={removeEmployeeAccess}>
-                    <input type="hidden" name="user_id" value={employee.user_id} />
-                    <label><input type="checkbox" name="confirm_remove" value="yes" required /> Confirmo revocar el acceso a esta agencia</label>
-                    <button className="button danger small" type="submit">Revocar acceso</button>
-                  </form>
-                </details>
-              </>}
+                </>
+              )}
             </article>;
           })}
         </div>

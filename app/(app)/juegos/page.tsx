@@ -81,7 +81,7 @@ export default async function GamesPage({ searchParams }: { searchParams?: Promi
         <div className="stat-card"><span>Movimientos por juego</span><strong>{details.length}</strong><small>distribuciones registradas</small></div>
       </div>
 
-      <section className="panel agent-commission-panel general-commission-panel">
+      <section id="comision-general" className="panel agent-commission-panel general-commission-panel">
         <div className="panel-head">
           <div><h2>Comisión general para todos los subagentes y ambulantes</h2><p className="muted">Configurá el porcentaje habitual para cada juego. Este valor se usa automáticamente cuando el operador no tiene una excepción particular.</p></div>
           <span className={canManageGames ? "badge success" : "badge"}>{canManageGames ? "Editable por titular" : "Solo consulta"}</span>

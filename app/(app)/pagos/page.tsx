@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
 import { agencyBusinessDateForCutoff, formatAgencyDate, formatAgencyDateTime } from "@/lib/agency-datetime";
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
+import { RenditionScrollHelper } from "@/components/rendition-scroll-helper";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
 import { receiveAgencyRendition, voidAgencyRendition } from "../agencias/actions";
 
@@ -233,6 +234,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       } as Record<string,string>)[params.error] ?? "La operación no se pudo completar. Verificá permisos y datos."}</p>}
 
       <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} />
+      <RenditionScrollHelper />
       <div className="stats-grid compact rendition-stats">
         <div className="stat-card"><span>Rendido hoy</span><strong>{money(todayRendido, activeOrganization.currency_code)}</strong><small>{todayRows.length} registros</small></div>
         <div className="stat-card"><span>Cobrado hoy</span><strong>{money(todayCobrado, activeOrganization.currency_code)}</strong><small>cobros registrados</small></div>

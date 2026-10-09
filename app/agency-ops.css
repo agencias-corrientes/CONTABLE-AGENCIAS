@@ -686,3 +686,73 @@
   .rendition-history-list .rendition-record>summary>.rendition-record-amount{grid-column:1;grid-row:3;text-align:left}
   .rendition-history-list .rendition-record>summary>.badge{grid-column:2;grid-row:3;justify-self:end;align-self:center;max-width:145px}
 }
+
+
+/* Preferencias finales: botones compactos, pastel y negrita. */
+.agency-agent-button-row.agency-subagent .agency-agent-code-button,
+.rendition-agents-panel .rendition-agent-accordion.rendition-subagent:not([open])>.rendition-agent-summary,
+.rendition-agents-panel .rendition-agent-accordion.rendition-subagent[open]>.rendition-agent-summary{
+  background:#fff0b8!important;border-color:#dcc36b!important;border-bottom-color:#dcc36b!important;
+  color:#3d321b!important;font-weight:900!important;
+}
+.agency-agent-button-row.agency-ambulant .agency-agent-code-button,
+.rendition-agents-panel .rendition-agent-accordion.rendition-ambulant:not([open])>.rendition-agent-summary,
+.rendition-agents-panel .rendition-agent-accordion.rendition-ambulant[open]>.rendition-agent-summary{
+  background:#dff2ff!important;border-color:#a9d7f2!important;border-bottom-color:#a9d7f2!important;
+  color:#17384b!important;font-weight:900!important;
+}
+.agency-agent-button-row.agency-subagent .agency-agent-code-button:hover,
+.agency-agent-button-row.agency-subagent .agency-agent-code-button:focus-visible,
+.rendition-agents-panel .rendition-agent-accordion.rendition-subagent>.rendition-agent-summary:hover{
+  background:#ffeb9c!important;color:#3d321b!important;
+}
+.agency-agent-button-row.agency-ambulant .agency-agent-code-button:hover,
+.agency-agent-button-row.agency-ambulant .agency-agent-code-button:focus-visible,
+.rendition-agents-panel .rendition-agent-accordion.rendition-ambulant>.rendition-agent-summary:hover{
+  background:#cceaff!important;color:#17384b!important;
+}
+/* Evita que el desplegable recorte el formulario de carga. */
+.rendition-agents-panel .rendition-agent-accordion[open]{overflow:visible!important;scroll-margin-top:16px}
+.rendition-agent-expanded,.rendition-entry-form{min-width:0;overflow:visible}
+.rendition-mode-switch{scroll-margin-top:16px;justify-content:flex-start;gap:6px;width:min(100%,380px);margin-inline:0}
+.rendition-mode-switch button{padding:7px 9px;font-size:11px;line-height:1.2}
+/* Solo se compacta el selector Foto/QR: el bloque de importes conserva su tamaño. */
+.ticket-capture-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;width:min(100%,380px);max-width:380px;margin:0;padding:0;min-width:0}
+.ticket-photo-picker{
+ display:grid!important;grid-template-columns:22px minmax(0,1fr);grid-template-rows:auto auto auto;
+ align-items:center;justify-items:start;align-content:center;gap:2px 7px;width:100%;
+ min-height:0!important;height:auto;aspect-ratio:auto!important;padding:9px 10px!important;
+ border:1px dashed #cbbd93;border-radius:8px;text-align:left!important;background:#f8f2dc
+}
+.ticket-photo-picker .ticket-photo-icon{grid-column:1;grid-row:1/3;font-size:20px;align-self:center}
+.ticket-photo-picker strong{grid-column:2;font-size:12px!important;line-height:1.2}
+.ticket-photo-picker>span:not(.ticket-photo-icon){grid-column:2;max-width:none!important;font-size:10px!important;line-height:1.3!important}
+.ticket-photo-picker input[type="file"]{grid-column:1/-1;width:100%;max-width:100%;margin-top:4px;font-size:10px!important}
+.ticket-capture-panel>.muted.small-text{margin:0;font-size:10px;line-height:1.3}
+.ticket-file-label,.ticket-read-progress,.ticket-read-error,.ticket-read-notice{margin:3px 0;font-size:10px;line-height:1.35}
+.ticket-photo-preview{margin:2px 0}
+.ticket-photo-preview-button{display:inline-flex;align-items:center;gap:6px;padding:4px 7px;border:1px solid #ded3b4;border-radius:6px;background:#fffdf6;font-size:10px;font-weight:800}
+.ticket-photo-preview-button img{width:48px!important;height:48px!important;max-width:48px!important;max-height:48px!important;object-fit:cover;border-radius:4px}
+.qr-detected{gap:6px;margin:3px 0;padding:7px;font-size:10px}
+.qr-detected code{font-size:9px;max-width:100%;overflow-wrap:anywhere}
+.agent-commission-head-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+.fiscal-period-form{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(150px,1fr) minmax(150px,1fr) auto;gap:10px;align-items:end}
+.fiscal-period-form label{display:grid;gap:6px;min-width:0;font-size:12px;font-weight:800;color:#5a4b32}
+.fiscal-period-form input{width:100%;min-width:0}
+.team-remove-access-visible{display:grid;gap:8px;margin-top:14px;padding:12px;border:1px solid #e4bfc7;border-left:4px solid #8d263d;border-radius:8px;background:#fff8f8}
+.team-remove-access-visible>strong{font-size:13px;color:#752438}
+.team-remove-access-visible p{font-size:12px;line-height:1.4;margin:0}
+.team-remove-access-visible form{display:grid;gap:8px}
+.team-remove-access-visible label{display:flex;align-items:flex-start;gap:8px;font-size:12px}
+.team-remove-access-visible input[type=checkbox]{width:auto;flex:0 0 auto;margin-top:2px}
+.team-remove-access-visible .button{width:max-content;max-width:100%}
+.owner-transfer-guide{border-left:5px solid #d2b04b;background:#fffdf6}
+.owner-transfer-guide ol{padding-left:20px;margin:8px 0;display:grid;gap:6px}
+@media(max-width:700px){
+ .rendition-mode-switch{width:100%;max-width:380px}
+ .rendition-mode-switch button{flex:0 1 auto;min-width:0;padding:7px 8px;font-size:10px}
+ .ticket-capture-panel{width:min(100%,340px);max-width:340px}
+ .ticket-photo-picker{padding:8px!important}
+ .fiscal-period-form{grid-template-columns:1fr}
+ .fiscal-period-form button{width:100%}
+}
