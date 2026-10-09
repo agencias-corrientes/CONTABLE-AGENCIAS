@@ -284,7 +284,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         }
         if (qr.drawNumber) setDrawNumber(qr.drawNumber);
         if (qr.ticketNumber) setTicketNumbers((previous) => previous ? previous + "\n" + qr.ticketNumber : qr.ticketNumber);
-        if (qr.amount && qr.game) {
+        if (qr.amount && qr.game && !dailyMode) {
           const normalizedGame = normalize(qr.game);
           const target = periodGames.find((game) => aliasesFor(game).some((alias) => normalizedGame.includes(alias)));
           if (target) setAmounts((previous) => ({ ...previous, [target.id]: qr.amount!.toFixed(2) }));
@@ -310,7 +310,17 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       setOcrText(recognizedText);
       const parsed = parseTicketText(recognizedText, periodGames);
-      setAmounts((previous) => ({ ...previous, ...parsed.amountMap }));
+      setAmounts((previous) => {
+        if (!dailyMode) return { ...previous, ...parsed.amountMap };
+        const combined = { ...previous };
+        for (const [gameId, rawAmount] of Object.entries(parsed.amountMap)) {
+          const scannedAmount = parseMoney(String(rawAmount));
+          if (scannedAmount === null) continue;
+          const priorAmount = parseMoney(previous[gameId] ?? "") ?? 0;
+          combined[gameId] = (priorAmount + scannedAmount).toFixed(2);
+        }
+        return combined;
+      });
       if (parsed.date) setDate(parsed.date);
       if (parsed.period && !dailyMode) {
         const recognized = resolveRecognizedDrawPeriod(parsed.period, allPeriods ?? periods);
@@ -331,7 +341,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       const qr = detectedQr ? structuredQr(detectedQr) : null;
       if (qr?.amount && parsed.detectedGames.length === 1 && !parsed.amountMap[periodGames.find((game) => game.name === parsed.detectedGames[0])?.id ?? ""]) {
         const target = periodGames.find((game) => game.name === parsed.detectedGames[0]);
-        if (target) setAmounts((previous) => ({ ...previous, [target.id]: qr.amount!.toFixed(2) }));
+        if (target) setAmounts((previous) => ({
+          ...previous,
+          [target.id]: dailyMode
+            ? ((parseMoney(previous[target.id] ?? "") ?? 0) + qr.amount!).toFixed(2)
+            : qr.amount!.toFixed(2),
+        }));
       }
 
       const recognizedCount = Object.keys(parsed.amountMap).length;
