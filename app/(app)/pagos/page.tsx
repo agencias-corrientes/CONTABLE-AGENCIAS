@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
-import { formatAgencyDateTime, todayInAgencyTimeZone } from "@/lib/agency-datetime";
+import { agencyBusinessDateForCutoff, formatAgencyDateTime } from "@/lib/agency-datetime";
+import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
 import { receiveAgencyRendition, voidAgencyRendition } from "../agencias/actions";
 
@@ -13,9 +14,11 @@ type GameAmount = {
   agency_game_types: { id: string; name: string; category: string } | null;
 };
 
-export default async function PagosPage({ searchParams }: { searchParams?: Promise<{ agent?: string; resultado?: string; error?: string; backup?: string; foto?: string }> }) {
+export default async function PagosPage({ searchParams }: { searchParams?: Promise<{ agent?: string; busqueda?: string; resultado?: string; error?: string; backup?: string; foto?: string }> }) {
   const params = searchParams ? await searchParams : {};
   const selectedAgentId = params.agent ?? "";
+  const searchTerm = (params.busqueda ?? "").trim();
+  const normalizedSearch = searchTerm.toLocaleLowerCase("es-AR");
   const { supabase, organization, member, userId } = await getCurrentContext();
   if (!organization || !member) return null;
   const activeOrganization = organization;
@@ -28,12 +31,14 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const canDeleteRenditions = Boolean(permissions?.can_delete_renditions);
   const canRegisterPayments = Boolean(permissions?.can_register_payments);
 
-  const today = todayInAgencyTimeZone();
-  const [{ data: agents }, { data: renditions }, { data: gameTypes }] = await Promise.all([
+  const [{ data: operationalSettings }, { data: agents }, { data: renditions }, { data: gameTypes }] = await Promise.all([
+    supabase.from("agency_operational_settings").select("rendition_cutoff_time").eq("organization_id", activeOrganization.id).maybeSingle(),
     supabase.from("agency_agents").select("id,kind,full_name,code,is_active,phone").eq("organization_id", activeOrganization.id).order("kind").order("code"),
     supabase.from("agency_renditions").select("id,agent_id,rendition_date,created_at,game_period,draw_number,capture_method,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)").eq("organization_id", activeOrganization.id).order("created_at", { ascending: false }).limit(500),
     supabase.from("agency_game_types").select("id,name,category,enabled").eq("organization_id", activeOrganization.id).order("sort_order").order("name"),
   ]);
+  const cutoffTime = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);
+  const today = agencyBusinessDateForCutoff(cutoffTime);
 
   const agentRows = agents ?? [];
   const activeAgents = agentRows.filter((agent) => agent.is_active);
@@ -41,7 +46,20 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const allRows = (renditions ?? []) as any[];
   const rows = allRows.filter((row) => row.status !== "void");
   const voidRows = allRows.filter((row) => row.status === "void");
-  const todayRows = rows.filter((row) => row.rendition_date === today);
+  const isCurrentOperationalDay = (row: any) => agencyBusinessDateForCutoff(cutoffTime, String(row.created_at ?? "")) === today;
+  const todayRows = rows.filter(isCurrentOperationalDay);
+  const historicalRows = rows.filter((row) => !isCurrentOperationalDay(row));
+  const historicalByDay = new Map<string, any[]>();
+  for (const row of historicalRows) {
+    const day = agencyBusinessDateForCutoff(cutoffTime, String(row.created_at ?? ""));
+    historicalByDay.set(day, [...(historicalByDay.get(day) ?? []), row]);
+  }
+  const historicalDays = Array.from(historicalByDay.entries()).sort(([a], [b]) => b.localeCompare(a));
+  const filteredActiveAgents = activeAgents.filter((agent) => {
+    if (!normalizedSearch) return true;
+    return [agent.code, agent.full_name, agent.phone ?? "", agent.kind === "subagent" ? "subagente" : "ambulante"]
+      .some((value) => String(value).toLocaleLowerCase("es-AR").includes(normalizedSearch));
+  });
   const todayRendido = todayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
   const todayCobrado = todayRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_payments) ? row.agency_rendition_payments : []).reduce((subtotal: number, payment: any) => subtotal + Number(payment.amount ?? 0), 0), 0);
   const todayPendiente = Math.max(0, todayRendido - todayCobrado);
@@ -54,8 +72,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     return { received, pending: Math.max(0, Number(row.amount_due ?? 0) - received), payments };
   };
 
-  function RenditionHistory({ agent }: { agent: any }) {
-    const agentRows = rows.filter((row) => row.agent_id === agent.id);
+  function RenditionHistory({ agent, historyRows = rows }: { agent: any; historyRows?: any[] }) {
+    const agentRows = historyRows.filter((row) => row.agent_id === agent.id);
     if (!agentRows.length) return <div className="rendition-history-empty">Todavía no hay rendiciones guardadas para este operador.</div>;
     return (
       <div className="rendition-history-list">
@@ -155,6 +173,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
 
   function AgentAccordion({ agent }: { agent: any }) {
     const agentRows = rows.filter((row) => row.agent_id === agent.id);
+    const todayAgentRows = todayRows.filter((row) => row.agent_id === agent.id);
     const received = agentRows.reduce((sum, row) => sum + rowTotals(row).received, 0);
     const due = agentRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
     const commission = agentRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_game_amounts) ? row.agency_rendition_game_amounts : []).reduce((acc: number, game: any) => acc + Number(game.commission_amount ?? 0), 0), 0);
@@ -181,8 +200,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             ? <RenditionEntryForm agentId={agent.id} games={games} today={today} />
             : <p className="message">No tenés permiso para registrar rendiciones. El titular debe habilitar esta operación.</p>}
           <section className="rendition-agent-history">
-            <div className="panel-head"><div><h3>Rendiciones registradas</h3><p className="muted">Cada registro se abre para ver juegos, importes, tickets y cobros.</p></div><span className="muted">{agentRows.length} registros</span></div>
-            <RenditionHistory agent={agent} />
+            <div className="panel-head"><div><h3>Rendiciones del día operativo</h3><p className="muted">Las anteriores quedan en Rendiciones generales y no se mezclan con la jornada nueva.</p></div><span className="muted">{todayAgentRows.length} registros</span></div>
+            <RenditionHistory agent={agent} historyRows={todayRows} />
           </section>
         </div>
       </details>
@@ -199,7 +218,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       {params.resultado === "rendicion-creada" && <p className={params.backup === "enviado" ? "message success-message" : "message backup-pending-message"}>Rendición registrada correctamente. {params.backup === "enviado" ? "El backup de texto se envió al correo configurado para el titular." : "El backup quedó guardado, pero el correo no confirmó la entrega. Revisá el estado en Personal y permisos."}{params.foto === "no-adjunta" ? " La foto no se adjuntó; el respaldo de texto se conserva." : ""}</p>}
       {params.resultado === "rendicion-corregida" && <p className={params.backup === "enviado" ? "message success-message" : "message backup-pending-message"}>Rendición corregida. Se conserva la auditoría y se creó una nueva revisión del respaldo. {params.backup === "enviado" ? "El correo se envió." : "El correo no confirmó entrega; la revisión permanece guardada para reintento."}</p>}
       {params.resultado === "rendicion-anulada" && <p className={params.backup === "enviado" ? "message success-message" : "message backup-pending-message"}>Rendición anulada con historial conservado. {params.backup === "enviado" ? "El respaldo actualizado se envió al correo del titular." : "El respaldo quedó registrado, pero el correo no confirmó entrega."}</p>}
-      {params.error && <p className="message error-message">{({
+      {params.error === "solo-titular-configuracion" && <p className="message error-message">La configuración es exclusiva del titular de la agencia.</p>}
+      {params.error && params.error !== "solo-titular-configuracion" && <p className="message error-message">{({
         "sin-permiso-rendicion": "No tenés permiso para registrar rendiciones.",
         "sin-permiso-cobro": "No tenés permiso para registrar cobros.",
         "sin-permiso-editar": "No tenés permiso para corregir rendiciones.",
@@ -214,6 +234,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "rendicion-fallida": "No se pudo registrar la rendición."
       } as Record<string,string>)[params.error] ?? "La operación no se pudo completar. Verificá permisos y datos."}</p>}
 
+      <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} />
       <div className="stats-grid compact rendition-stats">
         <div className="stat-card"><span>Rendido hoy</span><strong>{money(todayRendido, activeOrganization.currency_code)}</strong><small>{todayRows.length} registros</small></div>
         <div className="stat-card"><span>Cobrado hoy</span><strong>{money(todayCobrado, activeOrganization.currency_code)}</strong><small>cobros registrados</small></div>
@@ -221,12 +242,43 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         <div className="stat-card"><span>Agentes activos</span><strong>{activeAgents.length}</strong><small>{activeAgents.filter((agent) => agent.kind === "subagent").length} subagentes · {activeAgents.filter((agent) => agent.kind === "ambulant").length} ambulantes</small></div>
       </div>
 
+      <form method="get" action="/pagos" className="rendition-agent-search" role="search">
+        <label htmlFor="rendition-agent-query">Buscar operador</label>
+        <input id="rendition-agent-query" name="busqueda" type="search" autoComplete="off" value={searchTerm} placeholder="Código, nombre o teléfono" />
+        <button className="button primary" type="submit">Buscar</button>
+        {searchTerm && <Link className="button ghost" href="/pagos">Limpiar</Link>}
+      </form>
+
       <section className="panel rendition-agents-panel">
-        <div className="panel-head"><div><h2>Subagentes y ambulantes</h2><p className="muted">Hacé un clic en una tarjeta para abrir el formulario y el historial correspondiente.</p></div><span className="muted">{activeAgents.length} activos</span></div>
+        <div className="panel-head"><div><h2>Subagentes y ambulantes · jornada actual</h2><p className="muted">Cada tarjeta tiene el tamaño de una tarjeta de crédito. Al abrirla, la carga se centra debajo.</p></div><span className="muted">{filteredActiveAgents.length} visibles · {activeAgents.length} activos</span></div>
         <div className="rendition-agent-list">
-          {activeAgents.map((agent) => <AgentAccordion key={agent.id} agent={agent} />)}
-          {!activeAgents.length && <div className="agency-empty">No hay agentes activos. <Link href="/agencias">Agregá uno desde Administración de agentes.</Link></div>}
+          {filteredActiveAgents.map((agent) => <AgentAccordion key={agent.id} agent={agent} />)}
+          {!filteredActiveAgents.length && <div className="agency-empty">{searchTerm ? "No hay subagentes ni ambulantes que coincidan con esa búsqueda." : "No hay agentes activos. "}<Link href="/agencias">Administrar subagentes y ambulantes</Link></div>}
         </div>
+      </section>
+
+      <section className="panel rendition-general-history">
+        <div className="panel-head"><div><h2>Rendiciones generales</h2><p className="muted">Historial separado por día operativo. Al llegar al horario de corte, los totales actuales vuelven a cero y las rendiciones anteriores quedan archivadas acá.</p></div><span className="muted">{historicalRows.length} rendiciones anteriores</span></div>
+        {historicalDays.length ? <div className="rendition-archive-days">
+          {historicalDays.map(([day, dayRows]) => {
+            const total = dayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
+            const ids = Array.from(new Set(dayRows.map((row) => String(row.agent_id))));
+            return <details className="rendition-archive-day" key={day}>
+              <summary><span><strong>{day}</strong><small>{dayRows.length} rendiciones</small></span><strong>{money(total, activeOrganization.currency_code)}</strong><span className="rendition-open-label">Ver día ▾</span></summary>
+              <div className="rendition-archive-agents">
+                {ids.map((id) => {
+                  const agent = agentRows.find((item) => item.id === id);
+                  if (!agent) return null;
+                  const count = dayRows.filter((row) => row.agent_id === id).length;
+                  return <details className="rendition-archive-agent" key={id}>
+                    <summary><span>{agent.kind === "subagent" ? "Subagente" : "Ambulante"}</span><strong>{agent.code} · {agent.full_name}</strong><small>{count} rendiciones</small></summary>
+                    <RenditionHistory agent={agent} historyRows={dayRows} />
+                  </details>;
+                })}
+              </div>
+            </details>;
+          })}
+        </div> : <p className="muted rendition-archive-empty">Todavía no hay rendiciones de jornadas anteriores. Se archivarán automáticamente al comenzar una nueva jornada.</p>}
       </section>
 
       {!!archivedAgents.length && (

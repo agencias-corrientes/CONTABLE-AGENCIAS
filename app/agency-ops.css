@@ -327,3 +327,85 @@
 .lottery-recent-card li a b{color:#7c3347}
 @media(max-width:700px){.agency-card-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.agency-agent-card{max-width:none;min-width:0}.agency-card-metrics{grid-template-columns:1fr}.agency-card-main h3{font-size:12px}}
 @media(max-width:420px){.agency-card-grid{grid-template-columns:minmax(0,235px);justify-content:start}}
+
+
+/* Fix employee permissions: checkbox and its label text remain inside one readable card. */
+.team-permission-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.team-permission-option{display:flex;align-items:center;justify-content:flex-start;gap:10px;min-width:0;width:100%;padding:12px 13px;background:#fffdf6;border:1px solid #ded3b4;border-radius:10px;color:#2a2020;line-height:1.35;cursor:pointer;overflow-wrap:anywhere}
+.team-permission-option input[type="checkbox"]{display:block;appearance:auto;-webkit-appearance:checkbox;width:18px!important;height:18px;min-width:18px;max-width:18px;flex:0 0 18px;margin:0;accent-color:#7c3347}
+.team-permission-option span{display:block;flex:1;min-width:0;max-width:100%;font-size:12px;line-height:1.4;white-space:normal;overflow-wrap:anywhere;color:#2a2020}
+.team-permission-option:has(input:checked){background:#f4edcf;border-color:#b79a45}
+.team-permission-option:focus-within{outline:2px solid #b79a45;outline-offset:2px}
+
+/* Quiet, card-sized rendition selector with a centered capture workflow. */
+.rendition-agents-panel .rendition-agent-list{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));align-items:start;gap:12px}
+.rendition-agents-panel .rendition-agent-accordion{min-width:0;border-radius:13px;background:#fffdf6;border-color:#ded3b4;overflow:hidden;box-shadow:0 5px 14px rgba(74,51,26,.06)}
+.rendition-agents-panel .rendition-agent-summary{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto auto auto;gap:7px 9px;min-height:164px;aspect-ratio:1.42/1;align-content:start;padding:13px;background:#f6edc3;color:#2a2020;border:0;border-bottom:5px solid #7c3347}
+.rendition-agents-panel .rendition-ambulant .rendition-agent-summary{background:#f5e6e8;color:#2a2020;border-bottom-color:#b38b96}
+.rendition-agents-panel .rendition-agent-kind{grid-column:1/-1;font-size:9px;letter-spacing:.1em;color:#806416}
+.rendition-agents-panel .rendition-agent-code{grid-column:1;font-size:13px;padding:6px 7px;background:#fffdf6;color:#2a2020}
+.rendition-agents-panel .rendition-agent-name{grid-column:1/-1;font-size:13px;line-height:1.3;min-height:31px;overflow-wrap:anywhere}
+.rendition-agents-panel .rendition-agent-balance{grid-column:1}
+.rendition-agents-panel .rendition-agent-latest{grid-column:2;text-align:right}
+.rendition-agents-panel .rendition-agent-balance small,.rendition-agents-panel .rendition-agent-latest small{font-size:8px;line-height:1.25;letter-spacing:.035em}
+.rendition-agents-panel .rendition-agent-balance strong,.rendition-agents-panel .rendition-agent-latest strong{font-size:11px;overflow-wrap:anywhere}
+.rendition-agents-panel .rendition-open-label{grid-column:1/-1;display:block;text-align:right;font-size:10px;color:#7c3347;white-space:normal}
+.rendition-agents-panel .rendition-agent-accordion[open]{grid-column:1/-1}
+.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-summary{grid-template-columns:auto auto minmax(100px,1fr) auto;grid-template-rows:auto auto;min-height:0;aspect-ratio:auto;align-items:center;padding:11px 14px;background:#eee4bc;border-bottom:3px solid #7c3347}
+.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-kind{grid-column:1/-1}
+.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-code,
+.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-name,
+.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-balance,
+.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-latest,
+.rendition-agents-panel .rendition-agent-accordion[open] .rendition-open-label{grid-column:auto}
+.rendition-agent-expanded{display:grid;justify-items:center;padding:16px;background:#fffdf6}
+.rendition-agent-expanded-head,.rendition-agent-expanded>.rendition-entry-form,.rendition-agent-expanded>.rendition-agent-history{width:min(100%,960px);min-width:0}
+.rendition-agent-expanded-head{margin-inline:auto}
+.rendition-entry-form{width:min(100%,920px);max-width:920px;margin:0 auto;background:#fffdf6;border:1px solid #ded3b4;border-radius:13px;padding:14px}
+.rendition-mode-switch{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.rendition-mode-switch button{border:1px solid #ded3b4;border-radius:8px;padding:9px 13px;background:#eee4bc;color:#2a2020;font-size:12px;font-weight:800;cursor:pointer}
+.rendition-mode-switch button.active{background:#7c3347;border-color:#7c3347;color:#fff}
+.ticket-capture-panel{display:grid;gap:9px;width:min(100%,500px);margin:0 auto;padding:10px}
+.ticket-photo-picker{min-height:285px;aspect-ratio:1/0.96;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:17px;background:#f8f2dc;border:2px dashed #cbbd93;border-radius:14px;text-align:center}
+.ticket-photo-picker strong{font-size:15px;color:#4d3c2a}
+.ticket-photo-picker>span:not(.ticket-photo-icon){max-width:340px;color:#70666a;font-size:12px;line-height:1.5}
+.ticket-photo-picker input[type="file"]{width:min(100%,300px);max-width:100%;font-size:11px}
+.game-rendition-block{background:#f8f4e7;border:1px solid #ded3b4;border-radius:12px}
+.rendition-entry-form .game-rendition-row{background:#fffdf6;border-color:#ded3b4}
+.rendition-entry-form .game-rendition-row strong,.rendition-entry-form .game-rendition-row small{color:#2a2020}
+.rendition-agent-search{display:grid;grid-template-columns:auto minmax(180px,310px) auto auto;align-items:center;justify-content:start;gap:8px;margin:0 0 14px;padding:10px 12px;background:#fffdf6;border:1px solid #ded3b4;border-radius:10px}
+.rendition-agent-search label{font-size:11px;font-weight:800;color:#70666a}
+.rendition-agent-search input{padding:7px 10px;min-height:34px;width:100%;max-width:310px}
+.rendition-agent-search .button{min-height:32px}
+.rendition-general-history{margin-top:18px;border-top:4px solid #7c3347}
+.rendition-archive-days{display:grid;gap:8px}
+.rendition-archive-day,.rendition-archive-agent{border:1px solid #ded3b4;border-radius:10px;background:#fffdf6;overflow:hidden}
+.rendition-archive-day>summary{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;list-style:none;background:#f4edcf}
+.rendition-archive-day>summary::-webkit-details-marker,.rendition-archive-agent>summary::-webkit-details-marker{display:none}
+.rendition-archive-day>summary>span:first-child{display:grid;gap:3px}
+.rendition-archive-day>summary small,.rendition-archive-agent>summary small{color:#70666a;font-size:11px}
+.rendition-archive-day>summary>strong{color:#7c3347}
+.rendition-archive-agents{display:grid;gap:8px;padding:10px}
+.rendition-archive-agent>summary{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:10px;background:#fffaf0;cursor:pointer;list-style:none}
+.rendition-archive-agent>summary>strong{flex:1;min-width:180px;font-size:12px}
+.rendition-archive-empty{padding:15px;border:1px dashed #ded3b4;border-radius:10px}
+@media(max-width:700px){
+ .team-permission-grid{grid-template-columns:1fr}
+ .rendition-agents-panel .rendition-agent-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .rendition-agents-panel .rendition-agent-summary{min-height:175px;aspect-ratio:auto;padding:10px;gap:7px}
+ .rendition-agents-panel .rendition-agent-balance,.rendition-agents-panel .rendition-agent-latest{grid-column:1/-1;text-align:left}
+ .rendition-agents-panel .rendition-agent-latest{text-align:left}
+ .rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-summary{grid-template-columns:1fr auto;grid-template-rows:auto auto auto auto}
+ .rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-kind{grid-column:1/-1}
+ .rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-code,.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-name,.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-balance,.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-latest,.rendition-agents-panel .rendition-agent-accordion[open] .rendition-open-label{grid-column:auto}
+ .rendition-agent-expanded{padding:9px}
+ .rendition-entry-form{padding:9px}
+ .rendition-agent-search{grid-template-columns:1fr auto;justify-content:stretch}
+ .rendition-agent-search label{grid-column:1/-1}
+ .rendition-agent-search input{max-width:none;grid-column:1/-1}
+ .rendition-agent-search .button{width:100%}
+ .rendition-archive-day>summary{grid-template-columns:1fr auto;gap:8px}
+ .rendition-archive-day>summary .rendition-open-label{grid-column:1/-1}
+ .landing-role-enter{white-space:normal}
+}
+@media(max-width:440px){.rendition-agents-panel .rendition-agent-list{grid-template-columns:1fr}.rendition-agents-panel .rendition-agent-summary{min-height:160px}}

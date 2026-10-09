@@ -327,6 +327,35 @@ export type Database = {
           },
         ]
       }
+      agency_operational_settings: {
+        Row: {
+          organization_id: string
+          rendition_cutoff_time: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          organization_id: string
+          rendition_cutoff_time?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          organization_id?: string
+          rendition_cutoff_time?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_operational_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agency_rendition_backup_outbox: {
         Row: {
           attempt_count: number

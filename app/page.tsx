@@ -13,22 +13,19 @@ export default async function HomePage() {
         <div className="brand-mark">AC</div>
         <p className="eyebrow">AGENCIAS CORRIENTES</p>
         <h1>Control de Agencias</h1>
-        <p className="lead">Seleccioná tu perfil para ingresar al sistema de rendiciones, subagentes y ambulantes.</p>
+        <p className="lead">Elegí tu perfil para ingresar a las rendiciones diarias de subagentes y ambulantes.</p>
         <div className="landing-role-grid">
           <Link className="landing-role-choice landing-role-admin" href="/login?perfil=administrador">
-            <span className="landing-role-icon">♙</span>
-            <strong>Administrador</strong>
-            <small>Acceso del titular y configuración de la agencia</small>
-            <span className="landing-role-enter">Ingresar como administrador →</span>
+            <span className="landing-role-icon" aria-hidden="true">♙</span>
+            <span className="landing-role-copy"><strong>Administrador</strong><small>Personal, permisos y configuración de la agencia</small></span>
+            <span className="landing-role-enter">Ingresar →</span>
           </Link>
           <Link className="landing-role-choice landing-role-employee" href="/login?perfil=empleado">
-            <span className="landing-role-icon">♟</span>
-            <strong>Empleado</strong>
-            <small>Acceso según los permisos asignados por el titular</small>
-            <span className="landing-role-enter">Ingresar como empleado →</span>
+            <span className="landing-role-icon" aria-hidden="true">♟</span>
+            <span className="landing-role-copy"><strong>Empleado</strong><small>Operaciones habilitadas por el titular</small></span>
+            <span className="landing-role-enter">Ingresar →</span>
           </Link>
         </div>
-        <div className="landing-actions"><Link className="button ghost" href="/login?mode=signup">Crear usuario</Link></div>
         <div className="feature-strip"><span>✓ Rendiciones diarias</span><span>✓ Subagentes</span><span>✓ Ambulantes</span><span>✓ Cobranzas en Caja</span></div>
       </section>
     </main>

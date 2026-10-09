@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentContext, money } from "@/lib/accounting";
-import { formatAgencyDateTime, todayInAgencyTimeZone } from "@/lib/agency-datetime";
+import { agencyBusinessDateForCutoff, formatAgencyDateTime } from "@/lib/agency-datetime";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
 import { receiveAgencyRendition, saveAgentGameCommissions } from "../actions";
 
@@ -12,13 +12,16 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
   if (!organization || !member) return null;
   const isOwner = member.role === "owner";
 
-  const [{ data: agent }, { data: renditions }, { data: gameTypes }, { data: commissionRows }, { data: defaultCommissionRows }] = await Promise.all([
+  const [{ data: agent }, { data: renditions }, { data: gameTypes }, { data: commissionRows }, { data: defaultCommissionRows }, { data: operationalSettings }] = await Promise.all([
     supabase.from("agency_agents").select("id,kind,code,full_name,dni,email,phone,whatsapp,address,notes,is_active,created_at").eq("id", id).eq("organization_id", organization.id).maybeSingle(),
     supabase.from("agency_renditions").select("id,rendition_date,created_at,game_period,draw_number,capture_method,period_start,period_end,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference,cash_account_id,cash_accounts(name)),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)").eq("agent_id", id).eq("organization_id", organization.id).neq("status", "void").order("created_at", { ascending: false }),
     supabase.from("agency_game_types").select("id,name,category,enabled").eq("organization_id", organization.id).order("sort_order").order("name"),
     supabase.from("agency_agent_game_commissions").select("game_type_id,commission_percent").eq("organization_id", organization.id).eq("agent_id", id),
     supabase.from("agency_game_commission_defaults").select("game_type_id,commission_percent").eq("organization_id", organization.id),
+    supabase.from("agency_operational_settings").select("rendition_cutoff_time").eq("organization_id", organization.id).maybeSingle(),
   ]);
+  const cutoffTime = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);
+  const today = agencyBusinessDateForCutoff(cutoffTime);
   if (!agent) notFound();
 
   const rows = (renditions ?? []).map((row) => {
@@ -77,7 +80,7 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
       {!agent.is_active ? <div className="message">Este agente está inactivo. Se conserva su historial, pero no se pueden crear rendiciones nuevas.</div> : (
         <section className="panel">
           <div className="panel-head"><div><h2>Rendición diaria</h2><p className="muted">Foto/QR primero; la carga manual sigue disponible.</p></div></div>
-          <RenditionEntryForm agentId={agent.id} games={(gameTypes ?? []).filter((game) => game.enabled).map((game) => ({ id: game.id, name: game.name, category: game.category }))} today={todayInAgencyTimeZone()} />
+          <RenditionEntryForm agentId={agent.id} games={(gameTypes ?? []).filter((game) => game.enabled).map((game) => ({ id: game.id, name: game.name, category: game.category }))} today={today} />
         </section>
       )}
 

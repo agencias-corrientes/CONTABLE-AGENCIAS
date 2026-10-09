@@ -75,3 +75,45 @@ input,select{padding:8px 9px;border-radius:7px;font-size:13px}textarea{padding:8
 /* Five compact administrator shortcuts, with responsive wrapping on smaller screens. */
 .owner-admin-links{grid-template-columns:repeat(5,minmax(0,1fr))}
 @media(max-width:900px){.owner-admin-links{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+/* Restored soft palette: warm cream, muted mustard and quiet burgundy. */
+:root{--bg:#f4edcf;--surface:#fffdf6;--surface2:#eee4bc;--text:#2a2020;--muted:#70666a;--line:#ded3b4;--primary:#7c3347;--primary2:#64283a;--success:#1d7a52;--danger:#9b2c2c;--burgundy:#7c3347;--mustard:#b79a45;--shadow:0 12px 36px rgba(74,51,26,.10)}
+html,body{background:var(--bg);color:var(--text)}
+.sidebar{background:#7c3347;color:#fff;padding:22px 16px;border-right:0}
+.sidebar .nav-item{color:#f0ddbd;padding:11px 12px;font-size:14px}
+.sidebar .nav-item:hover,.sidebar .nav-item.active{background:#64283a;color:#fff;box-shadow:inset 3px 0 #d1b35a}
+.org-chip{background:#64283a;color:#fff1d0}
+.eyebrow{color:#7c3347}
+.button.primary{background:#7c3347;color:#fff}.button.primary:hover{background:#64283a}
+.button.ghost{background:#eee4bc;color:#2a2020;border:1px solid #ded3b4}
+.page .muted{color:#70666a}
+.stat-card{border-top-color:#b79a45}.stat-card:nth-child(even){border-top-color:#7c3347}
+.panel,.stat-card,.quick-card,.report-card,.settings-card{box-shadow:0 6px 18px rgba(74,51,26,.06)}
+.backup-pending-message{background:#fff5e6;border-color:#f1d8ae;color:#714b0b}
+.landing-role-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:24px 0 10px}
+.landing-role-choice{display:flex;align-items:center;gap:12px;min-height:98px;width:100%;padding:18px;border:1px solid #ded3b4;border-left:5px solid #b79a45;border-radius:14px;background:#fffdf6;color:#2a2020;text-decoration:none;box-shadow:0 6px 18px rgba(74,51,26,.08);transition:transform .15s ease,box-shadow .15s ease}
+.landing-role-choice:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(74,51,26,.12)}
+.landing-role-admin{background:#7c3347;border-color:#7c3347;border-left:5px solid #b79a45;color:#fff}
+.landing-role-employee{background:#eee4bc;border-color:#ded3b4;border-left:5px solid #7c3347;color:#2a2020}
+.landing-role-choice .landing-role-icon{font-size:25px;color:inherit;flex:0 0 auto}
+.landing-role-copy{display:grid;gap:5px;flex:1;min-width:0}
+.landing-role-choice strong{font-size:16px;color:inherit}
+.landing-role-choice small{font-size:12px;line-height:1.4;color:inherit;opacity:.82}
+.landing-role-enter{font-size:12px;font-weight:850;color:inherit;white-space:nowrap}
+.landing-role-employee .landing-role-enter{color:#7c3347}
+.landing-role-card{width:min(860px,100%)}
+.login-role-selector{margin-top:20px}
+.login-role-selector .landing-role-choice{min-height:84px;padding:14px}
+.login-selected-profile{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.login-selected-profile a{font-size:12px;color:#7c3347;text-decoration:underline}
+.user-role-line{display:grid;gap:6px;padding:10px 6px}
+.user-role-pill{display:inline-flex;align-items:center;justify-content:center;width:max-content;padding:4px 8px;border-radius:999px;background:#eee4bc;border:1px solid #ded3b4;color:#572538;font-size:10px;font-weight:850}
+.sidebar .user-role-pill{background:#f4edcf;border-color:#eee4bc;color:#64283a}
+.user-role-line .user-line{padding:0;max-width:100%}
+.dashboard-quick-actions .quick-grid{grid-template-columns:1fr}
+.quick-card-register{border-top:4px solid #7c3347;background:#fffdf6}
+.operational-cutoff-panel{border-top:5px solid #7c3347}
+.operational-cutoff-form{display:grid;gap:12px;max-width:620px}
+.operational-cutoff-form label{display:grid;gap:6px;font-size:13px;font-weight:750}
+@media(max-width:640px){.landing-role-grid{grid-template-columns:1fr}.landing-role-choice{padding:15px}.user-role-line{grid-template-columns:1fr}.landing-role-enter{white-space:normal}}
