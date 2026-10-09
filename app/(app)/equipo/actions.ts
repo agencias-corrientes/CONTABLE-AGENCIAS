@@ -202,3 +202,52 @@ export async function retryRenditionBackup(formData: FormData) {
   revalidatePath("/equipo");
   redirect("/equipo?resultado=backup-reintento");
 }
+
+
+async function removeAgencyTicketPhotos(supabase: any, organizationId: string): Promise<boolean> {
+  try {
+    const bucket = supabase.storage.from("agency-rendition-tickets");
+    const { data: topLevel, error: listError } = await bucket.list(organizationId, { limit: 1000 });
+    if (listError) return false;
+
+    const paths: string[] = [];
+    for (const item of (topLevel ?? []) as Array<{ name: string; id?: string | null }>) {
+      if (item.id) {
+        paths.push(organizationId + "/" + item.name);
+        continue;
+      }
+      const { data: children, error: childError } = await bucket.list(organizationId + "/" + item.name, { limit: 1000 });
+      if (childError) return false;
+      for (const file of (children ?? []) as Array<{ name: string; id?: string | null }>) {
+        if (file.id) paths.push(organizationId + "/" + item.name + "/" + file.name);
+      }
+    }
+
+    for (let i = 0; i < paths.length; i += 100) {
+      const { error } = await bucket.remove(paths.slice(i, i + 100));
+      if (error) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function cleanupAgencyTestData(formData: FormData) {
+  const { supabase, organizationId } = await getOwnerContext();
+  const confirmation = String(formData.get("confirmation") ?? "").trim().toUpperCase();
+  if (formData.get("confirm_cleanup") !== "yes" || confirmation !== "LIMPIAR DATOS DE PRUEBA") {
+    redirect("/equipo?error=limpieza-no-confirmada");
+  }
+
+  const { error } = await supabase.rpc("cleanup_agency_test_data", { p_organization_id: organizationId });
+  if (error) redirect("/equipo?error=limpieza-fallida");
+
+  const photosRemoved = await removeAgencyTicketPhotos(supabase, organizationId);
+  revalidatePath("/equipo");
+  revalidatePath("/agencias");
+  revalidatePath("/pagos");
+  revalidatePath("/dashboard");
+  revalidatePath("/movimientos");
+  redirect("/equipo?resultado=" + (photosRemoved ? "limpieza-completada" : "limpieza-completada-fotos-pendientes"));
+}

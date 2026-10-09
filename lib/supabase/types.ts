@@ -1542,6 +1542,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_agency_test_data: {
+        Args: { p_organization_id: string }
+        Returns: Json
+      }
+      preview_agency_launch_cleanup: {
+        Args: { p_organization_id: string }
+        Returns: Json
+      }
       bootstrap_organization: {
         Args: {
           p_legal_name?: string
