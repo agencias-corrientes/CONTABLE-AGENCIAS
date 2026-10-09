@@ -1309,3 +1309,21 @@
     width: 100%;
   }
 }
+
+
+/* Ajuste visual solicitado: botones de subagentes en amarillo más intenso, conservando la franja burdeos. */
+.rendition-agents-panel .rendition-subagent > .rendition-agent-summary {
+  background: #f2d15c !important;
+  border-bottom-color: #8e263c !important;
+  color: #30250b !important;
+}
+.rendition-agents-panel .rendition-subagent .rendition-agent-code {
+  background: #ffe98c !important;
+  border-color: #c5a02b !important;
+  color: #30250b !important;
+}
+.agency-agent-button-row.agency-subagent .agency-agent-code-button {
+  background: #f2d15c;
+  border-color: #c5a02b;
+  color: #30250b;
+}
