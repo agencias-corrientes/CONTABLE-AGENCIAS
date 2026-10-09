@@ -1666,6 +1666,31 @@ export type Database = {
       issue_purchase_bill: { Args: { p_bill_id: string }; Returns: boolean }
       issue_sales_invoice: { Args: { p_invoice_id: string }; Returns: boolean }
       post_journal_entry: { Args: { p_entry_id: string }; Returns: boolean }
+      void_agency_rendition: {
+        Args: {
+          p_organization_id: string
+          p_rendition_id: string
+          p_reason?: string | null
+        }
+        Returns: string
+      }
+      update_agency_rendition_with_capture: {
+        Args: {
+          p_organization_id: string
+          p_rendition_id: string
+          p_rendition_date: string
+          p_amount_due: number
+          p_game_breakdown: Json
+          p_ticket_numbers: Json
+          p_ticket_qr_payload?: string | null
+          p_game_period?: string | null
+          p_draw_number?: string | null
+          p_capture_method?: string
+          p_reference?: string | null
+          p_notes?: string | null
+        }
+        Returns: string
+      }
       receive_agency_rendition: {
         Args: {
           p_amount: number
