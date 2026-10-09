@@ -4,7 +4,7 @@ import { agencyBusinessDateForCutoff, formatAgencyDate, formatAgencyDateTime } f
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
 import { RenditionScrollHelper } from "@/components/rendition-scroll-helper";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
-import { receiveAgencyRendition, voidAgencyRendition } from "../agencias/actions";
+import { receiveAgencyRendition, voidAgencyRendition, setAgencyDailyRenditionStatus } from "../agencias/actions";
 
 type GameAmount = {
   id: string;
@@ -35,11 +35,17 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const [{ data: operationalSettings }, { data: agents }, { data: renditions }, { data: gameTypes }] = await Promise.all([
     supabase.from("agency_operational_settings").select("rendition_cutoff_time").eq("organization_id", activeOrganization.id).maybeSingle(),
     supabase.from("agency_agents").select("id,kind,full_name,code,is_active,phone").eq("organization_id", activeOrganization.id).order("kind").order("code"),
-    supabase.from("agency_renditions").select("id,agent_id,rendition_date,created_at,game_period,draw_number,capture_method,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)").eq("organization_id", activeOrganization.id).order("created_at", { ascending: false }).limit(500),
+    supabase.from("agency_renditions").select("id,agent_id,rendition_date,created_at,updated_at,game_period,draw_number,capture_method,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)").eq("organization_id", activeOrganization.id).order("created_at", { ascending: false }).limit(500),
     supabase.from("agency_game_types").select("id,name,category,enabled").eq("organization_id", activeOrganization.id).order("sort_order").order("name"),
   ]);
   const cutoffTime = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);
   const today = agencyBusinessDateForCutoff(cutoffTime);
+  const { data: dailyStatusRows } = await supabase
+    .from("agency_agent_daily_status")
+    .select("agent_id,status,notes,updated_at")
+    .eq("organization_id", activeOrganization.id)
+    .eq("operational_date", today);
+  const dailyStatusByAgent = new Map((dailyStatusRows ?? []).map((row: any) => [String(row.agent_id), row]));
 
   const agentRows = agents ?? [];
   const activeAgents = agentRows.filter((agent) => agent.is_active);
@@ -72,6 +78,45 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     const received = payments.reduce((sum: number, payment: any) => sum + Number(payment.amount ?? 0), 0);
     return { received, pending: Math.max(0, Number(row.amount_due ?? 0) - received), payments };
   };
+
+  const dailyStatusLabels: Record<string, string> = {
+    complete: "Rendida",
+    incomplete: "Incompleta",
+    missing: "Sin rendición",
+  };
+  const dailyStatusDescriptions: Record<string, string> = {
+    complete: "La rendición de esta jornada fue revisada y confirmada.",
+    incomplete: "Hay información pendiente o una rendición nueva que todavía no fue confirmada como completa.",
+    missing: "Todavía no hay una rendición registrada para esta jornada.",
+  };
+  function dailySubmissionStatus(agentId: string) {
+    const agentTodayRows = todayRows.filter((row) => String(row.agent_id) === agentId);
+    const stored: any = dailyStatusByAgent.get(agentId);
+    if (stored?.status === "incomplete") {
+      return { status: "incomplete" as const, note: String(stored.notes ?? "") };
+    }
+    if (!agentTodayRows.length) {
+      return { status: "missing" as const, note: "" };
+    }
+    if (stored?.status === "complete") {
+      const confirmedAt = Date.parse(String(stored.updated_at ?? ""));
+      const changedAfterConfirmation = agentTodayRows.some((row: any) => {
+        const changedAt = Date.parse(String(row.updated_at ?? row.created_at ?? ""));
+        return !Number.isFinite(confirmedAt) || !Number.isFinite(changedAt) || changedAt > confirmedAt;
+      });
+      if (!changedAfterConfirmation) {
+        return { status: "complete" as const, note: "" };
+      }
+    }
+    return {
+      status: "incomplete" as const,
+      note: String(stored?.notes ?? "Hay una rendición registrada, pero todavía no se confirmó como completa."),
+    };
+  }
+  const dailyStatusCounts = activeAgents.reduce((counts, agent) => {
+    counts[dailySubmissionStatus(String(agent.id)).status] += 1;
+    return counts;
+  }, { complete: 0, incomplete: 0, missing: 0 });
 
   function RenditionHistory({ agent, historyRows = rows }: { agent: any; historyRows?: any[] }) {
     const agentRows = historyRows.filter((row) => row.agent_id === agent.id);
@@ -176,6 +221,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   function AgentAccordion({ agent }: { agent: any }) {
     const agentRows = rows.filter((row) => row.agent_id === agent.id);
     const todayAgentRows = todayRows.filter((row) => row.agent_id === agent.id);
+    const dailyStatus = dailySubmissionStatus(String(agent.id));
     // The "jornada actual" balance only includes renditions from the current operational day.
     // Unpaid historical renditions remain visible in Rendiciones generales / Cobranzas.
     const received = todayAgentRows.reduce((sum, row) => sum + rowTotals(row).received, 0);
@@ -189,12 +235,41 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       <details className={"rendition-agent-accordion " + (subagent ? "rendition-subagent" : "rendition-ambulant")} open={selectedAgentId === agent.id}>
         <summary className="rendition-agent-summary" aria-label={agentLabel(agent) + " " + agent.code + " — abrir rendición"}>
           <strong className="rendition-agent-code">{agent.code}</strong>
+          <span className={"rendition-status-badge rendition-status-" + dailyStatus.status} title={dailyStatus.note || dailyStatusDescriptions[dailyStatus.status]}>{dailyStatusLabels[dailyStatus.status]}</span>
         </summary>
         <div className="rendition-agent-expanded">
           <div className="rendition-agent-expanded-head">
             <div><span className="eyebrow">RENDICIÓN DIARIA</span><h3>{agentLabel(agent)} {agent.code} · {agent.full_name}</h3><p className="muted">Comisión acumulada: <strong>{money(commission, activeOrganization.currency_code)}</strong> · Neto estimado: <strong>{money(netDue, activeOrganization.currency_code)}</strong>. Revisá los importes detectados antes de guardar.</p></div>
             <Link href={"/agencias/" + agent.id} className="button ghost">Ficha del agente</Link>
           </div>
+          <section className="rendition-daily-status-control">
+            <div className="rendition-daily-status-copy">
+              <strong>Estado diario: {dailyStatusLabels[dailyStatus.status]}</strong>
+              <p className="muted">{dailyStatusDescriptions[dailyStatus.status]}</p>
+              {dailyStatus.status === "incomplete" && dailyStatus.note && <p className="rendition-status-note"><strong>Observación:</strong> {dailyStatus.note}</p>}
+            </div>
+            {canCreateRenditions ? (
+              <div className="rendition-daily-status-actions">
+                <form action={setAgencyDailyRenditionStatus}>
+                  <input type="hidden" name="agent_id" value={agent.id} />
+                  <input type="hidden" name="operational_date" value={today} />
+                  <input type="hidden" name="status" value="incomplete" />
+                  <label>Qué falta (opcional)
+                    <input name="notes" defaultValue={dailyStatus.status === "incomplete" ? dailyStatus.note : ""} maxLength={500} placeholder="Ej.: falta el turno vespertino" />
+                  </label>
+                  <button className="button ghost small" type="submit">{dailyStatus.status === "incomplete" ? "Guardar estado incompleto" : "Marcar como incompleta"}</button>
+                </form>
+                {todayAgentRows.length > 0 && dailyStatus.status !== "complete" && (
+                  <form action={setAgencyDailyRenditionStatus}>
+                    <input type="hidden" name="agent_id" value={agent.id} />
+                    <input type="hidden" name="operational_date" value={today} />
+                    <input type="hidden" name="status" value="complete" />
+                    <button className="button primary small" type="submit">Confirmar como rendida</button>
+                  </form>
+                )}
+              </div>
+            ) : <p className="muted">El titular debe habilitarte el permiso para cambiar el estado diario.</p>}
+          </section>
           {canCreateRenditions
             ? <RenditionEntryForm agentId={agent.id} games={games} today={today} />
             : <p className="message">No tenés permiso para registrar rendiciones. El titular debe habilitar esta operación.</p>}
@@ -217,6 +292,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       {params.resultado === "rendicion-creada" && <p className={params.backup === "enviado" ? "message success-message" : "message backup-pending-message"}>Rendición registrada correctamente. {params.backup === "enviado" ? "El backup de texto se envió al correo configurado para el titular." : "El backup quedó guardado, pero el correo no confirmó la entrega. Revisá el estado en Personal y permisos."}{params.foto === "no-adjunta" ? " La foto no se adjuntó; el respaldo de texto se conserva." : ""}</p>}
       {params.resultado === "rendicion-corregida" && <p className={params.backup === "enviado" ? "message success-message" : "message backup-pending-message"}>Rendición corregida. Se conserva la auditoría y se creó una nueva revisión del respaldo. {params.backup === "enviado" ? "El correo se envió." : "El correo no confirmó entrega; la revisión permanece guardada para reintento."}</p>}
       {params.resultado === "rendicion-anulada" && <p className={params.backup === "enviado" ? "message success-message" : "message backup-pending-message"}>Rendición anulada con historial conservado. {params.backup === "enviado" ? "El respaldo actualizado se envió al correo del titular." : "El respaldo quedó registrado, pero el correo no confirmó entrega."}</p>}
+      {params.resultado === "estado-rendida" && <p className="message success-message">Estado actualizado: rendición confirmada como completa para esta jornada.</p>}
+      {params.resultado === "estado-incompleta" && <p className="message backup-pending-message">Estado actualizado: rendición marcada como incompleta. Podés dejar una observación para recordar qué falta.</p>}
       {params.error === "solo-titular-configuracion" && <p className="message error-message">La configuración es exclusiva del titular de la agencia.</p>}
       {params.error && params.error !== "solo-titular-configuracion" && <p className="message error-message">{({
         "sin-permiso-rendicion": "No tenés permiso para registrar rendiciones.",
@@ -230,7 +307,10 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "edicion-fallida": "No se pudo corregir la rendición. No se guardaron los cambios.",
         "anulacion-no-confirmada": "Marcá la confirmación para anular la rendición.",
         "anulacion-fallida": "No se pudo anular la rendición. El historial permanece sin cambios.",
-        "rendicion-fallida": "No se pudo registrar la rendición."
+        "rendicion-fallida": "No se pudo registrar la rendición.",
+        "estado-diario-fallido": "No se pudo guardar el estado diario. Volvé a intentarlo.",
+        "jornada-cambio": "La jornada operativa cambió. Actualizá la pantalla y volvé a marcar el estado.",
+        "sin-rendicion-para-confirmar": "Primero registrá al menos una rendición de esta jornada para poder confirmarla como completa."
       } as Record<string,string>)[params.error] ?? "La operación no se pudo completar. Verificá permisos y datos."}</p>}
 
       <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} />
@@ -250,7 +330,13 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       </form>
 
       <section className="panel rendition-agents-panel">
-        <div className="panel-head"><div><h2>Subagentes y ambulantes · jornada actual</h2><p className="muted">Elegí un botón para abrir la carga. Los saldos de esta sección corresponden únicamente a la jornada actual.</p></div><span className="muted">{filteredActiveAgents.length} visibles · {activeAgents.length} activos</span></div>
+        <div className="panel-head"><div><h2>Subagentes y ambulantes · jornada actual</h2><p className="muted">Cada agente muestra su estado. Después de revisar todos los juegos y turnos, confirmá la rendición como completa.</p></div>
+          <div className="rendition-status-summary" aria-label="Resumen de estados de rendición">
+            <span className="rendition-status-badge rendition-status-complete">{dailyStatusCounts.complete} Rendidas</span>
+            <span className="rendition-status-badge rendition-status-incomplete">{dailyStatusCounts.incomplete} Incompletas</span>
+            <span className="rendition-status-badge rendition-status-missing">{dailyStatusCounts.missing} Sin rendición</span>
+            <small>{filteredActiveAgents.length} visibles</small>
+          </div></div>
         <div className="rendition-agent-list">
           {filteredActiveAgents.map((agent) => <AgentAccordion key={agent.id} agent={agent} />)}
           {!filteredActiveAgents.length && <div className="agency-empty">{searchTerm ? "No hay subagentes ni ambulantes que coincidan con esa búsqueda." : "No hay agentes activos. "}<Link href="/agencias">Administrar subagentes y ambulantes</Link></div>}

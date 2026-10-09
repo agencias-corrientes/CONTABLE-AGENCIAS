@@ -5,21 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createPublicAuthClient } from "@supabase/supabase-js";
 
-const SUPPORTED_AGENCY_TIMEZONES = new Set([
-  "America/Argentina/Buenos_Aires",
-  "America/Argentina/Catamarca",
-  "America/Argentina/ComodRivadavia",
-  "America/Argentina/Cordoba",
-  "America/Argentina/Jujuy",
-  "America/Argentina/La_Rioja",
-  "America/Argentina/Mendoza",
-  "America/Argentina/Rio_Gallegos",
-  "America/Argentina/Salta",
-  "America/Argentina/San_Juan",
-  "America/Argentina/San_Luis",
-  "America/Argentina/Tucuman",
-  "America/Argentina/Ushuaia",
-]);
+const AGENCY_TIME_ZONE = "America/Argentina/Cordoba";
 
 async function getAgencyOwnerContext() {
   const supabase = await createClient();
@@ -59,10 +45,9 @@ export async function updateAgencyProfile(formData: FormData) {
   const legalName = String(formData.get("legal_name") ?? "").trim();
   const taxId = String(formData.get("tax_id") ?? "").trim();
   const currencyCode = String(formData.get("currency_code") ?? "").trim().toUpperCase();
-  const timezone = String(formData.get("timezone") ?? "").trim();
 
   if (!name || name.length > 120 || legalName.length > 180 || taxId.length > 40 ||
-      !/^[A-Z]{3}$/.test(currencyCode) || !SUPPORTED_AGENCY_TIMEZONES.has(timezone)) {
+      !/^[A-Z]{3}$/.test(currencyCode)) {
     redirect("/configuracion/organizacion?error=datos-invalidos");
   }
 
@@ -72,14 +57,11 @@ export async function updateAgencyProfile(formData: FormData) {
     p_legal_name: legalName || null,
     p_tax_id: taxId || null,
     p_currency_code: currencyCode,
-    p_timezone: timezone,
+    p_timezone: AGENCY_TIME_ZONE,
   });
 
   if (error) {
     if (error.code === "42501") redirect("/configuracion/organizacion?error=solo-titular");
-    if (String(error.message ?? "").toLowerCase().includes("zona horaria")) {
-      redirect("/configuracion/organizacion?error=datos-invalidos");
-    }
     redirect("/configuracion/organizacion?error=datos-no-guardados");
   }
 

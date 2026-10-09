@@ -411,6 +411,44 @@ export async function updateAgencyRendition(formData: FormData) {
   redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=rendicion-corregida&backup=" + backupStatus + "&foto=" + (photoStatus === "failed" ? "no-adjunta" : photoStatus === "saved" ? "adjunta" : "sin-foto"));
 }
 
+
+export async function setAgencyDailyRenditionStatus(formData: FormData) {
+  const { supabase, organizationId, permissions } = await getOrg();
+  const agentId = String(formData.get("agent_id") ?? "").trim();
+  const operationalDate = String(formData.get("operational_date") ?? "").trim();
+  const status = String(formData.get("status") ?? "").trim();
+  const notes = String(formData.get("notes") ?? "").trim();
+
+  if (!permissions.can_create_renditions) redirect("/pagos?error=sin-permiso-rendicion");
+  if (!agentId || !/^\d{4}-\d{2}-\d{2}$/.test(operationalDate) || !["complete", "incomplete"].includes(status)) {
+    redirect("/pagos?error=estado-diario-fallido&agent=" + encodeURIComponent(agentId));
+  }
+
+  const dateValue = new Date(operationalDate + "T00:00:00.000Z");
+  if (Number.isNaN(dateValue.getTime()) || dateValue.toISOString().slice(0, 10) !== operationalDate) {
+    redirect("/pagos?error=estado-diario-fallido&agent=" + encodeURIComponent(agentId));
+  }
+
+  const { error } = await supabase.rpc("set_agency_agent_daily_status", {
+    p_organization_id: organizationId,
+    p_agent_id: agentId,
+    p_operational_date: operationalDate,
+    p_status: status,
+    p_notes: notes || undefined,
+  });
+
+  if (error) {
+    const message = String(error.message ?? "").toLowerCase();
+    if (message.includes("no tenés permiso")) redirect("/pagos?error=sin-permiso-rendicion&agent=" + encodeURIComponent(agentId));
+    if (message.includes("jornada operativa cambió")) redirect("/pagos?error=jornada-cambio&agent=" + encodeURIComponent(agentId));
+    if (message.includes("no hay una rendición registrada")) redirect("/pagos?error=sin-rendicion-para-confirmar&agent=" + encodeURIComponent(agentId));
+    redirect("/pagos?error=estado-diario-fallido&agent=" + encodeURIComponent(agentId));
+  }
+
+  revalidatePath("/pagos");
+  redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=" + (status === "complete" ? "estado-rendida" : "estado-incompleta"));
+}
+
 export async function voidAgencyRendition(formData: FormData) {
   const { supabase, organizationId, permissions } = await getOrg();
   const agentId = String(formData.get("agent_id") ?? "").trim();

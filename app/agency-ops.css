@@ -846,3 +846,163 @@
 .team-auth-delete-form input[type=checkbox]{flex:0 0 auto;width:auto;margin-top:3px}
 .team-auth-delete-form .button{width:max-content;max-width:100%}
 @media(max-width:700px){.team-auth-delete-form .button{width:100%}}
+
+
+/* High-contrast hover/focus state for every subagent and ambulant selector. */
+.agency-agent-code-button {
+  transition: border-width .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease;
+}
+.agency-agent-code-button:hover,
+.agency-agent-code-button:focus-visible {
+  border-width: 3px;
+  outline: 2px solid rgba(124, 51, 71, .22);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 1px #fff8e2;
+  transform: translateY(-1px);
+  filter: none;
+  position: relative;
+  z-index: 2;
+}
+.agency-agent-button-row.agency-subagent .agency-agent-code-button:hover,
+.agency-agent-button-row.agency-subagent .agency-agent-code-button:focus-visible {
+  border-color: #7c3347;
+  background: #fbf5db;
+}
+.agency-agent-button-row.agency-ambulant .agency-agent-code-button:hover,
+.agency-agent-button-row.agency-ambulant .agency-agent-code-button:focus-visible {
+  border-color: #d4b344;
+  background: #64283a;
+}
+.rendition-agent-accordion {
+  transition: border-width .12s ease, border-color .12s ease, box-shadow .12s ease;
+}
+.rendition-agent-accordion:hover,
+.rendition-agent-accordion:focus-within {
+  border-width: 3px;
+  box-shadow: 0 5px 18px rgba(124, 51, 71, .17);
+}
+.rendition-subagent:hover,
+.rendition-subagent:focus-within {
+  border-color: #7c3347;
+}
+.rendition-ambulant:hover,
+.rendition-ambulant:focus-within {
+  border-color: #c5a43b;
+}
+.rendition-agent-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+.rendition-status-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.rendition-status-summary small {
+  color: #6c5a50;
+  font-size: 11px;
+}
+.rendition-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  line-height: 1.15;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.rendition-status-complete {
+  color: #285238;
+  background: #e3eddf;
+  border-color: #a7c2a4;
+}
+.rendition-status-incomplete {
+  color: #654c0f;
+  background: #fff0b9;
+  border-color: #d4b344;
+}
+.rendition-status-missing {
+  color: #702f3e;
+  background: #f5e6e8;
+  border-color: #d8aab4;
+}
+.rendition-daily-status-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  margin: 12px 0 16px;
+  border: 1px solid #dfd1a7;
+  border-radius: 9px;
+  background: #fffaf0;
+}
+.rendition-daily-status-copy {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.rendition-daily-status-copy > strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #4a3028;
+}
+.rendition-daily-status-copy p {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+.rendition-status-note {
+  color: #702f3e;
+}
+.rendition-daily-status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  flex: 1 1 360px;
+}
+.rendition-daily-status-actions form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  flex: 1 1 190px;
+  min-width: 0;
+}
+.rendition-daily-status-actions label {
+  display: grid;
+  gap: 4px;
+  flex: 1 1 190px;
+  min-width: 0;
+  color: #5b493b;
+  font-size: 11px;
+  font-weight: 750;
+}
+.rendition-daily-status-actions input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid #cdbf9c;
+  border-radius: 7px;
+  background: #fffefa;
+  color: #30261e;
+}
+.rendition-daily-status-actions .button {
+  white-space: nowrap;
+}
+@media (max-width: 700px) {
+  .rendition-status-summary { justify-content: flex-start; }
+  .rendition-daily-status-control { display: grid; }
+  .rendition-daily-status-actions { display: grid; grid-template-columns: 1fr; }
+  .rendition-daily-status-actions form { display: grid; grid-template-columns: 1fr; }
+}
