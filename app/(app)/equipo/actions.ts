@@ -31,8 +31,10 @@ export async function addEmployeeByEmail(formData: FormData) {
   const { supabase, organizationId } = await getOwnerContext();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const role = String(formData.get("role") ?? "accountant").trim() as "owner" | "admin" | "accountant" | "viewer";
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) redirect("/equipo?error=email-invalido");
   if (password.length < 12) redirect("/equipo?error=contrasena-corta");
+  if (!["owner", "admin", "accountant", "viewer"].includes(role)) redirect("/equipo?error=datos-rol-invalidos");
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -55,7 +57,7 @@ export async function addEmployeeByEmail(formData: FormData) {
     redirect("/equipo?error=empleado-existente");
   }
 
-  const { error: memberError } = await supabase.rpc("add_organization_member_by_email", {
+  const { data: memberUserId, error: memberError } = await supabase.rpc("add_organization_member_by_email", {
     p_organization_id: organizationId,
     p_email: email,
   });
@@ -67,6 +69,28 @@ export async function addEmployeeByEmail(formData: FormData) {
     }
     redirect("/equipo?error=alta-empleado-fallida");
   }
+
+  // La membresía se crea con permisos mínimos; desde esta misma alta se puede asignar el rol inicial elegido.
+  if (role !== "accountant") {
+    const { error: roleError } = await supabase.rpc("set_member_role", {
+      p_organization_id: organizationId,
+      p_user_id: String(memberUserId ?? data.user.id),
+      p_role: role,
+    });
+    if (roleError) {
+      revalidatePath("/equipo");
+      redirect("/equipo?error=empleado-creado-rol-pendiente");
+    }
+  }
+
+  await supabase.from("audit_log").insert({
+    organization_id: organizationId,
+    user_id: (await supabase.auth.getClaims()).data?.claims?.sub as string,
+    action: "create_employee_with_role",
+    entity: "organization_member",
+    entity_id: String(memberUserId ?? data.user.id),
+    payload: { email, role },
+  });
 
   revalidatePath("/equipo");
   redirect("/equipo?resultado=empleado-creado");
