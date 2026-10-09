@@ -91,7 +91,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                   </div>
                 </div>
                 <div className="rendition-payment-summary"><span>Cobrado: <strong>{money(totals.received, activeOrganization.currency_code)}</strong></span><span>Pendiente: <strong>{money(totals.pending, activeOrganization.currency_code)}</strong></span></div>
-                {totals.pending > 0 && (
+                {totals.pending > 0 && canRegisterPayments && (
                   <details className="agency-pay-details">
                     <summary>Registrar cobro en Caja</summary>
                     <form action={receiveAgencyRendition} className="agency-pay-form">
@@ -102,6 +102,45 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                       <input name="reference" placeholder="Referencia (opcional)" />
                       <span className="agency-cash-fixed">Caja</span>
                       <button className="button primary" type="submit">Registrar cobro</button>
+                    </form>
+                  </details>
+                )}
+                {totals.pending > 0 && !canRegisterPayments && <p className="muted small-text">No tenés permiso para registrar cobros. El titular debe habilitar esta operación.</p>}
+                {canEditRenditions && totals.received <= 0 && row.status === "open" && (
+                  <details className="rendition-edit-details">
+                    <summary>Modificar rendición</summary>
+                    <div className="rendition-correction-panel">
+                      <p className="muted small-text">Los cambios guardan una revisión nueva y conservan el registro en auditoría. Solo se permite editar antes de registrar cobros.</p>
+                      <RenditionEntryForm
+                        agentId={agent.id}
+                        games={allGames}
+                        today={today}
+                        initialRendition={{
+                          id: row.id,
+                          renditionDate: row.rendition_date,
+                          period: row.game_period,
+                          drawNumber: row.draw_number,
+                          amounts: Object.fromEntries(gameAmounts.map((game) => [game.game_type_id, Number(game.amount).toFixed(2)])),
+                          ticketNumbers: tickets.map((ticket: any) => String(ticket.ticket_number)),
+                          qrPayload: tickets.find((ticket: any) => ticket.ticket_qr_payload)?.ticket_qr_payload ?? "",
+                          reference: row.reference,
+                          notes: row.notes,
+                          captureMethod: row.capture_method,
+                        }}
+                      />
+                    </div>
+                  </details>
+                )}
+                {canEditRenditions && totals.received > 0 && <p className="message">Esta rendición tiene cobros registrados; no puede editarse hasta resolver esos movimientos de Caja.</p>}
+                {canDeleteRenditions && totals.received <= 0 && row.status === "open" && (
+                  <details className="rendition-void-details">
+                    <summary>Anular rendición y conservar historial</summary>
+                    <form action={voidAgencyRendition} className="rendition-void-form">
+                      <input type="hidden" name="rendition_id" value={row.id} />
+                      <input type="hidden" name="agent_id" value={agent.id} />
+                      <label>Motivo de anulación<textarea name="reason" rows={2} placeholder="Ej.: se cargó el ticket equivocado" /></label>
+                      <label><input type="checkbox" name="confirm_void" value="yes" required /> Confirmo anular esta rendición sin borrar su historial</label>
+                      <button className="button danger small" type="submit">Anular rendición</button>
                     </form>
                   </details>
                 )}
