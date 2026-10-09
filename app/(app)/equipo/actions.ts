@@ -33,54 +33,71 @@ export async function addEmployeeByEmail(formData: FormData) {
   const password = String(formData.get("password") ?? "");
   const role = String(formData.get("role") ?? "accountant").trim() as "owner" | "admin" | "accountant" | "viewer";
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) redirect("/equipo?error=email-invalido");
-  if (password.length < 12) redirect("/equipo?error=contrasena-corta");
   if (!["owner", "admin", "accountant", "viewer"].includes(role)) redirect("/equipo?error=datos-rol-invalidos");
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !publishableKey) redirect("/equipo?error=alta-empleado-fallida");
-
-  // Register through the public Auth API rather than exposing or using service-role credentials.
-  const authClient = createPublicAuthClient(url, publishableKey, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
-  const { data, error } = await authClient.auth.signUp({ email, password });
-  if (error || !data.user) {
-    const message = (error?.message ?? "").toLowerCase();
-    if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
-      redirect("/equipo?error=empleado-existente");
-    }
-    redirect("/equipo?error=alta-empleado-fallida");
-  }
-  // Supabase may return a placeholder user for an email already in use when email confirmation is enabled.
-  if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-    redirect("/equipo?error=empleado-existente");
-  }
-
-  const { data: memberUserId, error: memberError } = await supabase.rpc("add_organization_member_by_email", {
+  // Primero intentamos vincular el correo existente. Así no se bloquea el alta
+  // si el usuario ya existe en Supabase Auth pero todavía no pertenece a esta agencia.
+  let memberUserId: string | null = null;
+  const firstLink = await supabase.rpc("add_organization_member_by_email", {
     p_organization_id: organizationId,
     p_email: email,
   });
-  if (memberError) {
-    const message = memberError.message.toLowerCase();
+  if (!firstLink.error) {
+    memberUserId = String(firstLink.data ?? "");
+  } else {
+    const message = firstLink.error.message.toLowerCase();
     if (message.includes("ya pertenece")) redirect("/equipo?error=empleado-existente");
-    if (message.includes("debe registrarse") || message.includes("no encontramos")) {
+    const needsRegistration = message.includes("debe registrarse") || message.includes("no encontramos una cuenta");
+    if (!needsRegistration) {
+      if (message.includes("solo el titular") || firstLink.error.code === "42501") redirect("/equipo?error=solo-titular");
       redirect("/equipo?error=alta-empleado-fallida");
     }
-    redirect("/equipo?error=alta-empleado-fallida");
+
+    // Solo pedimos contraseña cuando el correo todavía no tiene cuenta.
+    if (password.length < 12) redirect("/equipo?error=contrasena-corta");
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    if (!url || !publishableKey) redirect("/equipo?error=alta-empleado-fallida");
+
+    const authClient = createPublicAuthClient(url, publishableKey, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
+    const { data, error } = await authClient.auth.signUp({ email, password });
+    if (error) {
+      const authMessage = error.message.toLowerCase();
+      const looksExisting = authMessage.includes("already") || authMessage.includes("registered") || authMessage.includes("exists");
+      if (!looksExisting) redirect("/equipo?error=alta-empleado-fallida");
+    } else if (!data.user) {
+      redirect("/equipo?error=alta-empleado-fallida");
+    }
+
+    // Enlaza la cuenta real, sea nueva o existente (incluidas solicitudes simultáneas).
+    const linkAfterSignup = await supabase.rpc("add_organization_member_by_email", {
+      p_organization_id: organizationId,
+      p_email: email,
+    });
+    if (linkAfterSignup.error) {
+      const afterMessage = linkAfterSignup.error.message.toLowerCase();
+      if (afterMessage.includes("ya pertenece")) redirect("/equipo?error=empleado-existente");
+      if (afterMessage.includes("debe registrarse") || afterMessage.includes("no encontramos una cuenta")) {
+        redirect("/equipo?error=cuenta-no-registrada");
+      }
+      if (afterMessage.includes("solo el titular") || linkAfterSignup.error.code === "42501") redirect("/equipo?error=solo-titular");
+      redirect("/equipo?error=alta-empleado-fallida");
+    }
+    memberUserId = String(linkAfterSignup.data ?? "");
   }
 
-  // La membresía se crea con permisos mínimos; desde esta misma alta se puede asignar el rol inicial elegido.
+  if (!memberUserId) redirect("/equipo?error=alta-empleado-fallida");
+
+  // Las cuentas nuevas o existentes comienzan con los permisos mínimos.
   if (role !== "accountant") {
     const { error: roleError } = await supabase.rpc("set_member_role", {
       p_organization_id: organizationId,
-      p_user_id: String(memberUserId ?? data.user.id),
+      p_user_id: memberUserId,
       p_role: role,
     });
-    if (roleError) {
-      revalidatePath("/equipo");
-      redirect("/equipo?error=empleado-creado-rol-pendiente");
-    }
+    if (roleError) redirect("/equipo?error=empleado-creado-rol-pendiente");
   }
 
   await supabase.from("audit_log").insert({
@@ -88,7 +105,7 @@ export async function addEmployeeByEmail(formData: FormData) {
     user_id: userId,
     action: "create_employee_with_role",
     entity: "organization_member",
-    entity_id: String(memberUserId ?? data.user.id),
+    entity_id: memberUserId,
     payload: { email, role },
   });
 
