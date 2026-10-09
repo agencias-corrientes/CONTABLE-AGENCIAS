@@ -14,7 +14,7 @@ export default async function GamesPage({ searchParams }: { searchParams?: Promi
   const params = searchParams ? await searchParams : {};
   const { supabase, organization, member } = await getCurrentContext();
   if (!organization || !member) return null;
-  const canManageGames = member.role === "owner" || member.role === "admin";
+  const canManageGames = member.role === "owner";
 
   const [{ data: games }, { data: breakdowns }, { data: agents }] = await Promise.all([
     supabase

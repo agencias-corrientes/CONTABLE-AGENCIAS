@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createPublicAuthClient } from "@supabase/supabase-js";
 
 async function getOwnerContext() {
   const supabase = await createClient();
@@ -29,27 +30,47 @@ function checked(formData: FormData, name: string) {
 export async function addEmployeeByEmail(formData: FormData) {
   const { supabase, organizationId } = await getOwnerContext();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    redirect("/equipo?error=email-invalido");
+  const password = String(formData.get("password") ?? "");
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) redirect("/equipo?error=email-invalido");
+  if (password.length < 12) redirect("/equipo?error=contrasena-corta");
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !publishableKey) redirect("/equipo?error=alta-empleado-fallida");
+
+  // Register through the public Auth API rather than exposing or using service-role credentials.
+  const authClient = createPublicAuthClient(url, publishableKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  const { data, error } = await authClient.auth.signUp({ email, password });
+  if (error || !data.user) {
+    const message = (error?.message ?? "").toLowerCase();
+    if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
+      redirect("/equipo?error=empleado-existente");
+    }
+    redirect("/equipo?error=alta-empleado-fallida");
+  }
+  // Supabase may return a placeholder user for an email already in use when email confirmation is enabled.
+  if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+    redirect("/equipo?error=empleado-existente");
   }
 
-  const { error } = await supabase.rpc("add_organization_member_by_email", {
+  const { error: memberError } = await supabase.rpc("add_organization_member_by_email", {
     p_organization_id: organizationId,
     p_email: email,
   });
-  if (error) {
-    const message = error.message.toLowerCase();
-    if (message.includes("debe registrarse") || message.includes("no encontramos")) {
-      redirect("/equipo?error=cuenta-no-registrada");
-    }
+  if (memberError) {
+    const message = memberError.message.toLowerCase();
     if (message.includes("ya pertenece")) redirect("/equipo?error=empleado-existente");
+    if (message.includes("debe registrarse") || message.includes("no encontramos")) {
+      redirect("/equipo?error=alta-empleado-fallida");
+    }
     redirect("/equipo?error=alta-empleado-fallida");
   }
 
   revalidatePath("/equipo");
-  redirect("/equipo?resultado=empleado-agregado");
+  redirect("/equipo?resultado=empleado-creado");
 }
-
 export async function saveEmployeePermissions(formData: FormData) {
   const { supabase, organizationId, userId } = await getOwnerContext();
   const targetUserId = String(formData.get("user_id") ?? "").trim();
@@ -150,7 +171,8 @@ export async function saveBackupEmail(formData: FormData) {
     .upsert({
       organization_id: organizationId,
       recipient_email: email || null,
-      enabled: Boolean(email),
+      enabled: true,
+      include_ticket_photo: formData.get("include_ticket_photo") === "on",
       created_by: userId,
       updated_at: new Date().toISOString(),
     }, { onConflict: "organization_id" });
@@ -173,10 +195,10 @@ export async function retryRenditionBackup(formData: FormData) {
   const backupId = String(formData.get("backup_id") ?? "").trim();
   if (!backupId) redirect("/equipo?error=backup-no-enviado");
 
-  const { error } = await supabase.functions.invoke("send-rendition-backup", {
+  const { data, error } = await supabase.functions.invoke("send-rendition-backup", {
     body: { outbox_id: backupId },
   });
-  if (error) redirect("/equipo?error=backup-no-enviado");
+  if (error || data?.status !== "sent") redirect("/equipo?error=backup-no-enviado");
   revalidatePath("/equipo");
   redirect("/equipo?resultado=backup-reintento");
 }

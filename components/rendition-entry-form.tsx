@@ -298,7 +298,7 @@ export function RenditionEntryForm({ agentId, games, today, initialRendition }: 
             <span className="ticket-photo-icon" aria-hidden="true">▧</span>
             <strong>Fotografiá el ticket completo</strong>
             <span>Apuntá la cámara del celular al ticket. Se intentará leer el QR y reconocer juego, importe, fecha y período.</span>
-            <input type="file" accept="image/*" capture="environment" disabled={busy} onChange={(event) => {
+            <input type="file" name="ticket_photo" accept="image/jpeg,image/png,image/webp" capture="environment" disabled={busy} onChange={(event) => {
               const file = event.target.files?.[0];
               if (file) void processTicket(file);
             }} />

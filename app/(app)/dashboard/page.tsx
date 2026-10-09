@@ -2,8 +2,8 @@ import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
 
 export default async function DashboardPage() {
-  const { supabase, organization } = await getCurrentContext();
-  if (!organization) return null;
+  const { supabase, organization, member } = await getCurrentContext();
+  if (!organization || !member) return null;
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: organization.timezone }).format(new Date());
   const [{ data: agents }, { data: renditions }, { data: gameAmounts }] = await Promise.all([
     supabase.from("agency_agents").select("id,kind,full_name,code,is_active").eq("organization_id", organization.id).order("kind").order("code"),
@@ -32,11 +32,16 @@ export default async function DashboardPage() {
   const topGames = Array.from(gameTotals.values()).sort((a,b)=>b.amount-a.amount).slice(0,6);
   return <div className="page">
     <div className="topbar"><div><p className="eyebrow">OPERACIÓN DIARIA</p><h1>Control de subagentes y ambulantes</h1><p className="muted">El código identifica a cada subagente o ambulante y concentra su rendición diaria.</p></div><Link href="/agencias" className="button primary">Administrar subagentes y ambulantes</Link></div>
-    <section className="panel global-search-panel">
-      <div className="panel-head"><div><h2>Buscador rápido</h2><p className="muted">Encontrá una rendición, un subagente o ambulante, o un ticket por número.</p></div><Link href="/buscar" className="button ghost">Búsqueda avanzada</Link></div>
-      <form action="/buscar" method="get" className="global-search-form"><input name="q" type="search" placeholder="Código 251-010-01 · nombre · fecha/referencia · ticket 00123456" /><button className="button primary">Buscar</button></form>
-    </section>
     <div className="stats-grid"><div className="stat-card"><span>Subagentes</span><strong>{subagents.length}</strong><small>códigos activos</small></div><div className="stat-card"><span>Ambulantes</span><strong>{ambulants.length}</strong><small>códigos activos</small></div><div className="stat-card"><span>Rendido hoy</span><strong>{money(todayDue,organization.currency_code)}</strong><small>{todayRows.length} rendiciones del día</small></div><div className="stat-card"><span>Pendiente hoy</span><strong>{money(todayPending,organization.currency_code)}</strong><small>{openCount} rendiciones con saldo</small></div></div>
+    {member.role === "owner" && <section className="owner-admin-toolbar">
+      <div className="owner-admin-title"><span className="owner-admin-mark">AC</span><div><strong>Panel de administración del agenciero</strong><small>Control exclusivo del titular de la agencia</small></div></div>
+      <div className="owner-admin-links">
+        <Link href="/equipo">Personal y permisos</Link>
+        <Link href="/agencias">Agentes y comisiones</Link>
+        <Link href="/juegos">Catálogo de juegos</Link>
+        <Link href="/loteria-correntina">Extractos oficiales</Link>
+      </div>
+    </section>}
     <section className="dashboard-grid"><div className="panel large"><div className="panel-head"><div><h2>Rendiciones de hoy</h2><p className="muted">Control por código de subagente o ambulante.</p></div><Link href="/pagos" className="button ghost">Ver cobranzas</Link></div><div className="table-wrap"><table><thead><tr><th>Subagente / ambulante</th><th>Código</th><th>Importe</th><th>Cobrado</th><th>Pendiente</th><th></th></tr></thead><tbody>
       {todayRows.slice(0,12).map((row)=>{const agent=(agents??[]).find((item)=>item.id===row.agent_id);return <tr key={row.id}><td>{agent?.kind==="ambulant"?"Ambulante":"Subagente"}</td><td className="mono">{agent?.code??"—"}</td><td className="mono">{money(row.amount_due,organization.currency_code)}</td><td className="mono">{money(row.received,organization.currency_code)}</td><td className="mono">{money(row.pending,organization.currency_code)}</td><td><Link href={`/agencias/${row.agent_id}`} className="agency-enter">Abrir →</Link></td></tr>})}
       {!todayRows.length&&<tr><td colSpan={6}>No hay rendiciones cargadas para hoy.</td></tr>}

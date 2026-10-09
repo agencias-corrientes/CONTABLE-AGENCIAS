@@ -20,7 +20,7 @@ async function getOrg() {
     .maybeSingle();
   if (memberError || !member) throw new Error("No hay una empresa configurada.");
 
-  const manager = member.role === "owner" || member.role === "admin";
+  const manager = member.role === "owner";
   const fullPermissions = {
     can_create_agents: true, can_delete_agents: true, can_create_renditions: true,
     can_edit_renditions: true, can_delete_renditions: true,
@@ -41,6 +41,32 @@ async function getOrg() {
         .maybeSingle();
 
   return { supabase, organizationId: member.organization_id, role: member.role, permissions: permissions ?? noPermissions };
+}
+
+
+async function storeRenditionTicketPhoto(supabase: any, organizationId: string, renditionId: string, formData: FormData): Promise<"saved" | "skipped" | "failed"> {
+  const value = formData.get("ticket_photo");
+  if (!(value instanceof File) || value.size === 0) return "skipped";
+  const { data: settings } = await supabase.from("organization_backup_settings").select("include_ticket_photo").eq("organization_id", organizationId).maybeSingle();
+  if (settings?.include_ticket_photo === false) return "skipped";
+  if (value.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(value.type)) return "failed";
+  const extension = value.type === "image/png" ? "png" : value.type === "image/webp" ? "webp" : "jpg";
+  const photoPath = organizationId + "/" + renditionId + "/" + Date.now() + "." + extension;
+  const { error: uploadError } = await supabase.storage.from("agency-rendition-tickets").upload(photoPath, value, { contentType: value.type, upsert: false, cacheControl: "3600" });
+  if (uploadError) return "failed";
+  const { error: attachError } = await supabase.rpc("attach_agency_rendition_backup_photo", {
+    p_organization_id: organizationId, p_rendition_id: renditionId, p_photo_path: photoPath,
+  });
+  return attachError ? "failed" : "saved";
+}
+
+async function sendRenditionBackup(supabase: any, renditionId: string): Promise<"enviado" | "pendiente"> {
+  try {
+    const { data, error } = await supabase.functions.invoke("send-rendition-backup", { body: { rendition_id: renditionId } });
+    return error || data?.status !== "sent" ? "pendiente" : "enviado";
+  } catch {
+    return "pendiente";
+  }
 }
 
 export async function createAgencyAgent(formData: FormData) {
@@ -143,23 +169,18 @@ export async function createAgencyRendition(formData: FormData) {
     redirect("/pagos?error=rendicion-fallida&agent=" + encodeURIComponent(agentId));
   }
 
-  // Attempt immediate email delivery. The full text remains stored in the durable outbox
-  // if mail credentials are not yet configured or the provider is temporarily unavailable.
+  let backupStatus: "enviado" | "pendiente" = "pendiente";
+  let photoStatus: "saved" | "skipped" | "failed" = "skipped";
   if (renditionId) {
-    try {
-      await supabase.functions.invoke("send-rendition-backup", {
-        body: { rendition_id: renditionId },
-      });
-    } catch {
-      // Do not undo an already-saved accounting transaction because email delivery failed.
-    }
+    photoStatus = await storeRenditionTicketPhoto(supabase, organizationId, renditionId, formData);
+    backupStatus = await sendRenditionBackup(supabase, renditionId);
   }
 
   revalidatePath("/agencias");
   revalidatePath("/agencias/" + agentId);
   revalidatePath("/pagos");
   revalidatePath("/equipo");
-  redirect("/pagos?agent=" + agentId + "&resultado=rendicion-creada");
+  redirect("/pagos?agent=" + agentId + "&resultado=rendicion-creada&backup=" + backupStatus + "&foto=" + (photoStatus === "failed" ? "no-adjunta" : photoStatus === "saved" ? "adjunta" : "sin-foto"));
 }
 
 export async function receiveAgencyRendition(formData: FormData) {
@@ -265,6 +286,37 @@ export async function deleteAgencyAgent(formData: FormData) {
 }
 
 
+
+export async function saveAgentGameCommissions(formData: FormData) {
+  const { supabase, organizationId, role, userId } = await getOrg();
+  const agentId = String(formData.get("agent_id") ?? "").trim();
+  if (role !== "owner") redirect("/agencias?error=solo-titular-comisiones");
+  if (!agentId) redirect("/agencias?error=agente-no-encontrado");
+  const { data: agent, error: agentError } = await supabase.from("agency_agents").select("id,code").eq("id", agentId).eq("organization_id", organizationId).maybeSingle();
+  if (agentError || !agent) redirect("/agencias?error=agente-no-encontrado");
+
+  const rows = Array.from(formData.entries()).filter(([key]) => key.startsWith("commission_")).map(([key,value]) => {
+    const raw = String(value ?? "").trim();
+    const percent = raw === "" ? 0 : Number(raw);
+    return { organization_id: organizationId, agent_id: agentId, game_type_id: key.slice("commission_".length), commission_percent: Number.isFinite(percent) && percent >= 0 && percent <= 100 ? percent : -1, created_by: userId, updated_at: new Date().toISOString() };
+  });
+  if (rows.some((row) => row.commission_percent < 0)) redirect("/agencias/" + agentId + "?error=comision-invalida");
+  const { data: games, error: gamesError } = await supabase.from("agency_game_types").select("id").eq("organization_id", organizationId);
+  if (gamesError) redirect("/agencias/" + agentId + "?error=comisiones-no-guardadas");
+  const allowed = new Set((games ?? []).map((game) => game.id));
+  if (rows.some((row) => !allowed.has(row.game_type_id))) redirect("/agencias/" + agentId + "?error=comision-invalida");
+  if (rows.length) {
+    const { error } = await supabase.from("agency_agent_game_commissions").upsert(rows, { onConflict: "organization_id,agent_id,game_type_id" });
+    if (error) redirect("/agencias/" + agentId + "?error=comisiones-no-guardadas");
+  }
+  await supabase.from("audit_log").insert({ organization_id: organizationId, user_id: userId, action: "update_agent_game_commissions", entity: "agency_agent", entity_id: agentId, payload: { commission_count: rows.length } });
+  revalidatePath("/agencias");
+  revalidatePath("/agencias/" + agentId);
+  revalidatePath("/pagos");
+  revalidatePath("/dashboard");
+  redirect("/agencias/" + agentId + "?resultado=comisiones-guardadas");
+}
+
 export async function updateAgencyRendition(formData: FormData) {
   const { supabase, organizationId, permissions } = await getOrg();
   const agentId = String(formData.get("agent_id") ?? "").trim();
@@ -316,18 +368,17 @@ export async function updateAgencyRendition(formData: FormData) {
     redirect("/pagos?error=edicion-fallida&agent=" + encodeURIComponent(agentId));
   }
 
+  let backupStatus: "enviado" | "pendiente" = "pendiente";
+  let photoStatus: "saved" | "skipped" | "failed" = "skipped";
   if (updatedId) {
-    try {
-      await supabase.functions.invoke("send-rendition-backup", { body: { rendition_id: updatedId } });
-    } catch {
-      // Keep the revised text snapshot pending if mail transport is not ready.
-    }
+    photoStatus = await storeRenditionTicketPhoto(supabase, organizationId, updatedId, formData);
+    backupStatus = await sendRenditionBackup(supabase, updatedId);
   }
   revalidatePath("/agencias");
   revalidatePath("/agencias/" + agentId);
   revalidatePath("/pagos");
   revalidatePath("/equipo");
-  redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=rendicion-corregida");
+  redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=rendicion-corregida&backup=" + backupStatus + "&foto=" + (photoStatus === "failed" ? "no-adjunta" : photoStatus === "saved" ? "adjunta" : "sin-foto"));
 }
 
 export async function voidAgencyRendition(formData: FormData) {
@@ -352,16 +403,11 @@ export async function voidAgencyRendition(formData: FormData) {
     redirect("/pagos?error=anulacion-fallida&agent=" + encodeURIComponent(agentId));
   }
 
-  try {
-    await supabase.functions.invoke("send-rendition-backup", { body: { rendition_id: renditionId } });
-  } catch {
-    // The annulment is preserved; any unsent backup remains available for retry by the owner.
-  }
-
+  const backupStatus = await sendRenditionBackup(supabase, renditionId);
   revalidatePath("/agencias");
   revalidatePath("/agencias/" + agentId);
   revalidatePath("/pagos");
   revalidatePath("/equipo");
   revalidatePath("/dashboard");
-  redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=rendicion-anulada");
+  redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=rendicion-anulada&backup=" + backupStatus);
 }

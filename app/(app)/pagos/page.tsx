@@ -2,23 +2,24 @@ import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
 import { formatAgencyDateTime, todayInAgencyTimeZone } from "@/lib/agency-datetime";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
-import { getOfficialLotteryFeed } from "@/lib/loteria-correntina";
 import { receiveAgencyRendition, voidAgencyRendition } from "../agencias/actions";
 
 type GameAmount = {
   id: string;
   game_type_id: string;
   amount: number | string;
+  commission_percent: number | string;
+  commission_amount: number | string;
   agency_game_types: { id: string; name: string; category: string } | null;
 };
 
-export default async function PagosPage({ searchParams }: { searchParams?: Promise<{ agent?: string; resultado?: string; error?: string }> }) {
+export default async function PagosPage({ searchParams }: { searchParams?: Promise<{ agent?: string; resultado?: string; error?: string; backup?: string; foto?: string }> }) {
   const params = searchParams ? await searchParams : {};
   const selectedAgentId = params.agent ?? "";
   const { supabase, organization, member, userId } = await getCurrentContext();
   if (!organization || !member) return null;
   const activeOrganization = organization;
-  const manager = member.role === "owner" || member.role === "admin";
+  const manager = member.role === "owner";
   const { data: permissions } = manager
     ? { data: { can_create_renditions: true, can_edit_renditions: true, can_delete_renditions: true, can_register_payments: true, can_manage_backups: true } }
     : await supabase.from("organization_member_permissions").select("can_create_renditions,can_edit_renditions,can_delete_renditions,can_register_payments,can_manage_backups").eq("organization_id", activeOrganization.id).eq("user_id", userId).maybeSingle();
@@ -28,11 +29,10 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const canRegisterPayments = Boolean(permissions?.can_register_payments);
 
   const today = todayInAgencyTimeZone();
-  const [{ data: agents }, { data: renditions }, { data: gameTypes }, lottery] = await Promise.all([
+  const [{ data: agents }, { data: renditions }, { data: gameTypes }] = await Promise.all([
     supabase.from("agency_agents").select("id,kind,full_name,code,is_active,phone").eq("organization_id", activeOrganization.id).order("kind").order("code"),
-    supabase.from("agency_renditions").select("id,agent_id,rendition_date,created_at,game_period,draw_number,capture_method,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference),agency_rendition_game_amounts(id,game_type_id,amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)").eq("organization_id", activeOrganization.id).order("created_at", { ascending: false }).limit(500),
+    supabase.from("agency_renditions").select("id,agent_id,rendition_date,created_at,game_period,draw_number,capture_method,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)").eq("organization_id", activeOrganization.id).order("created_at", { ascending: false }).limit(500),
     supabase.from("agency_game_types").select("id,name,category,enabled").eq("organization_id", activeOrganization.id).order("sort_order").order("name"),
-    getOfficialLotteryFeed(),
   ]);
 
   const agentRows = agents ?? [];
@@ -75,7 +75,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                 <div className="rendition-detail-columns">
                   <div>
                     <h4>Detalle por juego</h4>
-                    {gameAmounts.length ? <ul className="rendition-game-amounts">{gameAmounts.map((game) => <li key={game.id}><span>{game.agency_game_types?.name ?? "Juego"}</span><strong>{money(game.amount, activeOrganization.currency_code)}</strong></li>)}</ul> : <p className="muted">No hay juegos asociados.</p>}
+                    {gameAmounts.length ? <ul className="rendition-game-amounts">{gameAmounts.map((game) => <li key={game.id}><span>{game.agency_game_types?.name ?? "Juego"}<small className="commission-note">{Number(game.commission_percent ?? 0).toFixed(2)}% comisión · {money(game.commission_amount ?? 0, activeOrganization.currency_code)}</small></span><strong>{money(game.amount, activeOrganization.currency_code)}<small className="commission-note">neto {money(Number(game.amount) - Number(game.commission_amount ?? 0), activeOrganization.currency_code)}</small></strong></li>)}</ul> : <p className="muted">No hay juegos asociados.</p>}
                     <p className="rendition-grand-total"><span>Total rendido</span><strong>{money(row.amount_due, activeOrganization.currency_code)}</strong></p>
                   </div>
                   <div>
@@ -157,7 +157,9 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     const agentRows = rows.filter((row) => row.agent_id === agent.id);
     const received = agentRows.reduce((sum, row) => sum + rowTotals(row).received, 0);
     const due = agentRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
+    const commission = agentRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_game_amounts) ? row.agency_rendition_game_amounts : []).reduce((acc: number, game: any) => acc + Number(game.commission_amount ?? 0), 0), 0);
     const pending = Math.max(0, due - received);
+    const netDue = Math.max(0, due - commission);
     const last = agentRows[0];
     const subagent = agent.kind === "subagent";
     return (
@@ -166,13 +168,13 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
           <span className="rendition-agent-kind">{agentLabel(agent).toUpperCase()}</span>
           <strong className="rendition-agent-code">{agent.code}</strong>
           <span className="rendition-agent-name">{agent.full_name}</span>
-          <span className="rendition-agent-balance"><small>Saldo pendiente</small><strong>{money(pending, activeOrganization.currency_code)}</strong></span>
+          <span className="rendition-agent-balance"><small>Saldo pendiente</small><strong>{money(pending, activeOrganization.currency_code)}</strong><small className="commission-note">Comisión: {money(commission, activeOrganization.currency_code)}</small></span>
           <span className="rendition-agent-latest"><small>Última rendición</small><strong>{last ? formatAgencyDateTime(last.created_at) : "Sin rendiciones"}</strong></span>
           <span className="rendition-open-label">Abrir rendiciones ▾</span>
         </summary>
         <div className="rendition-agent-expanded">
           <div className="rendition-agent-expanded-head">
-            <div><span className="eyebrow">RENDICIÓN DIARIA</span><h3>{agentLabel(agent)} {agent.code} · {agent.full_name}</h3><p className="muted">Escaneá el ticket o QR; revisá los importes detectados antes de guardar.</p></div>
+            <div><span className="eyebrow">RENDICIÓN DIARIA</span><h3>{agentLabel(agent)} {agent.code} · {agent.full_name}</h3><p className="muted">Comisión acumulada: <strong>{money(commission, activeOrganization.currency_code)}</strong> · Neto estimado: <strong>{money(netDue, activeOrganization.currency_code)}</strong>. Revisá los importes detectados antes de guardar.</p></div>
             <Link href={"/agencias/" + agent.id} className="button ghost">Ficha del agente</Link>
           </div>
           {canCreateRenditions
@@ -194,9 +196,9 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         <Link href="/agencias" className="button ghost">Administrar agentes</Link>
       </div>
 
-      {params.resultado === "rendicion-creada" && <p className="message success-message">Rendición registrada correctamente. Se intentó generar/enviar su respaldo; consultá Personal y permisos para verificar el estado del correo.</p>}
-      {params.resultado === "rendicion-corregida" && <p className="message success-message">Rendición corregida. La modificación se conserva en auditoría y crea una nueva revisión del respaldo de texto.</p>}
-      {params.resultado === "rendicion-anulada" && <p className="message success-message">Rendición anulada con historial conservado. Podés registrar una nueva rendición sin perder el registro anterior.</p>}
+      {params.resultado === "rendicion-creada" && <p className={params.backup === "enviado" ? "message success-message" : "message backup-pending-message"}>Rendición registrada correctamente. {params.backup === "enviado" ? "El backup de texto se envió al correo configurado para el titular." : "El backup quedó guardado, pero el correo no confirmó la entrega. Revisá el estado en Personal y permisos."}{params.foto === "no-adjunta" ? " La foto no se adjuntó; el respaldo de texto se conserva." : ""}</p>}
+      {params.resultado === "rendicion-corregida" && <p className={params.backup === "enviado" ? "message success-message" : "message backup-pending-message"}>Rendición corregida. Se conserva la auditoría y se creó una nueva revisión del respaldo. {params.backup === "enviado" ? "El correo se envió." : "El correo no confirmó entrega; la revisión permanece guardada para reintento."}</p>}
+      {params.resultado === "rendicion-anulada" && <p className={params.backup === "enviado" ? "message success-message" : "message backup-pending-message"}>Rendición anulada con historial conservado. {params.backup === "enviado" ? "El respaldo actualizado se envió al correo del titular." : "El respaldo quedó registrado, pero el correo no confirmó entrega."}</p>}
       {params.error && <p className="message error-message">{({
         "sin-permiso-rendicion": "No tenés permiso para registrar rendiciones.",
         "sin-permiso-cobro": "No tenés permiso para registrar cobros.",
@@ -278,26 +280,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         </section>
       )}
 
-      <section className="panel lottery-board">
-        <div className="panel-head"><div><p className="eyebrow">FUENTE OFICIAL</p><h2>Horarios y extractos de Lotería Correntina</h2><p className="muted">Calendario consultado desde Lotemóvil y actualizado en caché cada cinco minutos.</p></div><a href={lottery.sourceUrl} target="_blank" rel="noreferrer" className="button ghost">Abrir Lotemóvil ↗</a></div>
-        <div className="lottery-feed-meta">{lottery.ok ? <span className="badge success">Conectado</span> : <span className="badge warning">Fuente temporalmente no disponible</span>}<span>Consulta: {formatAgencyDateTime(lottery.updatedAt)}</span>{lottery.resultDate && <span>Último extracto destacado: {lottery.resultDate}</span>}</div>
-        {lottery.resultTitle && <p className="lottery-latest-title">{lottery.resultTitle}</p>}
-        {lottery.error && <p className="message">No se pudo actualizar el calendario ahora. Podés abrir la fuente oficial: <a href={lottery.sourceUrl} target="_blank" rel="noreferrer">Lotemóvil</a>.</p>}
-        <div className="lottery-schedule-grid">
-          {lottery.schedules.map((item, index) => <article className="lottery-schedule-item" key={item.game + "-" + item.drawName + "-" + index}><span>{item.game}</span><strong>{item.drawName}</strong><dl><div><dt>Sorteo</dt><dd>{item.drawAt}</dd></div><div><dt>Apertura</dt><dd>{item.opensAt}</dd></div><div><dt>Cierre</dt><dd>{item.closesAt}</dd></div></dl></article>)}
-          {lottery.ok && !lottery.schedules.length && <p className="muted">La fuente no devolvió horarios en este momento. Consultá el cronograma en el enlace oficial.</p>}
-        </div>
-        <details className="lottery-archives">
-          <summary>Extractos recientes por juego ({lottery.archives.length})</summary>
-          <div className="lottery-archive-groups">
-            {lottery.games.map((game) => {
-              const archives = lottery.archives.filter((archive) => archive.game === game.name);
-              return <div className="lottery-archive-group" key={game.name}><div><strong>{game.name}</strong><a href={game.url} target="_blank" rel="noreferrer">Abrir sección oficial ↗</a></div>{archives.length ? <ul>{archives.map((archive) => <li key={archive.url}><a href={archive.url} target="_blank" rel="noreferrer">Extracto {archive.date}</a></li>)}</ul> : <p className="muted">Consultá los extractos en la <a href={game.url} target="_blank" rel="noreferrer">sección oficial</a>.</p>}</div>;
-            })}
-          </div>
-        </details>
-        <p className="lottery-source-note">Los horarios y links de extractos se leen desde el portal externo. Si cambia su estructura, se muestra una alerta sin inventar resultados.</p>
-      </section>
+
     </div>
   );
 }

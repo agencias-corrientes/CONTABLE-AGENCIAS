@@ -29,14 +29,15 @@ export default async function TeamPermissionsPage({
 
   const [{ data: employees, error: employeeError }, { data: backupSettings }, { data: backupRows, error: backupRowsError }] = await Promise.all([
     supabase.rpc("list_organization_members_for_owner", { p_organization_id: organization.id }),
-    supabase.from("organization_backup_settings").select("recipient_email,enabled,updated_at").eq("organization_id", organization.id).maybeSingle(),
+    supabase.from("organization_backup_settings").select("recipient_email,enabled,include_ticket_photo,updated_at").eq("organization_id", organization.id).maybeSingle(),
     supabase.from("agency_rendition_backup_outbox").select("id,rendition_id,recipient_email,subject,text_body,status,attempt_count,last_attempt_at,sent_at,last_error,created_at").eq("organization_id", organization.id).order("created_at", { ascending: false }).limit(20),
   ]);
   const errorMessages: Record<string, string> = {
     "solo-titular": "Solo el titular de la agencia puede administrar empleados y permisos.",
     "email-invalido": "Ingresá un correo válido.",
     "cuenta-no-registrada": "El empleado primero debe crear su cuenta de acceso con ese correo y luego podrás vincularlo a la agencia.",
-    "empleado-existente": "Ese usuario ya tiene acceso a esta agencia.",
+    "empleado-existente": "Ya existe una cuenta con ese correo. No se creó un usuario duplicado.",
+    "contrasena-corta": "La contraseña inicial debe tener al menos 12 caracteres.",
     "alta-empleado-fallida": "No se pudo agregar al empleado.",
     "usuario-invalido": "La operación solicitada no es válida.",
     "usuario-no-encontrado": "No encontramos al empleado dentro de esta agencia.",
@@ -54,7 +55,7 @@ export default async function TeamPermissionsPage({
         <div><p className="eyebrow">SEGURIDAD DE LA AGENCIA</p><h1>Personal y permisos</h1><p className="muted">El titular decide a qué módulos puede entrar cada empleado y qué operaciones puede realizar.</p></div>
         <span className="badge success">Titular</span>
       </div>
-      {params.resultado === "empleado-agregado" && <p className="message success-message">Empleado agregado. Por seguridad, sus permisos quedan desactivados hasta que los habilites.</p>}
+      {params.resultado === "empleado-creado" && <p className="message success-message">Acceso del empleado creado. Sus permisos operativos están desactivados hasta que los habilites. Si Supabase solicita confirmar el correo, deberá abrir ese mensaje antes del primer ingreso.</p>}
       {params.resultado === "permisos-guardados" && <p className="message success-message">Permisos guardados correctamente.</p>}
       {params.resultado === "acceso-revocado" && <p className="message success-message">Se revocó el acceso del empleado a esta agencia. Su cuenta general de autenticación no fue eliminada.</p>}
       {params.resultado === "backup-email-guardado" && <p className="message success-message">Se guardó el correo de respaldo. Las nuevas rendiciones se encolarán para enviarse a esa dirección.</p>}
@@ -62,20 +63,22 @@ export default async function TeamPermissionsPage({
       {params.error && <p className="message error-message">{errorMessages[params.error] ?? "No se pudo completar la operación. Revisá los datos e intentá nuevamente."}</p>}
 
       <section className="panel">
-        <div className="panel-head"><div><h2>Agregar empleado</h2><p className="muted">El empleado debe registrarse primero con su propio correo; luego vinculás esa cuenta a esta agencia.</p></div></div>
+        <div className="panel-head"><div><h2>Agregar empleado</h2><p className="muted">El titular crea el acceso con correo y contraseña inicial. Entregale las credenciales por un canal privado y pedile cambiar la contraseña luego.</p></div></div>
         <form action={addEmployeeByEmail} className="inline-form team-add-form">
-          <input type="email" name="email" placeholder="correo@empleado.com" required autoComplete="email" />
-          <button className="button primary" type="submit">Vincular empleado</button>
+          <input type="email" name="email" placeholder="correo@empleado.com" required autoComplete="off" />
+          <input type="password" name="password" placeholder="Contraseña inicial (mín. 12 caracteres)" minLength={12} required autoComplete="new-password" />
+          <button className="button primary" type="submit">Crear acceso al empleado</button>
         </form>
       </section>
 
       <section className="panel team-backup-panel">
-        <div className="panel-head"><div><h2>Backup automático de rendiciones</h2><p className="muted">Cada rendición registrada genera un respaldo legible en texto con agencia, subagente/ambulante, fecha, período, sorteo, desglose por juego, total, tickets y observaciones.</p></div><span className={backupSettings?.enabled && backupSettings.recipient_email ? "badge success" : "badge"}>{backupSettings?.enabled && backupSettings.recipient_email ? "Correo guardado" : "Falta configurar correo"}</span></div>
+        <div className="panel-head"><div><h2>Backup automático de rendiciones</h2><p className="muted">Cada rendición registrada genera un respaldo legible en texto con agencia, subagente/ambulante, fecha, período, sorteo, desglose por juego, total, tickets y observaciones.</p></div><span className={backupSettings?.enabled && backupSettings.recipient_email ? "badge success" : "badge"}>{backupSettings?.enabled && backupSettings.recipient_email ? "Correo configurado" : "Usa correo del titular"}</span></div>
         <form action={saveBackupEmail} className="inline-form team-add-form">
-          <input type="email" name="recipient_email" defaultValue={backupSettings?.recipient_email ?? ""} placeholder="correo-para-backup@ejemplo.com" autoComplete="email" />
-          <button className="button primary" type="submit">Guardar correo de backup</button>
+          <input type="email" name="recipient_email" defaultValue={backupSettings?.recipient_email ?? ""} placeholder="Dejar vacío para usar el correo de acceso del titular" autoComplete="email" />
+          <label className="backup-photo-option"><input type="checkbox" name="include_ticket_photo" defaultChecked={backupSettings?.include_ticket_photo ?? true} /> Adjuntar foto del ticket cuando esté disponible</label>
+          <button className="button primary" type="submit">Guardar backup del titular</button>
         </form>
-        <p className="team-security-note">El respaldo de texto queda guardado en la base de datos y se prepara automáticamente al registrar una rendición. El envío por correo requiere configurar en Supabase los secretos del proveedor de correo; hasta entonces los respaldos aparecen como pendientes y no se declaran enviados.</p>
+        <p className="team-security-note">Solo el titular recibe los backups. Cada rendición genera un respaldo de texto; la foto se adjunta si esta opción está marcada y se pudo guardar. El sistema informa “Enviado” únicamente si el proveedor de correo confirma el envío.</p>
         <div className="team-backup-log">
           <div className="panel-head"><div><h3>Últimos respaldos</h3><p className="muted">Historial de cola, intentos y estado de envío.</p></div><span className="muted">{backupRows?.length ?? 0}</span></div>
           {backupRowsError && <p className="message error-message">No se pudo leer el historial de respaldos.</p>}

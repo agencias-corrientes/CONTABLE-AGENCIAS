@@ -38,6 +38,7 @@ function AgentCard({ agent, pending, lastDate, canDelete }: { agent: any; pendin
         </div>
         <span className="agency-enter">Abrir Rendiciones →</span>
       </Link>
+      <Link href={"/agencias/" + agent.id} className="agency-config-link">Datos y comisiones →</Link>
     </article>
   );
 }
@@ -50,7 +51,7 @@ export default async function AgenciasPage({
   const params = searchParams ? await searchParams : {};
   const { supabase, organization, member, userId } = await getCurrentContext();
   if (!organization || !member) return null;
-  const isManager = member.role === "owner" || member.role === "admin";
+  const isManager = member.role === "owner";
   const { data: staffPermissions } = isManager
     ? { data: { can_create_agents: true, can_delete_agents: true } }
     : await supabase.from("organization_member_permissions").select("can_create_agents,can_delete_agents").eq("organization_id", organization.id).eq("user_id", userId).maybeSingle();

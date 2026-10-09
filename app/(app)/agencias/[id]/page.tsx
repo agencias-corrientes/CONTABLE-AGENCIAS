@@ -3,17 +3,20 @@ import { notFound } from "next/navigation";
 import { getCurrentContext, money } from "@/lib/accounting";
 import { formatAgencyDateTime, todayInAgencyTimeZone } from "@/lib/agency-datetime";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
-import { receiveAgencyRendition } from "../actions";
+import { receiveAgencyRendition, saveAgentGameCommissions } from "../actions";
 
-export default async function AgencyDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function AgencyDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ error?: string; resultado?: string }> }) {
   const { id } = await params;
-  const { supabase, organization } = await getCurrentContext();
-  if (!organization) return null;
+  const pageParams = searchParams ? await searchParams : {};
+  const { supabase, organization, member } = await getCurrentContext();
+  if (!organization || !member) return null;
+  const isOwner = member.role === "owner";
 
-  const [{ data: agent }, { data: renditions }, { data: gameTypes }] = await Promise.all([
+  const [{ data: agent }, { data: renditions }, { data: gameTypes }, { data: commissionRows }] = await Promise.all([
     supabase.from("agency_agents").select("id,kind,code,full_name,dni,email,phone,whatsapp,address,notes,is_active,created_at").eq("id", id).eq("organization_id", organization.id).maybeSingle(),
-    supabase.from("agency_renditions").select("id,rendition_date,created_at,game_period,draw_number,capture_method,period_start,period_end,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference,cash_account_id,cash_accounts(name)),agency_rendition_game_amounts(id,game_type_id,amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)").eq("agent_id", id).eq("organization_id", organization.id).neq("status", "void").order("created_at", { ascending: false }),
-    supabase.from("agency_game_types").select("id,name,category").eq("organization_id", organization.id).eq("enabled", true).order("sort_order").order("name"),
+    supabase.from("agency_renditions").select("id,rendition_date,created_at,game_period,draw_number,capture_method,period_start,period_end,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference,cash_account_id,cash_accounts(name)),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)").eq("agent_id", id).eq("organization_id", organization.id).neq("status", "void").order("created_at", { ascending: false }),
+    supabase.from("agency_game_types").select("id,name,category,enabled").eq("organization_id", organization.id).order("sort_order").order("name"),
+    supabase.from("agency_agent_game_commissions").select("game_type_id,commission_percent").eq("organization_id", organization.id).eq("agent_id", id),
   ]);
   if (!agent) notFound();
 
@@ -25,6 +28,7 @@ export default async function AgencyDetailPage({ params }: { params: Promise<{ i
   const totalDue = rows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
   const totalReceived = rows.reduce((sum, row) => sum + row.received, 0);
   const totalPending = Math.max(0, totalDue - totalReceived);
+  const totalCommission = rows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_game_amounts) ? row.agency_rendition_game_amounts : []).reduce((acc, game) => acc + Number(game.commission_amount ?? 0), 0), 0);
   const typeLabel = agent.kind === "subagent" ? "Subagente" : "Ambulante";
   const code = agent.code ?? "SIN CÓDIGO";
 
@@ -43,12 +47,34 @@ export default async function AgencyDetailPage({ params }: { params: Promise<{ i
         <div className="stat-card"><span>Total rendido</span><strong>{money(totalDue, organization.currency_code)}</strong><small>importe generado</small></div>
         <div className="stat-card"><span>Total cobrado</span><strong>{money(totalReceived, organization.currency_code)}</strong><small>cobros registrados</small></div>
         <div className="stat-card"><span>Saldo pendiente</span><strong>{money(totalPending, organization.currency_code)}</strong><small>de {typeLabel.toLowerCase()} {code}</small></div>
+        <div className="stat-card"><span>Comisión acumulada</span><strong>{money(totalCommission, organization.currency_code)}</strong><small>según tarifas vigentes en cada rendición</small></div>
       </div>
+
+      {pageParams.resultado === "comisiones-guardadas" && <p className="message success-message">Comisiones guardadas. Se aplicarán automáticamente a las próximas rendiciones de este operador.</p>}
+      {pageParams.error && <p className="message error-message">{pageParams.error === "comision-invalida" ? "Cada comisión debe estar entre 0 y 100 %." : "No se pudieron guardar las comisiones. Revisá tus permisos y volvé a intentar."}</p>}
+      {isOwner && (
+        <section className="panel agent-commission-panel">
+          <div className="panel-head"><div><h2>Comisión por juego</h2><p className="muted">Definí un porcentaje para cada juego que vende este {typeLabel.toLowerCase()}. El porcentaje vigente queda guardado en cada rendición para conservar el historial correcto.</p></div><span className="badge success">Solo titular</span></div>
+          <form action={saveAgentGameCommissions} className="agent-commission-form">
+            <input type="hidden" name="agent_id" value={agent.id} />
+            <div className="agent-commission-list">
+              {(gameTypes ?? []).map((game) => {
+                const current = (commissionRows ?? []).find((row) => row.game_type_id === game.id);
+                return <label className="agent-commission-row" key={game.id}>
+                  <span><strong>{game.name}</strong><small>{game.category}{game.enabled ? "" : " · Inactivo"}</small></span>
+                  <span className="commission-percent-input"><input type="number" name={"commission_" + game.id} min="0" max="100" step="0.01" inputMode="decimal" defaultValue={Number(current?.commission_percent ?? 0).toFixed(2)} /><em>%</em></span>
+                </label>;
+              })}
+            </div>
+            <button className="button primary" type="submit">Guardar comisiones</button>
+          </form>
+        </section>
+      )}
 
       {!agent.is_active ? <div className="message">Este agente está inactivo. Se conserva su historial, pero no se pueden crear rendiciones nuevas.</div> : (
         <section className="panel">
           <div className="panel-head"><div><h2>Rendición diaria</h2><p className="muted">Foto/QR primero; la carga manual sigue disponible.</p></div></div>
-          <RenditionEntryForm agentId={agent.id} games={(gameTypes ?? []).map((game) => ({ id: game.id, name: game.name, category: game.category }))} today={todayInAgencyTimeZone()} />
+          <RenditionEntryForm agentId={agent.id} games={(gameTypes ?? []).filter((game) => game.enabled).map((game) => ({ id: game.id, name: game.name, category: game.category }))} today={todayInAgencyTimeZone()} />
         </section>
       )}
 
@@ -66,7 +92,7 @@ export default async function AgencyDetailPage({ params }: { params: Promise<{ i
               </summary>
               <div className="rendition-record-detail">
                 <h4>Juegos e importes</h4>
-                <ul className="rendition-game-amounts">{gameAmounts.map((game) => <li key={game.id}><span>{game.agency_game_types?.name ?? "Juego"}</span><strong>{money(game.amount, organization.currency_code)}</strong></li>)}</ul>
+                <ul className="rendition-game-amounts">{gameAmounts.map((game) => <li key={game.id}><span>{game.agency_game_types?.name ?? "Juego"}<small className="commission-note">{Number(game.commission_percent ?? 0).toFixed(2)}% comisión · {money(game.commission_amount ?? 0, organization.currency_code)}</small></span><strong>{money(game.amount, organization.currency_code)}<small className="commission-note">neto {money(Number(game.amount) - Number(game.commission_amount ?? 0), organization.currency_code)}</small></strong></li>)}</ul>
                 <p>Referencia: {row.reference || "—"}</p><p>Observaciones: {row.notes || "—"}</p>
                 {tickets.map((ticket) => <div className="ticket-saved-list" key={ticket.id}><strong>Ticket</strong><code>{ticket.ticket_number}</code>{ticket.ticket_qr_payload && <small>QR: {ticket.ticket_qr_payload.slice(0, 100)}{ticket.ticket_qr_payload.length > 100 ? "…" : ""}</small>}</div>)}
                 {row.pending > 0 ? <details className="agency-pay-details"><summary>Registrar cobro en Caja</summary><form action={receiveAgencyRendition} className="agency-pay-form"><input type="hidden" name="rendition_id" value={row.id}/><input type="hidden" name="agent_id" value={agent.id}/><label>Fecha<input type="date" name="payment_date" required defaultValue={todayInAgencyTimeZone()} /></label><label>Importe<input type="number" name="amount" min="0.01" max={row.pending} step="0.01" placeholder="Importe" required /></label><span className="agency-cash-fixed">Caja</span><input name="reference" placeholder="Referencia"/><button className="button primary" type="submit">Registrar cobro</button></form></details> : null}

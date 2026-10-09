@@ -49,10 +49,9 @@ Deno.serve(async (request: Request) => {
   const admin = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  let outboxQuery = admin.from("agency_rendition_backup_outbox").select("*");
-  outboxQuery = payload.outbox_id
-    ? outboxQuery.eq("id", payload.outbox_id)
-    : outboxQuery.eq("rendition_id", payload.rendition_id as string);
+  const outboxQuery = payload.outbox_id
+    ? admin.from("agency_rendition_backup_outbox").select("*").eq("id", payload.outbox_id)
+    : admin.from("agency_rendition_backup_outbox").select("*").eq("rendition_id", payload.rendition_id as string).order("revision_no", { ascending: false }).limit(1);
   const { data: outbox, error: outboxError } = await outboxQuery.maybeSingle();
   if (outboxError) return reply({ error: "backup_lookup_failed" }, 500);
   if (!outbox) return reply({ error: "backup_not_found_or_not_configured" }, 404);
@@ -65,23 +64,8 @@ Deno.serve(async (request: Request) => {
     .maybeSingle();
   if (memberError || !member) return reply({ error: "agency_access_denied" }, 403);
 
-  const manager = member.role === "owner" || member.role === "admin";
-  const { data: backupPermission } = await admin
-    .from("organization_member_permissions")
-    .select("can_manage_backups")
-    .eq("organization_id", outbox.organization_id)
-    .eq("user_id", userId)
-    .maybeSingle();
-  const { data: rendition } = await admin
-    .from("agency_renditions")
-    .select("created_by")
-    .eq("id", outbox.rendition_id)
-    .eq("organization_id", outbox.organization_id)
-    .maybeSingle();
-  const isCreator = rendition?.created_by === userId;
-  if (!manager && !backupPermission?.can_manage_backups && !isCreator) {
-    return reply({ error: "backup_permission_required" }, 403);
-  }
+  const manager = member.role === "owner";
+  if (!manager) return reply({ error: "owner_only_backup_permission_required" }, 403);
 
   if (outbox.status === "sent") {
     return reply({ status: "sent", already_sent: true, sent_at: outbox.sent_at });
@@ -122,6 +106,25 @@ Deno.serve(async (request: Request) => {
     return reply({ status: current?.status ?? "unknown", already_sent: current?.status === "sent", sent_at: current?.sent_at });
   }
 
+  const attachments: { filename: string; content: string }[] = [];
+  let textBody = claimed.text_body;
+  if (outbox.ticket_photo_path) {
+    const { data: photoData, error: photoError } = await admin.storage.from("agency-rendition-tickets").download(outbox.ticket_photo_path);
+    if (!photoError && photoData) {
+      try {
+        const bytes = new Uint8Array(await photoData.arrayBuffer());
+        let binary = "";
+        for (let offset = 0; offset < bytes.length; offset += 0x8000) binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+        const extension = outbox.ticket_photo_path.endsWith(".png") ? "png" : outbox.ticket_photo_path.endsWith(".webp") ? "webp" : "jpg";
+        attachments.push({ filename: "ticket-rendicion." + extension, content: btoa(binary) });
+      } catch {
+        textBody += "\\nNOTA: no se pudo adjuntar la foto; se envía el respaldo de texto.";
+      }
+    } else {
+      textBody += "\\nNOTA: no se pudo recuperar la foto; se envía el respaldo de texto.";
+    }
+  }
+
   let providerResponse: Response;
   let providerText = "";
   try {
@@ -135,7 +138,8 @@ Deno.serve(async (request: Request) => {
         from: fromEmail,
         to: [claimed.recipient_email],
         subject: claimed.subject,
-        text: claimed.text_body,
+        text: textBody,
+        ...(attachments.length ? { attachments } : {}),
       }),
       signal: AbortSignal.timeout(20000),
     });

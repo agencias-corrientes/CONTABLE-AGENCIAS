@@ -233,9 +233,45 @@ export type Database = {
           },
         ]
       }
+      agency_agent_game_commissions: {
+        Row: {
+          organization_id: string
+          agent_id: string
+          game_type_id: string
+          commission_percent: number
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          organization_id: string
+          agent_id: string
+          game_type_id: string
+          commission_percent?: number
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          organization_id?: string
+          agent_id?: string
+          game_type_id?: string
+          commission_percent?: number
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "agency_agent_game_commissions_agent_id_fkey", columns: ["agent_id"], isOneToOne: false, referencedRelation: "agency_agents", referencedColumns: ["id"] },
+          { foreignKeyName: "agency_agent_game_commissions_game_type_id_fkey", columns: ["game_type_id"], isOneToOne: false, referencedRelation: "agency_game_types", referencedColumns: ["id"] },
+          { foreignKeyName: "agency_agent_game_commissions_organization_id_fkey", columns: ["organization_id"], isOneToOne: false, referencedRelation: "organizations", referencedColumns: ["id"] },
+        ]
+      }
       agency_rendition_game_amounts: {
         Row: {
           amount: number
+          commission_percent: number
+          commission_amount: number
           created_at: string
           created_by: string
           game_type_id: string
@@ -245,6 +281,8 @@ export type Database = {
         }
         Insert: {
           amount: number
+          commission_percent?: number
+          commission_amount?: number
           created_at?: string
           created_by?: string
           game_type_id: string
@@ -254,6 +292,8 @@ export type Database = {
         }
         Update: {
           amount?: number
+          commission_percent?: number
+          commission_amount?: number
           created_at?: string
           created_by?: string
           game_type_id?: string
@@ -928,6 +968,7 @@ export type Database = {
           organization_id: string
           recipient_email: string | null
           enabled: boolean
+          include_ticket_photo: boolean
           created_by: string | null
           created_at: string
           updated_at: string
@@ -936,6 +977,7 @@ export type Database = {
           organization_id: string
           recipient_email?: string | null
           enabled?: boolean
+          include_ticket_photo?: boolean
           created_by?: string | null
           created_at?: string
           updated_at?: string
@@ -964,6 +1006,7 @@ export type Database = {
           organization_id: string
           rendition_id: string
           revision_no: number
+          ticket_photo_path: string | null
           recipient_email: string
           subject: string
           text_body: string
@@ -993,6 +1036,7 @@ export type Database = {
           organization_id?: string
           rendition_id?: string
           revision_no?: number
+          ticket_photo_path?: string | null
           recipient_email?: string
           subject?: string
           text_body?: string
@@ -1547,6 +1591,14 @@ export type Database = {
           role: Database["public"]["Enums"]["organization_role"]
           user_id: string
         }[]
+      }
+      attach_agency_rendition_backup_photo: {
+        Args: {
+          p_organization_id: string
+          p_rendition_id: string
+          p_photo_path: string
+        }
+        Returns: string
       }
       create_agency_agent: {
         Args: {
