@@ -107,6 +107,38 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   function drawPeriodStatesForAgent(agentId: string) {
     return drawPeriods.map((period) => ({ period, ...drawPeriodStateForAgent(agentId, period) }));
   }
+  const pendingInventory = activeAgents.flatMap((agent: any) => {
+    const policy = String(agent.rendition_policy ?? "per_draw");
+    const configuredPeriods = Array.isArray(agent.rendition_periods) ? agent.rendition_periods.map(String) : [];
+    if (policy === "daily") {
+      const dailyRendition = todayRows.find((row: any) => String(row.agent_id) === String(agent.id) && String(row.game_period ?? "").trim() === "Cierre diario");
+      const dailyStatus = dailyStatusByAgent.get(String(agent.id)) as any;
+      if (dailyStatus?.status === "complete") return [];
+      if (!dailyRendition && !dailyCloseAllowed) return [];
+      if (!dailyRendition) return [{
+        agent, periodLabel: "Cierre diario", time: lastScheduledDraw?.time ?? null,
+        status: "pending", label: "Pendiente: Cierre diario",
+        description: "Todavía no se registró la rendición única al cierre de la jornada."
+      }];
+      if (dailyStatus?.status === "incomplete") return [{
+        agent, periodLabel: "Cierre diario", time: lastScheduledDraw?.time ?? null,
+        status: "incomplete", label: "Incompleta: Cierre diario",
+        description: String(dailyStatus.notes || "El cierre diario está marcado como incompleto.")
+      }];
+      return [{
+        agent, periodLabel: "Cierre diario", time: lastScheduledDraw?.time ?? null,
+        status: "review", label: "Revisar: Cierre diario",
+        description: "Existe una rendición diaria, pero falta confirmar su estado."
+      }];
+    }
+    return drawPeriodStatesForAgent(String(agent.id))
+      .filter((entry) => policy !== "selected_draws" || configuredPeriods.includes(entry.period.label))
+      .filter((entry) => ["pending", "incomplete", "review"].includes(entry.status))
+      .map((entry) => ({
+        agent, periodLabel: entry.period.label, time: entry.period.time,
+        status: entry.status, label: entry.label, description: entry.description
+      }));
+  });
   const legacyUnlabelledTodayCount = todayRows.filter((row: any) => !String(row.game_period ?? "").trim()).length;
 
   function RenditionHistory({ agent, historyRows = rows }: { agent: any; historyRows?: any[] }) {
@@ -345,6 +377,24 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         <div className="stat-card"><span>Pendiente hoy</span><strong>{money(todayPendiente, activeOrganization.currency_code)}</strong><small>saldo del día</small></div>
         <div className="stat-card"><span>Agentes activos</span><strong>{activeAgents.length}</strong><small>{activeAgents.filter((agent) => agent.kind === "subagent").length} subagentes · {activeAgents.filter((agent) => agent.kind === "ambulant").length} ambulantes</small></div>
       </div>
+
+      <section className="panel rendition-pending-inventory">
+        <div className="panel-head">
+          <div><h2>Inventario de faltantes a rendir</h2><p className="muted">Muestra los sorteos vencidos que todavía requieren atención según la modalidad configurada para cada subagente o ambulante.</p></div>
+          <span className={pendingInventory.length ? "badge warning" : "badge success"}>{pendingInventory.length} pendiente(s) / revisar</span>
+        </div>
+        {pendingInventory.length
+          ? <div className="table-wrap"><table>
+              <thead><tr><th>Operador</th><th>Sorteo o cierre</th><th>Estado</th><th>Acciones</th></tr></thead>
+              <tbody>{pendingInventory.map((item: any) => <tr key={String(item.agent.id) + "|" + item.periodLabel}>
+                <td><strong>{agentLabel(item.agent)} {item.agent.code}</strong><small>{item.agent.full_name}</small></td>
+                <td><strong>{item.periodLabel}</strong><small>{item.time ? "Horario: " + item.time : "Acumulado de cierre diario"}</small><small>{item.description}</small></td>
+                <td><span className={item.status === "pending" ? "badge warning" : "badge"}>{item.status === "pending" ? "Pendiente" : item.status === "incomplete" ? "Incompleta" : "Revisar"}</span></td>
+                <td><div className="game-actions"><Link className="button ghost small" href={"/pagos?agent=" + item.agent.id}>Abrir rendición</Link><Link className="button ghost small" href={"/agencias/" + item.agent.id}>Configurar</Link></div></td>
+              </tr>)}</tbody>
+            </table></div>
+          : <p className="muted">No hay sorteos vencidos sin rendir ni estados incompletos o pendientes de revisión para las modalidades configuradas.</p>}
+      </section>
 
       <form method="get" action="/pagos" className="rendition-agent-search" role="search">
         <label htmlFor="rendition-agent-query">Buscar operador</label>

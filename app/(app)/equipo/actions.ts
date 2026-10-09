@@ -470,7 +470,14 @@ export async function cleanupAgencyTestData(formData: FormData) {
   }
 
   const { error } = await supabase.rpc("cleanup_agency_test_data", { p_organization_id: organizationId });
-  if (error) redirect("/equipo?error=limpieza-fallida");
+  if (error) {
+    console.error("[cleanupAgencyTestData] cleanup_agency_test_data failed", {
+      code: error.code, message: error.message, details: error.details, hint: error.hint
+    });
+    if (error.code === "23503") redirect("/equipo?error=limpieza-relacion");
+    if (error.code === "42501") redirect("/equipo?error=limpieza-permiso");
+    redirect("/equipo?error=limpieza-fallida");
+  }
 
   const photosRemoved = await removeAgencyTicketPhotos(supabase, organizationId);
   revalidatePath("/equipo");

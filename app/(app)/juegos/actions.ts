@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getOfficialAgencyGame } from "@/lib/agency-official-games";
 
 async function getOrg() {
   const supabase = await createClient();
@@ -31,26 +32,23 @@ export async function createGameType(formData: FormData) {
   const { supabase, organizationId, role } = await getOrg();
   if (role !== "owner") redirect("/juegos?error=solo-administrador");
   const name = clean(formData.get("name"));
-  const category = clean(formData.get("category")) || "Quiniela";
-  if (!name) throw new Error("El nombre del juego es obligatorio.");
+  const officialGame = getOfficialAgencyGame(name);
+  if (!officialGame) redirect("/juegos?error=juego-no-oficial");
 
-  const maxOrder = await supabase
-    .from("agency_game_types")
-    .select("sort_order")
-    .eq("organization_id", organizationId)
-    .order("sort_order", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data: existing, error: existingError } = await supabase
+    .from("agency_game_types").select("id")
+    .eq("organization_id", organizationId).eq("name", officialGame.name).maybeSingle();
+  if (existingError) throw new Error(existingError.message);
+  if (existing) redirect("/juegos?error=juego-existente");
 
-  const nextOrder = Number(maxOrder.data?.sort_order ?? 0) + 10;
   const { error } = await supabase.from("agency_game_types").insert({
     organization_id: organizationId,
-    name,
-    category,
-    sort_order: nextOrder,
+    name: officialGame.name,
+    category: officialGame.category,
+    sort_order: officialGame.sortOrder,
     enabled: true,
   });
-  if (error) throw new Error(error.code === "23505" ? "Ya existe ese juego." : error.message);
+  if (error) throw new Error(error.code === "23505" ? "Ese juego oficial ya existe." : error.message);
 
   revalidatePath("/juegos");
   revalidatePath("/dashboard");
@@ -62,14 +60,14 @@ export async function updateGameType(formData: FormData) {
   if (role !== "owner") redirect("/juegos?error=solo-administrador");
   const id = clean(formData.get("id"));
   const name = clean(formData.get("name"));
-  const category = clean(formData.get("category")) || "Quiniela";
+  const officialGame = getOfficialAgencyGame(name);
   const enabled = formData.get("enabled") === "on";
 
-  if (!id || !name) throw new Error("Nombre e identificador son obligatorios.");
+  if (!id || !officialGame) redirect("/juegos?error=juego-no-oficial");
 
   const { error } = await supabase
     .from("agency_game_types")
-    .update({ name, category, enabled, updated_at: new Date().toISOString() })
+    .update({ name: officialGame.name, category: officialGame.category, enabled, sort_order: officialGame.sortOrder, updated_at: new Date().toISOString() })
     .eq("id", id)
     .eq("organization_id", organizationId);
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
+import { OFFICIAL_AGENCY_GAME_CATALOG, getOfficialAgencyGame } from "@/lib/agency-official-games";
 import { createGameType, deleteGameType, updateGameType, saveDefaultGameCommissions } from "./actions";
 
 type Breakdown = {
@@ -38,6 +39,8 @@ export default async function GamesPage({ searchParams }: { searchParams?: Promi
   ]);
 
   const gameRows = games ?? [];
+  const gameCatalog = OFFICIAL_AGENCY_GAME_CATALOG;
+  const missingOfficialGames = gameCatalog.filter((entry) => !gameRows.some((game) => game.name.trim().toLocaleUpperCase("es-AR") === entry.name.toLocaleUpperCase("es-AR")));
   const agentRows = agents ?? [];
   const details = (breakdowns ?? []) as Breakdown[];
   const generalCommissionByGame = new Map((defaultCommissionRows ?? []).map((row) => [row.game_type_id, Number(row.commission_percent ?? 0)]));
@@ -70,6 +73,8 @@ export default async function GamesPage({ searchParams }: { searchParams?: Promi
       </div>
 
       {params.error === "solo-administrador" && <p className="message error-message">Solo el titular de la agencia puede modificar el catálogo o las comisiones generales.</p>}
+      {params.error === "juego-no-oficial" && <p className="message error-message">Solo se pueden agregar o activar juegos publicados en el catálogo oficial de Lotería Correntina.</p>}
+      {params.error === "juego-existente" && <p className="message">Ese juego oficial ya está cargado. Activá su registro en el catálogo en lugar de duplicarlo.</p>}
       {params.error === "comisiones-generales-invalidas" && <p className="message error-message">Cada comisión general debe estar entre 0 y 100 %.</p>}
       {params.error === "comisiones-generales-no-guardadas" && <p className="message error-message">No se guardaron los porcentajes generales. No se aplicaron cambios.</p>}
       {params.resultado === "comisiones-generales-guardadas" && <p className="message success-message">Comisiones generales guardadas. Los próximos registros usarán estos porcentajes, salvo que un subagente o ambulante tenga una excepción particular.</p>}
@@ -102,37 +107,41 @@ export default async function GamesPage({ searchParams }: { searchParams?: Promi
 
       <section className="panel game-management-panel">
         <div className="panel-head">
-          <div><h2>Catálogo editable</h2><p className="muted">Agregá, editá, activá, desactivá o eliminá tipos de juegos.</p></div>
+          <div><h2>Catálogo oficial de juegos</h2><p className="muted">Solo se pueden habilitar juegos que figuran en las publicaciones oficiales. Los registros antiguos fuera del catálogo se conservan para consultar el historial, pero no se pueden usar en nuevas rendiciones.</p></div>
         </div>
-        {canManageGames
+        {canManageGames && missingOfficialGames.length > 0
           ? <form action={createGameType} className="inline-form game-create-form">
-              <input name="name" placeholder="Nombre del juego" required />
-              <input name="category" placeholder="Categoría (Quiniela / Otros juegos)" defaultValue="Quiniela" required />
-              <button className="button primary">Agregar juego</button>
+              <select name="name" defaultValue={missingOfficialGames[0]?.name ?? ""} required aria-label="Juego oficial para agregar">
+                {missingOfficialGames.map((game) => <option key={game.name} value={game.name}>{game.name}{game.type === "special" ? " · especial oficial" : ""}</option>)}
+              </select>
+              <button className="button primary">Agregar juego oficial</button>
             </form>
-          : <p className="message">Vista de consulta: el catálogo solo puede cambiarlo el titular o un administrador autorizado de la agencia.</p>}
+          : canManageGames
+            ? <p className="message">El catálogo ya contiene todos los juegos oficiales identificados. Para habilitar uno, activá su registro en la lista.</p>
+            : <p className="message">Vista de consulta: el catálogo solo puede cambiarlo el titular de la agencia.</p>}
         <div className="table-wrap">
           <table>
             <thead><tr><th>Juego</th><th>Categoría</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody>
-              {gameRows.map((game) => (
-                <tr key={game.id}>
+              {gameRows.map((game) => {
+                const officialEntry = getOfficialAgencyGame(game.name);
+                return <tr key={game.id}>
                   <td colSpan={4}>
-                    {canManageGames
+                    {canManageGames && officialEntry
                       ? <form action={updateGameType} className="game-edit-row">
                           <input type="hidden" name="id" value={game.id} />
-                          <input name="name" defaultValue={game.name} required />
-                          <input name="category" defaultValue={game.category} required />
+                          <input type="hidden" name="name" value={officialEntry.name} />
+                          <span><strong>{officialEntry.name}</strong><small>{officialEntry.type === "special" ? "Evento especial oficial" : officialEntry.category}</small></span>
                           <label className="game-enabled"><input type="checkbox" name="enabled" defaultChecked={game.enabled} /> Activo</label>
                           <div className="game-actions">
-                            <button className="button ghost" type="submit">Guardar</button>
+                            <button className="button ghost" type="submit">Guardar estado</button>
                             <button className="button danger-button" formAction={deleteGameType}>Eliminar</button>
                           </div>
                         </form>
-                      : <div className="game-edit-row game-readonly-row"><strong>{game.name}</strong><span>{game.category}</span><span className={game.enabled ? "badge success" : "badge"}>{game.enabled ? "Activo" : "Inactivo"}</span></div>}
+                      : <div className="game-edit-row game-readonly-row"><strong>{game.name}</strong><span>{game.category}</span><span className={officialEntry && game.enabled ? "badge success" : "badge"}>{officialEntry ? (game.enabled ? "Activo" : "Inactivo") : "Fuera del catálogo oficial · sólo historial"}</span></div>}
                   </td>
-                </tr>
-              ))}
+                </tr>;
+              })}
               {!gameRows.length && <tr><td colSpan={4}>No hay juegos cargados.</td></tr>}
             </tbody>
           </table>
