@@ -291,14 +291,12 @@ export async function deleteUnlinkedAuthAccount(formData: FormData) {
   const { supabase, organizationId } = await getOwnerContext();
   const email = String(formData.get("target_email") ?? "").trim().toLowerCase();
   const password = String(formData.get("owner_password") ?? "");
-  const confirmation = String(formData.get("confirmation") ?? "");
+  const confirmed = formData.get("delete_account_confirmed") === "yes";
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     redirect("/equipo?error=email-invalido");
   }
-  if (formData.get("confirm_delete_account") !== "yes" || confirmation !== "ELIMINAR CUENTA: " + email) {
-    redirect("/equipo?error=confirmacion-cuenta-no-valida");
-  }
+  if (!confirmed) redirect("/equipo?error=confirmacion-cuenta-no-valida");
 
   const { data: authData } = await supabase.auth.getClaims();
   const claims = authData?.claims;
@@ -312,14 +310,19 @@ export async function deleteUnlinkedAuthAccount(formData: FormData) {
   const verifier = createPublicAuthClient(url, publishableKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
-  const { error: authError } = await verifier.auth.signInWithPassword({ email: ownerEmail, password });
+  const { error: authError } = await verifier.auth.signInWithPassword({
+    email: ownerEmail,
+    password,
+  });
   if (authError) redirect("/equipo?error=contrasena-incorrecta");
 
+  // The single browser confirmation is already complete; the server supplies
+  // the exact backend token so the user never has to type an extra phrase.
   const { data, error } = await supabase.functions.invoke("delete-unlinked-auth-account", {
     body: {
       organization_id: organizationId,
       email,
-      confirmation,
+      confirmation: "ELIMINAR CUENTA: " + email,
     },
   });
 
@@ -328,17 +331,21 @@ export async function deleteUnlinkedAuthAccount(formData: FormData) {
     try {
       const response = (error as any).context;
       if (response && typeof response.json === "function") {
-        const payload = await response.json();
+        const payload = await (typeof response.clone === "function" ? response.clone() : response).json();
         code = String(payload?.code ?? "");
       }
     } catch {
-      // Keep a generic message if the Edge Function did not return structured JSON.
+      // The friendly UI below still gives a useful fallback if no code was returned.
     }
     if (code === "account_not_found") redirect("/equipo?error=cuenta-no-encontrada");
     if (code === "account_still_linked") redirect("/equipo?error=cuenta-vinculada");
     if (code === "confirmation_mismatch") redirect("/equipo?error=confirmacion-cuenta-no-valida");
     if (code === "owner_required") redirect("/equipo?error=solo-titular");
     if (code === "cannot_delete_current_owner") redirect("/equipo?error=no-borrar-usuario-actual");
+    if (code === "account_lookup_failed") redirect("/equipo?error=busqueda-cuenta-fallida");
+    if (code === "account_cleanup_failed" || code === "membership_check_failed") redirect("/equipo?error=limpieza-cuenta-fallida");
+    if (code === "account_delete_failed") redirect("/equipo?error=cuenta-no-eliminada");
+    if (code === "server_configuration_error" || code === "invalid_session") redirect("/equipo?error=funcion-eliminacion-no-disponible");
     redirect("/equipo?error=cuenta-no-eliminada");
   }
   if (!data?.ok) redirect("/equipo?error=cuenta-no-eliminada");
