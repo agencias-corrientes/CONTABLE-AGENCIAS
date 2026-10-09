@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getCurrentContext } from "@/lib/accounting";
-import { addEmployeeByEmail, removeEmployeeAccess, saveBackupEmail, retryRenditionBackup, saveEmployeePermissions, saveEmployeeRole, cleanupAgencyTestData } from "./actions";
+import { addEmployeeByEmail, removeEmployeeAccess, saveBackupEmail, retryRenditionBackup, saveEmployeePermissions, saveEmployeeRole, cleanupAgencyTestData, deleteUnlinkedAuthAccount } from "./actions";
 
 const roleLabels: Record<string, string> = { owner: "Propietario", admin: "Administrador", accountant: "Contador", viewer: "Consulta" };
 
@@ -88,6 +88,12 @@ export default async function TeamPermissionsPage({
     "limpieza-no-confirmada": "No se hizo ninguna limpieza. Marcá la confirmación y escribí el texto exacto solicitado.",
     "limpieza-fallida": "No se pudieron limpiar los datos de prueba. No inicies la operación oficial hasta revisar el error.",
     "limpieza-fotos-fallida": "La base se limpió, pero algunas fotos privadas de prueba quedaron pendientes de borrar.",
+
+    "confirmacion-cuenta-no-valida": "Marcá la confirmación y escribí exactamente ELIMINAR CUENTA: seguido del correo.",
+    "cuenta-no-encontrada": "No encontramos una cuenta registrada con ese correo.",
+    "cuenta-vinculada": "Esa cuenta todavía pertenece a una agencia. Quitá su acceso desde la tarjeta del empleado primero; por seguridad no se elimina una cuenta vinculada.",
+    "cuenta-no-eliminada": "No se pudo eliminar la cuenta de acceso. No se modificaron las rendiciones ni los datos de la agencia.",
+    "no-borrar-usuario-actual": "No podés eliminar la cuenta con la que estás trabajando.",
   };
 
   return (
@@ -97,6 +103,7 @@ export default async function TeamPermissionsPage({
         <span className="badge success">Titular</span>
       </div>
       {params.resultado === "empleado-creado" && <p className="message success-message">Cuenta vinculada a esta agencia. Si el correo ya tenía cuenta, debe ingresar con su contraseña habitual; si era nuevo, usará la contraseña inicial y confirmará el correo si Supabase lo solicita.</p>}
+      {params.resultado === "cuenta-eliminada" && <p className="message success-message">La cuenta global de inicio de sesión fue eliminada. No se borraron las rendiciones ni los datos de la agencia.</p>}
       {params.resultado === "permisos-guardados" && <p className="message success-message">Permisos guardados correctamente.</p>}
       {params.resultado === "rol-guardado" && <p className="message success-message">El rol se actualizó correctamente.</p>}
       {params.resultado === "acceso-revocado" && <p className="message success-message">Se revocó el acceso del empleado a esta agencia. Su cuenta general de autenticación no fue eliminada.</p>}
@@ -199,6 +206,17 @@ export default async function TeamPermissionsPage({
         </div>
       </section>
 
+
+      <section className="panel team-auth-delete-panel">
+        <div className="panel-head"><div><h2>Eliminar una cuenta existente que no aparece como empleado</h2><p className="muted">Para cuentas de prueba registradas en el inicio de sesión, pero no vinculadas a ninguna agencia. Solo se elimina si no pertenece a ninguna agencia. Si está vinculada como empleado, usá “Eliminar empleado de la agencia” en su tarjeta primero.</p></div><span className="badge warning">Cuenta global</span></div>
+        <form action={deleteUnlinkedAuthAccount} className="team-auth-delete-form">
+          <label>Correo de la cuenta a eliminar<input type="email" name="target_email" defaultValue="cokygarcia2020@gmail.com" autoComplete="off" required /></label>
+          <label>Tu contraseña actual de titular<input type="password" name="owner_password" autoComplete="current-password" required /></label>
+          <label>Escribí exactamente: <strong>ELIMINAR CUENTA: correo</strong><input name="confirmation" placeholder="ELIMINAR CUENTA: cokygarcia2020@gmail.com" autoComplete="off" required /></label>
+          <label className="team-auth-delete-confirm"><input type="checkbox" name="confirm_delete_account" value="yes" required /> Confirmo eliminar definitivamente esta cuenta de inicio de sesión.</label>
+          <button className="button danger" type="submit">Eliminar cuenta de acceso</button>
+        </form>
+      </section>
 
       <section className="panel team-backup-panel">
         <div className="panel-head"><div><h2>Backup automático de rendiciones</h2><p className="muted">Cada rendición registrada genera un respaldo legible en texto con agencia, subagente/ambulante, fecha, período, sorteo, desglose por juego, total, tickets y observaciones.</p></div><span className={backupSettings?.enabled && backupSettings.recipient_email ? "badge success" : "badge"}>{backupSettings?.enabled && backupSettings.recipient_email ? "Correo configurado" : "Usa correo del titular"}</span></div>
