@@ -28,7 +28,7 @@ function checked(formData: FormData, name: string) {
 }
 
 export async function addEmployeeByEmail(formData: FormData) {
-  const { supabase, organizationId } = await getOwnerContext();
+  const { supabase, organizationId, userId } = await getOwnerContext();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const role = String(formData.get("role") ?? "accountant").trim() as "owner" | "admin" | "accountant" | "viewer";
@@ -85,7 +85,7 @@ export async function addEmployeeByEmail(formData: FormData) {
 
   await supabase.from("audit_log").insert({
     organization_id: organizationId,
-    user_id: (await supabase.auth.getClaims()).data?.claims?.sub as string,
+    user_id: userId,
     action: "create_employee_with_role",
     entity: "organization_member",
     entity_id: String(memberUserId ?? data.user.id),
