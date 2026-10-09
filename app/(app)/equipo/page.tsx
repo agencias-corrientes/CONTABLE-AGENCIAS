@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ConfirmDeleteAccountButton } from "@/components/confirm-delete-account-button";
 import { getCurrentContext } from "@/lib/accounting";
 import { addEmployeeByEmail, removeEmployeeAccess, saveBackupEmail, retryRenditionBackup, saveEmployeePermissions, saveEmployeeRole, cleanupAgencyTestData, deleteUnlinkedAuthAccount } from "./actions";
 
@@ -94,6 +95,10 @@ export default async function TeamPermissionsPage({
     "cuenta-vinculada": "Esa cuenta todavía pertenece a una agencia. Quitá su acceso desde la tarjeta del empleado primero; por seguridad no se elimina una cuenta vinculada.",
     "cuenta-no-eliminada": "No se pudo eliminar la cuenta de acceso. No se modificaron las rendiciones ni los datos de la agencia.",
     "no-borrar-usuario-actual": "No podés eliminar la cuenta con la que estás trabajando.",
+
+    "busqueda-cuenta-fallida": "No se pudo buscar esa cuenta en Supabase. Intentá otra vez; no se eliminó nada.",
+    "limpieza-cuenta-fallida": "No se pudo comprobar o limpiar la cuenta. No se eliminó nada.",
+    "funcion-eliminacion-no-disponible": "El servicio de eliminación no respondió correctamente. No se eliminó la cuenta; probá nuevamente más tarde.",
   };
 
   return (
@@ -208,13 +213,12 @@ export default async function TeamPermissionsPage({
 
 
       <section className="panel team-auth-delete-panel">
-        <div className="panel-head"><div><h2>Eliminar una cuenta existente que no aparece como empleado</h2><p className="muted">Para cuentas de prueba registradas en el inicio de sesión, pero no vinculadas a ninguna agencia. Solo se elimina si no pertenece a ninguna agencia. Si está vinculada como empleado, usá “Eliminar empleado de la agencia” en su tarjeta primero.</p></div><span className="badge warning">Cuenta global</span></div>
+        <div className="panel-head"><div><h2>Eliminar cuenta</h2><p className="muted">Ingresá el correo de la cuenta y tu contraseña de titular. Al pulsar el botón, te pediremos confirmar una sola vez.</p></div></div>
         <form action={deleteUnlinkedAuthAccount} className="team-auth-delete-form">
-          <label>Correo de la cuenta a eliminar<input type="email" name="target_email" defaultValue="cokygarcia2020@gmail.com" autoComplete="off" required /></label>
-          <label>Tu contraseña actual de titular<input type="password" name="owner_password" autoComplete="current-password" required /></label>
-          <label>Escribí exactamente: <strong>ELIMINAR CUENTA: correo</strong><input name="confirmation" placeholder="ELIMINAR CUENTA: cokygarcia2020@gmail.com" autoComplete="off" required /></label>
-          <label className="team-auth-delete-confirm"><input type="checkbox" name="confirm_delete_account" value="yes" required /> Confirmo eliminar definitivamente esta cuenta de inicio de sesión.</label>
-          <button className="button danger" type="submit">Eliminar cuenta de acceso</button>
+          <label>Correo de la cuenta a eliminar<input type="email" name="target_email" placeholder="correo@gmail.com" autoComplete="off" required /></label>
+          <label>Tu contraseña<input type="password" name="owner_password" placeholder="Contraseña actual del titular" autoComplete="current-password" required /></label>
+          <input type="hidden" name="delete_account_confirmed" value="" />
+          <ConfirmDeleteAccountButton className="button danger">Eliminar cuenta</ConfirmDeleteAccountButton>
         </form>
       </section>
 
