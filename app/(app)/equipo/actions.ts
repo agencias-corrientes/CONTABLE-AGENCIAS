@@ -27,6 +27,42 @@ function checked(formData: FormData, name: string) {
   return formData.get(name) === "on";
 }
 
+export async function saveAgencySchedules(formData: FormData) {
+  const { supabase, organizationId, userId } = await getOwnerContext();
+  const cutoff = String(formData.get("rendition_cutoff_time") ?? "").trim();
+  const backupSendTime = String(formData.get("backup_send_time") ?? "").trim();
+  const validTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+
+  if (!validTime.test(cutoff) || !validTime.test(backupSendTime)) {
+    redirect("/equipo?error=horario-configuracion-invalida");
+  }
+
+  const { error } = await supabase.from("agency_operational_settings").upsert({
+    organization_id: organizationId,
+    rendition_cutoff_time: cutoff,
+    backup_send_time: backupSendTime,
+    updated_by: userId,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "organization_id" });
+
+  if (error) redirect("/equipo?error=horarios-no-guardados");
+
+  await supabase.from("audit_log").insert({
+    organization_id: organizationId,
+    user_id: userId,
+    action: "update_agency_operational_schedules",
+    entity: "agency_operational_settings",
+    entity_id: organizationId,
+    payload: { rendition_cutoff_time: cutoff, backup_send_time: backupSendTime },
+  });
+
+  revalidatePath("/equipo");
+  revalidatePath("/configuracion");
+  revalidatePath("/pagos");
+  revalidatePath("/agencias");
+  redirect("/equipo?resultado=horarios-guardados");
+}
+
 export async function addEmployeeByEmail(formData: FormData) {
   const { supabase, organizationId, userId } = await getOwnerContext();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();

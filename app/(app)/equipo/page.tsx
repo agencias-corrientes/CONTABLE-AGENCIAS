@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ConfirmDeleteAccountButton } from "@/components/confirm-delete-account-button";
 import { getCurrentContext } from "@/lib/accounting";
-import { addEmployeeByEmail, removeEmployeeAccess, saveBackupEmail, retryRenditionBackup, saveEmployeePermissions, saveEmployeeRole, cleanupAgencyTestData, deleteUnlinkedAuthAccount } from "./actions";
+import { addEmployeeByEmail, removeEmployeeAccess, saveBackupEmail, retryRenditionBackup, saveAgencySchedules, saveEmployeePermissions, saveEmployeeRole, cleanupAgencyTestData, deleteUnlinkedAuthAccount } from "./actions";
 
 const roleLabels: Record<string, string> = { owner: "Propietario", admin: "Administrador", accountant: "Contador", viewer: "Consulta" };
 
@@ -30,12 +30,15 @@ export default async function TeamPermissionsPage({
     </div>;
   }
 
-  const [{ data: employees, error: employeeError }, { data: backupSettings }, { data: backupRows, error: backupRowsError }, { data: cleanupPreview, error: cleanupPreviewError }] = await Promise.all([
+  const [{ data: employees, error: employeeError }, { data: backupSettings }, { data: backupRows, error: backupRowsError }, { data: cleanupPreview, error: cleanupPreviewError }, { data: operationalSettings }] = await Promise.all([
     supabase.rpc("list_organization_members_for_owner", { p_organization_id: organization.id }),
     supabase.from("organization_backup_settings").select("recipient_email,enabled,include_ticket_photo,updated_at").eq("organization_id", organization.id).maybeSingle(),
     supabase.from("agency_rendition_backup_outbox").select("id,rendition_id,recipient_email,subject,text_body,status,attempt_count,last_attempt_at,sent_at,last_error,created_at").eq("organization_id", organization.id).order("created_at", { ascending: false }).limit(20),
     supabase.rpc("preview_agency_launch_cleanup", { p_organization_id: organization.id }),
+    supabase.from("agency_operational_settings").select("rendition_cutoff_time,backup_send_time,updated_at").eq("organization_id", organization.id).maybeSingle(),
   ]);
+  const cutoff = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);
+  const backupSendTime = String(operationalSettings?.backup_send_time ?? "23:50").slice(0, 5);
   const cleanupLabels: Record<string, string> = {
     subagentes_ambulantes: "Subagentes y ambulantes",
     rendiciones: "Rendiciones",
@@ -85,6 +88,8 @@ export default async function TeamPermissionsPage({
     "sin-permiso-eliminar": "Solo el titular puede quitar ese usuario.",
     "email-backup-invalido": "Ingresá un correo válido para los backups.",
     "backup-email-no-guardado": "No se pudo guardar el correo para respaldos.",
+    "horario-configuracion-invalida": "Elegí horarios válidos en formato HH:MM.",
+    "horarios-no-guardados": "No se pudieron guardar los horarios. No se aplicaron cambios.",
     "backup-no-enviado": "El respaldo quedó en la cola, pero el correo no pudo enviarse. Revisá la configuración de envío y volvé a intentar.",
     "limpieza-no-confirmada": "No se hizo ninguna limpieza. Marcá la confirmación y escribí el texto exacto solicitado.",
     "limpieza-fallida": "No se pudieron limpiar los datos de prueba. No inicies la operación oficial hasta revisar el error.",
@@ -112,11 +117,32 @@ export default async function TeamPermissionsPage({
       {params.resultado === "permisos-guardados" && <p className="message success-message">Permisos guardados correctamente.</p>}
       {params.resultado === "rol-guardado" && <p className="message success-message">El rol se actualizó correctamente.</p>}
       {params.resultado === "acceso-revocado" && <p className="message success-message">Se revocó el acceso del empleado a esta agencia. Su cuenta general de autenticación no fue eliminada.</p>}
+      {params.resultado === "horarios-guardados" && <p className="message success-message">Se guardaron los horarios del reinicio diario y del envío automático del backup.</p>}
       {params.resultado === "backup-email-guardado" && <p className="message success-message">Se guardó el correo de respaldo. Las nuevas rendiciones se encolarán para enviarse a esa dirección.</p>}
       {params.resultado === "backup-reintento" && <p className="message success-message">Se solicitó nuevamente el envío del respaldo.</p>}
       {params.resultado === "limpieza-completada" && <p className="message success-message">Limpieza finalizada. Se borraron los registros operativos listados y se vació el correo de backup guardado. Se conservaron la agencia, el acceso del titular, el catálogo de juegos y las cuentas de Caja.</p>}
       {params.resultado === "limpieza-completada-fotos-pendientes" && <p className="message error-message">La base quedó limpia, pero no se pudieron quitar todas las fotos privadas de prueba. Revisá el almacenamiento antes del uso oficial.</p>}
       {params.error && <p className="message error-message">{errorMessages[params.error] ?? "No se pudo completar la operación. Revisá los datos e intentá nuevamente."}</p>}
+
+      <section className="panel operational-schedule-panel">
+        <div className="panel-head">
+          <div><h2>Reinicio de la rendición diaria</h2><p className="muted">Ajustá el comienzo de la jornada y la hora del backup automático desde el mismo bloque.</p></div>
+          <span className="badge success">Solo titular</span>
+        </div>
+        <form action={saveAgencySchedules} className="operational-schedule-form">
+          <div className="operational-schedule-grid">
+            <label>Hora de reinicio diario
+              <input type="time" name="rendition_cutoff_time" defaultValue={cutoff} required />
+              <span className="muted small-text">Cambia el día operativo sin borrar el historial.</span>
+            </label>
+            <label>Hora de envío del backup
+              <input type="time" name="backup_send_time" defaultValue={backupSendTime} required />
+              <span className="muted small-text">Horario local de Argentina; envío automático todos los días.</span>
+            </label>
+          </div>
+          <button className="button primary" type="submit">Guardar horarios</button>
+        </form>
+      </section>
 
       <section className="panel team-permissions-panel">
         <div className="panel-head"><div><h2>Personal de la agencia</h2><p className="muted">Creá cuentas, asigná roles y configurá qué puede hacer cada persona. Todo se administra desde este bloque.</p></div><span className="muted">{employees?.length ?? 0} {(employees?.length ?? 0) === 1 ? "cuenta" : "cuentas"}</span></div>
