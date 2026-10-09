@@ -103,19 +103,12 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       };
     }
     if (stored?.status === "complete") {
-      const confirmedAt = Date.parse(String(stored.updated_at ?? ""));
-      const changedAfterConfirmation = agentTodayRows.some((row: any) => {
-        const changedAt = Date.parse(String(row.updated_at ?? row.created_at ?? ""));
-        return !Number.isFinite(confirmedAt) || !Number.isFinite(changedAt) || changedAt > confirmedAt;
-      });
-      // A confirmed daily status is authoritative even if a date cutoff or
-      // a delayed rendition query leaves no matching row in today's list.
-      if (!changedAfterConfirmation) {
-        const reportedAmount = stored.reported_amount === null || stored.reported_amount === undefined
-          ? null
-          : Number(stored.reported_amount);
-        return { status: "complete" as const, note: "", reportedAmount: Number.isFinite(reportedAmount) && reportedAmount !== null && reportedAmount > 0 ? reportedAmount : null };
-      }
+      // The explicit daily confirmation is the source of truth. A later
+      // payment/receipt update must not downgrade a confirmed rendition.
+      const reportedAmount = stored.reported_amount === null || stored.reported_amount === undefined
+        ? null
+        : Number(stored.reported_amount);
+      return { status: "complete" as const, note: "", reportedAmount: Number.isFinite(reportedAmount) && reportedAmount !== null && reportedAmount > 0 ? reportedAmount : null };
     }
     if (!agentTodayRows.length) {
       return { status: "missing" as const, note: "", reportedAmount: null as number | null };
@@ -271,7 +264,10 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     <div className="page">
       <div className="topbar">
         <div><p className="eyebrow">CONTROL OPERATIVO DIARIO</p><h1>Rendiciones</h1><p className="muted">Elegí un subagente o ambulante. Los botones compactos abren la carga de rendición del subagente o ambulante seleccionado.</p></div>
-        <Link href="/agencias" className="button ghost">Administrar agentes</Link>
+        <div className="topbar-actions">
+          {selectedAgentId && <Link href="/pagos" className="button ghost">Volver a todas las rendiciones</Link>}
+          <Link href="/agencias" className="button ghost">Administrar agentes</Link>
+        </div>
       </div>
 
       {params.resultado === "rendicion-creada" && <p className={(params.backup === "enviado" || params.backup === "cierre-diario") ? "message success-message" : "message backup-pending-message"}>Rendición registrada correctamente. {params.backup === "cierre-diario" ? "La copia quedó acumulada para enviarse en un único correo al cierre de la jornada." : params.backup === "enviado" ? "El backup de texto se envió al correo configurado para el titular." : params.backup === "dominio-no-verificado" ? "La rendición y su copia de texto se conservaron, pero Resend bloqueó el envío porque falta verificar un dominio y usarlo en la dirección del remitente. Configurá el dominio en Resend y RESEND_FROM_EMAIL en los secretos de la función de Supabase; después reintentá desde Personal y permisos." : "El respaldo quedó guardado, pero el correo no confirmó la entrega. Revisá el estado en Personal y permisos."}{params.foto === "no-adjunta" ? " La foto no se adjuntó; el respaldo de texto se conserva." : ""}</p>}
