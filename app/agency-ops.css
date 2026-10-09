@@ -756,3 +756,11 @@
  .fiscal-period-form{grid-template-columns:1fr}
  .fiscal-period-form button{width:100%}
 }
+
+/* Gestión de usuarios: distinguir guardar un rol de quitar acceso. */
+.remove-member-form{display:grid;gap:6px;min-width:150px}
+.remove-member-form input[type=password]{min-width:140px;font-size:11px;padding:7px 8px}
+.owner-transfer-guide{margin-bottom:16px}
+.owner-transfer-guide h2{margin:0 0 8px;font-size:16px}
+.owner-transfer-guide p{font-size:12px}
+.team-remove-access-visible input[type=password]{width:100%;min-width:0;padding:8px 9px;font-size:12px}

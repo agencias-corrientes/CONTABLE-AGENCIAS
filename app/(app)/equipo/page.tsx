@@ -70,6 +70,10 @@ export default async function TeamPermissionsPage({
     "no-se-puede-modificar-titular": "La cuenta del titular no se puede modificar ni revocar desde esta pantalla.",
     "permisos-no-guardados": "No se pudieron guardar los permisos. No se aplicaron cambios.",
     "acceso-no-revocado": "No se pudo revocar el acceso del empleado.",
+    "contrasena-incorrecta": "La contraseña no coincide. No se quitó ningún acceso.",
+    "verificacion-fallida": "No se pudo verificar la cuenta actual. No se quitaron accesos.",
+    "funcion-remocion-pendiente": "Falta aplicar en Supabase la función segura de eliminación. No se cambió ningún acceso.",
+    "sin-permiso-eliminar": "Solo el titular puede quitar ese usuario.",
     "email-backup-invalido": "Ingresá un correo válido para los backups.",
     "backup-email-no-guardado": "No se pudo guardar el correo para respaldos.",
     "backup-no-enviado": "El respaldo quedó en la cola, pero el correo no pudo enviarse. Revisá la configuración de envío y volvé a intentar.",
@@ -183,6 +187,7 @@ export default async function TeamPermissionsPage({
                     <p>Quita su membresía y los permisos en esta agencia; conserva su cuenta de acceso general y no borra las rendiciones históricas.</p>
                     <form action={removeEmployeeAccess}>
                       <input type="hidden" name="user_id" value={employee.user_id} />
+                      <label>Tu contraseña actual<input type="password" name="password" autoComplete="current-password" required aria-label={"Contraseña para quitar a "+employee.email} /></label>
                       <label><input type="checkbox" name="confirm_remove" value="yes" required /> Confirmo quitar el acceso de {employee.email}</label>
                       <button className="button danger small" type="submit">Eliminar acceso del empleado</button>
                     </form>

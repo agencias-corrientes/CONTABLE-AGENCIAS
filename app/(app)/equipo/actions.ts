@@ -129,9 +129,23 @@ export async function saveEmployeePermissions(formData: FormData) {
 export async function removeEmployeeAccess(formData: FormData) {
   const { supabase, organizationId, userId } = await getOwnerContext();
   const targetUserId = String(formData.get("user_id") ?? "").trim();
-  if (!targetUserId || targetUserId === userId || formData.get("confirm_remove") !== "yes") {
+  const password = String(formData.get("password") ?? "");
+  if (!targetUserId || targetUserId === userId || formData.get("confirm_remove") !== "yes" || !password) {
     redirect("/equipo?error=usuario-invalido");
   }
+
+  const { data: authData } = await supabase.auth.getClaims();
+  const claims = authData?.claims;
+  const email = typeof claims?.email === "string" ? claims.email : "";
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!email || !url || !publishableKey) redirect("/equipo?error=verificacion-fallida");
+
+  const verifier = createPublicAuthClient(url, publishableKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  const { error: authError } = await verifier.auth.signInWithPassword({ email, password });
+  if (authError) redirect("/equipo?error=contrasena-incorrecta");
 
   const { data: target, error: targetError } = await supabase
     .from("organization_members")
@@ -142,12 +156,18 @@ export async function removeEmployeeAccess(formData: FormData) {
   if (targetError || !target) redirect("/equipo?error=usuario-no-encontrado");
   if (target.role === "owner") redirect("/equipo?error=no-se-puede-modificar-titular");
 
-  const { error } = await supabase
-    .from("organization_members")
-    .delete()
-    .eq("organization_id", organizationId)
-    .eq("user_id", targetUserId);
-  if (error) redirect("/equipo?error=acceso-no-revocado");
+  const { error } = await supabase.rpc("remove_organization_member", {
+    p_organization_id: organizationId,
+    p_user_id: targetUserId,
+  });
+  if (error) {
+    const message = error.message.toLowerCase();
+    if (message.includes("could not find the function") || error.code === "42883" || error.code === "PGRST202") {
+      redirect("/equipo?error=funcion-remocion-pendiente");
+    }
+    if (error.code === "42501") redirect("/equipo?error=sin-permiso-eliminar");
+    redirect("/equipo?error=acceso-no-revocado");
+  }
 
   await supabase.from("audit_log").insert({
     organization_id: organizationId,
@@ -158,6 +178,7 @@ export async function removeEmployeeAccess(formData: FormData) {
     payload: { revoked: true },
   });
   revalidatePath("/equipo");
+  revalidatePath("/configuracion/usuarios");
   redirect("/equipo?resultado=acceso-revocado");
 }
 

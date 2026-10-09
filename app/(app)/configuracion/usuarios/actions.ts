@@ -5,19 +5,56 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-export async function setMemberRole(formData: FormData){
-  const supabase=await createClient();
-  const {data:authData}=await supabase.auth.getClaims();
-  const claims=authData?.claims;
-  if(!claims?.sub) redirect("/login");
-  const {data:member}=await supabase.from("organization_members").select("organization_id").eq("user_id",claims.sub).order("created_at",{ascending:true}).limit(1).maybeSingle();
-  if(!member) throw new Error("No hay una empresa configurada.");
-  const role=String(formData.get("role")??"viewer") as "owner"|"admin"|"accountant"|"viewer";
-  const userId=String(formData.get("user_id")??"");
-  const {error}=await supabase.rpc("set_member_role",{p_organization_id:member.organization_id,p_user_id:userId,p_role:role});
-  if(error) throw new Error(error.message);
+export async function setMemberRole(formData: FormData) {
+  const supabase = await createClient();
+  const { data: authData } = await supabase.auth.getClaims();
+  const claims = authData?.claims;
+  if (!claims?.sub) redirect("/login");
+
+  const targetUserId = String(formData.get("user_id") ?? "").trim();
+  const role = String(formData.get("role") ?? "viewer");
+  if (!targetUserId || !["owner", "admin", "accountant", "viewer"].includes(role)) {
+    redirect("/configuracion/usuarios?error=datos-rol-invalidos");
+  }
+  if (targetUserId === claims.sub) {
+    redirect("/configuracion/usuarios?error=no-cambiar-rol-propio");
+  }
+
+  const { data: member, error: memberError } = await supabase
+    .from("organization_members")
+    .select("organization_id,role")
+    .eq("user_id", claims.sub)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (memberError || !member) redirect("/configuracion/usuarios?error=rol-no-guardado");
+  if (member.role !== "owner") redirect("/configuracion/usuarios?error=solo-titular");
+
+  const { error } = await supabase.rpc("set_member_role", {
+    p_organization_id: member.organization_id,
+    p_user_id: targetUserId,
+    p_role: role,
+  });
+  if (error) {
+    const message = error.message.toLowerCase();
+    if (message.includes("permission denied for schema private")) {
+      redirect("/configuracion/usuarios?error=permisos-supabase-pendientes");
+    }
+    if (message.includes("only an owner") || message.includes("insufficient permissions") || error.code === "42501") {
+      redirect("/configuracion/usuarios?error=solo-titular");
+    }
+    if (message.includes("organization must keep at least one owner")) {
+      redirect("/configuracion/usuarios?error=debe-quedar-un-titular");
+    }
+    if (message.includes("member not found")) {
+      redirect("/configuracion/usuarios?error=usuario-no-encontrado");
+    }
+    redirect("/configuracion/usuarios?error=rol-no-guardado");
+  }
+
   revalidatePath("/configuracion/usuarios");
-  redirect("/configuracion/usuarios");
+  revalidatePath("/equipo");
+  redirect("/configuracion/usuarios?resultado=rol-guardado");
 }
 
 
@@ -41,6 +78,13 @@ export async function removeOrganizationMember(formData: FormData) {
   if (!member || member.role !== "owner") redirect("/configuracion/usuarios?error=solo-titular");
   const { error } = await supabase.rpc("remove_organization_member", { p_organization_id: member.organization_id, p_user_id: targetUserId });
   if (error) {
+    const message = error.message.toLowerCase();
+    if (message.includes("could not find the function") || message.includes("function public.remove_organization_member") || error.code === "42883" || error.code === "PGRST202") {
+      redirect("/configuracion/usuarios?error=funcion-remocion-pendiente");
+    }
+    if (error.code === "42501" && message.includes("único titular")) {
+      redirect("/configuracion/usuarios?error=debe-quedar-un-titular");
+    }
     const code = error.code === "42501" ? "sin-permiso-eliminar" : "eliminacion-fallida";
     redirect("/configuracion/usuarios?error=" + code);
   }
