@@ -240,6 +240,43 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         </section>
       )}
 
+      {!!voidRows.length && (
+        <section className="panel rendition-void-history">
+          <div className="panel-head">
+            <div><h2>Rendiciones anuladas</h2><p className="muted">Se conservan para auditoría. No suman a los totales operativos ni se eliminan del historial.</p></div>
+            <span className="muted">{voidRows.length} registros</span>
+          </div>
+          <div className="rendition-history-list">
+            {voidRows.map((row) => {
+              const agent = agentRows.find((item) => item.id === row.agent_id);
+              const gameAmounts = (Array.isArray(row.agency_rendition_game_amounts) ? row.agency_rendition_game_amounts : []) as GameAmount[];
+              const tickets = Array.isArray(row.agency_rendition_tickets) ? row.agency_rendition_tickets : [];
+              return (
+                <details className="rendition-record voided-record" key={row.id}>
+                  <summary>
+                    <span className="rendition-record-date">{row.rendition_date}<small>{formatAgencyDateTime(row.created_at)}</small></span>
+                    <span className="rendition-record-period">{agent ? agent.code + " · " + agent.full_name : "Agente"}</span>
+                    <span className="rendition-record-amount">{money(row.amount_due, activeOrganization.currency_code)}<small>Anulada</small></span>
+                    <span className="badge">Historial</span>
+                  </summary>
+                  <div className="rendition-record-detail">
+                    <p><strong>Operador:</strong> {agent?.kind === "ambulant" ? "Ambulante" : "Subagente"} {agent?.code ?? "—"} · {agent?.full_name ?? "—"}</p>
+                    <p><strong>Período:</strong> {row.game_period || "—"} · <strong>Sorteo:</strong> {row.draw_number || "—"} · <strong>Referencia:</strong> {row.reference || "—"}</p>
+                    <h4>Importes guardados en la rendición anulada</h4>
+                    {gameAmounts.length
+                      ? <ul className="rendition-game-amounts">{gameAmounts.map((game) => <li key={game.id}><span>{game.agency_game_types?.name ?? "Juego"}</span><strong>{money(game.amount, activeOrganization.currency_code)}</strong></li>)}</ul>
+                      : <p className="muted">No hay desglose de juego asociado.</p>}
+                    {tickets.length > 0 && <div className="ticket-saved-list"><strong>Tickets guardados</strong>{tickets.map((ticket: any) => <div key={ticket.id}><code>{ticket.ticket_number}</code>{ticket.ticket_qr_payload && <small>QR: {ticket.ticket_qr_payload.slice(0, 100)}{ticket.ticket_qr_payload.length > 100 ? "…" : ""}</small>}</div>)}</div>}
+                    <p><strong>Motivo / observaciones:</strong> {row.notes || "No se indicó un motivo."}</p>
+                    {agent && <Link href={"/pagos?agent=" + agent.id} className="button ghost small">Volver a rendiciones de este operador</Link>}
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <section className="panel lottery-board">
         <div className="panel-head"><div><p className="eyebrow">FUENTE OFICIAL</p><h2>Horarios y extractos de Lotería Correntina</h2><p className="muted">Calendario consultado desde Lotemóvil y actualizado en caché cada cinco minutos.</p></div><a href={lottery.sourceUrl} target="_blank" rel="noreferrer" className="button ghost">Abrir Lotemóvil ↗</a></div>
         <div className="lottery-feed-meta">{lottery.ok ? <span className="badge success">Conectado</span> : <span className="badge warning">Fuente temporalmente no disponible</span>}<span>Consulta: {formatAgencyDateTime(lottery.updatedAt)}</span>{lottery.resultDate && <span>Último extracto destacado: {lottery.resultDate}</span>}</div>
