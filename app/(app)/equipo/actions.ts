@@ -139,3 +139,44 @@ export async function removeEmployeeAccess(formData: FormData) {
   revalidatePath("/equipo");
   redirect("/equipo?resultado=acceso-revocado");
 }
+
+export async function saveBackupEmail(formData: FormData) {
+  const { supabase, organizationId, userId } = await getOwnerContext();
+  const email = String(formData.get("recipient_email") ?? "").trim().toLowerCase();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) redirect("/equipo?error=email-backup-invalido");
+
+  const { error } = await supabase
+    .from("organization_backup_settings")
+    .upsert({
+      organization_id: organizationId,
+      recipient_email: email || null,
+      enabled: Boolean(email),
+      created_by: userId,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "organization_id" });
+  if (error) redirect("/equipo?error=backup-email-no-guardado");
+
+  await supabase.from("audit_log").insert({
+    organization_id: organizationId,
+    user_id: userId,
+    action: "update_backup_email",
+    entity: "organization_backup_settings",
+    entity_id: organizationId,
+    payload: { enabled: Boolean(email), email_configured: Boolean(email) },
+  });
+  revalidatePath("/equipo");
+  redirect("/equipo?resultado=backup-email-guardado");
+}
+
+export async function retryRenditionBackup(formData: FormData) {
+  const { supabase } = await getOwnerContext();
+  const backupId = String(formData.get("backup_id") ?? "").trim();
+  if (!backupId) redirect("/equipo?error=backup-no-enviado");
+
+  const { error } = await supabase.functions.invoke("send-rendition-backup", {
+    body: { outbox_id: backupId },
+  });
+  if (error) redirect("/equipo?error=backup-no-enviado");
+  revalidatePath("/equipo");
+  redirect("/equipo?resultado=backup-reintento");
+}
