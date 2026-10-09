@@ -1095,8 +1095,8 @@
   justify-content: space-between !important;
   align-items: center !important;
   gap: 10px !important;
-  width: 260px !important;
-  min-width: 260px !important;
+  width: 193px !important;
+  min-width: 193px !important;
   max-width: 100% !important;
   height: 60px !important;
   min-height: 60px !important;
@@ -1112,11 +1112,12 @@
   white-space: nowrap;
 }
 .rendition-agents-panel .rendition-agent-summary .rendition-status-badge {
-  flex: 0 0 auto;
-  width: auto;
-  max-width: none;
-  height: 21px;
-  min-height: 21px;
+  flex: 0 0 88px;
+  width: 88px;
+  min-width: 88px;
+  max-width: 88px;
+  height: 22px;
+  min-height: 22px;
   padding: 3px 6px;
   box-sizing: border-box;
   font-size: 9px;
@@ -1150,8 +1151,8 @@
 @media (max-width: 700px) {
   .rendition-agents-panel .rendition-agent-accordion:not([open]) > .rendition-agent-summary,
   .rendition-agents-panel .rendition-agent-accordion[open] > .rendition-agent-summary {
-    width: 260px !important;
-    min-width: min(260px, 100%) !important;
+    width: 193px !important;
+    min-width: min(193px, 100%) !important;
     max-width: 100% !important;
     height: 58px !important;
     min-height: 58px !important;
