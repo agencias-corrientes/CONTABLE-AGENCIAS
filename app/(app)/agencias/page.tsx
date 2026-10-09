@@ -96,7 +96,7 @@ export default async function AgenciasPage({
 
   return (
     <div className="page">
-      <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={periods.map((period) => period.time).filter((time): time is string => Boolean(time))} />
+      <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={periods.map((period) => period.time).filter((time): time is string => Boolean(time))} renderedAt={new Date().toISOString()} />
       <div className="topbar">
         <div><p className="eyebrow">ADMINISTRACIÓN DE AGENTES</p><h1>Subagentes y ambulantes</h1><p className="muted">Cada código muestra el estado independiente de cada sorteo; los turnos vencidos sin rendición quedan pendientes.</p><p className="muted small-text"><a href={OFFICIAL_QUINIELA_SCHEDULE_URL} target="_blank" rel="noreferrer">Cronograma oficial de Lotería Correntina</a> · <a href={OFFICIAL_EXTRACTS_SCHEDULE_URL} target="_blank" rel="noreferrer">Resultados y sorteos publicados</a></p></div>
         <Link href="/pagos" className="button primary">Ir a Rendiciones</Link>
