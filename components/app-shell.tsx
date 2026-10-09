@@ -11,7 +11,7 @@ const nav = [
   ["juegos", "Juegos y comisiones", "◎"],
   ["loteria-correntina", "Lotería Correntina", "◉"],
   ["equipo", "Personal y permisos", "♙"],
-  ["dashboard", "Configuración", "⚙"],
+  ["configuracion", "Configuración", "⚙"],
 ] as const;
 
 export function AppShell({
@@ -58,7 +58,7 @@ export function AppShell({
 
         <nav className="nav-list">
           {nav.map(([slug, label, icon]) => {
-            const href = slug === "dashboard" ? "/dashboard" : `/${slug}`;
+            const href = `/${slug}`;
             const isActive = pathname.startsWith(href);
             return (
               <Link
