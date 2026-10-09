@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { todayInAgencyTimeZone } from "@/lib/agency-datetime";
+import { drawPeriodHasPassed, getOfficialDrawPeriodsForDate } from "@/lib/agency-draw-schedule";
 
 async function getOrg() {
   const supabase = await createClient();
@@ -122,6 +123,12 @@ export async function createAgencyRendition(formData: FormData) {
   const { supabase, organizationId, permissions } = await getOrg();
   if (!permissions.can_create_renditions) redirect("/pagos?error=sin-permiso-rendicion");
   const agentId = String(formData.get("agent_id") ?? "").trim();
+  if (!agentId) redirect("/pagos?error=agente-no-encontrado");
+  const { data: agentPolicyRow, error: policyLookupError } = await supabase.from("agency_agents")
+    .select("rendition_policy,rendition_periods").eq("id", agentId).eq("organization_id", organizationId).maybeSingle();
+  if (policyLookupError || !agentPolicyRow) redirect("/pagos?error=agente-no-encontrado");
+  const renditionPolicy = String(agentPolicyRow.rendition_policy ?? "per_draw");
+  const selectedRenditionPeriods = Array.isArray(agentPolicyRow.rendition_periods) ? agentPolicyRow.rendition_periods.map(String) : [];
   const submittedDate = String(formData.get("rendition_date") ?? "").trim();
   const renditionDate = submittedDate || todayInAgencyTimeZone();
   const breakdown = Array.from(formData.entries())
@@ -153,6 +160,20 @@ export async function createAgencyRendition(formData: FormData) {
     redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
   }
   if (renditionDate !== operationalDate) redirect("/pagos?error=fecha-sorteo-invalida&agent=" + encodeURIComponent(agentId));
+  if ((renditionPolicy === "daily" && drawPeriod !== "Cierre diario") ||
+      (renditionPolicy !== "daily" && drawPeriod === "Cierre diario") ||
+      (renditionPolicy === "selected_draws" && !selectedRenditionPeriods.includes(drawPeriod))) {
+    redirect("/pagos?error=modalidad-sorteo-invalido&agent=" + encodeURIComponent(agentId));
+  }
+  if (renditionPolicy === "daily") {
+    const lastScheduledDraw = getOfficialDrawPeriodsForDate(operationalDate)
+      .filter((period) => Boolean(period.time))
+      .sort((left, right) => String(left.time).localeCompare(String(right.time)))
+      .at(-1);
+    if (!lastScheduledDraw || !drawPeriodHasPassed(lastScheduledDraw, operationalDate)) {
+      redirect("/pagos?error=cierre-diario-antes-de-hora&agent=" + encodeURIComponent(agentId));
+    }
+  }
   if (dailyStatus === "incomplete" && (
     !reportedAmountRaw ||
     !Number.isFinite(reportedAmount) ||
@@ -182,30 +203,39 @@ export async function createAgencyRendition(formData: FormData) {
   if (cashLookupError || !cashAccount?.id) {
     redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
   }
-  const { data: renditionId, error } = await supabase.rpc("create_agency_rendition_with_capture_and_draw_status", {
-    p_organization_id: organizationId,
-    p_agent_id: agentId,
-    p_rendition_date: renditionDate,
-    p_amount_due: totalDue,
-    p_operational_date: operationalDate,
-    p_draw_period: drawPeriod,
-    p_draw_status: dailyStatus,
-    p_game_breakdown: breakdown,
-    p_ticket_numbers: ticketNumbers,
-    p_ticket_qr_payload: qrPayload ?? undefined,
-    p_draw_number: drawNumber ?? undefined,
-    p_capture_method: captureMethod,
-    p_reference: String(formData.get("reference") ?? "").trim() || undefined,
-    p_notes: String(formData.get("notes") ?? "").trim() || undefined,
-    p_status_notes: dailyStatus === "incomplete" ? (dailyStatusNotes || undefined) : undefined,
-    p_reported_amount: reportedAmount,
-  });
+  let renditionId: string | null = null;
+  let error: any = null;
+  if (renditionPolicy === "daily") {
+    const result = await supabase.rpc("create_agency_rendition_with_capture_and_daily_status", {
+      p_organization_id: organizationId, p_agent_id: agentId, p_rendition_date: renditionDate,
+      p_amount_due: totalDue, p_operational_date: operationalDate, p_daily_status: dailyStatus,
+      p_game_breakdown: breakdown, p_ticket_numbers: ticketNumbers, p_ticket_qr_payload: qrPayload ?? undefined,
+      p_game_period: drawPeriod, p_draw_number: drawNumber ?? undefined, p_capture_method: captureMethod,
+      p_reference: String(formData.get("reference") ?? "").trim() || undefined,
+      p_notes: String(formData.get("notes") ?? "").trim() || undefined,
+      p_daily_status_notes: dailyStatus === "incomplete" ? (dailyStatusNotes || undefined) : undefined,
+      p_reported_amount: dailyStatus === "incomplete" ? reportedAmount : null,
+    });
+    renditionId = result.data; error = result.error;
+  } else {
+    const result = await supabase.rpc("create_agency_rendition_with_capture_and_draw_status", {
+      p_organization_id: organizationId, p_agent_id: agentId, p_rendition_date: renditionDate,
+      p_amount_due: totalDue, p_operational_date: operationalDate, p_draw_period: drawPeriod,
+      p_draw_status: dailyStatus, p_game_breakdown: breakdown, p_ticket_numbers: ticketNumbers,
+      p_ticket_qr_payload: qrPayload ?? undefined, p_draw_number: drawNumber ?? undefined, p_capture_method: captureMethod,
+      p_reference: String(formData.get("reference") ?? "").trim() || undefined,
+      p_notes: String(formData.get("notes") ?? "").trim() || undefined,
+      p_status_notes: dailyStatus === "incomplete" ? (dailyStatusNotes || undefined) : undefined,
+      p_reported_amount: reportedAmount,
+    });
+    renditionId = result.data; error = result.error;
+  }
   if (error) {
     const message = String(error.message ?? "").toLowerCase();
     if (message.includes("permiso")) redirect("/pagos?error=sin-permiso-rendicion&agent=" + encodeURIComponent(agentId));
     if (message.includes("monto rendido")) redirect("/pagos?error=monto-rendido-invalido&agent=" + encodeURIComponent(agentId));
     if (message.includes("jornada operativa cambió")) redirect("/pagos?error=jornada-cambio&agent=" + encodeURIComponent(agentId));
-    if (message.includes("ya existe una rendición para este sorteo")) redirect("/pagos?error=sorteo-ya-rendido&agent=" + encodeURIComponent(agentId));
+    if (message.includes("ya existe una rendición para este sorteo") || message.includes("duplicate key") || message.includes("unique constraint")) redirect("/pagos?error=sorteo-ya-rendido&agent=" + encodeURIComponent(agentId));
     if (message.includes("juegos que no corresponden al período")) redirect("/pagos?error=juegos-periodo-invalido&agent=" + encodeURIComponent(agentId));
     if (message.includes("fecha del sorteo debe coincidir")) redirect("/pagos?error=fecha-sorteo-invalida&agent=" + encodeURIComponent(agentId));
     if (message.includes("día no está programado")) redirect("/pagos?error=sorteo-no-programado&agent=" + encodeURIComponent(agentId));
@@ -344,6 +374,27 @@ export async function deleteAgencyAgent(formData: FormData) {
 }
 
 
+
+export async function saveAgentRenditionPolicy(formData: FormData) {
+  const { supabase, organizationId, role } = await getOrg();
+  const agentId = String(formData.get("agent_id") ?? "").trim();
+  const policy = String(formData.get("rendition_policy") ?? "");
+  const periods = formData.getAll("rendition_periods").map((value) => String(value));
+  if (!agentId) redirect("/agencias?error=agente-no-encontrado");
+  if (role !== "owner") redirect("/agencias/" + agentId + "?error=solo-titular-modalidad");
+  const { error } = await supabase.rpc("update_agency_agent_rendition_policy", {
+    p_organization_id: organizationId, p_agent_id: agentId, p_policy: policy, p_periods: periods,
+  });
+  if (error) {
+    const message = String(error.message ?? "").toLowerCase();
+    if (message.includes("jornada con rendiciones")) redirect("/agencias/" + agentId + "?error=modalidad-bloqueada-jornada");
+    if (message.includes("permiso") || message.includes("titular")) redirect("/agencias/" + agentId + "?error=solo-titular-modalidad");
+    if (message.includes("seleccioná al menos un sorteo") || message.includes("cronograma") || message.includes("modalidad")) redirect("/agencias/" + agentId + "?error=modalidad-invalida");
+    redirect("/agencias/" + agentId + "?error=modalidad-no-guardada");
+  }
+  revalidatePath("/agencias"); revalidatePath("/agencias/" + agentId); revalidatePath("/pagos");
+  redirect("/agencias/" + agentId + "?resultado=modalidad-guardada");
+}
 
 export async function saveAgentGameCommissions(formData: FormData) {
   const { supabase, organizationId, role, userId } = await getOrg();

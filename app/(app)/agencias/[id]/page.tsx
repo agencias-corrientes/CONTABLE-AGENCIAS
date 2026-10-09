@@ -5,7 +5,7 @@ import { agencyBusinessDateForCutoff, formatAgencyDateTime } from "@/lib/agency-
 import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, drawPeriodHasPassed, getPreferredPendingDrawPeriod, getUnmappedOfficialGameNames, OFFICIAL_QUINIELA_SCHEDULE_URL, OFFICIAL_EXTRACTS_SCHEDULE_URL } from "@/lib/agency-draw-schedule";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
-import { receiveAgencyRendition, saveAgentGameCommissions } from "../actions";
+import { receiveAgencyRendition, saveAgentGameCommissions, saveAgentRenditionPolicy, setAgencyDailyRenditionStatus } from "../actions";
 
 export default async function AgencyDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ error?: string; resultado?: string }> }) {
   const { id } = await params;
@@ -15,7 +15,7 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
   const isOwner = member.role === "owner";
 
   const [{ data: agent }, { data: renditions }, { data: gameTypes }, { data: commissionRows }, { data: defaultCommissionRows }, { data: operationalSettings }] = await Promise.all([
-    supabase.from("agency_agents").select("id,kind,code,full_name,dni,email,phone,whatsapp,address,notes,is_active,created_at").eq("id", id).eq("organization_id", organization.id).maybeSingle(),
+    supabase.from("agency_agents").select("id,kind,code,full_name,dni,email,phone,whatsapp,address,notes,is_active,created_at,rendition_policy,rendition_periods").eq("id", id).eq("organization_id", organization.id).maybeSingle(),
     supabase.from("agency_renditions").select("id,rendition_date,created_at,game_period,draw_number,capture_method,period_start,period_end,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference,cash_account_id,cash_accounts(name)),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)").eq("agent_id", id).eq("organization_id", organization.id).neq("status", "void").order("created_at", { ascending: false }),
     supabase.from("agency_game_types").select("id,name,category,enabled").eq("organization_id", organization.id).order("sort_order").order("name"),
     supabase.from("agency_agent_game_commissions").select("game_type_id,commission_percent").eq("organization_id", organization.id).eq("agent_id", id),
@@ -40,10 +40,22 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
   const allOfficialDrawPeriods = getAllOfficialDrawPeriods();
   const currentDrawPeriods = getOfficialDrawPeriodsForDate(today);
   const drawNow = new Date();
-  const pendingDrawPeriods = currentDrawPeriods.filter((period) =>
-    !rows.some((row: any) => String(row.rendition_date) === today && String(row.game_period ?? "").trim() === period.label) &&
-    (!period.time || drawPeriodHasPassed(period, today, drawNow))
-  );
+  const renditionPolicy = String(agent.rendition_policy ?? "per_draw");
+  const configuredRenditionPeriods = Array.isArray(agent.rendition_periods) ? agent.rendition_periods.map(String) : [];
+  const dailyClosurePeriod = { label: "Cierre diario", shortLabel: "Cierre diario", time: null, gameName: "Cierre diario", kind: "daily" as const };
+  const lastScheduledDraw = currentDrawPeriods.filter((period) => period.time).sort((left, right) => String(left.time).localeCompare(String(right.time))).at(-1);
+  const dailyCloseAllowed = lastScheduledDraw ? drawPeriodHasPassed(lastScheduledDraw, today, drawNow) : false;
+  const todayAgentRows = rows.filter((row: any) => String(row.rendition_date) === today);
+  const dailyRendition = todayAgentRows.find((row: any) => String(row.game_period ?? "").trim() === "Cierre diario");
+  const { data: dailyStatus } = await supabase.from("agency_agent_daily_status")
+    .select("status,notes,reported_amount,updated_at")
+    .eq("organization_id", organization.id).eq("agent_id", id).eq("operational_date", today).maybeSingle();
+  const pendingDrawPeriods = renditionPolicy === "daily" ? [] : currentDrawPeriods
+    .filter((period) => renditionPolicy !== "selected_draws" || configuredRenditionPeriods.includes(period.label))
+    .filter((period) =>
+      !todayAgentRows.some((row: any) => String(row.game_period ?? "").trim() === period.label) &&
+      (!period.time || drawPeriodHasPassed(period, today, drawNow))
+    );
   const defaultPendingDrawPeriod = getPreferredPendingDrawPeriod(pendingDrawPeriods);
   const unmappedGameNames = getUnmappedOfficialGameNames((gameTypes ?? []).filter((game) => game.enabled).map((game) => ({ name: game.name })));
   const defaultCommissionByGame = new Map((defaultCommissionRows ?? []).map((row) => [row.game_type_id, Number(row.commission_percent ?? 0)]));
@@ -68,7 +80,36 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
       </div>
 
       {pageParams.resultado === "comisiones-guardadas" && <p className="message success-message">Comisiones guardadas. Se aplicarán automáticamente a las próximas rendiciones de este operador.</p>}
-      {pageParams.error && <p className="message error-message">{pageParams.error === "comision-invalida" ? "Cada comisión debe estar entre 0 y 100 %." : "No se pudieron guardar las comisiones. Revisá tus permisos y volvé a intentar."}</p>}
+      {pageParams.resultado === "modalidad-guardada" && <p className="message success-message">Modalidad guardada. Se aplicará desde la próxima jornada sin alterar el historial existente.</p>}
+      {pageParams.error === "comision-invalida" && <p className="message error-message">Cada comisión debe estar entre 0 y 100 %.</p>}
+      {pageParams.error && pageParams.error !== "comision-invalida" && <p className="message error-message">{pageParams.error === "modalidad-bloqueada-jornada" ? "Hoy ya hay rendiciones registradas para este operador. Podés cambiar la modalidad al comenzar una nueva jornada." : pageParams.error === "solo-titular-modalidad" ? "Solo el titular puede modificar la modalidad de rendición." : pageParams.error === "modalidad-invalida" ? "Elegí una modalidad válida y, si seleccionás sorteos, marcá al menos uno." : pageParams.error === "cierre-diario-antes-de-hora" ? "El cierre único se habilita después del último sorteo programado de la jornada." : "No se pudo guardar la configuración. Revisá los datos e intentá nuevamente."}</p>}
+      {isOwner && (
+        <section className="panel agent-rendition-policy-panel">
+          <div className="panel-head"><div><h2>Modalidad de rendición</h2><p className="muted">Configuración individual para {typeLabel.toLowerCase()} {code}. Si hoy ya tiene rendiciones, la modificación se bloquea para no mezclar modalidades en la misma jornada.</p></div><span className="badge success">Solo titular</span></div>
+          <form action={saveAgentRenditionPolicy} className="agent-rendition-policy-form">
+            <input type="hidden" name="agent_id" value={agent.id} />
+            <label className="agent-rendition-policy-mode">¿Cómo debe rendir este operador?
+              <select name="rendition_policy" defaultValue={renditionPolicy}>
+                <option value="per_draw">Por cada sorteo</option>
+                <option value="selected_draws">Solo sorteos seleccionados</option>
+                <option value="daily">Una sola rendición diaria al cierre</option>
+              </select>
+            </label>
+            <div>
+              <strong>Sorteos habilitados para la modalidad por selección</strong>
+              <p className="muted small-text">Los sorteos sin marcar no aparecerán como pendientes ni podrán rendirse con esta modalidad.</p>
+              <div className="agent-rendition-policy-periods">
+                {allOfficialDrawPeriods.map((period) => <label key={period.label}>
+                  <input type="checkbox" name="rendition_periods" value={period.label} defaultChecked={configuredRenditionPeriods.includes(period.label)} />
+                  <span><strong>{period.label}</strong><small>{period.time ? period.time : "Acumulado diario"}</small></span>
+                </label>)}
+              </div>
+            </div>
+            <p className="muted small-text">“Por cada sorteo” mantiene el control actual. “Cierre diario” reúne todos los juegos activos en una sola carga. La lista de sorteos se usa solo si elegís la segunda modalidad.</p>
+            <button className="button primary" type="submit">Guardar modalidad</button>
+          </form>
+        </section>
+      )}
       {isOwner && (
         <section className="panel agent-commission-panel">
           <div className="panel-head"><div><h2>Comisión por juego de este operador</h2><p className="muted">Dejá el campo vacío para heredar la comisión general de todos los agentes. Escribí un porcentaje solo cuando este subagente o ambulante tenga una excepción. El historial de cada rendición conserva el porcentaje aplicado.</p></div><div className="agent-commission-head-actions"><span className="badge success">Solo titular</span><Link href="/juegos#comision-general" className="button ghost">Comisión general de todos</Link></div></div>
@@ -91,11 +132,24 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
 
       {!agent.is_active ? <div className="message">Este agente está inactivo. Se conserva su historial, pero no se pueden crear rendiciones nuevas.</div> : (
         <section className="panel">
-          <div className="panel-head"><div><h2>Rendición por sorteo</h2><p className="muted">Cada turno es una rendición independiente. El formulario solo ofrece sorteos vencidos que todavía no tienen un registro para esta jornada.</p><p className="muted small-text"><a href={OFFICIAL_QUINIELA_SCHEDULE_URL} target="_blank" rel="noreferrer">Programa oficial de sorteos</a> · <a href={OFFICIAL_EXTRACTS_SCHEDULE_URL} target="_blank" rel="noreferrer">Resultados publicados</a></p></div></div>
-          {unmappedGameNames.length > 0 && <p className="message">Estos juegos aún no tienen un período de sorteo verificado y no aparecen en los formularios por turno: {unmappedGameNames.join(", ")}. Verificá el programa oficial antes de habilitarlos.</p>}
-          {pendingDrawPeriods.length > 0
+          <div className="panel-head"><div><h2>{renditionPolicy === "daily" ? "Rendición única de cierre diario" : renditionPolicy === "selected_draws" ? "Rendición de sorteos seleccionados" : "Rendición por sorteo"}</h2><p className="muted">{renditionPolicy === "daily" ? "Un único registro reúne los importes de todos los juegos al cierre. Podés cargar varios tickets dentro del mismo formulario." : renditionPolicy === "selected_draws" ? "Solo se controlan los turnos que el titular seleccionó para este operador." : "Cada turno tiene una rendición independiente; se muestran solo los sorteos vencidos que siguen pendientes."}</p><p className="muted small-text"><a href={OFFICIAL_QUINIELA_SCHEDULE_URL} target="_blank" rel="noreferrer">Programa oficial de sorteos</a> · <a href={OFFICIAL_EXTRACTS_SCHEDULE_URL} target="_blank" rel="noreferrer">Resultados publicados</a></p></div></div>
+          {renditionPolicy !== "daily" && unmappedGameNames.length > 0 && <p className="message">Estos juegos aún no tienen un período de sorteo verificado y no aparecen en los formularios por turno: {unmappedGameNames.join(", ")}. Verificá el programa oficial antes de habilitarlos.</p>}
+          {renditionPolicy === "daily" ? (
+            dailyRendition ? (
+              <div className="daily-closure-existing">
+                <div className="draw-period-chip-list"><span className={"draw-period-chip status-" + (dailyStatus?.status === "complete" ? "complete" : dailyStatus?.status === "incomplete" ? "incomplete" : "review")}>{dailyStatus?.status === "complete" ? "Cierre diario rendido" : dailyStatus?.status === "incomplete" ? "Cierre diario incompleto" : "Cierre diario registrado · revisar estado"}</span></div>
+                <p className="muted">Ya existe un cierre diario para esta jornada. El historial conserva todos los juegos y sus importes.</p>
+                {dailyStatus?.status === "incomplete" && <form action={setAgencyDailyRenditionStatus} className="draw-period-status-actions">
+                  <input type="hidden" name="agent_id" value={agent.id} /><input type="hidden" name="operational_date" value={today} /><input type="hidden" name="status" value="complete" />
+                  <button className="button primary" type="submit">Confirmar cierre diario como completo</button>
+                </form>}
+              </div>
+            ) : dailyCloseAllowed
+              ? <RenditionEntryForm agentId={agent.id} games={(gameTypes ?? []).filter((game) => game.enabled).map((game) => ({ id: game.id, name: game.name, category: game.category, enabled: game.enabled }))} today={today} periods={[dailyClosurePeriod]} allPeriods={allOfficialDrawPeriods} defaultPeriod="Cierre diario" dailyMode />
+              : <p className="message">El cierre diario estará disponible después del último horario de sorteo de hoy{lastScheduledDraw?.time ? " (" + lastScheduledDraw.time + ")" : ""}.</p>
+          ) : pendingDrawPeriods.length > 0
             ? <RenditionEntryForm agentId={agent.id} games={(gameTypes ?? []).filter((game) => game.enabled).map((game) => ({ id: game.id, name: game.name, category: game.category, enabled: game.enabled }))} today={today} periods={pendingDrawPeriods} allPeriods={allOfficialDrawPeriods} defaultPeriod={defaultPendingDrawPeriod?.label} />
-            : <p className="message">No hay sorteos vencidos pendientes para esta jornada. Los próximos turnos se habilitan al llegar su horario oficial.</p>}
+            : <p className="message">No hay sorteos habilitados vencidos pendientes para esta jornada. Los próximos turnos se habilitan al llegar su horario oficial.</p>}
         </section>
       )}
 

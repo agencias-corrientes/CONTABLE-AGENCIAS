@@ -23,7 +23,7 @@ function AgentCard({ agent, canDelete }: { agent: any; canDelete: boolean }) {
         <summary aria-label={"Opciones de " + typeLabel + " " + agent.code} title="Opciones">⋯</summary>
         <div className="agency-agent-actions-menu">
           <span className={agent.is_active ? "badge success" : "badge"}>{agent.is_active ? "Activo" : "Inactivo"}</span>
-          <Link href={"/agencias/" + agent.id}>Editar comisión</Link>
+          <Link href={"/agencias/" + agent.id}>Configurar rendición y comisión</Link>
           {canDelete && (
             <form action={deleteAgencyAgent}>
               <input type="hidden" name="agent_id" value={agent.id} />

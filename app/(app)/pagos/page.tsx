@@ -5,7 +5,7 @@ import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, getAgencyLoca
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
 import { RenditionScrollHelper } from "@/components/rendition-scroll-helper";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
-import { receiveAgencyRendition, voidAgencyRendition, setAgencyDrawRenditionStatus, sendAgencyBackupManually } from "../agencias/actions";
+import { receiveAgencyRendition, voidAgencyRendition, setAgencyDrawRenditionStatus, setAgencyDailyRenditionStatus, sendAgencyBackupManually } from "../agencias/actions";
 
 type GameAmount = {
   id: string;
@@ -35,7 +35,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
 
   const [{ data: operationalSettings }, { data: agents }, { data: renditions }, { data: gameTypes }] = await Promise.all([
     supabase.from("agency_operational_settings").select("rendition_cutoff_time").eq("organization_id", activeOrganization.id).maybeSingle(),
-    supabase.from("agency_agents").select("id,kind,full_name,code,is_active,phone").eq("organization_id", activeOrganization.id).order("kind").order("code"),
+    supabase.from("agency_agents").select("id,kind,full_name,code,is_active,phone,rendition_policy,rendition_periods").eq("organization_id", activeOrganization.id).order("kind").order("code"),
     supabase.from("agency_renditions").select("id,agent_id,rendition_date,created_at,updated_at,game_period,draw_number,capture_method,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)").eq("organization_id", activeOrganization.id).order("created_at", { ascending: false }).limit(500),
     supabase.from("agency_game_types").select("id,name,category,enabled").eq("organization_id", activeOrganization.id).order("sort_order").order("name"),
   ]);
@@ -47,9 +47,15 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     .eq("organization_id", activeOrganization.id)
     .eq("operational_date", today);
   const drawStatusByKey = new Map((drawStatusRows ?? []).map((row: any) => [String(row.agent_id) + "|" + String(row.draw_period), row]));
+  const { data: dailyStatusRows } = await supabase.from("agency_agent_daily_status")
+    .select("agent_id,status,notes,reported_amount,updated_at").eq("organization_id", activeOrganization.id).eq("operational_date", today);
+  const dailyStatusByAgent = new Map((dailyStatusRows ?? []).map((row: any) => [String(row.agent_id), row]));
   const drawPeriods = getOfficialDrawPeriodsForDate(today);
   const allOfficialDrawPeriods = getAllOfficialDrawPeriods();
+  const dailyClosurePeriod = { label: "Cierre diario", shortLabel: "Cierre diario", time: null, gameName: "Cierre diario", kind: "daily" as const };
   const drawNow = new Date();
+  const lastScheduledDraw = drawPeriods.filter((period) => period.time).sort((left, right) => String(left.time).localeCompare(String(right.time))).at(-1);
+  const dailyCloseAllowed = lastScheduledDraw ? drawPeriodHasPassed(lastScheduledDraw, today, drawNow) : false;
 
   const agentRows = agents ?? [];
   const activeAgents = agentRows.filter((agent) => agent.is_active);
@@ -210,16 +216,21 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
 
   function AgentAccordion({ agent }: { agent: any }) {
     const todayAgentRows = todayRows.filter((row) => row.agent_id === agent.id);
-    const agentPeriodStates = drawPeriodStatesForAgent(String(agent.id));
-    const formPeriods = agentPeriodStates
-      .filter((entry) => entry.status === "pending" && !entry.hasRendition)
-      .map((entry) => entry.period);
+    const renditionPolicy = String(agent.rendition_policy ?? "per_draw");
+    const configuredRenditionPeriods = Array.isArray(agent.rendition_periods) ? agent.rendition_periods.map(String) : [];
+    const dailyRendition = todayAgentRows.find((row: any) => String(row.game_period ?? "").trim() === "Cierre diario");
+    const dailyStatus = dailyStatusByAgent.get(String(agent.id)) as any;
+    const agentPeriodStates = renditionPolicy === "daily" ? [] : drawPeriodStatesForAgent(String(agent.id))
+      .filter((entry) => renditionPolicy !== "selected_draws" || configuredRenditionPeriods.includes(entry.period.label));
+    const formPeriods = agentPeriodStates.filter((entry) => entry.status === "pending" && !entry.hasRendition).map((entry) => entry.period);
     const defaultPeriod = getPreferredPendingDrawPeriod(formPeriods)?.label ?? "";
     const due = todayAgentRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
     const commission = todayAgentRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_game_amounts) ? row.agency_rendition_game_amounts : []).reduce((acc: number, game: any) => acc + Number(game.commission_amount ?? 0), 0), 0);
     const netDue = Math.max(0, due - commission);
     const subagent = agent.kind === "subagent";
     const incompleteDraws = agentPeriodStates.filter((entry) => entry.status === "incomplete");
+    const dailyStatusKind = !dailyRendition ? "pending" : dailyStatus?.status === "complete" ? "complete" : dailyStatus?.status === "incomplete" ? "incomplete" : "review";
+    const dailyStatusLabel = !dailyRendition ? "PENDIENTE: Cierre diario" : dailyStatusKind === "complete" ? "Cierre diario rendido" : dailyStatusKind === "incomplete" ? "Cierre diario incompleto" : "Cierre diario registrado · revisar estado";
 
     return (
       <details className={"rendition-agent-accordion " + (subagent ? "rendition-subagent" : "rendition-ambulant")} open={selectedAgentId === agent.id}>
@@ -230,11 +241,13 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         </summary>
         <div className="rendition-agent-expanded">
           <div className="rendition-agent-expanded-head">
-            <div><span className="eyebrow">RENDICIONES POR SORTEO</span><h3>{agentLabel(agent)} {agent.code} · {agent.full_name}</h3><p className="muted">Cada sorteo tiene su rendición independiente. Comisión acumulada: <strong>{money(commission, activeOrganization.currency_code)}</strong> · Neto estimado: <strong>{money(netDue, activeOrganization.currency_code)}</strong>.</p></div>
+            <div><span className="eyebrow">{renditionPolicy === "daily" ? "CIERRE DIARIO" : renditionPolicy === "selected_draws" ? "SORTEOS SELECCIONADOS" : "RENDICIONES POR SORTEO"}</span><h3>{agentLabel(agent)} {agent.code} · {agent.full_name}</h3><p className="muted">{renditionPolicy === "daily" ? "Una sola rendición agrupa los importes de todos los juegos al cierre." : renditionPolicy === "selected_draws" ? "Solo se controlan los sorteos habilitados para este operador." : "Cada sorteo tiene su rendición independiente."} Comisión acumulada: <strong>{money(commission, activeOrganization.currency_code)}</strong> · Neto estimado: <strong>{money(netDue, activeOrganization.currency_code)}</strong>.</p></div>
             <Link href={"/agencias/" + agent.id} className="button ghost">Ficha del agente</Link>
           </div>
-          <div className="draw-period-chip-list expanded-draw-period-list" aria-label={"Estados de sorteos de " + agent.code}>
-            {agentPeriodStates.map((entry) => <span key={entry.period.label} className={"draw-period-chip status-" + entry.status} title={entry.description}>{entry.label}</span>)}
+          <div className="draw-period-chip-list expanded-draw-period-list" aria-label={"Estados de rendición de " + agent.code}>
+            {renditionPolicy === "daily"
+              ? <span className={"draw-period-chip status-" + dailyStatusKind}>{dailyStatusLabel}</span>
+              : agentPeriodStates.map((entry) => <span key={entry.period.label} className={"draw-period-chip status-" + entry.status} title={entry.description}>{entry.label}</span>)}
           </div>
           {canCreateRenditions && incompleteDraws.length > 0 && <div className="draw-period-status-actions">
             {incompleteDraws.map((entry) => <form key={entry.period.label} action={setAgencyDrawRenditionStatus}>
@@ -245,10 +258,20 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
               <button className="button ghost" type="submit">Confirmar {entry.period.shortLabel} como rendida</button>
             </form>)}
           </div>}
+          {renditionPolicy === "daily" && dailyRendition && dailyStatusKind === "incomplete" && canCreateRenditions && <form action={setAgencyDailyRenditionStatus} className="draw-period-status-actions">
+            <input type="hidden" name="agent_id" value={agent.id} /><input type="hidden" name="operational_date" value={today} /><input type="hidden" name="status" value="complete" />
+            <button className="button primary" type="submit">Confirmar cierre diario como completo</button>
+          </form>}
           {canCreateRenditions
-            ? formPeriods.length > 0
-              ? <RenditionEntryForm agentId={agent.id} games={games} today={today} periods={formPeriods} allPeriods={allOfficialDrawPeriods} defaultPeriod={defaultPeriod} />
-              : <p className="message">No hay otro sorteo vencido pendiente para registrar. Los períodos futuros se habilitan cuando llega su horario oficial.</p>
+            ? renditionPolicy === "daily"
+              ? dailyRendition
+                ? <p className="message">Ya existe una rendición única para esta jornada. Revisá el historial para ver los importes de todos los juegos.</p>
+                : dailyCloseAllowed
+                  ? <RenditionEntryForm agentId={agent.id} games={games} today={today} periods={[dailyClosurePeriod]} allPeriods={allOfficialDrawPeriods} defaultPeriod="Cierre diario" dailyMode />
+                  : <p className="message">El cierre diario estará disponible después del último horario de sorteo de hoy{lastScheduledDraw?.time ? " (" + lastScheduledDraw.time + ")" : ""}.</p>
+              : formPeriods.length > 0
+                ? <RenditionEntryForm agentId={agent.id} games={games} today={today} periods={formPeriods} allPeriods={allOfficialDrawPeriods} defaultPeriod={defaultPeriod} />
+                : <p className="message">No hay otro sorteo habilitado vencido pendiente para registrar. Los turnos futuros se habilitan cuando llega su horario.</p>
             : <p className="message">No tenés permiso para registrar rendiciones. El titular debe habilitar esta operación.</p>}
           <section className="rendition-agent-history">
             <div className="panel-head"><div><h3>Rendiciones del día operativo</h3><p className="muted">Los períodos anteriores quedan en el historial; el nuevo sorteo vuelve a quedar pendiente por separado.</p></div><span className="muted">{todayAgentRows.length} registros</span></div>
@@ -297,6 +320,9 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "juegos-periodo-invalido": "Uno o más juegos no corresponden al turno seleccionado. No se guardó la rendición.",
         "fecha-sorteo-invalida": "La fecha de la rendición debe coincidir con la jornada operativa. No se guardó el registro.",
         "sorteo-no-programado": "Ese sorteo no está programado para la fecha elegida según el cronograma oficial.",
+        "modalidad-sorteo-invalido": "El sorteo elegido no corresponde a la modalidad configurada para este operador. No se guardó la rendición.",
+        "agente-no-encontrado": "No encontramos ese subagente o ambulante. Actualizá la página y volvé a intentar.",
+        "cierre-diario-antes-de-hora": "El cierre único se habilita después del último sorteo programado de la jornada.",
         "estado-sorteo-fallido": "No se pudo actualizar el estado de ese sorteo.",
         "sorteo-sin-rendicion": "No se encontró una rendición activa de ese sorteo para marcarla como rendida.",
         "estado-diario-fallido": "No se pudo guardar el estado diario. Volvé a intentarlo.",

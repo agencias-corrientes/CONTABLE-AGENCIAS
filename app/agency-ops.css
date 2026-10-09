@@ -1455,3 +1455,17 @@
     margin-left: auto;
   }
 }
+
+
+/* Configuración individual de frecuencia de rendición. */
+.agent-rendition-policy-form { display: grid; gap: 1rem; }
+.agent-rendition-policy-mode { display: grid; gap: .4rem; max-width: 32rem; font-weight: 600; }
+.agent-rendition-policy-mode select { width: 100%; }
+.agent-rendition-policy-periods { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: .55rem; margin-top: .65rem; }
+.agent-rendition-policy-periods label { display: flex; align-items: center; gap: .55rem; border: 1px solid #e3d9c9; border-radius: .6rem; padding: .65rem .75rem; background: #fffdf8; cursor: pointer; }
+.agent-rendition-policy-periods input[type="checkbox"] { width: auto; min-width: 1rem; margin: 0; accent-color: #79273b; }
+.agent-rendition-policy-periods span { display: grid; gap: .15rem; }
+.agent-rendition-policy-periods small { color: #766f65; font-size: .78rem; }
+.rendition-daily-mode-summary { display: grid; align-content: start; gap: .3rem; padding: .8rem .95rem; border: 1px solid #dfd0ba; border-radius: .6rem; background: #fffaf0; }
+.daily-closure-existing { display: grid; gap: .6rem; }
+@media (max-width: 640px) { .agent-rendition-policy-periods { grid-template-columns: 1fr; } }

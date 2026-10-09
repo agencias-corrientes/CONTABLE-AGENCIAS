@@ -103,6 +103,7 @@ export function getGamesForDrawPeriod<T extends { name: string; enabled?: boolea
   games: T[],
 ): T[] {
   if (!period) return [];
+  if (period.label === "Cierre diario") return games.filter((game) => game.enabled !== false);
   const target = normalizeDrawPeriodName(period.gameName);
   return games.filter((game) => game.enabled !== false && normalizeDrawPeriodName(game.name) === target);
 }
