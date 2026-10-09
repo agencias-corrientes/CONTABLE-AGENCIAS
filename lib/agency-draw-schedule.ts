@@ -23,7 +23,7 @@ const SCHEDULE: ScheduledPeriod[] = [
   { label: "Loto Plus", shortLabel: "Loto Plus", time: "22:00", gameName: "Loto Plus", kind: "scheduled", days: [3, 6] },
   { label: "Loto 5 Plus", shortLabel: "Loto 5 Plus", time: "22:30", gameName: "Loto 5 Plus", kind: "scheduled", days: [6] },
   { label: "Brinco", shortLabel: "Brinco", time: "21:00", gameName: "Brinco", kind: "scheduled", days: [0] },
-  { label: "Al Toque (acumulado diario)", shortLabel: "Al Toque", time: null, gameName: "Quiniela Al Toque", kind: "daily", days: [0, 1, 2, 3, 4, 5, 6] },
+  { label: "Al Toque (acumulado diario)", shortLabel: "Rendición del día", time: null, gameName: "Quiniela Al Toque", kind: "daily", days: [0, 1, 2, 3, 4, 5, 6] },
 ];
 
 export type DrawPeriodStatus = "complete" | "incomplete" | "review" | "pending" | "upcoming";
@@ -147,7 +147,7 @@ export function getDrawPeriodStatus(
     return { status: "review", label: "Revisar: " + period.shortLabel, description: "Hay una rendición registrada para este turno, pero falta confirmar su estado por sorteo. No se reasignó automáticamente.", hasRendition: true };
   }
   if (!period.time) {
-    return { status: "pending", label: "Pendiente diaria: " + period.shortLabel, description: "Al Toque no tiene un horario fijo de sorteo: se controla como acumulado diario independiente.", hasRendition: false };
+    return { status: "pending", label: "Pendiente diaria: " + period.shortLabel, description: "La rendición del día se controla como un acumulado diario independiente.", hasRendition: false };
   }
   if (drawPeriodHasPassed(period, businessDate, now)) {
     return { status: "pending", label: "PENDIENTE: " + period.shortLabel, description: "El sorteo ya pasó y todavía no tiene una rendición registrada para este operador.", hasRendition: false };

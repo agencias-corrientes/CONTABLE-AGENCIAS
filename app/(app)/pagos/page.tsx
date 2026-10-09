@@ -118,26 +118,26 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       if (dailyStatus?.status === "complete") return [];
       if (!dailyRendition && !dailyCloseAllowed) return [];
       if (!dailyRendition) return [{
-        agent, periodLabel: "Cierre diario", time: lastScheduledDraw?.time ?? null,
-        status: "pending", label: "Pendiente: Cierre diario",
-        description: "Todavía no se registró la rendición única al cierre de la jornada."
+        agent, periodLabel: "Rendición del día", time: lastScheduledDraw?.time ?? null,
+        status: "pending", label: "Pendiente: Rendición del día",
+        description: "Todavía no se registró la rendición del día."
       }];
       if (dailyStatus?.status === "incomplete") return [{
-        agent, periodLabel: "Cierre diario", time: lastScheduledDraw?.time ?? null,
-        status: "incomplete", label: "Incompleta: Cierre diario",
+        agent, periodLabel: "Rendición del día", time: lastScheduledDraw?.time ?? null,
+        status: "incomplete", label: "Incompleta: Rendición del día",
         description: String(dailyStatus.notes || "El cierre diario está marcado como incompleto.")
       }];
       return [{
-        agent, periodLabel: "Cierre diario", time: lastScheduledDraw?.time ?? null,
+        agent, periodLabel: "Rendición del día", time: lastScheduledDraw?.time ?? null,
         status: "review", label: "Revisar: Cierre diario",
-        description: "Existe una rendición diaria, pero falta confirmar su estado."
+        description: "La rendición del día está registrada, pero falta confirmar su estado."
       }];
     }
     return drawPeriodStatesForAgent(String(agent.id))
       .filter((entry) => policy !== "selected_draws" || configuredPeriods.includes(entry.period.label))
       .filter((entry) => ["pending", "incomplete", "review"].includes(entry.status))
       .map((entry) => ({
-        agent, periodLabel: entry.period.label, time: entry.period.time,
+        agent, periodLabel: entry.period.kind === "daily" ? "Rendición del día" : entry.period.label, time: entry.period.time,
         status: entry.status, label: entry.label, description: entry.description
       }));
   });
@@ -263,13 +263,13 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     const subagent = agent.kind === "subagent";
     const incompleteDraws = agentPeriodStates.filter((entry) => entry.status === "incomplete");
     const dailyStatusKind = !dailyRendition ? "pending" : dailyStatus?.status === "complete" ? "complete" : dailyStatus?.status === "incomplete" ? "incomplete" : "review";
-    const dailyStatusLabel = !dailyRendition ? "PENDIENTE: Cierre diario" : dailyStatusKind === "complete" ? "Cierre diario rendido" : dailyStatusKind === "incomplete" ? "Cierre diario incompleto" : "Cierre diario registrado · revisar estado";
+    const dailyStatusLabel = !dailyRendition ? "Pendiente: Rendición del día" : dailyStatusKind === "complete" ? "Rendición del día confirmada" : dailyStatusKind === "incomplete" ? "Rendición del día incompleta" : "Rendición del día registrada · revisar estado";
 
     return (
       <div className={"rendition-agent-accordion " + (subagent ? "rendition-subagent" : "rendition-ambulant")}>
         <div className="rendition-agent-expanded">
           <div className="rendition-agent-expanded-head">
-            <div><span className="eyebrow">{renditionPolicy === "daily" ? "CIERRE DIARIO" : renditionPolicy === "selected_draws" ? "SORTEOS SELECCIONADOS" : "RENDICIONES POR SORTEO"}</span><h3>{agentLabel(agent)} {agent.code} · {agent.full_name}</h3><p className="muted">{renditionPolicy === "daily" ? "Una sola rendición agrupa los importes de todos los juegos al cierre." : renditionPolicy === "selected_draws" ? "Solo se controlan los sorteos habilitados para este operador." : "Cada sorteo tiene su rendición independiente."} Comisión acumulada: <strong>{money(commission, activeOrganization.currency_code)}</strong> · Neto estimado: <strong>{money(netDue, activeOrganization.currency_code)}</strong>.</p></div>
+            <div><span className="eyebrow">{renditionPolicy === "daily" ? "RENDICIÓN DEL DÍA" : renditionPolicy === "selected_draws" ? "SORTEOS SELECCIONADOS" : "RENDICIONES POR SORTEO"}</span><h3>{agentLabel(agent)} {agent.code} · {agent.full_name}</h3><p className="muted">{renditionPolicy === "daily" ? "Una sola rendición reúne los importes de todos los juegos del día." : renditionPolicy === "selected_draws" ? "Solo se controlan los sorteos habilitados para este operador." : "Cada sorteo tiene su rendición independiente."} Comisión acumulada: <strong>{money(commission, activeOrganization.currency_code)}</strong> · Neto estimado: <strong>{money(netDue, activeOrganization.currency_code)}</strong>.</p></div>
             <Link href={"/agencias/" + agent.id} className="button ghost">Configurar</Link>
           </div>
           <div className="draw-period-chip-list expanded-draw-period-list" aria-label={"Estados de rendición de " + agent.code}>
@@ -288,15 +288,15 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
           </div>}
           {renditionPolicy === "daily" && dailyRendition && dailyStatusKind === "incomplete" && canCreateRenditions && <form action={setAgencyDailyRenditionStatus} className="draw-period-status-actions">
             <input type="hidden" name="agent_id" value={agent.id} /><input type="hidden" name="operational_date" value={today} /><input type="hidden" name="status" value="complete" />
-            <button className="button primary" type="submit">Confirmar cierre diario como completo</button>
+            <button className="button primary" type="submit">Confirmar rendición del día</button>
           </form>}
           {canCreateRenditions
             ? renditionPolicy === "daily"
               ? dailyRendition
-                ? <p className="message">Ya existe una rendición única para esta jornada. Revisá el historial para ver los importes de todos los juegos.</p>
+                ? <p className="message">La rendición del día ya está registrada para esta jornada. Revisá el historial para ver los importes de todos los juegos.</p>
                 : dailyCloseAllowed
                   ? <RenditionEntryForm agentId={agent.id} games={games} today={today} periods={[dailyClosurePeriod]} allPeriods={allOfficialDrawPeriods} defaultPeriod="Cierre diario" dailyMode />
-                  : <p className="message">El cierre diario estará disponible después del último horario de sorteo de hoy{lastScheduledDraw?.time ? " (" + lastScheduledDraw.time + ")" : ""}.</p>
+                  : <p className="message">La rendición del día estará disponible después del último horario de sorteo de hoy{lastScheduledDraw?.time ? " (" + lastScheduledDraw.time + ")" : ""}.</p>
               : formPeriods.length > 0
                 ? <RenditionEntryForm agentId={agent.id} games={games} today={today} periods={formPeriods} allPeriods={allOfficialDrawPeriods} defaultPeriod={defaultPeriod} />
                 : <p className="message">No hay otro sorteo habilitado vencido pendiente para registrar. Los turnos futuros se habilitan cuando llega su horario.</p>
@@ -315,29 +315,121 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={drawPeriods.map((period) => period.time).filter((time): time is string => Boolean(time))} renderedAt={new Date().toISOString()} />
       <RenditionScrollHelper />
       {!selectedAgentId ? (
-        <section className="rendition-agent-code-list" aria-label="Elegir subagente o ambulante">
-          {filteredActiveAgents.map((agent) => (
-            <Link
-              key={agent.id}
-              href={"/pagos?agent=" + agent.id}
-              className={"rendition-agent-code-link " + (agent.kind === "subagent" ? "rendition-subagent" : "rendition-ambulant")}
-              aria-label={"Abrir rendición de " + (agent.kind === "subagent" ? "subagente " : "ambulante ") + agent.code}
-            >
-              {agent.code || "SIN CÓDIGO"}
-            </Link>
-          ))}
-          {!filteredActiveAgents.length && (
-            <div className="agency-empty">
-              {searchTerm ? "No hay subagentes ni ambulantes que coincidan con esa búsqueda." : "No hay subagentes ni ambulantes activos."}
+        <>
+          <div className="topbar rendition-page-topbar">
+            <div>
+              <p className="eyebrow">CONTROL OPERATIVO DIARIO</p>
+              <h1>Rendiciones</h1>
             </div>
-          )}
-        </section>
+            {manager && (
+              <form action={sendAgencyBackupManually} className="rendition-manual-backup-form">
+                <button className="button primary" type="submit" title="Enviar ahora las copias pendientes de esta agencia">Enviar backup manual</button>
+              </form>
+            )}
+          </div>
+      {params.resultado === "backup-manual-enviado" && <p className="message success-message">Backup manual enviado al correo configurado: {Math.max(0, Number(params.copias ?? 0))} rendición(es). El cierre automático continúa programado.</p>}
+      {params.resultado === "backup-sin-pendientes" && <p className="message">No había respaldos pendientes para enviar. Las copias guardadas siguen disponibles en el historial.</p>}
+      {params.resultado === "sorteo-rendido" && <p className="message success-message">Se confirmó el estado de ese sorteo; los demás períodos no se modificaron.</p>}
+      {params.resultado === "rendicion-creada" && <p className={(params.backup === "enviado" || params.backup === "cierre-diario") ? "message success-message" : "message backup-pending-message"}>Rendición registrada correctamente. {params.backup === "cierre-diario" ? "La copia quedó acumulada para enviarse en un único correo al cierre de la jornada." : params.backup === "enviado" ? "El backup de texto se envió al correo configurado para el titular." : params.backup === "dominio-no-verificado" ? "La rendición y su copia de texto se conservaron, pero Resend bloqueó el envío porque falta verificar un dominio y usarlo en la dirección del remitente. Configurá el dominio en Resend y RESEND_FROM_EMAIL en los secretos de la función de Supabase; después reintentá desde Personal y permisos." : "El respaldo quedó guardado, pero el correo no confirmó la entrega. Revisá el estado en Personal y permisos."}{params.foto === "no-adjunta" ? " La foto no se adjuntó; el respaldo de texto se conserva." : ""}</p>}
+      {params.resultado === "rendicion-corregida" && <p className={(params.backup === "enviado" || params.backup === "cierre-diario") ? "message success-message" : "message backup-pending-message"}>Rendición corregida. Se conserva la auditoría y se creó una nueva revisión del respaldo. {params.backup === "cierre-diario" ? "La nueva revisión quedó acumulada para el correo único de cierre diario." : params.backup === "enviado" ? "El correo se envió." : params.backup === "dominio-no-verificado" ? "Resend rechazó el envío porque falta verificar un dominio y usar una dirección remitente de ese dominio. La copia permanece guardada; configurá Resend y reintentá desde Personal y permisos." : "El correo no confirmó entrega; la revisión permanece guardada para reintento."}</p>}
+      {params.resultado === "rendicion-anulada" && <p className={(params.backup === "enviado" || params.backup === "cierre-diario") ? "message success-message" : "message backup-pending-message"}>Rendición anulada con historial conservado. {params.backup === "cierre-diario" ? "El respaldo actualizado quedó acumulado para el correo único de cierre diario." : params.backup === "enviado" ? "El respaldo actualizado se envió al correo del titular." : params.backup === "dominio-no-verificado" ? "La rendición anulada y su respaldo siguen registrados, pero Resend requiere verificar un dominio y configurar la dirección remitente antes de enviar. Reintentá después de esa configuración." : "El respaldo quedó registrado, pero el correo no confirmó entrega."}</p>}
+      {params.resultado === "estado-rendida" && <p className="message success-message">Estado actualizado: rendición confirmada como completa para esta jornada.</p>}
+      {params.resultado === "estado-incompleta" && <p className="message backup-pending-message">Estado actualizado: rendición marcada como incompleta. Podés dejar una observación para recordar qué falta.</p>}
+      {params.error === "solo-titular-configuracion" && <p className="message error-message">La configuración es exclusiva del titular de la agencia.</p>}
+      {params.error && params.error !== "solo-titular-configuracion" && <p className="message error-message">{({
+        "sin-permiso-rendicion": "No tenés permiso para registrar rendiciones.",
+        "sin-permiso-cobro": "No tenés permiso para registrar cobros.",
+        "sin-permiso-editar": "No tenés permiso para corregir rendiciones.",
+        "sin-permiso-anular": "No tenés permiso para anular rendiciones.",
+        "rendicion-invalida": "No se identificó la rendición que querés corregir.",
+        "fecha-invalida": "La fecha del juego no es válida.",
+        "importe-invalido": "Ingresá al menos un importe de juego mayor que cero.",
+        "rendicion-con-cobros": "Esta rendición ya tiene cobros registrados. Para no alterar la Caja, primero debe hacerse una reversión compensatoria.",
+        "edicion-fallida": "No se pudo corregir la rendición. No se guardaron los cambios.",
+        "anulacion-no-confirmada": "Marcá la confirmación para anular la rendición.",
+        "anulacion-fallida": "No se pudo anular la rendición. El historial permanece sin cambios.",
+        "rendicion-fallida": "No se pudo registrar la rendición.",
+        "sorteo-ya-rendido": "Este operador ya tiene una rendición activa para ese sorteo. No se creó un duplicado.",
+        "juegos-periodo-invalido": "Uno o más juegos no corresponden al turno seleccionado. No se guardó la rendición.",
+        "fecha-sorteo-invalida": "La fecha de la rendición debe coincidir con la jornada operativa. No se guardó el registro.",
+        "sorteo-no-programado": "Ese sorteo no está programado para la fecha elegida según el cronograma oficial.",
+        "modalidad-sorteo-invalido": "El sorteo elegido no corresponde a la modalidad configurada para este operador. No se guardó la rendición.",
+        "agente-no-encontrado": "No encontramos ese subagente o ambulante. Actualizá la página y volvé a intentar.",
+        "cierre-diario-antes-de-hora": "El cierre único se habilita después del último sorteo programado de la jornada.",
+        "estado-sorteo-fallido": "No se pudo actualizar el estado de ese sorteo.",
+        "sorteo-sin-rendicion": "No se encontró una rendición activa de ese sorteo para marcarla como rendida.",
+        "estado-diario-fallido": "No se pudo guardar el estado diario. Volvé a intentarlo.",
+        "monto-rendido-invalido": "Ingresá un monto rendido mayor que cero para guardar el estado incompleto.",
+        "caja-no-configurada": "No se registró la rendición porque no hay una cuenta Caja activa configurada.",
+        "cobro-inicial-fallido": "La rendición se guardó, pero el cobro inicial no se pudo registrar. No vuelvas a crearla; revisá la rendición y registrá el cobro pendiente.",
+        "jornada-cambio": "La jornada operativa cambió. Actualizá la pantalla y volvé a marcar el estado.",
+        "sin-rendicion-para-confirmar": "Primero registrá al menos una rendición de esta jornada para poder confirmarla como completa.",
+        "backup-solo-titular": "Solo el titular de la agencia puede enviar respaldos manuales.",
+        "backup-configuracion": "Falta configurar RESEND_API_KEY en los secretos de la función de Supabase.",
+        "backup-dominio-no-verificado": "Resend no permite enviar a ese destinatario sin verificar un dominio. Durante la prueba, usá el correo titular de Resend; para otros destinatarios, verificá un dominio y configurá RESEND_FROM_EMAIL.",
+        "backup-destinatario": "No hay un correo de respaldo configurado para la agencia. Abrí Personal y permisos y guardá el correo del titular.",
+        "backup-no-enviado": "El backup sigue guardado, pero el proveedor rechazó el envío. Revisá el correo configurado y la configuración de Resend."
+      } as Record<string,string>)[params.error] ?? "La operación no se pudo completar. Verificá permisos y datos."}</p>}
+          <div className="stats-grid compact rendition-stats">
+            <div className="stat-card"><span>Rendido hoy</span><strong>{money(todayRendido, activeOrganization.currency_code)}</strong><small>{todayRows.length} registros</small></div>
+            <div className="stat-card"><span>Cobrado hoy</span><strong>{money(todayCobrado, activeOrganization.currency_code)}</strong><small>cobros registrados</small></div>
+            <div className="stat-card"><span>Pendiente hoy</span><strong>{money(todayPendiente, activeOrganization.currency_code)}</strong><small>saldo del día</small></div>
+            <div className="stat-card"><span>Agentes activos</span><strong>{activeAgents.length}</strong><small>{activeAgents.filter((agent) => agent.kind === "subagent").length} subagentes · {activeAgents.filter((agent) => agent.kind === "ambulant").length} ambulantes</small></div>
+          </div>
+
+          <section className="rendition-pending-panel" aria-labelledby="rendition-pending-title">
+            <div className="rendition-pending-head">
+              <div>
+                <h2 id="rendition-pending-title">Pendientes de rendición</h2>
+                <p>Solo aparecen los turnos que todavía necesitan atención.</p>
+              </div>
+              <span className={pendingInventory.length ? "badge warning" : "badge success"}>{pendingInventory.length} pendiente(s)</span>
+            </div>
+            {pendingInventory.length ? (
+              <div className="rendition-pending-list">
+                {pendingInventory.map((item: any) => (
+                  <Link key={String(item.agent.id) + "|" + item.periodLabel} href={"/pagos?agent=" + item.agent.id}
+                    className={"rendition-pending-item " + (item.status === "pending" ? "is-pending" : "is-attention")}>
+                    <span className="rendition-pending-code">{item.agent.code}</span>
+                    <span className="rendition-pending-detail">
+                      <strong>{item.label}</strong>
+                      <small>{agentLabel(item.agent)} · {item.periodLabel}{item.time ? " · " + item.time : ""}</small>
+                    </span>
+                    <span className="rendition-pending-chevron" aria-hidden="true">›</span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="rendition-pending-empty">No hay rendiciones pendientes para la jornada actual.</p>
+            )}
+          </section>
+
+          <section className="rendition-agent-selector" aria-label="Elegir subagente o ambulante">
+            <div className="rendition-agent-selector-head">
+              <h2>Subagentes y ambulantes</h2>
+              <span>{filteredActiveAgents.length} activos</span>
+            </div>
+            <div className="agency-agent-button-list rendition-agent-code-list">
+              {filteredActiveAgents.map((agent) => (
+                <div key={agent.id} className={"agency-agent-button-row " + (agent.kind === "subagent" ? "agency-subagent" : "agency-ambulant")}>
+                  <Link href={"/pagos?agent=" + agent.id} className="agency-agent-code-button"
+                    aria-label={"Abrir rendición de " + (agent.kind === "subagent" ? "subagente " : "ambulante ") + agent.code}>
+                    {agent.code || "SIN CÓDIGO"}
+                  </Link>
+                </div>
+              ))}
+              {!filteredActiveAgents.length && (
+                <div className="agency-empty">{searchTerm ? "No hay subagentes ni ambulantes que coincidan con esa búsqueda." : "No hay subagentes ni ambulantes activos."}</div>
+              )}
+            </div>
+          </section>
+        </>
       ) : (
         <div className="rendition-selected-view">
           <div className="rendition-selected-header">
             <Link href="/pagos" className="back-link">← Volver a subagentes y ambulantes</Link>
             <div>
-              <p className="eyebrow">RENDICIÓN DIARIA</p>
+              <p className="eyebrow">RENDICIÓN DEL DÍA</p>
               <h1>{selectedAgent?.code ?? "Operador"}</h1>
             </div>
           </div>
@@ -384,8 +476,6 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "backup-destinatario": "No hay un correo de respaldo configurado para la agencia. Abrí Personal y permisos y guardá el correo del titular.",
         "backup-no-enviado": "El backup sigue guardado, pero el proveedor rechazó el envío. Revisá el correo configurado y la configuración de Resend."
       } as Record<string,string>)[params.error] ?? "La operación no se pudo completar. Verificá permisos y datos."}</p>}
-
-
           {selectedAgent ? (
             <AgentAccordion agent={selectedAgent} />
           ) : (

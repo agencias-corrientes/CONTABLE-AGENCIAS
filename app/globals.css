@@ -134,3 +134,45 @@ html,body{background:var(--bg);color:var(--text)}
 .rendition-selected-view .rendition-agent-expanded-head>div{min-width:0}
 .rendition-selected-view .rendition-agent-expanded-head .button{flex:0 0 auto}
 @media(max-width:640px){.rendition-agent-code-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.rendition-agent-code-link{min-height:52px;font-size:15px;padding:10px 6px}.rendition-selected-header h1{font-size:27px}.rendition-selected-view .rendition-agent-expanded-head{flex-direction:column}}
+
+
+/* Rendiciones: ancho completo, indicadores alineados y selector consistente con Agencias */
+.rendition-page-clean{max-width:1600px;width:100%}
+.rendition-selected-view{max-width:1500px;width:100%}
+.rendition-page-topbar{align-items:center}
+.rendition-manual-backup-form{margin:0;flex:0 0 auto}
+.rendition-stats .stat-card{min-width:0}
+.rendition-agent-selector{padding:14px 0 0;margin-top:18px;border-top:1px solid #ded3b4}
+.rendition-agent-selector-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.rendition-agent-selector-head h2,.rendition-pending-head h2{font-size:17px;margin:0}
+.rendition-agent-selector-head>span{font-size:12px;color:#70666a}
+.agency-agent-button-list.rendition-agent-code-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.agency-agent-button-row{display:flex;min-width:0}
+.agency-agent-code-button{display:flex;align-items:center;justify-content:center;width:100%;min-height:54px;padding:12px 10px;border:1px solid #d9c985;border-bottom:3px solid #7c3347;border-radius:10px;background:#f2e8c7;color:#4d2930;font-size:16px;font-weight:850;letter-spacing:.02em;text-decoration:none;box-shadow:0 3px 8px rgba(54,32,25,.05);transition:none}
+.agency-subagent .agency-agent-code-button{background:#f2e8c7;border-color:#d9c985;border-bottom-color:#b79a45}
+.agency-ambulant .agency-agent-code-button{background:#dcecf5;border-color:#bfd8e8;border-bottom-color:#7c3347;color:#30465a}
+.agency-agent-code-button:hover,.agency-agent-code-button:focus-visible{transform:none;box-shadow:0 3px 8px rgba(54,32,25,.05);filter:none;outline:2px solid #9a7a35;outline-offset:1px}
+.rendition-pending-panel{margin:0 0 18px;padding:12px 14px;border:1px solid #e0d5bb;border-radius:11px;background:rgba(255,253,246,.68)}
+.rendition-pending-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.rendition-pending-head p{margin:4px 0 0;font-size:12px;color:#70666a}
+.rendition-pending-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:7px}
+.rendition-pending-item{display:flex;align-items:center;gap:10px;min-width:0;padding:8px 10px;border:1px solid #e3d8bd;border-radius:8px;background:#fffdf6;color:#2a2020;text-decoration:none}
+.rendition-pending-item.is-pending{animation:renditionPendingPulse 3.8s ease-in-out infinite;border-color:#d7bd72}
+.rendition-pending-code{flex:0 0 auto;min-width:68px;padding:6px 7px;border-radius:6px;background:#f2e8c7;color:#4d2930;font-size:12px;font-weight:850;text-align:center}
+.rendition-pending-detail{display:grid;gap:2px;min-width:0;flex:1}
+.rendition-pending-detail strong{font-size:12px;line-height:1.2;font-weight:800}
+.rendition-pending-detail small{font-size:10px;color:#70666a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rendition-pending-chevron{font-size:20px;color:#7c3347}
+.rendition-pending-empty{margin:0;padding:8px 2px;color:#70666a;font-size:12px}
+@keyframes renditionPendingPulse{0%,100%{box-shadow:0 0 0 0 rgba(183,154,69,0);background:#fffdf6}50%{box-shadow:0 0 0 2px rgba(183,154,69,.12);background:#fff9e6}}
+.draw-period-chip-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;align-items:stretch}
+.draw-period-chip{display:flex;align-items:center;justify-content:center;min-width:0;height:50px;min-height:50px;padding:6px 9px;border:1px solid #ded3b4;border-radius:8px;background:#fffdf6;font-size:11px;line-height:1.2;text-align:center;overflow-wrap:anywhere}
+.draw-period-chip.status-complete{background:#eef4e4;border-color:#cadbb2}
+.draw-period-chip.status-incomplete,.draw-period-chip.status-review{background:#fff2df;border-color:#e8cd9c}
+.draw-period-chip.status-pending{background:#fff8e3;border-color:#d7bd72}
+.draw-period-chip.status-upcoming{background:#e4edf4;border-color:#c7d8e4}
+.rendition-selected-view .rendition-agent-expanded,.rendition-selected-view .rendition-agent-accordion{width:100%;max-width:none}
+.rendition-selected-view .rendition-agent-accordion:hover,.rendition-selected-view .rendition-agent-expanded:hover{transform:none;box-shadow:none;filter:none}
+@media(prefers-reduced-motion:reduce){.rendition-pending-item.is-pending{animation:none}}
+@media(max-width:760px){.rendition-page-topbar{align-items:flex-start}.rendition-stats.stats-grid.compact{grid-template-columns:repeat(2,minmax(0,1fr))}.agency-agent-button-list.rendition-agent-code-list{grid-template-columns:repeat(2,minmax(0,1fr))}.rendition-pending-list{grid-template-columns:1fr}.draw-period-chip-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:390px){.agency-agent-button-list.rendition-agent-code-list{grid-template-columns:1fr}.draw-period-chip-list{grid-template-columns:1fr}}
