@@ -18,7 +18,8 @@ export default async function ConfiguracionPage({
     .select("rendition_cutoff_time,backup_send_time,updated_at")
     .eq("organization_id", organization.id)
     .maybeSingle();
-  const cutoff = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);\n  const backupSendTime = String(operationalSettings?.backup_send_time ?? "23:50").slice(0, 5);
+  const cutoff = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);
+  const backupSendTime = String(operationalSettings?.backup_send_time ?? "23:50").slice(0, 5);
 
   return (
     <div className="page">
@@ -31,9 +32,12 @@ export default async function ConfiguracionPage({
         <Link href="/pagos" className="button primary">Volver a rendiciones</Link>
       </div>
 
-      {params.resultado === "horarios-guardados" && <p className="message success-message">Horarios guardados. El reinicio diario y el envío automático del backup quedan configurados con las horas indicadas.</p>}\n      {params.resultado === "horario-corte-guardado" && <p className="message success-message">Horario de corte guardado.</p>}
-      {params.error === "horario-configuracion-invalida" && <p className="message error-message">Elegí horarios válidos en formato HH:MM.</p>}\n      {params.error === "horario-corte-invalido" && <p className="message error-message">Elegí una hora válida en formato HH:MM.</p>}
-      {params.error === "horarios-no-guardados" && <p className="message error-message">No se pudieron guardar los horarios. No se aplicaron cambios.</p>}\n      {params.error === "horario-corte-no-guardado" && <p className="message error-message">No se pudo guardar el horario de corte. No se aplicaron cambios.</p>}
+      {params.resultado === "horarios-guardados" && <p className="message success-message">Horarios guardados. El reinicio diario y el envío automático del backup quedan configurados con las horas indicadas.</p>}
+      {params.resultado === "horario-corte-guardado" && <p className="message success-message">Horario de corte guardado.</p>}
+      {params.error === "horario-configuracion-invalida" && <p className="message error-message">Elegí horarios válidos en formato HH:MM.</p>}
+      {params.error === "horario-corte-invalido" && <p className="message error-message">Elegí una hora válida en formato HH:MM.</p>}
+      {params.error === "horarios-no-guardados" && <p className="message error-message">No se pudieron guardar los horarios. No se aplicaron cambios.</p>}
+      {params.error === "horario-corte-no-guardado" && <p className="message error-message">No se pudo guardar el horario de corte. No se aplicaron cambios.</p>}
 
       <section className="panel operational-schedule-panel">
         <div className="panel-head">
