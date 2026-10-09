@@ -10,9 +10,11 @@ type Breakdown = {
   agency_renditions: { agent_id: string; rendition_date: string; status: string } | null;
 };
 
-export default async function GamesPage() {
-  const { supabase, organization } = await getCurrentContext();
-  if (!organization) return null;
+export default async function GamesPage({ searchParams }: { searchParams?: Promise<{ error?: string }> }) {
+  const params = searchParams ? await searchParams : {};
+  const { supabase, organization, member } = await getCurrentContext();
+  if (!organization || !member) return null;
+  const canManageGames = member.role === "owner" || member.role === "admin";
 
   const [{ data: games }, { data: breakdowns }, { data: agents }] = await Promise.all([
     supabase
@@ -65,6 +67,8 @@ export default async function GamesPage() {
         <Link href="/agencias" className="button ghost">Volver a subagentes y ambulantes</Link>
       </div>
 
+      {params.error === "solo-administrador" && <p className="message error-message">Solo el titular o administrador puede modificar el catálogo de juegos. Tu usuario no recibió ese permiso.</p>}
+
       <div className="stats-grid">
         <div className="stat-card"><span>Juegos activos</span><strong>{gameRows.filter((game) => game.enabled).length}</strong><small>catálogo operativo</small></div>
         <div className="stat-card"><span>Tipos registrados</span><strong>{gameRows.length}</strong><small>editables</small></div>
@@ -76,11 +80,13 @@ export default async function GamesPage() {
         <div className="panel-head">
           <div><h2>Catálogo editable</h2><p className="muted">Agregá, editá, activá, desactivá o eliminá tipos de juegos.</p></div>
         </div>
-        <form action={createGameType} className="inline-form game-create-form">
-          <input name="name" placeholder="Nombre del juego" required />
-          <input name="category" placeholder="Categoría (Quiniela / Otros juegos)" defaultValue="Quiniela" required />
-          <button className="button primary">Agregar juego</button>
-        </form>
+        {canManageGames
+          ? <form action={createGameType} className="inline-form game-create-form">
+              <input name="name" placeholder="Nombre del juego" required />
+              <input name="category" placeholder="Categoría (Quiniela / Otros juegos)" defaultValue="Quiniela" required />
+              <button className="button primary">Agregar juego</button>
+            </form>
+          : <p className="message">Vista de consulta: el catálogo solo puede cambiarlo el titular o un administrador autorizado de la agencia.</p>}
         <div className="table-wrap">
           <table>
             <thead><tr><th>Juego</th><th>Categoría</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -88,16 +94,18 @@ export default async function GamesPage() {
               {gameRows.map((game) => (
                 <tr key={game.id}>
                   <td colSpan={4}>
-                    <form action={updateGameType} className="game-edit-row">
-                      <input type="hidden" name="id" value={game.id} />
-                      <input name="name" defaultValue={game.name} required />
-                      <input name="category" defaultValue={game.category} required />
-                      <label className="game-enabled"><input type="checkbox" name="enabled" defaultChecked={game.enabled} /> Activo</label>
-                      <div className="game-actions">
-                        <button className="button ghost" type="submit">Guardar</button>
-                        <button className="button danger-button" formAction={deleteGameType}>Eliminar</button>
-                      </div>
-                    </form>
+                    {canManageGames
+                      ? <form action={updateGameType} className="game-edit-row">
+                          <input type="hidden" name="id" value={game.id} />
+                          <input name="name" defaultValue={game.name} required />
+                          <input name="category" defaultValue={game.category} required />
+                          <label className="game-enabled"><input type="checkbox" name="enabled" defaultChecked={game.enabled} /> Activo</label>
+                          <div className="game-actions">
+                            <button className="button ghost" type="submit">Guardar</button>
+                            <button className="button danger-button" formAction={deleteGameType}>Eliminar</button>
+                          </div>
+                        </form>
+                      : <div className="game-edit-row game-readonly-row"><strong>{game.name}</strong><span>{game.category}</span><span className={game.enabled ? "badge success" : "badge"}>{game.enabled ? "Activo" : "Inactivo"}</span></div>}
                   </td>
                 </tr>
               ))}
