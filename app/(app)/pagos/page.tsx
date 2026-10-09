@@ -102,21 +102,23 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         reportedAmount: Number.isFinite(reportedAmount) && reportedAmount !== null && reportedAmount > 0 ? reportedAmount : null,
       };
     }
-    if (!agentTodayRows.length) {
-      return { status: "missing" as const, note: "", reportedAmount: null as number | null };
-    }
     if (stored?.status === "complete") {
       const confirmedAt = Date.parse(String(stored.updated_at ?? ""));
       const changedAfterConfirmation = agentTodayRows.some((row: any) => {
         const changedAt = Date.parse(String(row.updated_at ?? row.created_at ?? ""));
         return !Number.isFinite(confirmedAt) || !Number.isFinite(changedAt) || changedAt > confirmedAt;
       });
+      // A confirmed daily status is authoritative even if a date cutoff or
+      // a delayed rendition query leaves no matching row in today's list.
       if (!changedAfterConfirmation) {
         const reportedAmount = stored.reported_amount === null || stored.reported_amount === undefined
           ? null
           : Number(stored.reported_amount);
         return { status: "complete" as const, note: "", reportedAmount: Number.isFinite(reportedAmount) && reportedAmount !== null && reportedAmount > 0 ? reportedAmount : null };
       }
+    }
+    if (!agentTodayRows.length) {
+      return { status: "missing" as const, note: "", reportedAmount: null as number | null };
     }
     return {
       status: "incomplete" as const,
