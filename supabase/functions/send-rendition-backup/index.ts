@@ -38,7 +38,24 @@ function agencyDateInfo(now: Date) {
 }
 
 function normalizeBackupText(rawText: string): string {
-  return rawText.replace(/\\\\\\\\n/g, "\n").replace(/\\\\n/g, "\n").replace(/\\r\\n?/g, "\n");
+  return rawText.replace(/\\\\\\\\n/g, "\n").replace(/\\\\n/g, "\n").replace(/\r\n?/g, "\n");
+}
+
+function formatDailyBackupItem(rawText: string, createdAt: string): string {
+  let normalized = normalizeBackupText(rawText);
+  normalized = normalized.replace(/Fecha del juego: (\d{4})-(\d{2})-(\d{2})/g, (_match, year, month, day) => "Fecha del juego: " + day + "/" + month + "/" + year);
+  const date = new Date(createdAt);
+  if (!Number.isNaN(date.getTime())) {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: AGENCY_TIME_ZONE,
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+    }).formatToParts(date);
+    const part = (name: string) => parts.find((item) => item.type === name)?.value ?? "00";
+    const stamp = part("day") + "/" + part("month") + "/" + part("year") + " " + part("hour") + ":" + part("minute") + ":" + part("second") + " (Buenos Aires, Argentina)";
+    normalized = normalized.replace(/Registrada: [^\n\r]+/, "Registrada: " + stamp);
+  }
+  return normalized;
 }
 
 async function sendDailyCloseBackups(admin: any, resendApiKey: string | undefined, fromEmail: string | undefined) {
@@ -111,7 +128,7 @@ async function sendDailyCloseBackups(admin: any, resendApiKey: string | undefine
 
     const sections = claimed.map((row, index) =>
       "========== RENDICIÓN " + (index + 1) + " DE " + claimed.length + " ==========\n" +
-      normalizeBackupText(String(row.text_body ?? "(sin detalle de respaldo)"))
+      formatDailyBackupItem(String(row.text_body ?? "(sin detalle de respaldo)"), String(row.created_at ?? now.toISOString()))
     );
     let textBody = "BACKUP DIARIO DE RENDICIONES - AGENCIAS CORRIENTES\n" +
       "Fecha del cierre: " + dateInfo.displayDay + "\n" +
