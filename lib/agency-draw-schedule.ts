@@ -15,7 +15,6 @@ type ScheduledPeriod = OfficialDrawPeriod & { days: number[] };
 const QUINIELA_DAYS = [1, 2, 3, 4, 5, 6]; // lunes a sábado
 const SCHEDULE: ScheduledPeriod[] = [
   { label: "La Previa", shortLabel: "Previa", time: "10:15", gameName: "Quiniela Correntina", kind: "scheduled", days: QUINIELA_DAYS },
-  { label: "El Primero", shortLabel: "El Primero", time: "12:00", gameName: "Quiniela Correntina", kind: "scheduled", days: QUINIELA_DAYS },
   { label: "Matutina", shortLabel: "Matutina", time: "15:00", gameName: "Quiniela Correntina", kind: "scheduled", days: QUINIELA_DAYS },
   { label: "Vespertina", shortLabel: "Vespertina", time: "18:00", gameName: "Quiniela Correntina", kind: "scheduled", days: QUINIELA_DAYS },
   { label: "Nocturna", shortLabel: "Nocturna", time: "21:00", gameName: "Quiniela Correntina", kind: "scheduled", days: QUINIELA_DAYS },
@@ -91,8 +90,6 @@ export function resolveRecognizedDrawPeriod(value: string, periods: OfficialDraw
     ["BRINCO", "Brinco"],
     ["AL TOQUE", "Al Toque (acumulado diario)"],
     ["LA PREVIA", "La Previa"],
-    ["EL PRIMERO", "El Primero"],
-    ["PRIMERA", "El Primero"],
     ["MATUTINA", "Matutina"],
     ["VESPERTINA", "Vespertina"],
     ["NOCTURNA", "Nocturna"],
