@@ -101,15 +101,6 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   function drawPeriodStatesForAgent(agentId: string) {
     return drawPeriods.map((period) => ({ period, ...drawPeriodStateForAgent(agentId, period) }));
   }
-  const drawStatusCounts = activeAgents.reduce((counts, agent) => {
-    for (const entry of drawPeriodStatesForAgent(String(agent.id))) {
-      if (entry.status === "complete") counts.complete += 1;
-      else if (entry.status === "incomplete") counts.incomplete += 1;
-      else if (entry.status === "pending") counts.pending += 1;
-      else if (entry.status === "review") counts.review += 1;
-    }
-    return counts;
-  }, { complete: 0, incomplete: 0, pending: 0, review: 0 });
   const legacyUnlabelledTodayCount = todayRows.filter((row: any) => !String(row.game_period ?? "").trim()).length;
   const unmappedGameNames = getUnmappedOfficialGameNames(games);
 
@@ -237,17 +228,16 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       <details className={"rendition-agent-accordion " + (subagent ? "rendition-subagent" : "rendition-ambulant")} open={selectedAgentId === agent.id}>
         <summary className="rendition-agent-summary" aria-label={agentLabel(agent) + " " + agent.code + " — abrir rendiciones por sorteo"}>
           <strong className="rendition-agent-code">{agent.code}</strong>
-          <span className={"rendition-status-badge rendition-status-" + (incompleteDraws.length ? "incomplete" : agentPeriodStates.some((entry) => entry.status === "pending") ? "missing" : "complete")}>
-            {incompleteDraws.length ? "Hay sorteos incompletos" : agentPeriodStates.some((entry) => entry.status === "pending") ? "Pendiente por sorteo" : "Al día"}
-          </span>
-          <span className="draw-period-chip-list">
-            {agentPeriodStates.map((entry) => <span key={entry.period.label} className={"draw-period-chip status-" + entry.status} title={entry.description}>{entry.label}</span>)}
-          </span>
+          <span className="rendition-agent-name">{agent.full_name}</span>
+          <span className="rendition-open-label">Ver sorteos y rendiciones ▾</span>
         </summary>
         <div className="rendition-agent-expanded">
           <div className="rendition-agent-expanded-head">
             <div><span className="eyebrow">RENDICIONES POR SORTEO</span><h3>{agentLabel(agent)} {agent.code} · {agent.full_name}</h3><p className="muted">Cada sorteo tiene su rendición independiente. Comisión acumulada: <strong>{money(commission, activeOrganization.currency_code)}</strong> · Neto estimado: <strong>{money(netDue, activeOrganization.currency_code)}</strong>.</p></div>
             <Link href={"/agencias/" + agent.id} className="button ghost">Ficha del agente</Link>
+          </div>
+          <div className="draw-period-chip-list expanded-draw-period-list" aria-label={"Estados de sorteos de " + agent.code}>
+            {agentPeriodStates.map((entry) => <span key={entry.period.label} className={"draw-period-chip status-" + entry.status} title={entry.description}>{entry.label}</span>)}
           </div>
           {canCreateRenditions && incompleteDraws.length > 0 && <div className="draw-period-status-actions">
             {incompleteDraws.map((entry) => <form key={entry.period.label} action={setAgencyDrawRenditionStatus}>
@@ -343,13 +333,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
 
       <section className="panel rendition-agents-panel">
         <div className="panel-head"><div><h2>Subagentes y ambulantes · rendición por sorteo</h2><p className="muted">Cada período tiene una rendición individual. Los sorteos que ya pasaron y aún no se registraron quedan marcados como PENDIENTE.</p></div>
-          <div className="rendition-status-summary draw-period-summary" aria-label="Resumen de estados por sorteo">
-            <span className="rendition-status-badge rendition-status-complete">{drawStatusCounts.complete} Rendidas</span>
-            <span className="rendition-status-badge rendition-status-incomplete">{drawStatusCounts.incomplete} Incompletas</span>
-            <span className="rendition-status-badge rendition-status-missing">{drawStatusCounts.pending} Pendientes</span>
-            {drawStatusCounts.review > 0 && <span className="rendition-status-badge rendition-status-incomplete">{drawStatusCounts.review} Revisar</span>}
-            <small>{filteredActiveAgents.length} operadores visibles</small>
-          </div></div>
+          <p className="muted small-text rendition-status-summary-hint">Abrí el botón de cada subagente o ambulante para ver sus sorteos, uno por uno.</p></div>
         <p className="draw-period-note">Cronograma oficial: <a href={OFFICIAL_QUINIELA_SCHEDULE_URL} target="_blank" rel="noreferrer">Lotería Correntina · Programa de sorteos</a> · <a href={OFFICIAL_EXTRACTS_SCHEDULE_URL} target="_blank" rel="noreferrer">ver sorteos publicados</a>. Los períodos futuros se habilitan cuando llega su horario; los pendientes no se mezclan con otros turnos.</p>
         {legacyUnlabelledTodayCount > 0 && <p className="message">Hay {legacyUnlabelledTodayCount} rendición(es) del día sin período identificado. Se conservan en el historial y no se asignan automáticamente a ningún sorteo.</p>}
         {unmappedGameNames.length > 0 && <p className="message">Estos juegos aún no tienen un período de sorteo verificado y no se incorporan automáticamente a un turno: {unmappedGameNames.join(", ")}. Verificá el programa oficial antes de habilitarlos.</p>}
