@@ -10,7 +10,6 @@ const nav = [
   ["buscar", "Buscar", "⌕"],
   ["juegos", "Juegos y comisiones", "◎"],
   ["loteria-correntina", "Lotería Correntina", "◉"],
-  ["equipo", "Personal y permisos", "♙"],
   ["configuracion", "Configuración", "⚙"],
 ] as const;
 
