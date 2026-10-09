@@ -2,9 +2,21 @@
 
 import { useMemo, useState } from "react";
 import jsQR from "jsqr";
-import { createAgencyRendition } from "@/app/(app)/agencias/actions";
+import { createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
 
 type Game = { id: string; name: string; category: string };
+type InitialRendition = {
+  id: string;
+  renditionDate: string;
+  period?: string | null;
+  drawNumber?: string | null;
+  amounts: Record<string, string>;
+  ticketNumbers: string[];
+  qrPayload?: string | null;
+  reference?: string | null;
+  notes?: string | null;
+  captureMethod?: string | null;
+};
 
 function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
@@ -170,16 +182,16 @@ function structuredQr(payload: string) {
   }
 }
 
-export function RenditionEntryForm({ agentId, games, today }: { agentId: string; games: Game[]; today: string }) {
-  const [mode, setMode] = useState<"photo" | "manual">("photo");
-  const [date, setDate] = useState(today);
-  const [period, setPeriod] = useState("");
-  const [drawNumber, setDrawNumber] = useState("");
-  const [amounts, setAmounts] = useState<Record<string, string>>({});
-  const [ticketNumbers, setTicketNumbers] = useState("");
-  const [qrPayload, setQrPayload] = useState("");
-  const [reference, setReference] = useState("");
-  const [notes, setNotes] = useState("");
+export function RenditionEntryForm({ agentId, games, today, initialRendition }: { agentId: string; games: Game[]; today: string; initialRendition?: InitialRendition }) {
+  const [mode, setMode] = useState<"photo" | "manual">(initialRendition?.captureMethod === "manual" ? "manual" : "photo");
+  const [date, setDate] = useState(initialRendition?.renditionDate ?? today);
+  const [period, setPeriod] = useState(initialRendition?.period ?? "");
+  const [drawNumber, setDrawNumber] = useState(initialRendition?.drawNumber ?? "");
+  const [amounts, setAmounts] = useState<Record<string, string>>(initialRendition?.amounts ?? {});
+  const [ticketNumbers, setTicketNumbers] = useState((initialRendition?.ticketNumbers ?? []).join("\n"));
+  const [qrPayload, setQrPayload] = useState(initialRendition?.qrPayload ?? "");
+  const [reference, setReference] = useState(initialRendition?.reference ?? "");
+  const [notes, setNotes] = useState(initialRendition?.notes ?? "");
   const [ocrText, setOcrText] = useState("");
   const [fileName, setFileName] = useState("");
   const [progress, setProgress] = useState("");
@@ -267,12 +279,13 @@ export function RenditionEntryForm({ agentId, games, today }: { agentId: string;
   }
 
   return (
-    <form action={createAgencyRendition} className="form-stack rendition-entry-form">
+    <form action={initialRendition ? updateAgencyRendition : createAgencyRendition} className="form-stack rendition-entry-form">
       <input type="hidden" name="agent_id" value={agentId} />
+      <input type="hidden" name="rendition_id" value={initialRendition?.id ?? ""} />
       <input type="hidden" name="ticket_qr_payload" value={qrPayload} />
       <input type="hidden" name="game_period" value={period} />
       <input type="hidden" name="draw_number" value={drawNumber} />
-      <input type="hidden" name="capture_method" value={mode === "manual" ? "manual" : qrPayload ? "qr" : fileName ? "photo" : "manual"} />
+      <input type="hidden" name="capture_method" value={mode === "manual" ? "manual" : qrPayload ? "qr" : fileName ? "photo" : initialRendition?.captureMethod === "photo" ? "photo" : initialRendition?.captureMethod === "qr" ? "qr" : "manual"} />
 
       <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
         <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => setMode("photo")}>Foto / QR (automático)</button>
@@ -317,7 +330,7 @@ export function RenditionEntryForm({ agentId, games, today }: { agentId: string;
 
       <label className="ticket-input-block"><span>Número(s) de ticket / cupón</span><textarea name="ticket_numbers" rows={2} value={ticketNumbers} onChange={(event) => setTicketNumbers(event.target.value)} placeholder="Se completa desde la lectura o ingresalo manualmente." /></label>
       <label className="ticket-input-block"><span>Observaciones</span><textarea name="notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Opcional." /></label>
-      <button className="button primary" disabled={!games.length || busy || total <= 0}>{busy ? "Leyendo ticket…" : "Registrar rendición diaria"}</button>
+      <button className="button primary" disabled={!games.length || busy || total <= 0}>{busy ? "Leyendo ticket…" : initialRendition ? "Guardar cambios de la rendición" : "Registrar rendición diaria"}</button>
       <small className="muted">Se guardan fecha y hora de registro, fecha del juego, período, sorteo, importes y el QR leído. La lectura se debe revisar antes de confirmar.</small>
     </form>
   );
