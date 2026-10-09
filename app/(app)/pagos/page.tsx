@@ -324,7 +324,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
 
       <form method="get" action="/pagos" className="rendition-agent-search" role="search">
         <label htmlFor="rendition-agent-query">Buscar operador</label>
-        <input id="rendition-agent-query" name="busqueda" type="search" autoComplete="off" value={searchTerm} placeholder="Código, nombre o teléfono" />
+        <input id="rendition-agent-query" name="busqueda" type="search" autoComplete="off" defaultValue={searchTerm} placeholder="Código, nombre o teléfono" />
         <button className="button primary" type="submit">Buscar</button>
         {searchTerm && <Link className="button ghost" href="/pagos">Limpiar</Link>}
       </form>
