@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 async function getOrg() {
@@ -11,7 +12,7 @@ async function getOrg() {
 
   const { data: member, error } = await supabase
     .from("organization_members")
-    .select("organization_id")
+    .select("organization_id,role")
     .eq("user_id", claims.sub)
     .order("created_at", { ascending: true })
     .limit(1)
@@ -19,7 +20,7 @@ async function getOrg() {
 
   if (error) throw new Error(error.message);
   if (!member) throw new Error("No hay una empresa configurada.");
-  return { supabase, organizationId: member.organization_id };
+  return { supabase, organizationId: member.organization_id, role: member.role };
 }
 
 function clean(value: FormDataEntryValue | null) {
@@ -27,7 +28,8 @@ function clean(value: FormDataEntryValue | null) {
 }
 
 export async function createGameType(formData: FormData) {
-  const { supabase, organizationId } = await getOrg();
+  const { supabase, organizationId, role } = await getOrg();
+  if (role !== "owner" && role !== "admin") redirect("/juegos?error=solo-administrador");
   const name = clean(formData.get("name"));
   const category = clean(formData.get("category")) || "Quiniela";
   if (!name) throw new Error("El nombre del juego es obligatorio.");
