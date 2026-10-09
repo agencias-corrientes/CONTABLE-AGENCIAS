@@ -260,3 +260,97 @@ export async function deleteAgencyAgent(formData: FormData) {
   revalidatePath("/pagos");
   redirect("/agencias?resultado=eliminado&codigo=" + encodeURIComponent(agent.code ?? ""));
 }
+
+
+export async function updateAgencyRendition(formData: FormData) {
+  const { supabase, organizationId, permissions } = await getOrg();
+  const agentId = String(formData.get("agent_id") ?? "").trim();
+  const renditionId = String(formData.get("rendition_id") ?? "").trim();
+  if (!permissions.can_edit_renditions) redirect("/pagos?error=sin-permiso-editar");
+  if (!agentId || !renditionId) redirect("/pagos?error=rendicion-invalida");
+
+  const renditionDate = String(formData.get("rendition_date") ?? "").trim();
+  const parsedDate = new Date(renditionDate + "T00:00:00.000Z");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(renditionDate) || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== renditionDate) {
+    redirect("/pagos?error=fecha-invalida&agent=" + encodeURIComponent(agentId));
+  }
+
+  const breakdown = Array.from(formData.entries())
+    .filter(([key]) => key.startsWith("game_"))
+    .map(([key, value]) => ({ game_type_id: key.slice(5), amount: Number(value) }))
+    .filter((item) => Number.isFinite(item.amount) && item.amount > 0);
+  const amountDue = breakdown.reduce((sum, item) => sum + item.amount, 0);
+  const ticketNumbers = String(formData.get("ticket_numbers") ?? "")
+    .split(/[\n,;]+/)
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .filter((value, index, values) => values.indexOf(value) === index);
+  if (!breakdown.length || amountDue <= 0) redirect("/pagos?error=importe-invalido&agent=" + encodeURIComponent(agentId));
+
+  const qrPayload = String(formData.get("ticket_qr_payload") ?? "").trim() || null;
+  const requestedMethod = String(formData.get("capture_method") ?? "manual");
+  const captureMethod = ["manual", "photo", "qr"].includes(requestedMethod) ? requestedMethod : "manual";
+  const { data: updatedId, error } = await supabase.rpc("update_agency_rendition_with_capture", {
+    p_organization_id: organizationId,
+    p_rendition_id: renditionId,
+    p_rendition_date: renditionDate,
+    p_amount_due: amountDue,
+    p_game_breakdown: breakdown,
+    p_ticket_numbers: ticketNumbers,
+    p_ticket_qr_payload: qrPayload,
+    p_game_period: String(formData.get("game_period") ?? "").trim() || null,
+    p_draw_number: String(formData.get("draw_number") ?? "").trim() || null,
+    p_capture_method: captureMethod,
+    p_reference: String(formData.get("reference") ?? "").trim() || null,
+    p_notes: String(formData.get("notes") ?? "").trim() || null,
+  });
+  if (error) {
+    const message = error.message.toLowerCase();
+    if (message.includes("cobros registrados") || message.includes("con cobros")) {
+      redirect("/pagos?error=rendicion-con-cobros&agent=" + encodeURIComponent(agentId));
+    }
+    if (message.includes("permiso")) redirect("/pagos?error=sin-permiso-editar&agent=" + encodeURIComponent(agentId));
+    redirect("/pagos?error=edicion-fallida&agent=" + encodeURIComponent(agentId));
+  }
+
+  if (updatedId) {
+    try {
+      await supabase.functions.invoke("send-rendition-backup", { body: { rendition_id: updatedId } });
+    } catch {
+      // Keep the revised text snapshot pending if mail transport is not ready.
+    }
+  }
+  revalidatePath("/agencias");
+  revalidatePath("/agencias/" + agentId);
+  revalidatePath("/pagos");
+  revalidatePath("/equipo");
+  redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=rendicion-corregida");
+}
+
+export async function voidAgencyRendition(formData: FormData) {
+  const { supabase, organizationId, permissions } = await getOrg();
+  const agentId = String(formData.get("agent_id") ?? "").trim();
+  const renditionId = String(formData.get("rendition_id") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!permissions.can_delete_renditions) redirect("/pagos?error=sin-permiso-anular");
+  if (!agentId || !renditionId || formData.get("confirm_void") !== "yes") {
+    redirect("/pagos?error=anulacion-no-confirmada&agent=" + encodeURIComponent(agentId));
+  }
+
+  const { error } = await supabase.rpc("void_agency_rendition", {
+    p_organization_id: organizationId,
+    p_rendition_id: renditionId,
+    p_reason: reason || null,
+  });
+  if (error) {
+    const message = error.message.toLowerCase();
+    if (message.includes("cobros registrados")) redirect("/pagos?error=rendicion-con-cobros&agent=" + encodeURIComponent(agentId));
+    if (message.includes("permiso")) redirect("/pagos?error=sin-permiso-anular&agent=" + encodeURIComponent(agentId));
+    redirect("/pagos?error=anulacion-fallida&agent=" + encodeURIComponent(agentId));
+  }
+  revalidatePath("/agencias");
+  revalidatePath("/agencias/" + agentId);
+  revalidatePath("/pagos");
+  revalidatePath("/dashboard");
+  redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=rendicion-anulada");
+}
