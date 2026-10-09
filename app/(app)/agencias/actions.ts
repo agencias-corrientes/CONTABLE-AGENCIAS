@@ -295,25 +295,55 @@ export async function saveAgentGameCommissions(formData: FormData) {
   const { data: agent, error: agentError } = await supabase.from("agency_agents").select("id,code").eq("id", agentId).eq("organization_id", organizationId).maybeSingle();
   if (agentError || !agent) redirect("/agencias?error=agente-no-encontrado");
 
-  const rows = Array.from(formData.entries()).filter(([key]) => key.startsWith("commission_")).map(([key,value]) => {
-    const raw = String(value ?? "").trim();
-    const percent = raw === "" ? 0 : Number(raw);
-    return { organization_id: organizationId, agent_id: agentId, game_type_id: key.slice("commission_".length), commission_percent: Number.isFinite(percent) && percent >= 0 && percent <= 100 ? percent : -1, created_by: userId, updated_at: new Date().toISOString() };
-  });
-  if (rows.some((row) => row.commission_percent < 0)) redirect("/agencias/" + agentId + "?error=comision-invalida");
+  const submitted = Array.from(formData.entries())
+    .filter(([key]) => key.startsWith("commission_"))
+    .map(([key, value]) => {
+      const raw = String(value ?? "").trim();
+      const percent = raw === "" ? null : Number(raw);
+      return {
+        organization_id: organizationId,
+        agent_id: agentId,
+        game_type_id: key.slice("commission_".length),
+        commission_percent: percent,
+        created_by: userId,
+        updated_at: new Date().toISOString(),
+      };
+    });
+  if (submitted.some((row) => row.commission_percent !== null && (!Number.isFinite(row.commission_percent) || row.commission_percent < 0 || row.commission_percent > 100))) {
+    redirect("/agencias/" + agentId + "?error=comision-invalida");
+  }
+
   const { data: games, error: gamesError } = await supabase.from("agency_game_types").select("id").eq("organization_id", organizationId);
   if (gamesError) redirect("/agencias/" + agentId + "?error=comisiones-no-guardadas");
   const allowed = new Set((games ?? []).map((game) => game.id));
-  if (rows.some((row) => !allowed.has(row.game_type_id))) redirect("/agencias/" + agentId + "?error=comision-invalida");
-  if (rows.length) {
-    const { error } = await supabase.from("agency_agent_game_commissions").upsert(rows, { onConflict: "organization_id,agent_id,game_type_id" });
+  if (submitted.some((row) => !allowed.has(row.game_type_id))) redirect("/agencias/" + agentId + "?error=comision-invalida");
+
+  const overrides = submitted.filter((row) => row.commission_percent !== null).map((row) => ({
+    ...row,
+    commission_percent: row.commission_percent as number,
+  }));
+  const clearOverrideIds = submitted.filter((row) => row.commission_percent === null).map((row) => row.game_type_id);
+
+  if (overrides.length) {
+    const { error } = await supabase.from("agency_agent_game_commissions").upsert(overrides, { onConflict: "organization_id,agent_id,game_type_id" });
     if (error) redirect("/agencias/" + agentId + "?error=comisiones-no-guardadas");
   }
-  await supabase.from("audit_log").insert({ organization_id: organizationId, user_id: userId, action: "update_agent_game_commissions", entity: "agency_agent", entity_id: agentId, payload: { commission_count: rows.length } });
+  if (clearOverrideIds.length) {
+    const { error } = await supabase.from("agency_agent_game_commissions").delete()
+      .eq("organization_id", organizationId).eq("agent_id", agentId).in("game_type_id", clearOverrideIds);
+    if (error) redirect("/agencias/" + agentId + "?error=comisiones-no-guardadas");
+  }
+
+  await supabase.from("audit_log").insert({
+    organization_id: organizationId, user_id: userId, action: "update_agent_game_commissions",
+    entity: "agency_agent", entity_id: agentId,
+    payload: { override_count: overrides.length, cleared_overrides: clearOverrideIds.length },
+  });
   revalidatePath("/agencias");
   revalidatePath("/agencias/" + agentId);
   revalidatePath("/pagos");
   revalidatePath("/dashboard");
+  revalidatePath("/juegos");
   redirect("/agencias/" + agentId + "?resultado=comisiones-guardadas");
 }
 

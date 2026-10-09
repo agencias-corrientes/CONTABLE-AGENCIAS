@@ -37,9 +37,10 @@ export default async function DashboardPage() {
       <div className="owner-admin-title"><span className="owner-admin-mark">AC</span><div><strong>Panel de administración del agenciero</strong><small>Control exclusivo del titular de la agencia</small></div></div>
       <div className="owner-admin-links">
         <Link href="/equipo">Personal y permisos</Link>
-        <Link href="/agencias">Agentes y comisiones</Link>
-        <Link href="/juegos">Catálogo de juegos</Link>
+        <Link href="/agencias">Subagentes y ambulantes</Link>
+        <Link href="/juegos">Juegos y comisiones</Link>
         <Link href="/loteria-correntina">Extractos oficiales</Link>
+        <Link href="/configuracion">Configuración general</Link>
       </div>
     </section>}
     <section className="dashboard-grid"><div className="panel large"><div className="panel-head"><div><h2>Rendiciones de hoy</h2><p className="muted">Control por código de subagente o ambulante.</p></div><Link href="/pagos" className="button ghost">Ver cobranzas</Link></div><div className="table-wrap"><table><thead><tr><th>Subagente / ambulante</th><th>Código</th><th>Importe</th><th>Cobrado</th><th>Pendiente</th><th></th></tr></thead><tbody>

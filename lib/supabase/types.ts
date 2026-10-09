@@ -68,10 +68,62 @@ export type Database = {
           },
         ]
       }
+      agency_agent_game_commissions: {
+        Row: {
+          agent_id: string
+          commission_percent: number
+          created_at: string
+          created_by: string | null
+          game_type_id: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          commission_percent?: number
+          created_at?: string
+          created_by?: string | null
+          game_type_id: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          commission_percent?: number
+          created_at?: string
+          created_by?: string | null
+          game_type_id?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_agent_game_commissions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agency_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_agent_game_commissions_game_type_id_fkey"
+            columns: ["game_type_id"]
+            isOneToOne: false
+            referencedRelation: "agency_game_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_agent_game_commissions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agency_agents: {
         Row: {
           address: string | null
-          code: string | null
+          code: string
           created_at: string
           created_by: string
           dni: string | null
@@ -88,7 +140,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
-          code?: string | null
+          code: string
           created_at?: string
           created_by?: string
           dni?: string | null
@@ -105,7 +157,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
-          code?: string | null
+          code?: string
           created_at?: string
           created_by?: string
           dni?: string | null
@@ -189,6 +241,48 @@ export type Database = {
           },
         ]
       }
+      agency_game_commission_defaults: {
+        Row: {
+          commission_percent: number
+          created_at: string
+          created_by: string | null
+          game_type_id: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          commission_percent?: number
+          created_at?: string
+          created_by?: string | null
+          game_type_id: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          commission_percent?: number
+          created_at?: string
+          created_by?: string | null
+          game_type_id?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_game_commission_defaults_game_type_id_fkey"
+            columns: ["game_type_id"]
+            isOneToOne: false
+            referencedRelation: "agency_game_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_game_commission_defaults_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agency_game_types: {
         Row: {
           category: string
@@ -233,45 +327,77 @@ export type Database = {
           },
         ]
       }
-      agency_agent_game_commissions: {
+      agency_rendition_backup_outbox: {
         Row: {
-          organization_id: string
-          agent_id: string
-          game_type_id: string
-          commission_percent: number
-          created_by: string | null
+          attempt_count: number
           created_at: string
-          updated_at: string
+          id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          organization_id: string
+          recipient_email: string
+          rendition_id: string
+          revision_no: number
+          sent_at: string | null
+          status: string
+          subject: string
+          text_body: string
+          ticket_photo_path: string | null
         }
         Insert: {
-          organization_id: string
-          agent_id: string
-          game_type_id: string
-          commission_percent?: number
-          created_by?: string | null
+          attempt_count?: number
           created_at?: string
-          updated_at?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          organization_id: string
+          recipient_email: string
+          rendition_id: string
+          revision_no?: number
+          sent_at?: string | null
+          status?: string
+          subject: string
+          text_body: string
+          ticket_photo_path?: string | null
         }
         Update: {
-          organization_id?: string
-          agent_id?: string
-          game_type_id?: string
-          commission_percent?: number
-          created_by?: string | null
+          attempt_count?: number
           created_at?: string
-          updated_at?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          organization_id?: string
+          recipient_email?: string
+          rendition_id?: string
+          revision_no?: number
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          text_body?: string
+          ticket_photo_path?: string | null
         }
         Relationships: [
-          { foreignKeyName: "agency_agent_game_commissions_agent_id_fkey", columns: ["agent_id"], isOneToOne: false, referencedRelation: "agency_agents", referencedColumns: ["id"] },
-          { foreignKeyName: "agency_agent_game_commissions_game_type_id_fkey", columns: ["game_type_id"], isOneToOne: false, referencedRelation: "agency_game_types", referencedColumns: ["id"] },
-          { foreignKeyName: "agency_agent_game_commissions_organization_id_fkey", columns: ["organization_id"], isOneToOne: false, referencedRelation: "organizations", referencedColumns: ["id"] },
+          {
+            foreignKeyName: "agency_rendition_backup_outbox_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_rendition_backup_outbox_rendition_org_fkey"
+            columns: ["rendition_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "agency_renditions"
+            referencedColumns: ["id", "organization_id"]
+          },
         ]
       }
       agency_rendition_game_amounts: {
         Row: {
           amount: number
-          commission_percent: number
           commission_amount: number
+          commission_percent: number
           created_at: string
           created_by: string
           game_type_id: string
@@ -281,8 +407,8 @@ export type Database = {
         }
         Insert: {
           amount: number
-          commission_percent?: number
           commission_amount?: number
+          commission_percent?: number
           created_at?: string
           created_by?: string
           game_type_id: string
@@ -292,8 +418,8 @@ export type Database = {
         }
         Update: {
           amount?: number
-          commission_percent?: number
           commission_amount?: number
+          commission_percent?: number
           created_at?: string
           created_by?: string
           game_type_id?: string
@@ -318,51 +444,6 @@ export type Database = {
           },
           {
             foreignKeyName: "agency_rendition_game_amounts_rendition_id_fkey"
-            columns: ["rendition_id"]
-            isOneToOne: false
-            referencedRelation: "agency_renditions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      agency_rendition_tickets: {
-        Row: {
-          created_at: string
-          created_by: string
-          id: string
-          organization_id: string
-          rendition_id: string
-          ticket_number: string
-          ticket_qr_payload: string | null
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string
-          id?: string
-          organization_id: string
-          rendition_id: string
-          ticket_number: string
-          ticket_qr_payload?: string | null
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          id?: string
-          organization_id?: string
-          rendition_id?: string
-          ticket_number?: string
-          ticket_qr_payload?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "agency_rendition_tickets_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "agency_rendition_tickets_rendition_id_fkey"
             columns: ["rendition_id"]
             isOneToOne: false
             referencedRelation: "agency_renditions"
@@ -448,14 +529,59 @@ export type Database = {
           },
         ]
       }
+      agency_rendition_tickets: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          organization_id: string
+          rendition_id: string
+          ticket_number: string
+          ticket_qr_payload: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          organization_id: string
+          rendition_id: string
+          ticket_number: string
+          ticket_qr_payload?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          organization_id?: string
+          rendition_id?: string
+          ticket_number?: string
+          ticket_qr_payload?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_rendition_tickets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_rendition_tickets_rendition_id_fkey"
+            columns: ["rendition_id"]
+            isOneToOne: false
+            referencedRelation: "agency_renditions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agency_renditions: {
         Row: {
           agent_id: string
           amount_due: number
+          capture_method: string
           closed_at: string | null
           created_at: string
           created_by: string
-          capture_method: string
           draw_number: string | null
           game_period: string | null
           id: string
@@ -471,10 +597,10 @@ export type Database = {
         Insert: {
           agent_id: string
           amount_due: number
+          capture_method?: string
           closed_at?: string | null
           created_at?: string
           created_by?: string
-          capture_method?: string
           draw_number?: string | null
           game_period?: string | null
           id?: string
@@ -490,10 +616,10 @@ export type Database = {
         Update: {
           agent_id?: string
           amount_due?: number
+          capture_method?: string
           closed_at?: string | null
           created_at?: string
           created_by?: string
-          capture_method?: string
           draw_number?: string | null
           game_period?: string | null
           id?: string
@@ -527,20 +653,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "agency_rendition_tickets_rendition_id_fkey"
-            columns: ["id"]
-            isOneToOne: false
-            referencedRelation: "agency_rendition_tickets"
-            referencedColumns: ["rendition_id"]
-          },
-          {
-            foreignKeyName: "agency_rendition_game_amounts_rendition_id_fkey"
-            columns: ["id"]
-            isOneToOne: false
-            referencedRelation: "agency_rendition_game_amounts"
-            referencedColumns: ["rendition_id"]
           },
         ]
       }
@@ -965,29 +1077,30 @@ export type Database = {
       }
       organization_backup_settings: {
         Row: {
-          organization_id: string
-          recipient_email: string | null
+          created_at: string
+          created_by: string | null
           enabled: boolean
           include_ticket_photo: boolean
-          created_by: string | null
-          created_at: string
+          organization_id: string
+          recipient_email: string | null
           updated_at: string
         }
         Insert: {
-          organization_id: string
-          recipient_email?: string | null
+          created_at?: string
+          created_by?: string | null
           enabled?: boolean
           include_ticket_photo?: boolean
-          created_by?: string | null
-          created_at?: string
+          organization_id: string
+          recipient_email?: string | null
           updated_at?: string
         }
         Update: {
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          include_ticket_photo?: boolean
           organization_id?: string
           recipient_email?: string | null
-          enabled?: boolean
-          created_by?: string | null
-          created_at?: string
           updated_at?: string
         }
         Relationships: [
@@ -1000,79 +1113,15 @@ export type Database = {
           },
         ]
       }
-      agency_rendition_backup_outbox: {
-        Row: {
-          id: string
-          organization_id: string
-          rendition_id: string
-          revision_no: number
-          ticket_photo_path: string | null
-          recipient_email: string
-          subject: string
-          text_body: string
-          status: string
-          attempt_count: number
-          last_attempt_at: string | null
-          sent_at: string | null
-          last_error: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          rendition_id: string
-          recipient_email: string
-          subject: string
-          text_body: string
-          status?: string
-          attempt_count?: number
-          last_attempt_at?: string | null
-          sent_at?: string | null
-          last_error?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          rendition_id?: string
-          revision_no?: number
-          ticket_photo_path?: string | null
-          recipient_email?: string
-          subject?: string
-          text_body?: string
-          status?: string
-          attempt_count?: number
-          last_attempt_at?: string | null
-          sent_at?: string | null
-          last_error?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "agency_rendition_backup_outbox_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "agency_rendition_backup_outbox_rendition_org_fkey"
-            columns: ["rendition_id", "organization_id"]
-            isOneToOne: false
-            referencedRelation: "agency_renditions"
-            referencedColumns: ["id", "organization_id"]
-          },
-        ]
-      }
       organization_member_permissions: {
         Row: {
           can_create_agents: boolean
-          can_delete_agents: boolean
           can_create_renditions: boolean
-          can_edit_renditions: boolean
+          can_delete_agents: boolean
           can_delete_renditions: boolean
-          can_register_payments: boolean
+          can_edit_renditions: boolean
           can_manage_backups: boolean
+          can_register_payments: boolean
           created_at: string
           created_by: string | null
           organization_id: string
@@ -1081,12 +1130,12 @@ export type Database = {
         }
         Insert: {
           can_create_agents?: boolean
-          can_delete_agents?: boolean
           can_create_renditions?: boolean
-          can_edit_renditions?: boolean
+          can_delete_agents?: boolean
           can_delete_renditions?: boolean
-          can_register_payments?: boolean
+          can_edit_renditions?: boolean
           can_manage_backups?: boolean
+          can_register_payments?: boolean
           created_at?: string
           created_by?: string | null
           organization_id: string
@@ -1095,12 +1144,12 @@ export type Database = {
         }
         Update: {
           can_create_agents?: boolean
-          can_delete_agents?: boolean
           can_create_renditions?: boolean
-          can_edit_renditions?: boolean
+          can_delete_agents?: boolean
           can_delete_renditions?: boolean
-          can_register_payments?: boolean
+          can_edit_renditions?: boolean
           can_manage_backups?: boolean
+          can_register_payments?: boolean
           created_at?: string
           created_by?: string | null
           organization_id?: string
@@ -1542,13 +1591,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      cleanup_agency_test_data: {
-        Args: { p_organization_id: string }
-        Returns: Json
+      add_organization_member_by_email: {
+        Args: { p_email: string; p_organization_id: string }
+        Returns: string
       }
-      preview_agency_launch_cleanup: {
-        Args: { p_organization_id: string }
-        Returns: Json
+      archive_agency_agent: {
+        Args: {
+          p_agent_id: string
+          p_organization_id: string
+          p_reason?: string
+        }
+        Returns: string
+      }
+      attach_agency_rendition_backup_photo: {
+        Args: {
+          p_organization_id: string
+          p_photo_path: string
+          p_rendition_id: string
+        }
+        Returns: string
       }
       bootstrap_organization: {
         Args: {
@@ -1559,52 +1620,15 @@ export type Database = {
         }
         Returns: string
       }
+      cleanup_agency_test_data: {
+        Args: { p_organization_id: string }
+        Returns: Json
+      }
       close_agency_day: {
         Args: {
           p_closing_date: string
           p_notes?: string
           p_organization_id: string
-        }
-        Returns: string
-      }
-      archive_agency_agent: {
-        Args: {
-          p_agent_id: string
-          p_organization_id: string
-          p_reason?: string | null
-        }
-        Returns: string
-      }
-      add_organization_member_by_email: {
-        Args: {
-          p_email: string
-          p_organization_id: string
-        }
-        Returns: string
-      }
-      list_organization_members_for_owner: {
-        Args: {
-          p_organization_id: string
-        }
-        Returns: {
-          can_create_agents: boolean
-          can_delete_agents: boolean
-          can_create_renditions: boolean
-          can_edit_renditions: boolean
-          can_delete_renditions: boolean
-          can_register_payments: boolean
-          can_manage_backups: boolean
-          email: string
-          full_name: string
-          role: Database["public"]["Enums"]["organization_role"]
-          user_id: string
-        }[]
-      }
-      attach_agency_rendition_backup_photo: {
-        Args: {
-          p_organization_id: string
-          p_rendition_id: string
-          p_photo_path: string
         }
         Returns: string
       }
@@ -1622,35 +1646,63 @@ export type Database = {
         }
         Returns: string
       }
-      create_agency_rendition: {
-        Args: {
-          p_agent_id: string
-          p_amount_due: number
-          p_game_breakdown?: Json
-          p_ticket_numbers?: Json
-          p_notes?: string
-          p_organization_id: string
-          p_period_end: string
-          p_period_start: string
-          p_reference?: string
-          p_rendition_date: string
-        }
-        Returns: string
-      }
+      create_agency_rendition:
+        | {
+            Args: {
+              p_agent_id: string
+              p_amount_due: number
+              p_notes?: string
+              p_organization_id: string
+              p_period_end: string
+              p_period_start: string
+              p_reference?: string
+              p_rendition_date: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_agent_id: string
+              p_amount_due: number
+              p_game_breakdown?: Json
+              p_notes?: string
+              p_organization_id: string
+              p_period_end: string
+              p_period_start: string
+              p_reference?: string
+              p_rendition_date: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_agent_id: string
+              p_amount_due: number
+              p_game_breakdown?: Json
+              p_notes?: string
+              p_organization_id: string
+              p_period_end: string
+              p_period_start: string
+              p_reference?: string
+              p_rendition_date: string
+              p_ticket_numbers?: Json
+            }
+            Returns: string
+          }
       create_agency_rendition_with_capture: {
         Args: {
           p_agent_id: string
           p_amount_due: number
           p_capture_method?: string
-          p_draw_number?: string | null
+          p_draw_number?: string
           p_game_breakdown?: Json
-          p_game_period?: string | null
+          p_game_period?: string
           p_notes?: string
           p_organization_id: string
           p_reference?: string
           p_rendition_date: string
           p_ticket_numbers?: Json
-          p_ticket_qr_payload?: string | null
+          p_ticket_qr_payload?: string
         }
         Returns: string
       }
@@ -1735,31 +1787,26 @@ export type Database = {
       }
       issue_purchase_bill: { Args: { p_bill_id: string }; Returns: boolean }
       issue_sales_invoice: { Args: { p_invoice_id: string }; Returns: boolean }
-      post_journal_entry: { Args: { p_entry_id: string }; Returns: boolean }
-      void_agency_rendition: {
-        Args: {
-          p_organization_id: string
-          p_rendition_id: string
-          p_reason?: string | null
-        }
-        Returns: string
+      list_organization_members_for_owner: {
+        Args: { p_organization_id: string }
+        Returns: {
+          can_create_agents: boolean
+          can_create_renditions: boolean
+          can_delete_agents: boolean
+          can_delete_renditions: boolean
+          can_edit_renditions: boolean
+          can_manage_backups: boolean
+          can_register_payments: boolean
+          email: string
+          full_name: string
+          role: Database["public"]["Enums"]["organization_role"]
+          user_id: string
+        }[]
       }
-      update_agency_rendition_with_capture: {
-        Args: {
-          p_organization_id: string
-          p_rendition_id: string
-          p_rendition_date: string
-          p_amount_due: number
-          p_game_breakdown: Json
-          p_ticket_numbers: Json
-          p_ticket_qr_payload?: string | null
-          p_game_period?: string | null
-          p_draw_number?: string | null
-          p_capture_method?: string
-          p_reference?: string | null
-          p_notes?: string | null
-        }
-        Returns: string
+      post_journal_entry: { Args: { p_entry_id: string }; Returns: boolean }
+      preview_agency_launch_cleanup: {
+        Args: { p_organization_id: string }
+        Returns: Json
       }
       receive_agency_rendition: {
         Args: {
@@ -1795,6 +1842,31 @@ export type Database = {
           p_user_id: string
         }
         Returns: boolean
+      }
+      update_agency_rendition_with_capture: {
+        Args: {
+          p_amount_due: number
+          p_capture_method?: string
+          p_draw_number?: string
+          p_game_breakdown: Json
+          p_game_period?: string
+          p_notes?: string
+          p_organization_id: string
+          p_reference?: string
+          p_rendition_date: string
+          p_rendition_id: string
+          p_ticket_numbers: Json
+          p_ticket_qr_payload?: string
+        }
+        Returns: string
+      }
+      void_agency_rendition: {
+        Args: {
+          p_organization_id: string
+          p_reason?: string
+          p_rendition_id: string
+        }
+        Returns: string
       }
     }
     Enums: {

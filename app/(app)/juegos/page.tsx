@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
-import { createGameType, deleteGameType, updateGameType } from "./actions";
+import { createGameType, deleteGameType, updateGameType, saveDefaultGameCommissions } from "./actions";
 
 type Breakdown = {
   id: string;
@@ -10,13 +10,13 @@ type Breakdown = {
   agency_renditions: { agent_id: string; rendition_date: string; status: string } | null;
 };
 
-export default async function GamesPage({ searchParams }: { searchParams?: Promise<{ error?: string }> }) {
+export default async function GamesPage({ searchParams }: { searchParams?: Promise<{ error?: string; resultado?: string }> }) {
   const params = searchParams ? await searchParams : {};
   const { supabase, organization, member } = await getCurrentContext();
   if (!organization || !member) return null;
   const canManageGames = member.role === "owner";
 
-  const [{ data: games }, { data: breakdowns }, { data: agents }] = await Promise.all([
+  const [{ data: games }, { data: breakdowns }, { data: agents }, { data: defaultCommissionRows }] = await Promise.all([
     supabase
       .from("agency_game_types")
       .select("id,name,category,enabled,sort_order")
@@ -34,11 +34,13 @@ export default async function GamesPage({ searchParams }: { searchParams?: Promi
       .eq("organization_id", organization.id)
       .order("kind")
       .order("code"),
+    supabase.from("agency_game_commission_defaults").select("game_type_id,commission_percent").eq("organization_id", organization.id),
   ]);
 
   const gameRows = games ?? [];
   const agentRows = agents ?? [];
   const details = (breakdowns ?? []) as Breakdown[];
+  const generalCommissionByGame = new Map((defaultCommissionRows ?? []).map((row) => [row.game_type_id, Number(row.commission_percent ?? 0)]));
 
   const agentById = new Map(agentRows.map((agent) => [agent.id, agent]));
   const totalRevenue = details.reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
@@ -67,7 +69,10 @@ export default async function GamesPage({ searchParams }: { searchParams?: Promi
         <Link href="/agencias" className="button ghost">Volver a subagentes y ambulantes</Link>
       </div>
 
-      {params.error === "solo-administrador" && <p className="message error-message">Solo el titular o administrador puede modificar el catálogo de juegos. Tu usuario no recibió ese permiso.</p>}
+      {params.error === "solo-administrador" && <p className="message error-message">Solo el titular de la agencia puede modificar el catálogo o las comisiones generales.</p>}
+      {params.error === "comisiones-generales-invalidas" && <p className="message error-message">Cada comisión general debe estar entre 0 y 100 %.</p>}
+      {params.error === "comisiones-generales-no-guardadas" && <p className="message error-message">No se guardaron los porcentajes generales. No se aplicaron cambios.</p>}
+      {params.resultado === "comisiones-generales-guardadas" && <p className="message success-message">Comisiones generales guardadas. Los próximos registros usarán estos porcentajes, salvo que un subagente o ambulante tenga una excepción particular.</p>}
 
       <div className="stats-grid">
         <div className="stat-card"><span>Juegos activos</span><strong>{gameRows.filter((game) => game.enabled).length}</strong><small>catálogo operativo</small></div>
@@ -75,6 +80,25 @@ export default async function GamesPage({ searchParams }: { searchParams?: Promi
         <div className="stat-card"><span>Recaudación total</span><strong>{money(totalRevenue, organization.currency_code)}</strong><small>sumada de todos los juegos</small></div>
         <div className="stat-card"><span>Movimientos por juego</span><strong>{details.length}</strong><small>distribuciones registradas</small></div>
       </div>
+
+      <section className="panel agent-commission-panel general-commission-panel">
+        <div className="panel-head">
+          <div><h2>Comisión general para todos los subagentes y ambulantes</h2><p className="muted">Configurá el porcentaje habitual para cada juego. Este valor se usa automáticamente cuando el operador no tiene una excepción particular.</p></div>
+          <span className={canManageGames ? "badge success" : "badge"}>{canManageGames ? "Editable por titular" : "Solo consulta"}</span>
+        </div>
+        {canManageGames ? <form action={saveDefaultGameCommissions} className="agent-commission-form">
+          <div className="agent-commission-list">
+            {gameRows.map((game) => <label className="agent-commission-row" key={game.id}>
+              <span><strong>{game.name}</strong><small>{game.category}{game.enabled ? "" : " · Inactivo"}</small></span>
+              <span className="commission-percent-input"><input type="number" name={"default_commission_" + game.id} min="0" max="100" step="0.01" inputMode="decimal" defaultValue={(generalCommissionByGame.get(game.id) ?? 0).toFixed(2)} aria-label={"Comisión general de " + game.name} /><em>%</em></span>
+            </label>)}
+          </div>
+          <p className="muted small-text">Se aplicará a todos los operadores por igual, salvo que configures una excepción en la ficha del subagente o ambulante. 0 % también es un valor válido.</p>
+          <button className="button primary" type="submit">Guardar comisiones generales</button>
+        </form> : <div className="agent-commission-list">
+          {gameRows.map((game) => <div className="agent-commission-row" key={game.id}><span><strong>{game.name}</strong><small>{game.category}</small></span><strong>{(generalCommissionByGame.get(game.id) ?? 0).toFixed(2)} %</strong></div>)}
+        </div>}
+      </section>
 
       <section className="panel game-management-panel">
         <div className="panel-head">

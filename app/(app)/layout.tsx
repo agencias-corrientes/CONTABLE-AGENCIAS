@@ -3,12 +3,12 @@ import { AppShell } from "@/components/app-shell";
 import { getCurrentContext } from "@/lib/accounting";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { organization, userEmail } = await getCurrentContext();
+  const { organization, member, userEmail } = await getCurrentContext();
 
-  if (!organization) redirect("/setup");
+  if (!organization || !member) redirect("/setup");
 
   return (
-    <AppShell organizationName={organization.name} userEmail={userEmail}>
+    <AppShell organizationName={organization.name} userEmail={userEmail} userRole={member.role}>
       {children}
     </AppShell>
   );

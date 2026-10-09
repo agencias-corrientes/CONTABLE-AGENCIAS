@@ -282,3 +282,48 @@
 
 /* Launch-data cleanup is deliberately separated from ordinary administration. */
 .team-cleanup-panel{border-top:4px solid #a5192e}.team-cleanup-panel h3{margin:14px 0 8px;font-size:13px}.team-cleanup-counts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:10px 0 16px}.team-cleanup-count{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:#fff1b3;border:1px solid #dfbc4d;border-radius:8px;font-size:12px}.team-cleanup-count strong{font-size:15px;color:#81172b}.team-cleanup-form{display:grid;gap:12px;max-width:640px;padding:12px;background:#fff8df;border:1px solid #dfbc4d;border-radius:8px}.team-cleanup-form>label{display:grid;gap:7px;font-size:12px}.team-cleanup-form input[type=text]{width:100%;max-width:460px}.team-cleanup-form .team-cleanup-confirm{display:flex;align-items:flex-start;gap:8px;font-weight:500}.team-cleanup-form .team-cleanup-confirm input{width:auto;flex:0 0 auto;margin-top:2px}.team-cleanup-footnote{margin-top:12px;font-size:11px;line-height:1.5}
+
+
+/* Compact, credit-card-like agency cards with the earlier cream/burgundy palette. */
+.agency-card-grid{grid-template-columns:repeat(auto-fill,minmax(205px,235px));gap:12px;align-items:stretch}
+.agency-agent-card{width:100%;max-width:235px;min-height:160px;padding:10px 11px 24px;border-radius:12px;background:#fffdf6;border:1px solid #ded3b4;color:#2a2020;box-shadow:0 6px 16px rgba(74,51,26,.08)}
+.agency-agent-card.agency-subagent{background:#fffdf6;color:#2a2020;border-color:#d8c995}
+.agency-agent-card.agency-ambulant{background:#fbf4f5;color:#2a2020;border-color:#d8bfc8}
+.agency-agent-card.agency-subagent:before{background:#b79a45;width:5px}
+.agency-agent-card.agency-ambulant:before{background:#7c3347;width:5px}
+.agency-agent-card.agency-subagent:after,.agency-agent-card.agency-ambulant:after{height:5px;background:#7c3347;border-radius:0 0 12px 12px}
+.agency-agent-card.agency-ambulant h3,.agency-agent-card.agency-ambulant p,.agency-agent-card.agency-ambulant .agency-card-metrics span,.agency-agent-card.agency-ambulant .agency-card-metrics strong{color:#2a2020}
+.agency-agent-card.agency-ambulant .agency-kind{background:transparent;color:#7c3347}
+.agency-agent-card .agency-kind{font-size:9px;letter-spacing:.08em;color:#806416}
+.agency-agent-card .agency-code-block{margin:8px 0 7px;padding:7px 9px;font-size:16px;border-radius:7px;background:#f2e8c7;border-color:#ddcf9e;color:#2a2020}
+.agency-agent-card.agency-ambulant .agency-code-block{background:#ead6dd;border-color:#d8bfc8;color:#7c3347}
+.agency-card-main h3{font-size:13px;line-height:1.25;overflow-wrap:anywhere}
+.agency-card-main p{font-size:10px;margin:2px 0 3px!important;color:#70666a}
+.agency-card-open-arrow{font-size:15px;color:#7c3347}
+.agency-card-metrics{grid-template-columns:1fr;gap:4px;margin:6px 0;padding-top:7px}
+.agency-card-metrics>div{padding:0;border:0;background:transparent}
+.agency-card-metrics span{font-size:9px;color:#70666a}
+.agency-card-metrics strong,.agency-agent-card.agency-subagent .agency-card-metrics strong{font-size:11px;line-height:1.2;color:#2a2020}
+.agency-agent-card .agency-enter,.agency-agent-card.agency-ambulant .agency-enter{margin-top:5px;font-size:10px;color:#7c3347}
+.agency-agent-card .agency-card-open{padding-left:1px}
+.agency-agent-card .agency-config-link{display:flex;width:max-content;max-width:100%;margin:4px 0 0 6px;padding:4px 7px;border:1px solid #ded3b4;border-radius:6px;background:#eee4bc;text-decoration:none;font-size:10px;color:#64283a}
+.agency-agent-card .agency-card-controls{min-height:22px;margin-bottom:0}
+.agency-agent-card .agency-delete-control>summary{padding:3px 6px;font-size:10px}
+.agency-delete-content{z-index:12}
+.agent-commission-row{background:#fffdf6;border-color:#ded3b4}
+.agent-commission-row strong{color:#2a2020}
+.agent-commission-row small,.commission-general-hint{color:#70666a}
+.commission-percent-input input{background:#fff;color:#2a2020}
+.general-commission-panel .agent-commission-row{background:#fffaf0}
+.team-member-card{background:#fffdf6;border-color:#ded3b4}
+.team-permission-option{background:#f7f0d8;border-color:#ded3b4}
+.team-backup-record{background:#fffdf6;border-color:#ded3b4}
+.team-backup-record-body pre{background:#f8f4e7;color:#2a2020}
+.lottery-recent-card{background:#fffdf6;border-color:#ded3b4;border-top-color:#7c3347}
+.lottery-recent-head a,.lottery-archive-group a,.lottery-archives>summary{color:#7c3347}
+.lottery-recent-card li a{background:#f4edcf;border-color:#ded3b4}
+.lottery-recent-card li a span{color:#70666a}
+.lottery-recent-card li a strong{color:#2a2020}
+.lottery-recent-card li a b{color:#7c3347}
+@media(max-width:700px){.agency-card-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.agency-agent-card{max-width:none;min-width:0}.agency-card-metrics{grid-template-columns:1fr}.agency-card-main h3{font-size:12px}}
+@media(max-width:420px){.agency-card-grid{grid-template-columns:minmax(0,235px);justify-content:start}}

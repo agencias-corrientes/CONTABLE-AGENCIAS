@@ -20,7 +20,7 @@ async function getOrg() {
 
   if (error) throw new Error(error.message);
   if (!member) throw new Error("No hay una empresa configurada.");
-  return { supabase, organizationId: member.organization_id, role: member.role };
+  return { supabase, organizationId: member.organization_id, role: member.role, userId: String(claims.sub) };
 }
 
 function clean(value: FormDataEntryValue | null) {
@@ -113,4 +113,47 @@ export async function deleteGameType(formData: FormData) {
   revalidatePath("/juegos");
   revalidatePath("/dashboard");
   revalidatePath("/agencias");
+}
+
+
+export async function saveDefaultGameCommissions(formData: FormData) {
+  const { supabase, organizationId, role, userId } = await getOrg();
+  if (role !== "owner") redirect("/juegos?error=solo-administrador");
+
+  const submitted = Array.from(formData.entries())
+    .filter(([key]) => key.startsWith("default_commission_"))
+    .map(([key, value]) => ({
+      organization_id: organizationId,
+      game_type_id: key.slice("default_commission_".length),
+      commission_percent: Number(String(value ?? "").trim()),
+      created_by: userId,
+      updated_at: new Date().toISOString(),
+    }));
+
+  if (!submitted.length || submitted.some((row) => !Number.isFinite(row.commission_percent) || row.commission_percent < 0 || row.commission_percent > 100)) {
+    redirect("/juegos?error=comisiones-generales-invalidas");
+  }
+
+  const { data: games, error: gamesError } = await supabase.from("agency_game_types").select("id").eq("organization_id", organizationId);
+  if (gamesError) redirect("/juegos?error=comisiones-generales-no-guardadas");
+  const allowed = new Set((games ?? []).map((game) => game.id));
+  if (submitted.some((row) => !allowed.has(row.game_type_id))) redirect("/juegos?error=comisiones-generales-invalidas");
+
+  const { error } = await supabase.from("agency_game_commission_defaults").upsert(submitted, { onConflict: "organization_id,game_type_id" });
+  if (error) redirect("/juegos?error=comisiones-generales-no-guardadas");
+
+  await supabase.from("audit_log").insert({
+    organization_id: organizationId,
+    user_id: userId,
+    action: "update_general_game_commissions",
+    entity: "agency_game_commission_defaults",
+    entity_id: organizationId,
+    payload: { game_count: submitted.length },
+  });
+
+  revalidatePath("/juegos");
+  revalidatePath("/agencias");
+  revalidatePath("/pagos");
+  revalidatePath("/dashboard");
+  redirect("/juegos?resultado=comisiones-generales-guardadas");
 }

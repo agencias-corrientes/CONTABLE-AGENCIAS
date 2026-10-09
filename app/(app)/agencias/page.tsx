@@ -38,7 +38,7 @@ function AgentCard({ agent, pending, lastDate, canDelete }: { agent: any; pendin
         </div>
         <span className="agency-enter">Abrir Rendiciones →</span>
       </Link>
-      <Link href={"/agencias/" + agent.id} className="agency-config-link">Datos y comisiones →</Link>
+      <Link href={"/agencias/" + agent.id} className="agency-config-link">Editar porcentajes de comisión →</Link>
     </article>
   );
 }
