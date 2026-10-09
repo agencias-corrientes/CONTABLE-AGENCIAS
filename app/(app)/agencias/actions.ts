@@ -114,7 +114,7 @@ export async function createAgencyRendition(formData: FormData) {
   const requestedCaptureMethod = String(formData.get("capture_method") ?? "manual");
   const captureMethod = ["manual", "photo", "qr"].includes(requestedCaptureMethod) ? requestedCaptureMethod : "manual";
 
-  const { error } = await supabase.rpc("create_agency_rendition_with_capture", {
+  const { data: renditionId, error } = await supabase.rpc("create_agency_rendition_with_capture", {
     p_organization_id: organizationId,
     p_agent_id: agentId,
     p_rendition_date: renditionDate,
@@ -133,9 +133,22 @@ export async function createAgencyRendition(formData: FormData) {
     redirect("/pagos?error=rendicion-fallida&agent=" + encodeURIComponent(agentId));
   }
 
+  // Attempt immediate email delivery. The full text remains stored in the durable outbox
+  // if mail credentials are not yet configured or the provider is temporarily unavailable.
+  if (renditionId) {
+    try {
+      await supabase.functions.invoke("send-rendition-backup", {
+        body: { rendition_id: renditionId },
+      });
+    } catch {
+      // Do not undo an already-saved accounting transaction because email delivery failed.
+    }
+  }
+
   revalidatePath("/agencias");
   revalidatePath("/agencias/" + agentId);
   revalidatePath("/pagos");
+  revalidatePath("/equipo");
   redirect("/pagos?agent=" + agentId + "&resultado=rendicion-creada");
 }
 
