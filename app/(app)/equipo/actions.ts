@@ -75,7 +75,7 @@ export async function addEmployeeByEmail(formData: FormData) {
 export async function saveEmployeeRole(formData: FormData) {
   const { supabase, organizationId, userId } = await getOwnerContext();
   const targetUserId = String(formData.get("user_id") ?? "").trim();
-  const role = String(formData.get("role") ?? "").trim();
+  const role = String(formData.get("role") ?? "").trim() as "owner" | "admin" | "accountant" | "viewer";
   if (!targetUserId || !["owner", "admin", "accountant", "viewer"].includes(role)) {
     redirect("/equipo?error=datos-rol-invalidos");
   }
