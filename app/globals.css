@@ -59,15 +59,15 @@
 
 
 /* Compact professional two-colour system: warm yellow surfaces and deep red controls. */
-:root{--bg:#fff3ad;--surface:#fffdf0;--surface2:#ffdf70;--text:#341018;--muted:#67333a;--line:#e2b94b;--primary:#a5192e;--primary2:#781322;--success:#17643c;--danger:#b51e2b;--burgundy:#8e1629;--mustard:#e4b52b;--shadow:0 5px 14px rgba(92,18,29,.08)}
+:root{--bg:#f4edcf;--surface:#fffdf6;--surface2:#eee4bc;--text:#2a2020;--muted:#70666a;--line:#ded3b4;--primary:#7c3347;--primary2:#64283a;--success:#1d7a52;--danger:#9b2c2c;--burgundy:#7c3347;--mustard:#b79a45;--shadow:0 5px 14px rgba(92,18,29,.08)}
 html,body{background:var(--bg);color:var(--text)}
-.content-area{padding:16px 20px}.page{max-width:1600px}.topbar{margin-bottom:14px;gap:12px}.topbar h1{font-size:28px}.eyebrow{color:#8e1629}
-.sidebar{background:#a5192e;color:#fffdf4;padding:16px 12px;border-right:4px solid #efc33e}
-.sidebar .nav-item{color:#fff2d2;padding:9px 10px;font-size:13px}.sidebar .nav-item:hover,.sidebar .nav-item.active{background:#741020;color:#fff;box-shadow:inset 3px 0 #ffd54a}.org-chip{background:#781322;color:#fff2d2}
+.content-area{padding:16px 20px}.page{max-width:1600px}.topbar{margin-bottom:14px;gap:12px}.topbar h1{font-size:28px}.eyebrow{color:#7c3347}
+.sidebar{background:#7c3347;color:#fffdf4;padding:16px 12px;border-right:4px solid #d1b35a}
+.sidebar .nav-item{color:#fff2d2;padding:9px 10px;font-size:13px}.sidebar .nav-item:hover,.sidebar .nav-item.active{background:#64283a;color:#fff;box-shadow:inset 3px 0 #d1b35a}.org-chip{background:#64283a;color:#fff2d2}
 .panel,.stat-card,.quick-card,.report-card,.settings-card{border-radius:11px;box-shadow:0 3px 10px rgba(92,18,29,.06)}.panel{padding:14px}.panel-head{margin-bottom:10px}.panel-head h2{font-size:16px}
-.stat-card{padding:10px 12px;min-height:0;border-top:3px solid #e4b52b}.stat-card:nth-child(even){border-top-color:#a5192e}.stat-card span,.stat-card small{font-size:11px}.stat-card strong{font-size:21px;line-height:1.15;margin:7px 0 3px}.stats-grid{gap:9px;margin-bottom:12px}.stats-grid.compact{grid-template-columns:repeat(4,minmax(0,1fr))}
-.button{min-height:34px;padding:8px 12px;border-radius:8px;font-size:12px}.button.primary{background:#a5192e;color:#fff}.button.primary:hover{background:#781322}.button.ghost{background:#ffe58b;color:#4b101a;border:1px solid #e2b94b}
-input,select{padding:8px 9px;border-radius:7px;font-size:13px}textarea{padding:8px 9px;border-radius:7px;font:inherit;font-size:13px}.form-stack{gap:10px;margin-top:12px}.form-stack label{gap:5px;font-size:12px}.detail-grid{gap:10px}.table-wrap th,.table-wrap td{padding:8px 7px}.quick-card{padding:13px}.page .muted{color:#66333a}.message{padding:9px 11px;border-radius:8px}.backup-pending-message{background:#fff0ca;border-color:#b51e2b;color:#7a1423}
+.stat-card{padding:10px 12px;min-height:0;border-top:3px solid #b79a45}.stat-card:nth-child(even){border-top-color:#7c3347}.stat-card span,.stat-card small{font-size:11px}.stat-card strong{font-size:21px;line-height:1.15;margin:7px 0 3px}.stats-grid{gap:9px;margin-bottom:12px}.stats-grid.compact{grid-template-columns:repeat(4,minmax(0,1fr))}
+.button{min-height:34px;padding:8px 12px;border-radius:8px;font-size:12px}.button.primary{background:#7c3347;color:#fff}.button.primary:hover{background:#64283a}.button.ghost{background:#eee4bc;color:#572538;border:1px solid #ded3b4}
+input,select{padding:8px 9px;border-radius:7px;font-size:13px}textarea{padding:8px 9px;border-radius:7px;font:inherit;font-size:13px}.form-stack{gap:10px;margin-top:12px}.form-stack label{gap:5px;font-size:12px}.detail-grid{gap:10px}.table-wrap th,.table-wrap td{padding:8px 7px}.quick-card{padding:13px}.page .muted{color:#66333a}.message{padding:9px 11px;border-radius:8px}.backup-pending-message{background:#fff5e6;border-color:#9b2c2c;color:#714b0b}
 @media(max-width:1000px){.stats-grid,.stats-grid.compact{grid-template-columns:repeat(2,minmax(0,1fr))}.content-area{padding:14px}}
 @media(max-width:640px){.stats-grid,.stats-grid.compact{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar h1{font-size:24px}.content-area{padding:10px}}
 
