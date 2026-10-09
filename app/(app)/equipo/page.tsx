@@ -72,7 +72,7 @@ export default async function TeamPermissionsPage({
     "email-invalido": "Ingresá un correo válido.",
     "cuenta-no-registrada": "No se pudo encontrar la cuenta después del registro. No se creó la membresía; verificá el correo e intentá nuevamente.",
     "empleado-existente": "Ese correo ya está vinculado a esta agencia. Buscalo en la lista para modificar el rol, los permisos o quitarle el acceso.",
-    "contrasena-corta": "La contraseña inicial debe tener al menos 12 caracteres.",
+    "contrasena-corta": "La contraseña inicial debe tener al menos 8 caracteres.",
     "alta-empleado-fallida": "No se pudo agregar al empleado.",
     "usuario-invalido": "La operación solicitada no es válida.",
     "usuario-no-encontrado": "No encontramos al empleado dentro de esta agencia.",
@@ -121,10 +121,10 @@ export default async function TeamPermissionsPage({
       <section className="panel team-permissions-panel">
         <div className="panel-head"><div><h2>Personal de la agencia</h2><p className="muted">Creá cuentas, asigná roles y configurá qué puede hacer cada persona. Todo se administra desde este bloque.</p></div><span className="muted">{employees?.length ?? 0} {(employees?.length ?? 0) === 1 ? "cuenta" : "cuentas"}</span></div>
         <section className="team-add-member">
-          <div className="panel-head"><div><h3>Agregar una cuenta</h3><p className="muted">Si el correo ya existe, se vincula sin crear otro usuario y no hace falta contraseña. Si es nuevo, ingresá una contraseña inicial de al menos 12 caracteres. Desde la tarjeta de cada empleado podrás modificar el rol, ajustar permisos y eliminar su acceso a esta agencia.</p></div></div>
+          <div className="panel-head"><div><h3>Agregar una cuenta</h3><p className="muted">Si el correo ya existe, se vincula sin crear otro usuario y no hace falta contraseña. Si es nuevo, ingresá una contraseña inicial de al menos 8 caracteres. Desde la tarjeta de cada empleado podrás modificar el rol, ajustar permisos y eliminar su acceso a esta agencia.</p></div></div>
           <form action={addEmployeeByEmail} className="inline-form team-add-form">
             <label>Correo de acceso<input type="email" name="email" placeholder="correo@empleado.com" required autoComplete="off" /></label>
-            <label>Contraseña inicial (solo cuenta nueva)<input type="password" name="password" placeholder="Solo para correo nuevo · 12 caracteres" minLength={12} autoComplete="new-password" /></label>
+            <label>Contraseña inicial (solo cuenta nueva)<input type="password" name="password" placeholder="Solo para correo nuevo · 8 caracteres" minLength={8} autoComplete="new-password" /></label>
             <label>Rol inicial
               <select name="role" defaultValue="accountant">
                 <option value="owner">Propietario</option>
