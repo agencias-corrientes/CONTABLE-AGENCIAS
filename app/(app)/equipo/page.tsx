@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getCurrentContext } from "@/lib/accounting";
-import { addEmployeeByEmail, removeEmployeeAccess, saveEmployeePermissions } from "./actions";
+import { addEmployeeByEmail, removeEmployeeAccess, saveBackupEmail, retryRenditionBackup, saveEmployeePermissions } from "./actions";
 
 const permissionLabels = [
   ["can_create_agents", "Dar de alta subagentes o ambulantes"],
@@ -28,9 +28,11 @@ export default async function TeamPermissionsPage({
     </div>;
   }
 
-  const { data: employees, error: employeeError } = await supabase.rpc("list_organization_members_for_owner", {
-    p_organization_id: organization.id,
-  });
+  const [{ data: employees, error: employeeError }, { data: backupSettings }, { data: backupRows, error: backupRowsError }] = await Promise.all([
+    supabase.rpc("list_organization_members_for_owner", { p_organization_id: organization.id }),
+    supabase.from("organization_backup_settings").select("recipient_email,enabled,updated_at").eq("organization_id", organization.id).maybeSingle(),
+    supabase.from("agency_rendition_backup_outbox").select("id,rendition_id,recipient_email,subject,text_body,status,attempt_count,last_attempt_at,sent_at,last_error,created_at").eq("organization_id", organization.id).order("created_at", { ascending: false }).limit(20),
+  ]);
   const errorMessages: Record<string, string> = {
     "solo-titular": "Solo el titular de la agencia puede administrar empleados y permisos.",
     "email-invalido": "Ingresá un correo válido.",
@@ -42,6 +44,9 @@ export default async function TeamPermissionsPage({
     "no-se-puede-modificar-titular": "La cuenta del titular no se puede modificar ni revocar desde esta pantalla.",
     "permisos-no-guardados": "No se pudieron guardar los permisos. No se aplicaron cambios.",
     "acceso-no-revocado": "No se pudo revocar el acceso del empleado.",
+    "email-backup-invalido": "Ingresá un correo válido para los backups.",
+    "backup-email-no-guardado": "No se pudo guardar el correo para respaldos.",
+    "backup-no-enviado": "El respaldo quedó en la cola, pero el correo no pudo enviarse. Revisá la configuración de envío y volvé a intentar.",
   };
 
   return (
@@ -53,6 +58,8 @@ export default async function TeamPermissionsPage({
       {params.resultado === "empleado-agregado" && <p className="message success-message">Empleado agregado. Por seguridad, sus permisos quedan desactivados hasta que los habilites.</p>}
       {params.resultado === "permisos-guardados" && <p className="message success-message">Permisos guardados correctamente.</p>}
       {params.resultado === "acceso-revocado" && <p className="message success-message">Se revocó el acceso del empleado a esta agencia. Su cuenta general de autenticación no fue eliminada.</p>}
+      {params.resultado === "backup-email-guardado" && <p className="message success-message">Se guardó el correo de respaldo. Las nuevas rendiciones se encolarán para enviarse a esa dirección.</p>}
+      {params.resultado === "backup-reintento" && <p className="message success-message">Se solicitó nuevamente el envío del respaldo.</p>}
       {params.error && <p className="message error-message">{errorMessages[params.error] ?? "No se pudo completar la operación. Revisá los datos e intentá nuevamente."}</p>}
 
       <section className="panel">
@@ -61,6 +68,29 @@ export default async function TeamPermissionsPage({
           <input type="email" name="email" placeholder="correo@empleado.com" required autoComplete="email" />
           <button className="button primary" type="submit">Vincular empleado</button>
         </form>
+      </section>
+
+      <section className="panel team-backup-panel">
+        <div className="panel-head"><div><h2>Backup automático de rendiciones</h2><p className="muted">Cada rendición registrada genera un respaldo legible en texto con agencia, subagente/ambulante, fecha, período, sorteo, desglose por juego, total, tickets y observaciones.</p></div><span className={backupSettings?.enabled && backupSettings.recipient_email ? "badge success" : "badge"}>{backupSettings?.enabled && backupSettings.recipient_email ? "Correo guardado" : "Falta configurar correo"}</span></div>
+        <form action={saveBackupEmail} className="inline-form team-add-form">
+          <input type="email" name="recipient_email" defaultValue={backupSettings?.recipient_email ?? ""} placeholder="correo-para-backup@ejemplo.com" autoComplete="email" />
+          <button className="button primary" type="submit">Guardar correo de backup</button>
+        </form>
+        <p className="team-security-note">El respaldo de texto queda guardado en la base de datos y se prepara automáticamente al registrar una rendición. El envío por correo requiere configurar en Supabase los secretos del proveedor de correo; hasta entonces los respaldos aparecen como pendientes y no se declaran enviados.</p>
+        <div className="team-backup-log">
+          <div className="panel-head"><div><h3>Últimos respaldos</h3><p className="muted">Historial de cola, intentos y estado de envío.</p></div><span className="muted">{backupRows?.length ?? 0}</span></div>
+          {backupRowsError && <p className="message error-message">No se pudo leer el historial de respaldos.</p>}
+          {!backupRowsError && (!backupRows || !backupRows.length) && <p className="muted">Todavía no se generaron respaldos para las rendiciones. Las que se registren después de configurar un correo se encolarán aquí.</p>}
+          {(backupRows ?? []).map((backup) => <details className="team-backup-record" key={backup.id}>
+            <summary><span>{backup.subject}</span><span className={backup.status === "sent" ? "badge success" : backup.status === "failed" ? "badge warning" : "badge"}>{backup.status === "sent" ? "Enviado" : backup.status === "failed" ? "Falló" : backup.status === "sending" ? "Enviando" : "Pendiente"}</span></summary>
+            <div className="team-backup-record-body"><p><strong>Destino:</strong> {backup.recipient_email} · <strong>Creado:</strong> {backup.created_at}</p>
+              {backup.sent_at && <p><strong>Enviado:</strong> {backup.sent_at}</p>}
+              {backup.last_error && <p className="message error-message">{backup.last_error}</p>}
+              <pre>{backup.text_body}</pre>
+              {backup.status !== "sent" && <form action={retryRenditionBackup}><input type="hidden" name="backup_id" value={backup.id} /><button className="button ghost small" type="submit">Enviar / reintentar</button></form>}
+            </div>
+          </details>)}
+        </div>
       </section>
 
       <section className="panel team-permissions-panel">
