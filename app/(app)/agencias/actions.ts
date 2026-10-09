@@ -157,9 +157,9 @@ export async function createAgencyRendition(formData: FormData) {
     p_amount_due: totalDue,
     p_game_breakdown: breakdown,
     p_ticket_numbers: ticketNumbers,
-    p_ticket_qr_payload: qrPayload,
-    p_game_period: gamePeriod,
-    p_draw_number: drawNumber,
+    p_ticket_qr_payload: qrPayload ?? undefined,
+    p_game_period: gamePeriod ?? undefined,
+    p_draw_number: drawNumber ?? undefined,
     p_capture_method: captureMethod,
     p_reference: String(formData.get("reference") ?? "").trim() || undefined,
     p_notes: String(formData.get("notes") ?? "").trim() || undefined,
@@ -382,12 +382,12 @@ export async function updateAgencyRendition(formData: FormData) {
     p_amount_due: amountDue,
     p_game_breakdown: breakdown,
     p_ticket_numbers: ticketNumbers,
-    p_ticket_qr_payload: qrPayload,
-    p_game_period: String(formData.get("game_period") ?? "").trim() || null,
-    p_draw_number: String(formData.get("draw_number") ?? "").trim() || null,
+    p_ticket_qr_payload: qrPayload ?? undefined,
+    p_game_period: String(formData.get("game_period") ?? "").trim() || undefined,
+    p_draw_number: String(formData.get("draw_number") ?? "").trim() || undefined,
     p_capture_method: captureMethod,
-    p_reference: String(formData.get("reference") ?? "").trim() || null,
-    p_notes: String(formData.get("notes") ?? "").trim() || null,
+    p_reference: String(formData.get("reference") ?? "").trim() || undefined,
+    p_notes: String(formData.get("notes") ?? "").trim() || undefined,
   });
   if (error) {
     const message = error.message.toLowerCase();
@@ -424,7 +424,7 @@ export async function voidAgencyRendition(formData: FormData) {
   const { error } = await supabase.rpc("void_agency_rendition", {
     p_organization_id: organizationId,
     p_rendition_id: renditionId,
-    p_reason: reason || null,
+    p_reason: reason || undefined,
   });
   if (error) {
     const message = error.message.toLowerCase();
