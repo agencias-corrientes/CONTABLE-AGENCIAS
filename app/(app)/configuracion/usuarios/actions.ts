@@ -12,7 +12,7 @@ export async function setMemberRole(formData: FormData) {
   if (!claims?.sub) redirect("/login");
 
   const targetUserId = String(formData.get("user_id") ?? "").trim();
-  const role = String(formData.get("role") ?? "viewer");
+  const role = String(formData.get("role") ?? "viewer") as "owner" | "admin" | "accountant" | "viewer";
   if (!targetUserId || !["owner", "admin", "accountant", "viewer"].includes(role)) {
     redirect("/configuracion/usuarios?error=datos-rol-invalidos");
   }
