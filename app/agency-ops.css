@@ -820,3 +820,17 @@
  .team-add-member .team-add-form{grid-template-columns:1fr}
  .team-add-member .team-add-form .button{grid-column:1;width:100%}
 }
+
+/* Datos de la agencia: edición clara y eliminación protegida. */
+.agency-profile-edit-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:end}
+.agency-profile-edit-form label,.agency-delete-form label{display:grid;gap:6px;min-width:0;font-size:12px;font-weight:800;color:#5a4b32}
+.agency-profile-edit-form input,.agency-delete-form input:not([type=checkbox]){width:100%;min-width:0;padding:10px 11px;border:1px solid #cbbd93;border-radius:7px;background:#fffdf6;color:#2a2020;font-size:13px}
+.agency-profile-edit-form button{grid-column:1/-1;width:max-content}
+.agency-delete-panel{border:1px solid #dcb4bc;border-left:5px solid #7c263d}
+.agency-delete-panel .panel-head h2{color:#752438}
+.agency-delete-form{display:grid;gap:12px;max-width:620px}
+.agency-delete-form label strong{color:#752438;overflow-wrap:anywhere}
+.agency-delete-form .agency-delete-confirm{display:flex;align-items:flex-start;gap:9px;line-height:1.5;font-weight:600}
+.agency-delete-form input[type=checkbox]{flex:0 0 auto;width:auto;margin-top:3px}
+.agency-delete-form .button{width:max-content;max-width:100%}
+@media(max-width:700px){.agency-profile-edit-form{grid-template-columns:1fr}.agency-profile-edit-form button{grid-column:1;width:100%}.agency-delete-form .button{width:100%}}
