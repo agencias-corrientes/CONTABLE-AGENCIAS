@@ -834,3 +834,15 @@
 .agency-delete-form input[type=checkbox]{flex:0 0 auto;width:auto;margin-top:3px}
 .agency-delete-form .button{width:max-content;max-width:100%}
 @media(max-width:700px){.agency-profile-edit-form{grid-template-columns:1fr}.agency-profile-edit-form button{grid-column:1;width:100%}.agency-delete-form .button{width:100%}}
+
+/* Eliminar una cuenta de prueba sin vínculo a una agencia. */
+.team-auth-delete-panel{border:1px solid #dcb4bc;border-left:5px solid #7c263d}
+.team-auth-delete-panel .panel-head h2{color:#752438}
+.team-auth-delete-form{display:grid;gap:12px;max-width:650px}
+.team-auth-delete-form>label{display:grid;gap:6px;min-width:0;font-size:12px;font-weight:800;color:#5a4b32}
+.team-auth-delete-form input:not([type=checkbox]){width:100%;min-width:0;padding:10px 11px;border:1px solid #cbbd93;border-radius:7px;background:#fffdf6;color:#2a2020;font-size:13px}
+.team-auth-delete-form label strong{color:#752438;overflow-wrap:anywhere}
+.team-auth-delete-form .team-auth-delete-confirm{display:flex;align-items:flex-start;gap:9px;line-height:1.5;font-weight:600}
+.team-auth-delete-form input[type=checkbox]{flex:0 0 auto;width:auto;margin-top:3px}
+.team-auth-delete-form .button{width:max-content;max-width:100%}
+@media(max-width:700px){.team-auth-delete-form .button{width:100%}}
