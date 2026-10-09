@@ -8,6 +8,7 @@ const nav = [
   ["dashboard", "Inicio", "▦"],
   ["pagos", "Rendiciones", "↔"],
   ["agencias", "Subagentes y ambulantes", "♟"],
+  ["equipo", "Personal y permisos", "♙"],
   ["juegos", "Juegos", "◎"],
   ["buscar", "Buscar", "⌕"],
 ];
