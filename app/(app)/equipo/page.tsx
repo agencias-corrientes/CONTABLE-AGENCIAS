@@ -63,6 +63,8 @@ export default async function TeamPermissionsPage({
     : [];
   const errorMessages: Record<string, string> = {
     "solo-titular": "Solo el titular de la agencia puede administrar empleados y permisos.",
+    "datos-rol-invalidos": "Elegí un rol válido para la nueva cuenta.",
+    "empleado-creado-rol-pendiente": "La cuenta se creó y quedó vinculada a esta agencia, pero no se pudo asignar el rol elegido. Buscala en la lista y guardá el rol desde su selector.",
     "ultimo-titular": "No se puede quitar ni bajar de rol al último Propietario. Primero asigná el rol Propietario a otra cuenta y guardá ese cambio.",
     "datos-rol-invalidos": "Elegí un rol válido para el empleado.",
     "no-cambiar-rol-propio": "No podés cambiar tu propio rol desde tu sesión actual.",
@@ -105,66 +107,26 @@ export default async function TeamPermissionsPage({
       {params.resultado === "limpieza-completada-fotos-pendientes" && <p className="message error-message">La base quedó limpia, pero no se pudieron quitar todas las fotos privadas de prueba. Revisá el almacenamiento antes del uso oficial.</p>}
       {params.error && <p className="message error-message">{errorMessages[params.error] ?? "No se pudo completar la operación. Revisá los datos e intentá nuevamente."}</p>}
 
-      <section className="panel">
-        <div className="panel-head"><div><h2>Agregar empleado</h2><p className="muted">Creá el acceso acá. Después, en la tarjeta del empleado, vas a poder elegir el rol (incluido Propietario) y guardar el cambio. Entregá las credenciales por un canal privado.</p></div></div>
-        <form action={addEmployeeByEmail} className="inline-form team-add-form">
-          <input type="email" name="email" placeholder="correo@empleado.com" required autoComplete="off" />
-          <input type="password" name="password" placeholder="Contraseña inicial (mín. 12 caracteres)" minLength={12} required autoComplete="new-password" />
-          <button className="button primary" type="submit">Crear acceso al empleado</button>
-        </form>
-      </section>
-
-      <section className="panel team-backup-panel">
-        <div className="panel-head"><div><h2>Backup automático de rendiciones</h2><p className="muted">Cada rendición registrada genera un respaldo legible en texto con agencia, subagente/ambulante, fecha, período, sorteo, desglose por juego, total, tickets y observaciones.</p></div><span className={backupSettings?.enabled && backupSettings.recipient_email ? "badge success" : "badge"}>{backupSettings?.enabled && backupSettings.recipient_email ? "Correo configurado" : "Usa correo del titular"}</span></div>
-        <form action={saveBackupEmail} className="inline-form team-add-form">
-          <input type="email" name="recipient_email" defaultValue={backupSettings?.recipient_email ?? ""} placeholder="Dejar vacío para usar el correo de acceso del titular" autoComplete="email" />
-          <label className="backup-photo-option"><input type="checkbox" name="include_ticket_photo" defaultChecked={backupSettings?.include_ticket_photo ?? true} /> Adjuntar foto del ticket cuando esté disponible</label>
-          <button className="button primary" type="submit">Guardar backup del titular</button>
-        </form>
-        <p className="team-security-note">Solo el titular recibe los backups. Cada rendición genera un respaldo de texto; la foto se adjunta si esta opción está marcada y se pudo guardar. El sistema informa “Enviado” únicamente si el proveedor de correo confirma el envío.</p>
-        <div className="team-backup-log">
-          <div className="panel-head"><div><h3>Últimos respaldos</h3><p className="muted">Historial de cola, intentos y estado de envío.</p></div><span className="muted">{backupRows?.length ?? 0}</span></div>
-          {backupRowsError && <p className="message error-message">No se pudo leer el historial de respaldos.</p>}
-          {!backupRowsError && (!backupRows || !backupRows.length) && <p className="muted">Todavía no se generaron respaldos para las rendiciones. Las que se registren después de configurar un correo se encolarán aquí.</p>}
-          {(backupRows ?? []).map((backup) => <details className="team-backup-record" key={backup.id}>
-            <summary><span>{backup.subject}</span><span className={backup.status === "sent" ? "badge success" : backup.status === "failed" ? "badge warning" : "badge"}>{backup.status === "sent" ? "Enviado" : backup.status === "failed" ? "Falló" : backup.status === "sending" ? "Enviando" : "Pendiente"}</span></summary>
-            <div className="team-backup-record-body"><p><strong>Destino:</strong> {backup.recipient_email} · <strong>Creado:</strong> {backup.created_at}</p>
-              {backup.sent_at && <p><strong>Enviado:</strong> {backup.sent_at}</p>}
-              {backup.last_error && <p className="message error-message">{backup.last_error}</p>}
-              <pre>{backup.text_body}</pre>
-              {backup.status !== "sent" && <form action={retryRenditionBackup}><input type="hidden" name="backup_id" value={backup.id} /><button className="button ghost small" type="submit">Enviar / reintentar</button></form>}
-            </div>
-          </details>)}
-        </div>
-      </section>
-
-      <section className="panel team-cleanup-panel">
-        <div className="panel-head">
-          <div><h2>Preparar la puesta en marcha oficial</h2><p className="muted">La limpieza alcanza a todos los registros operativos actuales, sin distinguir entre datos de prueba y datos reales. Usala únicamente antes de comenzar la operación oficial.</p></div>
-          <span className="badge warning">Acción irreversible</span>
-        </div>
-        <p className="team-security-note">Esta limpieza borra todos los agentes, rendiciones, cobros, movimientos de caja, tickets, respaldos, registros de auditoría y registros operativos de los antiguos módulos contables que pertenezcan a esta agencia. No distingue si son de prueba o reales. También desconecta a los empleados que no sean titulares y vacía el correo de backup configurado. Conserva la agencia, tu acceso de titular, los juegos configurados, las cuentas de Caja y los catálogos base.</p>
-        {cleanupPreviewError && <p className="message error-message">No se pudo obtener el inventario de datos. No ejecutes la limpieza hasta que el inventario esté disponible.</p>}
-        {!cleanupPreviewError && <>
-          <h3>Inventario actual de registros que se limpiarían</h3>
-          {cleanupRows.length > 0
-            ? <div className="team-cleanup-counts">{cleanupRows.map(([key, count]) => <div className="team-cleanup-count" key={key}><span>{cleanupLabels[key] ?? key}</span><strong>{count}</strong></div>)}</div>
-            : <p className="muted">No hay registros operativos de prueba para limpiar en este momento.</p>}
-          <form action={cleanupAgencyTestData} className="team-cleanup-form">
-            <label>Para habilitar la limpieza, escribí exactamente: <strong>LIMPIAR DATOS DE PRUEBA</strong>
-              <input type="text" name="confirmation" placeholder="LIMPIAR DATOS DE PRUEBA" autoComplete="off" required />
-            </label>
-            <label className="team-cleanup-confirm"><input type="checkbox" name="confirm_cleanup" value="yes" required /> Confirmo que se eliminarán todos los registros operativos que muestra el inventario, no solo los de prueba, y que no se podrán recuperar desde la aplicación.</label>
-            <button className="button danger" type="submit">Limpiar los datos de prueba</button>
-          </form>
-        </>}
-        <p className="muted team-cleanup-footnote">La acción solo la puede ejecutar el titular y vuelve a comprobarlo en Supabase. Esta limpieza no elimina la cuenta de acceso del titular ni las cuentas de autenticación de empleados: a los empleados se les quita la membresía de esta agencia; si son cuentas ficticias, deben eliminarse después en Supabase → Authentication → Users.</p>
-      </section>
-
       <section className="panel team-permissions-panel">
-        <div className="panel-head"><div><h2>Accesos y autorizaciones</h2><p className="muted">Cada empleado comienza con todos los permisos operativos desactivados.</p></div><span className="muted">{employees?.length ?? 0} cuentas</span></div>
-        {employeeError && <p className="message error-message">No se pudo consultar la lista de empleados.</p>}
-        {!employeeError && (!employees || !employees.length) && <p className="muted">Todavía no hay empleados vinculados a la agencia.</p>}
+        <div className="panel-head"><div><h2>Personal de la agencia</h2><p className="muted">Creá cuentas, asigná roles y configurá qué puede hacer cada persona. Todo se administra desde este bloque.</p></div><span className="muted">{employees?.length ?? 0} {(employees?.length ?? 0) === 1 ? "cuenta" : "cuentas"}</span></div>
+        <section className="team-add-member">
+          <div className="panel-head"><div><h3>Agregar una cuenta</h3><p className="muted">Para habilitar otro titular y luego retirar tu cuenta de prueba, elegí “Propietario” como rol inicial. Para personal común, usá Contador o Consulta.</p></div></div>
+          <form action={addEmployeeByEmail} className="inline-form team-add-form">
+            <label>Correo de acceso<input type="email" name="email" placeholder="correo@empleado.com" required autoComplete="off" /></label>
+            <label>Contraseña inicial<input type="password" name="password" placeholder="Mínimo 12 caracteres" minLength={12} required autoComplete="new-password" /></label>
+            <label>Rol inicial
+              <select name="role" defaultValue="accountant">
+                <option value="owner">Propietario</option>
+                <option value="admin">Administrador</option>
+                <option value="accountant">Contador</option>
+                <option value="viewer">Consulta</option>
+              </select>
+            </label>
+            <button className="button primary" type="submit">Crear cuenta y asignar rol</button>
+          </form>
+        </section>
+                {employeeError && <p className="message error-message">No se pudo consultar la lista de empleados.</p>}
+        {!employeeError && (!employees || !employees.length) && <p className="muted">Todavía no hay personal vinculado. Usá el formulario “Agregar una cuenta” de este mismo bloque. Para crear el nuevo responsable, elegí “Propietario” en Rol inicial.</p>}
         <div className="team-member-list">
           {(employees ?? []).map((employee: any) => {
             const isCurrentUser = employee.user_id === userId;
@@ -236,6 +198,54 @@ export default async function TeamPermissionsPage({
             </article>;
           })}
         </div>
+      </section>
+
+
+      <section className="panel team-backup-panel">
+        <div className="panel-head"><div><h2>Backup automático de rendiciones</h2><p className="muted">Cada rendición registrada genera un respaldo legible en texto con agencia, subagente/ambulante, fecha, período, sorteo, desglose por juego, total, tickets y observaciones.</p></div><span className={backupSettings?.enabled && backupSettings.recipient_email ? "badge success" : "badge"}>{backupSettings?.enabled && backupSettings.recipient_email ? "Correo configurado" : "Usa correo del titular"}</span></div>
+        <form action={saveBackupEmail} className="inline-form team-add-form">
+          <input type="email" name="recipient_email" defaultValue={backupSettings?.recipient_email ?? ""} placeholder="Dejar vacío para usar el correo de acceso del titular" autoComplete="email" />
+          <label className="backup-photo-option"><input type="checkbox" name="include_ticket_photo" defaultChecked={backupSettings?.include_ticket_photo ?? true} /> Adjuntar foto del ticket cuando esté disponible</label>
+          <button className="button primary" type="submit">Guardar backup del titular</button>
+        </form>
+        <p className="team-security-note">Solo el titular recibe los backups. Cada rendición genera un respaldo de texto; la foto se adjunta si esta opción está marcada y se pudo guardar. El sistema informa “Enviado” únicamente si el proveedor de correo confirma el envío.</p>
+        <div className="team-backup-log">
+          <div className="panel-head"><div><h3>Últimos respaldos</h3><p className="muted">Historial de cola, intentos y estado de envío.</p></div><span className="muted">{backupRows?.length ?? 0}</span></div>
+          {backupRowsError && <p className="message error-message">No se pudo leer el historial de respaldos.</p>}
+          {!backupRowsError && (!backupRows || !backupRows.length) && <p className="muted">Todavía no se generaron respaldos para las rendiciones. Las que se registren después de configurar un correo se encolarán aquí.</p>}
+          {(backupRows ?? []).map((backup) => <details className="team-backup-record" key={backup.id}>
+            <summary><span>{backup.subject}</span><span className={backup.status === "sent" ? "badge success" : backup.status === "failed" ? "badge warning" : "badge"}>{backup.status === "sent" ? "Enviado" : backup.status === "failed" ? "Falló" : backup.status === "sending" ? "Enviando" : "Pendiente"}</span></summary>
+            <div className="team-backup-record-body"><p><strong>Destino:</strong> {backup.recipient_email} · <strong>Creado:</strong> {backup.created_at}</p>
+              {backup.sent_at && <p><strong>Enviado:</strong> {backup.sent_at}</p>}
+              {backup.last_error && <p className="message error-message">{backup.last_error}</p>}
+              <pre>{backup.text_body}</pre>
+              {backup.status !== "sent" && <form action={retryRenditionBackup}><input type="hidden" name="backup_id" value={backup.id} /><button className="button ghost small" type="submit">Enviar / reintentar</button></form>}
+            </div>
+          </details>)}
+        </div>
+      </section>
+
+      <section className="panel team-cleanup-panel">
+        <div className="panel-head">
+          <div><h2>Preparar la puesta en marcha oficial</h2><p className="muted">La limpieza alcanza a todos los registros operativos actuales, sin distinguir entre datos de prueba y datos reales. Usala únicamente antes de comenzar la operación oficial.</p></div>
+          <span className="badge warning">Acción irreversible</span>
+        </div>
+        <p className="team-security-note">Esta limpieza borra todos los agentes, rendiciones, cobros, movimientos de caja, tickets, respaldos, registros de auditoría y registros operativos de los antiguos módulos contables que pertenezcan a esta agencia. No distingue si son de prueba o reales. También desconecta a los empleados que no sean titulares y vacía el correo de backup configurado. Conserva la agencia, tu acceso de titular, los juegos configurados, las cuentas de Caja y los catálogos base.</p>
+        {cleanupPreviewError && <p className="message error-message">No se pudo obtener el inventario de datos. No ejecutes la limpieza hasta que el inventario esté disponible.</p>}
+        {!cleanupPreviewError && <>
+          <h3>Inventario actual de registros que se limpiarían</h3>
+          {cleanupRows.length > 0
+            ? <div className="team-cleanup-counts">{cleanupRows.map(([key, count]) => <div className="team-cleanup-count" key={key}><span>{cleanupLabels[key] ?? key}</span><strong>{count}</strong></div>)}</div>
+            : <p className="muted">No hay registros operativos de prueba para limpiar en este momento.</p>}
+          <form action={cleanupAgencyTestData} className="team-cleanup-form">
+            <label>Para habilitar la limpieza, escribí exactamente: <strong>LIMPIAR DATOS DE PRUEBA</strong>
+              <input type="text" name="confirmation" placeholder="LIMPIAR DATOS DE PRUEBA" autoComplete="off" required />
+            </label>
+            <label className="team-cleanup-confirm"><input type="checkbox" name="confirm_cleanup" value="yes" required /> Confirmo que se eliminarán todos los registros operativos que muestra el inventario, no solo los de prueba, y que no se podrán recuperar desde la aplicación.</label>
+            <button className="button danger" type="submit">Limpiar los datos de prueba</button>
+          </form>
+        </>}
+        <p className="muted team-cleanup-footnote">La acción solo la puede ejecutar el titular y vuelve a comprobarlo en Supabase. Esta limpieza no elimina la cuenta de acceso del titular ni las cuentas de autenticación de empleados: a los empleados se les quita la membresía de esta agencia; si son cuentas ficticias, deben eliminarse después en Supabase → Authentication → Users.</p>
       </section>
 
       <section className="panel">
