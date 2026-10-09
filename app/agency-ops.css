@@ -1048,3 +1048,40 @@
     font-size: 15px !important;
   }
 }
+
+
+/* Preview 2026-10-09: aumento adicional del 10% en los selectores de Rendiciones. */
+.rendition-agents-panel .rendition-agent-accordion:not([open]) > .rendition-agent-summary,
+.rendition-agents-panel .rendition-agent-accordion[open] > .rendition-agent-summary {
+  min-width: 161px !important;
+  min-height: 50px !important;
+  padding: 10px 14px !important;
+  box-sizing: border-box;
+}
+.rendition-agents-panel .rendition-agent-accordion:not([open]) .rendition-agent-code,
+.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-code {
+  font-size: 17.5px !important;
+  line-height: 1.15 !important;
+}
+.rendition-agent-search {
+  position: relative;
+  z-index: 1;
+}
+.rendition-agent-search input[name="busqueda"] {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+  user-select: text;
+}
+@media (max-width: 700px) {
+  .rendition-agents-panel .rendition-agent-accordion:not([open]) > .rendition-agent-summary,
+  .rendition-agents-panel .rendition-agent-accordion[open] > .rendition-agent-summary {
+    min-width: 161px !important;
+    min-height: 48px !important;
+    padding: 9px 12px !important;
+  }
+  .rendition-agents-panel .rendition-agent-accordion:not([open]) .rendition-agent-code,
+  .rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-code {
+    font-size: 16.5px !important;
+  }
+}
