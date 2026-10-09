@@ -85,7 +85,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             <details className="rendition-record" key={row.id}>
               <summary>
                 <span className="rendition-record-date">{formatAgencyDate(row.rendition_date)}<small>{formatAgencyDateTime(row.created_at)}</small></span>
-                <span className="rendition-record-agent-code">{agent.code}</span>
+                <span className="rendition-record-agent-code" aria-label={"Código del operador " + agent.code} title={"Código del operador " + agent.code}>{agent.code}</span>
                 <span className="rendition-record-period">{row.game_period || "Período no identificado"}{row.draw_number ? <small>Sorteo {row.draw_number}</small> : null}</span>
                 <span className="rendition-record-amount">{money(row.amount_due, activeOrganization.currency_code)}<small>{row.capture_method === "manual" ? "Carga manual" : row.capture_method === "qr" ? "Foto / QR" : "Foto del ticket"}</small></span>
                 <span className={totals.pending <= 0 ? "badge success" : "badge"}>{totals.pending <= 0 ? "Saldada" : "Pendiente " + money(totals.pending, activeOrganization.currency_code)}</span>
@@ -256,7 +256,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       </section>
 
       <section className="panel rendition-general-history">
-        <div className="panel-head"><div><h2>Rendiciones generales</h2><p className="muted">Historial separado por día operativo. Al llegar al horario de corte, los totales actuales vuelven a cero y las rendiciones anteriores quedan archivadas acá.</p></div><span className="muted">{historicalRows.length} rendiciones anteriores</span></div>
+        <div className="panel-head"><div><h2>Rendiciones generales</h2><p className="muted">Cada registro muestra el código del subagente o ambulante, la fecha y el importe rendido. El historial se separa por día operativo.</p></div><span className="muted">{historicalRows.length} rendiciones anteriores</span></div>
         {historicalDays.length ? <div className="rendition-archive-days">
           {historicalDays.map(([day, dayRows]) => {
             const total = dayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);

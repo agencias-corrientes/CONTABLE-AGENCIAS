@@ -428,3 +428,261 @@
 .rendition-agent-expanded{width:100%}
 .rendition-record-date{font-variant-numeric:tabular-nums}
 @media(max-width:700px){.rendition-agent-accordion{flex:1 1 145px;max-width:none;min-width:140px}.rendition-agent-accordion[open]{flex-basis:100%}.rendition-agent-summary{min-height:76px;padding:9px}.rendition-agent-accordion[open]>.rendition-agent-summary{min-width:0}.rendition-agent-balance{grid-column:auto}}
+
+
+/* FIX definitivo: los agentes son botones de código, no tarjetas ni resúmenes con saldos. */
+.agency-agent-button-list{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px;
+  width:100%;
+}
+.agency-agent-button-row{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  position:relative;
+  width:auto;
+  max-width:100%;
+  min-width:0;
+  margin:0;
+  padding:0;
+  overflow:visible;
+  border:0;
+  background:transparent;
+  box-shadow:none;
+}
+.agency-agent-button-row::before,
+.agency-agent-button-row::after{display:none!important;content:none!important}
+.agency-agent-code-button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:112px;
+  min-height:36px;
+  max-width:100%;
+  padding:7px 11px;
+  border:1px solid #c7aa47;
+  border-radius:7px;
+  background:#f1e4ac;
+  color:#3a2c18;
+  font-size:12px;
+  font-weight:900;
+  line-height:1.15;
+  letter-spacing:.02em;
+  text-align:center;
+  text-decoration:none;
+  white-space:nowrap;
+  box-shadow:none;
+  cursor:pointer;
+}
+.agency-agent-button-row.agency-ambulant .agency-agent-code-button{
+  border-color:#7c3347;
+  background:#7c3347;
+  color:#fff8e2;
+}
+.agency-agent-code-button:hover,
+.agency-agent-code-button:focus-visible{
+  outline:2px solid #b79a45;
+  outline-offset:2px;
+  filter:brightness(.97);
+}
+.agency-agent-actions{position:relative;flex:0 0 auto}
+.agency-agent-actions>summary{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:28px;
+  height:32px;
+  padding:0;
+  border:1px solid #ded3b4;
+  border-radius:6px;
+  background:#fffdf6;
+  color:#64283a;
+  font-size:18px;
+  font-weight:900;
+  line-height:1;
+  cursor:pointer;
+  list-style:none;
+}
+.agency-agent-actions>summary::-webkit-details-marker{display:none}
+.agency-agent-actions-menu{
+  position:absolute;
+  z-index:30;
+  top:calc(100% + 5px);
+  right:0;
+  display:grid;
+  gap:8px;
+  width:min(260px,calc(100vw - 40px));
+  padding:11px;
+  border:1px solid #ded3b4;
+  border-radius:8px;
+  background:#fffdf6;
+  box-shadow:0 8px 24px rgba(45,20,24,.15);
+}
+.agency-agent-actions-menu>a{font-size:12px;font-weight:750;color:#64283a;text-decoration:none}
+.agency-agent-actions-menu>form{display:grid;gap:8px;border-top:1px solid #eee4d2;padding-top:8px}
+.agency-agent-actions-menu label{display:flex;align-items:flex-start;gap:7px;font-size:11px;color:#3a2c18}
+.agency-agent-actions-menu input[type=checkbox]{width:auto;flex:0 0 auto;margin-top:2px}
+.agency-agent-actions-menu .button{width:max-content;max-width:100%}
+.agency-section-head p{font-size:11px}
+@media(max-width:700px){
+  .agency-agent-button-list{display:flex;flex-wrap:wrap;gap:7px}
+  .agency-agent-code-button{min-width:0;min-height:34px;padding:7px 9px;font-size:11px}
+}
+
+/* FIX definitivo: en jornada actual el resumen cerrado es un botón pequeño con el código solo. */
+.rendition-agents-panel .rendition-agent-list{
+  display:flex!important;
+  flex-direction:row;
+  flex-wrap:wrap;
+  align-items:flex-start;
+  gap:8px;
+  width:100%;
+}
+.rendition-agents-panel .rendition-agent-accordion:not([open]){
+  display:block;
+  flex:0 0 auto;
+  width:auto;
+  min-width:0;
+  max-width:none;
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  overflow:visible;
+}
+.rendition-agents-panel .rendition-agent-accordion:not([open])>.rendition-agent-summary{
+  display:inline-flex!important;
+  flex-direction:row;
+  align-items:center;
+  justify-content:center;
+  gap:0;
+  width:auto;
+  min-width:112px;
+  max-width:100%;
+  min-height:34px!important;
+  height:auto;
+  aspect-ratio:auto!important;
+  padding:7px 10px!important;
+  border:1px solid #c7aa47;
+  border-bottom:1px solid #c7aa47!important;
+  border-radius:7px!important;
+  background:#f1e4ac;
+  color:#3a2c18;
+  box-shadow:none;
+  cursor:pointer;
+  line-height:1.15;
+  list-style:none;
+}
+.rendition-agents-panel .rendition-agent-accordion:not([open])>.rendition-agent-summary::-webkit-details-marker{display:none}
+.rendition-agents-panel .rendition-agent-accordion:not([open]) .rendition-agent-code{
+  display:inline!important;
+  grid-column:auto;
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  color:inherit;
+  font-size:12px;
+  font-weight:900;
+  line-height:1.1;
+  white-space:nowrap;
+}
+.rendition-agents-panel .rendition-agent-accordion:not([open]) .rendition-agent-kind,
+.rendition-agents-panel .rendition-agent-accordion:not([open]) .rendition-agent-name,
+.rendition-agents-panel .rendition-agent-accordion:not([open]) .rendition-agent-balance,
+.rendition-agents-panel .rendition-agent-accordion:not([open]) .rendition-agent-latest,
+.rendition-agents-panel .rendition-agent-accordion:not([open]) .rendition-open-label{display:none!important}
+.rendition-agents-panel .rendition-agent-accordion:not([open]).rendition-ambulant>.rendition-agent-summary{
+  border-color:#7c3347;
+  border-bottom-color:#7c3347!important;
+  background:#7c3347;
+  color:#fff8e2;
+}
+.rendition-agents-panel .rendition-agent-accordion[open]{
+  display:block;
+  flex:1 0 100%;
+  width:100%;
+  min-width:0;
+  max-width:none;
+  margin:0;
+  padding:0;
+  border:1px solid #ded3b4;
+  border-radius:8px;
+  background:#fffdf6;
+  box-shadow:none;
+  overflow:hidden;
+}
+.rendition-agents-panel .rendition-agent-accordion[open]>.rendition-agent-summary{
+  display:inline-flex!important;
+  flex-direction:row;
+  align-items:center;
+  justify-content:center;
+  width:auto;
+  min-width:112px;
+  min-height:34px!important;
+  aspect-ratio:auto!important;
+  margin:8px 8px 0;
+  padding:7px 10px!important;
+  border:1px solid #7c3347!important;
+  border-radius:7px!important;
+  background:#7c3347;
+  color:#fff8e2;
+  box-shadow:none;
+}
+.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-code{
+  display:inline!important;
+  grid-column:auto;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:inherit;
+  font-size:12px;
+  font-weight:900;
+  white-space:nowrap;
+}
+.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-kind,
+.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-name,
+.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-balance,
+.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-latest,
+.rendition-agents-panel .rendition-agent-accordion[open] .rendition-open-label{display:none!important}
+.rendition-agents-panel .rendition-agent-expanded{width:100%;padding:12px;background:#fffdf6}
+@media(max-width:700px){
+  .rendition-agents-panel .rendition-agent-list{display:flex!important;flex-wrap:wrap;gap:7px}
+  .rendition-agents-panel .rendition-agent-accordion:not([open])>.rendition-agent-summary{min-width:0;min-height:33px!important;padding:7px 8px!important}
+}
+
+/* FIX historial: cada registro tiene cinco campos; el código queda visible junto a su fecha. */
+.rendition-history-list .rendition-record>summary{
+  grid-template-columns:minmax(90px,auto) minmax(95px,auto) minmax(130px,1fr) minmax(120px,auto) auto;
+  align-items:center;
+}
+.rendition-history-list .rendition-record-agent-code{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:max-content;
+  max-width:100%;
+  padding:5px 7px;
+  border:1px solid #d9c993;
+  border-radius:5px;
+  background:#f1e4ac;
+  color:#64283a;
+  font-size:11px;
+  font-weight:900;
+  line-height:1.15;
+  white-space:nowrap;
+}
+@media(max-width:700px){
+  .rendition-history-list .rendition-record>summary{grid-template-columns:minmax(0,1fr) auto;gap:7px}
+  .rendition-history-list .rendition-record>summary>.rendition-record-date{grid-column:1;grid-row:1}
+  .rendition-history-list .rendition-record>summary>.rendition-record-agent-code{grid-column:2;grid-row:1;justify-self:end}
+  .rendition-history-list .rendition-record>summary>.rendition-record-period{grid-column:1/-1;grid-row:2}
+  .rendition-history-list .rendition-record>summary>.rendition-record-amount{grid-column:1;grid-row:3;text-align:left}
+  .rendition-history-list .rendition-record>summary>.badge{grid-column:2;grid-row:3;justify-self:end;align-self:center;max-width:145px}
+}

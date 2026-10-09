@@ -1,48 +1,38 @@
 import Link from "next/link";
-import { getCurrentContext, money } from "@/lib/accounting";
-import { formatAgencyDateTime } from "@/lib/agency-datetime";
+import { getCurrentContext } from "@/lib/accounting";
 import { AgencyCodeInput } from "@/components/agency-code-input";
 import { createAgencyAgent, deleteAgencyAgent } from "./actions";
 
-function AgentCard({ agent, pending, lastDate, canDelete }: { agent: any; pending: number; lastDate: string | null; canDelete: boolean }) {
+function AgentCard({ agent, canDelete }: { agent: any; canDelete: boolean }) {
   const subagent = agent.kind === "subagent";
-  const typeLabel = subagent ? "SUBAGENTE" : "AMBULANTE";
+  const typeLabel = subagent ? "subagente" : "ambulante";
   return (
-    <article className={"agency-agent-card " + (subagent ? "agency-subagent" : "agency-ambulant")}>
-      <div className="agency-card-controls">
-        <span className={agent.is_active ? "badge success" : "badge"}>{agent.is_active ? "Activo" : "Inactivo"}</span>
-        {canDelete && <details className="agency-delete-control">
-          <summary>Eliminar</summary>
-          <div className="agency-delete-content">
-            <p>Si ya tiene rendiciones, se desactiva para conservar su historial. Si no tiene movimientos, se elimina.</p>
+    <div className={"agency-agent-button-row " + (subagent ? "agency-subagent" : "agency-ambulant")}>
+      <Link
+        href={"/pagos?agent=" + agent.id}
+        className="agency-agent-code-button"
+        aria-label={"Abrir rendición de " + typeLabel + " " + agent.code}
+        title={"Abrir rendición de " + typeLabel + " " + agent.code}
+      >
+        {agent.code || "SIN CÓDIGO"}
+      </Link>
+      <details className="agency-agent-actions">
+        <summary aria-label={"Opciones de " + typeLabel + " " + agent.code} title="Opciones">⋯</summary>
+        <div className="agency-agent-actions-menu">
+          <span className={agent.is_active ? "badge success" : "badge"}>{agent.is_active ? "Activo" : "Inactivo"}</span>
+          <Link href={"/agencias/" + agent.id}>Editar comisión</Link>
+          {canDelete && (
             <form action={deleteAgencyAgent}>
               <input type="hidden" name="agent_id" value={agent.id} />
               <label><input type="checkbox" name="confirm_delete" value="yes" required /> Confirmo eliminar {agent.code}</label>
-              <button className="button danger small" type="submit">Confirmar</button>
+              <button className="button danger small" type="submit">Confirmar baja</button>
             </form>
-          </div>
-        </details>}
-      </div>
-      <Link href={"/pagos?agent=" + agent.id} className="agency-card-open">
-        <div className="agency-card-top">
-          <span className="agency-kind">{typeLabel}</span>
+          )}
         </div>
-        <div className="agency-code-block">{agent.code || "SIN CÓDIGO"}</div>
-        <div className="agency-card-main">
-          <div><h3>{agent.full_name}</h3><p>{subagent ? "Subagente" : "Ambulante"}</p></div>
-          <span className="agency-card-open-arrow" aria-hidden="true">↗</span>
-        </div>
-        <div className="agency-card-metrics">
-          <div><span>Saldo pendiente</span><strong>{money(pending)}</strong></div>
-          <div><span>Última rendición</span><strong>{lastDate || "—"}</strong></div>
-        </div>
-        <span className="agency-enter">Abrir Rendiciones →</span>
-      </Link>
-      <Link href={"/agencias/" + agent.id} className="agency-config-link">Editar porcentajes de comisión →</Link>
-    </article>
+      </details>
+    </div>
   );
 }
-
 export default async function AgenciasPage({
   searchParams,
 }: {
@@ -58,18 +48,12 @@ export default async function AgenciasPage({
   const canCreateAgents = Boolean(staffPermissions?.can_create_agents);
   const canDeleteAgents = Boolean(staffPermissions?.can_delete_agents);
 
-  const [{ data: agents }, { data: renditions }] = await Promise.all([
-    supabase.from("agency_agents").select("id,kind,code,full_name,is_active,phone,whatsapp").eq("organization_id", organization.id).order("kind").order("code"),
-    supabase.from("agency_renditions").select("id,agent_id,rendition_date,created_at,amount_due,status,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(amount)").eq("organization_id", organization.id).neq("status", "void").order("created_at", { ascending: false }),
-  ]);
-
-  const pending = new Map<string, number>();
-  const lastDate = new Map<string, string>();
-  for (const row of renditions ?? []) {
-    if (!lastDate.has(row.agent_id)) lastDate.set(row.agent_id, formatAgencyDateTime(row.created_at ?? row.rendition_date));
-    const received = (Array.isArray(row.agency_rendition_payments) ? row.agency_rendition_payments : []).reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
-    pending.set(row.agent_id, (pending.get(row.agent_id) ?? 0) + Math.max(0, Number(row.amount_due ?? 0) - received));
-  }
+  const { data: agents } = await supabase
+    .from("agency_agents")
+    .select("id,kind,code,full_name,is_active,phone,whatsapp")
+    .eq("organization_id", organization.id)
+    .order("kind")
+    .order("code");
 
   const allAgents = agents ?? [];
   const subagents = allAgents.filter((agent) => agent.kind === "subagent" && agent.is_active);
@@ -79,7 +63,7 @@ export default async function AgenciasPage({
   return (
     <div className="page">
       <div className="topbar">
-        <div><p className="eyebrow">ADMINISTRACIÓN DE AGENTES</p><h1>Subagentes y ambulantes</h1><p className="muted">Tarjetas rectangulares con código automático y acceso directo a sus Rendiciones.</p></div>
+        <div><p className="eyebrow">ADMINISTRACIÓN DE AGENTES</p><h1>Subagentes y ambulantes</h1><p className="muted">Botones compactos con el código del agente. Al tocarlos se abre su rendición.</p></div>
         <Link href="/pagos" className="button primary">Ir a Rendiciones</Link>
       </div>
       {params.resultado === "archivado" && <p className="message success-message">El agente {params.codigo || ""} tenía rendiciones. Se desactivó para conservar su historial.</p>}
@@ -114,17 +98,17 @@ export default async function AgenciasPage({
       </section> : <section className="agency-create-panel"><div className="panel-head"><div><h2>Alta de agentes restringida</h2><p className="muted">El titular debe habilitarte el permiso de alta de subagentes/ambulantes.</p></div></div></section>}
 
       <section className="agency-section agency-section-subagents">
-        <div className="agency-section-head"><div><span>01</span><div><h2>Subagentes</h2><p>Tarjetas amarillas y rojas · un clic para rendir</p></div></div><strong>{subagents.length}</strong></div>
-        <div className="agency-card-grid">
-          {subagents.map((agent) => <AgentCard key={agent.id} agent={agent} pending={pending.get(agent.id) ?? 0} lastDate={lastDate.get(agent.id) ?? null} canDelete={canDeleteAgents} />)}
+        <div className="agency-section-head"><div><span>01</span><div><h2>Subagentes</h2><p>Botones compactos · un clic para rendir</p></div></div><strong>{subagents.length}</strong></div>
+        <div className="agency-agent-button-list">
+          {subagents.map((agent) => <AgentCard key={agent.id} agent={agent} canDelete={canDeleteAgents} />)}
           {!subagents.length && <div className="agency-empty">Todavía no hay subagentes activos cargados.</div>}
         </div>
       </section>
 
       <section className="agency-section agency-section-ambulants">
-        <div className="agency-section-head"><div><span>02</span><div><h2>Ambulantes</h2><p>Tarjetas con colores alternados y acceso a su historial</p></div></div><strong>{ambulants.length}</strong></div>
-        <div className="agency-card-grid">
-          {ambulants.map((agent) => <AgentCard key={agent.id} agent={agent} pending={pending.get(agent.id) ?? 0} lastDate={lastDate.get(agent.id) ?? null} canDelete={canDeleteAgents} />)}
+        <div className="agency-section-head"><div><span>02</span><div><h2>Ambulantes</h2><p>Botones compactos · un clic para rendir</p></div></div><strong>{ambulants.length}</strong></div>
+        <div className="agency-agent-button-list">
+          {ambulants.map((agent) => <AgentCard key={agent.id} agent={agent} canDelete={canDeleteAgents} />)}
           {!ambulants.length && <div className="agency-empty">Todavía no hay ambulantes activos cargados.</div>}
         </div>
       </section>
@@ -132,8 +116,8 @@ export default async function AgenciasPage({
       {!!archived.length && (
         <section className="agency-section archived-agents-section">
           <div className="agency-section-head"><div><span>03</span><div><h2>Agentes inactivos</h2><p>Se conservan acá si tenían rendiciones registradas</p></div></div><strong>{archived.length}</strong></div>
-          <div className="agency-card-grid">
-            {archived.map((agent) => <AgentCard key={agent.id} agent={agent} pending={pending.get(agent.id) ?? 0} lastDate={lastDate.get(agent.id) ?? null} canDelete={canDeleteAgents} />)}
+          <div className="agency-agent-button-list">
+            {archived.map((agent) => <AgentCard key={agent.id} agent={agent} canDelete={canDeleteAgents} />)}
           </div>
         </section>
       )}
