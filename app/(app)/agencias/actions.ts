@@ -11,19 +11,56 @@ async function getOrg() {
   const claims = authData?.claims;
   if (!claims?.sub) redirect("/login");
 
-  const { data: member } = await supabase.from("organization_members").select("organization_id").eq("user_id", claims.sub).order("created_at", { ascending: true }).limit(1).maybeSingle();
-  if (!member) throw new Error("No hay una empresa configurada.");
-  return { supabase, organizationId: member.organization_id };
+  const { data: member, error: memberError } = await supabase
+    .from("organization_members")
+    .select("organization_id,role")
+    .eq("user_id", claims.sub)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (memberError || !member) throw new Error("No hay una empresa configurada.");
+
+  const manager = member.role === "owner" || member.role === "admin";
+  const { data: permissions } = manager
+    ? { data: { can_create_agents: true, can_delete_agents: true, can_create_renditions: true, can_edit_renditions: true, can_delete_renditions: true, can_register_payments: true, can_manage_backups: true } }
+    : await supabase
+        .from("organization_member_permissions")
+        .select("can_create_agents,can_delete_agents,can_create_renditions,can_edit_renditions,can_delete_renditions,can_register_payments,can_manage_backups")
+        .eq("organization_id", member.organization_id)
+        .eq("user_id", claims.sub)
+        .maybeSingle();
+
+  return { supabase, organizationId: member.organization_id, role: member.role, permissions: permissions ?? {} };
 }
 
 export async function createAgencyAgent(formData: FormData) {
-  const { supabase, organizationId } = await getOrg();
-  const kind = String(formData.get("kind") ?? "subagent") as "subagent" | "ambulant";
+  const { supabase, organizationId, permissions } = await getOrg();
+  const kindValue = String(formData.get("kind") ?? "subagent");
   const code = String(formData.get("code") ?? "").trim();
-  if (!["subagent", "ambulant"].includes(kind)) throw new Error("Tipo de agencia inválido.");
-  if (!/^\d{3}-\d{3}-\d{2}$/.test(code)) throw new Error("El código debe tener el formato 251-010-01.");
   const fullName = String(formData.get("full_name") ?? "").trim();
-  if (!fullName) throw new Error("El nombre es obligatorio.");
+  const kindLabel = kindValue === "ambulant" ? "ambulante" : "subagente";
+
+  if (!permissions.can_create_agents) redirect("/agencias?error=sin-permiso-alta");
+  if (!["subagent", "ambulant"].includes(kindValue)) redirect("/agencias?error=tipo-invalido");
+  if (!/^\d{3}-\d{3}-\d{2}$/.test(code)) {
+    redirect("/agencias?error=codigo-invalido&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
+  }
+  if (!fullName) redirect("/agencias?error=nombre-obligatorio&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
+  const kind = kindValue as "subagent" | "ambulant";
+
+  // Friendly pre-check; the unique database index is the concurrency-safe final guard.
+  const { data: duplicate, error: duplicateError } = await supabase
+    .from("agency_agents")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("kind", kind)
+    .eq("code", code)
+    .limit(1)
+    .maybeSingle();
+  if (duplicateError) redirect("/agencias?error=alta-fallida");
+  if (duplicate) {
+    redirect("/agencias?error=duplicado&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
+  }
 
   const { error } = await supabase.rpc("create_agency_agent", {
     p_organization_id: organizationId,
@@ -36,13 +73,21 @@ export async function createAgencyAgent(formData: FormData) {
     p_address: String(formData.get("address") ?? "").trim() || undefined,
     p_notes: String(formData.get("notes") ?? "").trim() || undefined,
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    const normalized = error.message.toLowerCase();
+    if (error.code === "23505" || normalized.includes("ya está cargado") || normalized.includes("duplicate key")) {
+      redirect("/agencias?error=duplicado&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
+    }
+    if (normalized.includes("permiso")) redirect("/agencias?error=sin-permiso-alta");
+    redirect("/agencias?error=alta-fallida");
+  }
   revalidatePath("/agencias");
-  redirect("/agencias");
+  redirect("/agencias?resultado=creado&codigo=" + encodeURIComponent(code));
 }
 
 export async function createAgencyRendition(formData: FormData) {
-  const { supabase, organizationId } = await getOrg();
+  const { supabase, organizationId, permissions } = await getOrg();
+  if (!permissions.can_create_renditions) redirect("/pagos?error=sin-permiso-rendicion");
   const agentId = String(formData.get("agent_id") ?? "").trim();
   const submittedDate = String(formData.get("rendition_date") ?? "").trim();
   const renditionDate = submittedDate || todayInAgencyTimeZone();
@@ -83,16 +128,20 @@ export async function createAgencyRendition(formData: FormData) {
     p_reference: String(formData.get("reference") ?? "").trim() || undefined,
     p_notes: String(formData.get("notes") ?? "").trim() || undefined,
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.message.toLowerCase().includes("permiso")) redirect("/pagos?error=sin-permiso-rendicion");
+    redirect("/pagos?error=rendicion-fallida&agent=" + encodeURIComponent(agentId));
+  }
 
   revalidatePath("/agencias");
   revalidatePath("/agencias/" + agentId);
   revalidatePath("/pagos");
-  redirect("/pagos?agent=" + agentId);
+  redirect("/pagos?agent=" + agentId + "&resultado=rendicion-creada");
 }
 
 export async function receiveAgencyRendition(formData: FormData) {
-  const { supabase, organizationId } = await getOrg();
+  const { supabase, organizationId, permissions } = await getOrg();
+  if (!permissions.can_register_payments) redirect("/pagos?error=sin-permiso-cobro");
   const renditionId = String(formData.get("rendition_id") ?? "");
   const agentId = String(formData.get("agent_id") ?? "");
   const { data: cashAccount, error: cashLookupError } = await supabase
@@ -127,16 +176,20 @@ export async function receiveAgencyRendition(formData: FormData) {
     p_reference: String(formData.get("reference") ?? "").trim() || undefined,
     p_notes: String(formData.get("notes") ?? "").trim() || undefined,
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.message.toLowerCase().includes("permiso")) redirect("/pagos?error=sin-permiso-cobro");
+    redirect("/pagos?error=cobro-fallido&agent=" + encodeURIComponent(agentId));
+  }
   revalidatePath("/agencias");
   revalidatePath(`/agencias/${agentId}`);
   revalidatePath("/movimientos");
   revalidatePath("/dashboard");
-  redirect(`/agencias/${agentId}`);
+  redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=cobro-registrado");
 }
 
 export async function deleteAgencyAgent(formData: FormData) {
-  const { supabase, organizationId } = await getOrg();
+  const { supabase, organizationId, permissions } = await getOrg();
+  if (!permissions.can_delete_agents) redirect("/agencias?error=sin-permiso-baja");
   const agentId = String(formData.get("agent_id") ?? "").trim();
   if (!agentId || formData.get("confirm_delete") !== "yes") {
     throw new Error("Confirmá la eliminación del subagente o ambulante.");
@@ -148,8 +201,8 @@ export async function deleteAgencyAgent(formData: FormData) {
     .eq("id", agentId)
     .eq("organization_id", organizationId)
     .maybeSingle();
-  if (agentError) throw new Error(agentError.message);
-  if (!agent) throw new Error("No se encontró ese subagente o ambulante.");
+  if (agentError) redirect("/agencias?error=baja-fallida");
+  if (!agent) redirect("/agencias?error=agente-no-encontrado");
 
   const { data: existingRenditions, error: renditionError } = await supabase
     .from("agency_renditions")
@@ -157,7 +210,7 @@ export async function deleteAgencyAgent(formData: FormData) {
     .eq("agent_id", agentId)
     .eq("organization_id", organizationId)
     .limit(1);
-  if (renditionError) throw new Error(renditionError.message);
+  if (renditionError) redirect("/agencias?error=baja-fallida");
 
   if ((existingRenditions ?? []).length > 0) {
     const { error } = await supabase
@@ -165,7 +218,7 @@ export async function deleteAgencyAgent(formData: FormData) {
       .update({ is_active: false })
       .eq("id", agentId)
       .eq("organization_id", organizationId);
-    if (error) throw new Error(error.message);
+    if (error) redirect("/agencias?error=baja-fallida");
     revalidatePath("/agencias");
     revalidatePath("/pagos");
     redirect("/agencias?resultado=archivado&codigo=" + encodeURIComponent(agent.code ?? ""));
@@ -176,7 +229,10 @@ export async function deleteAgencyAgent(formData: FormData) {
     .delete()
     .eq("id", agentId)
     .eq("organization_id", organizationId);
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.code === "42501" || error.message.toLowerCase().includes("permission")) redirect("/agencias?error=sin-permiso-baja");
+    redirect("/agencias?error=baja-fallida");
+  }
   revalidatePath("/agencias");
   revalidatePath("/pagos");
   redirect("/agencias?resultado=eliminado&codigo=" + encodeURIComponent(agent.code ?? ""));
