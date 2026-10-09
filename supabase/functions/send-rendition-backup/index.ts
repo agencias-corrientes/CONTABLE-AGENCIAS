@@ -134,25 +134,33 @@ function formatBackupHtml(text: string): string {
 
 async function sendDailyCloseBackups(
   admin: any,
-  googleAppsScriptUrl: string | undefined,
-  googleAppsScriptToken: string | undefined,
+  resendApiKey: string | undefined,
+  resendFromEmail: string | undefined,
+  organizationIdFilter?: string,
+  onlyRenditionId?: string,
 ) {
-  if (!googleAppsScriptUrl || !googleAppsScriptToken) {
+  if (!resendApiKey) {
     return reply({
       error: "email_provider_not_configured",
-      message:
-        "Configure GOOGLE_APPS_SCRIPT_URL y GOOGLE_APPS_SCRIPT_TOKEN en los secretos de Supabase.",
+      message: "Configure RESEND_API_KEY en los secretos de la función de Supabase.",
     }, 503);
   }
+
+  // Sin dominio verificado, Resend solo permite probar con el correo del titular de la cuenta.
+  const sender = String(resendFromEmail ?? "").trim() ||
+    "Agencias Corrientes <onboarding@resend.dev>";
 
   const now = new Date();
   const dateInfo = agencyDateInfo(now);
 
-  const { data: allRows, error: lookupError } = await admin
+  let outboxQuery = admin
     .from("agency_rendition_backup_outbox")
     .select("*")
-    .order("created_at", { ascending: false })
-    .limit(10000);
+    .order("created_at", { ascending: false });
+  if (organizationIdFilter) {
+    outboxQuery = outboxQuery.eq("organization_id", organizationIdFilter);
+  }
+  const { data: allRows, error: lookupError } = await outboxQuery.limit(10000);
 
   if (lookupError) {
     return reply({ error: "daily_backup_lookup_failed" }, 500);
@@ -184,6 +192,7 @@ async function sendDailyCloseBackups(
 
   const pendingRows = Array.from(latestByRendition.values())
     .filter((row) => {
+      if (onlyRenditionId && String(row.rendition_id) !== onlyRenditionId) return false;
       if (row.status === "pending" || row.status === "failed") {
         return true;
       }
@@ -237,6 +246,7 @@ async function sendDailyCloseBackups(
     organization_id: string;
     renditions: number;
     status: string;
+    error?: string;
   }[] = [];
 
   for (const [organizationId, rows] of batches) {
@@ -372,84 +382,85 @@ async function sendDailyCloseBackups(
         "límite de adjuntos. Los datos de las rendiciones están incluidos.";
     }
 
-    // Envía el correo mediante la aplicación web de Google Apps Script.
+    // Envío transaccional inmediato mediante Resend, con clave de idempotencia para evitar duplicados.
+    const idempotencySource = [
+      "agency-rendition-backup",
+      organizationId,
+      dateInfo.isoDay,
+      claimed.map((row) => String(row.id)).sort().join(","),
+    ].join("|");
+    const idempotencyDigest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(idempotencySource),
+    );
+    const idempotencyKey = "agency-backup-" + Array.from(
+      new Uint8Array(idempotencyDigest),
+      (byte) => byte.toString(16).padStart(2, "0"),
+    ).join("").slice(0, 48);
+
     let providerResponse: Response;
     let providerText = "";
-
     try {
-      providerResponse = await fetch(googleAppsScriptUrl, {
+      providerResponse = await fetch("https://api.resend.com/emails", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Authorization": "Bearer " + resendApiKey,
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
         body: JSON.stringify({
-          secret: googleAppsScriptToken,
-          to: recipient,
+          from: sender,
+          to: [recipient],
           subject: "Backup diario de rendiciones - " + dateInfo.displayDay,
           text: textBody,
           html: formatBackupHtml(textBody),
           ...(attachments.length ? { attachments } : {}),
         }),
-        redirect: "follow",
-        signal: AbortSignal.timeout(60000),
+        signal: AbortSignal.timeout(30000),
       });
-
       providerText = await providerResponse.text();
     } catch (cause) {
-      const reason = cause instanceof Error
-        ? cause.message
-        : "Error de conexión con Google Apps Script";
-
+      const reason = cause instanceof Error ? cause.message : "No se pudo conectar con Resend.";
       await admin
         .from("agency_rendition_backup_outbox")
-        .update({
-          status: "failed",
-          last_error: reason.slice(0, 1000),
-        })
+        .update({ status: "failed", last_error: String(reason).slice(0, 1000) })
         .in("id", claimed.map((row) => row.id));
-
       results.push({
         organization_id: organizationId,
         renditions: claimed.length,
         status: "failed",
+        error: String(reason).slice(0, 500),
       });
-
       continue;
     }
 
     let providerResult: Record<string, unknown> | null = null;
-
     try {
       providerResult = JSON.parse(providerText);
     } catch {
       providerResult = null;
     }
 
-    if (
-      !providerResponse.ok ||
-      providerResult?.ok !== true ||
-      providerResult?.mensaje !== "Correo enviado"
-    ) {
+    const providerMessageId = typeof providerResult?.id === "string" ? providerResult.id : "";
+    if (!providerResponse.ok || !providerMessageId) {
       const reason =
-        typeof providerResult?.error === "string"
+        typeof providerResult?.message === "string"
+          ? providerResult.message
+          : typeof providerResult?.error === "string"
           ? providerResult.error
-          : typeof providerResult?.detalle === "string"
-          ? providerResult.detalle
-          : providerText.slice(0, 1000) ||
-            "Google Apps Script rechazó el envío";
+          : providerText.slice(0, 1000) || "Resend rechazó el envío.";
 
       await admin
         .from("agency_rendition_backup_outbox")
-        .update({
-          status: "failed",
-          last_error: String(reason).slice(0, 1000),
-        })
+        .update({ status: "failed", last_error: String(reason).slice(0, 1000) })
         .in("id", claimed.map((row) => row.id));
 
       results.push({
         organization_id: organizationId,
         renditions: claimed.length,
         status: "failed",
+        error: String(reason).slice(0, 500),
       });
-
       continue;
     }
 
@@ -466,6 +477,16 @@ async function sendDailyCloseBackups(
       organization_id: organizationId,
       renditions: claimed.length,
       status: markSentError ? "sent_status_update_failed" : "sent",
+    });
+  }
+
+  if (onlyRenditionId) {
+    const result = results.find((item) => item.organization_id === organizationIdFilter);
+    return reply({
+      status: result?.status === "sent" ? "sent" : result?.status ?? "failed",
+      date: dateInfo.displayDay,
+      renditions: result?.renditions ?? 0,
+      error: result?.error,
     });
   }
 
@@ -491,8 +512,8 @@ Deno.serve(async (request: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
     Deno.env.get("SUPABASE_SECRET_KEY");
 
-  const googleAppsScriptUrl = Deno.env.get("GOOGLE_APPS_SCRIPT_URL");
-  const googleAppsScriptToken = Deno.env.get("GOOGLE_APPS_SCRIPT_TOKEN");
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  const resendFromEmail = Deno.env.get("RESEND_FROM_EMAIL");
 
   if (!supabaseUrl || !anonKey || !serviceKey) {
     return reply({ error: "supabase_function_secrets_missing" }, 500);
@@ -502,6 +523,8 @@ Deno.serve(async (request: Request) => {
     outbox_id?: string;
     rendition_id?: string;
     daily_close?: boolean;
+    manual_close?: boolean;
+    organization_id?: string;
   };
 
   try {
@@ -557,10 +580,31 @@ Deno.serve(async (request: Request) => {
   });
 
   if (cronAuthorized) {
+    return await sendDailyCloseBackups(admin, resendApiKey, resendFromEmail);
+  }
+
+  if (payload.manual_close === true) {
+    const manualOrganizationId = String(payload.organization_id ?? "").trim();
+    if (!manualOrganizationId) {
+      return reply({ error: "organization_id_required_for_manual_backup" }, 400);
+    }
+
+    const { data: ownerMembership, error: ownerMembershipError } = await admin
+      .from("organization_members")
+      .select("role")
+      .eq("organization_id", manualOrganizationId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (ownerMembershipError || ownerMembership?.role !== "owner") {
+      return reply({ error: "manual_backup_owner_only" }, 403);
+    }
+
     return await sendDailyCloseBackups(
       admin,
-      googleAppsScriptUrl,
-      googleAppsScriptToken,
+      resendApiKey,
+      resendFromEmail,
+      manualOrganizationId,
     );
   }
 
@@ -625,11 +669,12 @@ Deno.serve(async (request: Request) => {
     }, 409);
   }
 
-  // El cierre diario agrupa las rendiciones en un único correo por agencia.
-  return reply({
-    status: "queued",
-    deferred_to_daily_close: true,
-    message: "La copia quedó acumulada para el único correo de cierre diario.",
-    outbox_id: outbox.id,
-  });
+  // El reintento desde Personal envía esta rendición ahora, sin esperar al cierre.
+  return await sendDailyCloseBackups(
+    admin,
+    resendApiKey,
+    resendFromEmail,
+    String(outbox.organization_id),
+    String(outbox.rendition_id),
+  );
 });
