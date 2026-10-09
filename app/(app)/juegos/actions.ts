@@ -58,7 +58,8 @@ export async function createGameType(formData: FormData) {
 }
 
 export async function updateGameType(formData: FormData) {
-  const { supabase, organizationId } = await getOrg();
+  const { supabase, organizationId, role } = await getOrg();
+  if (role !== "owner" && role !== "admin") redirect("/juegos?error=solo-administrador");
   const id = clean(formData.get("id"));
   const name = clean(formData.get("name"));
   const category = clean(formData.get("category")) || "Quiniela";
@@ -80,7 +81,8 @@ export async function updateGameType(formData: FormData) {
 }
 
 export async function deleteGameType(formData: FormData) {
-  const { supabase, organizationId } = await getOrg();
+  const { supabase, organizationId, role } = await getOrg();
+  if (role !== "owner" && role !== "admin") redirect("/juegos?error=solo-administrador");
   const id = clean(formData.get("id"));
   if (!id) throw new Error("Juego inválido.");
 
