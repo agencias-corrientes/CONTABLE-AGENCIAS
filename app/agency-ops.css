@@ -1394,3 +1394,64 @@
  .draw-period-status-actions{display:grid;grid-template-columns:1fr}
  .draw-period-status-actions .button{width:100%}
 }
+
+
+/* Operator rendition states are shown only after opening an operator. */
+.expanded-draw-period-list {
+  margin: 0 0 14px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid #eadfc5;
+}
+.rendition-status-summary-hint {
+  margin: 0;
+  padding: 8px 0;
+  max-width: 360px;
+  text-align: right;
+}
+.draw-period-chip.status-pending,
+.agency-agent-draw-chip.status-pending {
+  color: #fff;
+  background: #c91f35;
+  border-color: #a80d23;
+  animation: agency-pending-pulse 1.15s ease-in-out infinite;
+}
+@keyframes agency-pending-pulse {
+  0%, 100% {
+    background: #c91f35;
+    color: #fff;
+    border-color: #a80d23;
+    box-shadow: 0 0 0 0 rgba(201, 31, 53, .16);
+  }
+  50% {
+    background: #fff0f1;
+    color: #a80d23;
+    border-color: #c91f35;
+    box-shadow: 0 0 0 3px rgba(201, 31, 53, .14);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .draw-period-chip.status-pending,
+  .agency-agent-draw-chip.status-pending {
+    animation: none;
+    background: #c91f35;
+    border-color: #a80d23;
+    color: #fff;
+  }
+}
+@media (max-width: 700px) {
+  .rendition-status-summary-hint {
+    text-align: left;
+    max-width: none;
+  }
+  .rendition-agent-summary {
+    gap: 8px;
+    padding: 10px;
+  }
+  .rendition-agent-name {
+    flex: 1 1 100%;
+    order: 3;
+  }
+  .rendition-open-label {
+    margin-left: auto;
+  }
+}
