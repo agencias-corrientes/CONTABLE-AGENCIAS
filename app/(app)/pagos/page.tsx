@@ -84,7 +84,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
           return (
             <details className="rendition-record" key={row.id}>
               <summary>
-                <span className="rendition-record-date">{row.rendition_date}<small>{formatAgencyDateTime(row.created_at)}</small></span>
+                <span className="rendition-record-date">{formatAgencyDate(row.rendition_date)}<small>{formatAgencyDateTime(row.created_at)}</small></span>
                 <span className="rendition-record-period">{row.game_period || "Período no identificado"}{row.draw_number ? <small>Sorteo {row.draw_number}</small> : null}</span>
                 <span className="rendition-record-amount">{money(row.amount_due, activeOrganization.currency_code)}<small>{row.capture_method === "manual" ? "Carga manual" : row.capture_method === "qr" ? "Foto / QR" : "Foto del ticket"}</small></span>
                 <span className={totals.pending <= 0 ? "badge success" : "badge"}>{totals.pending <= 0 ? "Saldada" : "Pendiente " + money(totals.pending, activeOrganization.currency_code)}</span>
@@ -99,7 +99,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                   <div>
                     <h4>Ticket, período y observaciones</h4>
                     <dl className="rendition-metadata">
-                      <div><dt>Fecha del juego</dt><dd>{row.rendition_date}</dd></div>
+                      <div><dt>Fecha del juego</dt><dd>{formatAgencyDate(row.rendition_date)}</dd></div>
                       <div><dt>Período / turno</dt><dd>{row.game_period || "—"}</dd></div>
                       <div><dt>Número de sorteo</dt><dd>{row.draw_number || "—"}</dd></div>
                       <div><dt>Registrada</dt><dd>{formatAgencyDateTime(row.created_at)}</dd></div>
@@ -174,9 +174,11 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   function AgentAccordion({ agent }: { agent: any }) {
     const agentRows = rows.filter((row) => row.agent_id === agent.id);
     const todayAgentRows = todayRows.filter((row) => row.agent_id === agent.id);
-    const received = agentRows.reduce((sum, row) => sum + rowTotals(row).received, 0);
-    const due = agentRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
-    const commission = agentRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_game_amounts) ? row.agency_rendition_game_amounts : []).reduce((acc: number, game: any) => acc + Number(game.commission_amount ?? 0), 0), 0);
+    // The "jornada actual" balance only includes renditions from the current operational day.
+    // Unpaid historical renditions remain visible in Rendiciones generales / Cobranzas.
+    const received = todayAgentRows.reduce((sum, row) => sum + rowTotals(row).received, 0);
+    const due = todayAgentRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
+    const commission = todayAgentRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_game_amounts) ? row.agency_rendition_game_amounts : []).reduce((acc: number, game: any) => acc + Number(game.commission_amount ?? 0), 0), 0);
     const pending = Math.max(0, due - received);
     const netDue = Math.max(0, due - commission);
     const last = agentRows[0];
@@ -187,7 +189,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
           <span className="rendition-agent-kind">{agentLabel(agent).toUpperCase()}</span>
           <strong className="rendition-agent-code">{agent.code}</strong>
           <span className="rendition-agent-name">{agent.full_name}</span>
-          <span className="rendition-agent-balance"><small>Saldo pendiente</small><strong>{money(pending, activeOrganization.currency_code)}</strong><small className="commission-note">Comisión: {money(commission, activeOrganization.currency_code)}</small></span>
+          <span className="rendition-agent-balance"><small>Pendiente de jornada</small><strong>{money(pending, activeOrganization.currency_code)}</strong><small className="commission-note">Comisión: {money(commission, activeOrganization.currency_code)}</small></span>
           <span className="rendition-agent-latest"><small>Última rendición</small><strong>{last ? formatAgencyDateTime(last.created_at) : "Sin rendiciones"}</strong></span>
           <span className="rendition-open-label">Abrir rendiciones ▾</span>
         </summary>
@@ -211,7 +213,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   return (
     <div className="page">
       <div className="topbar">
-        <div><p className="eyebrow">CONTROL OPERATIVO DIARIO</p><h1>Rendiciones</h1><p className="muted">Elegí un subagente o ambulante. La tarjeta se despliega para fotografiar el ticket, leer el QR o cargar importes manualmente.</p></div>
+        <div><p className="eyebrow">CONTROL OPERATIVO DIARIO</p><h1>Rendiciones</h1><p className="muted">Elegí un subagente o ambulante. Los botones compactos abren la carga de rendición del subagente o ambulante seleccionado.</p></div>
         <Link href="/agencias" className="button ghost">Administrar agentes</Link>
       </div>
 
@@ -250,7 +252,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       </form>
 
       <section className="panel rendition-agents-panel">
-        <div className="panel-head"><div><h2>Subagentes y ambulantes · jornada actual</h2><p className="muted">Cada tarjeta tiene el tamaño de una tarjeta de crédito. Al abrirla, la carga se centra debajo.</p></div><span className="muted">{filteredActiveAgents.length} visibles · {activeAgents.length} activos</span></div>
+        <div className="panel-head"><div><h2>Subagentes y ambulantes · jornada actual</h2><p className="muted">Elegí un botón para abrir la carga. Los saldos de esta sección corresponden únicamente a la jornada actual.</p></div><span className="muted">{filteredActiveAgents.length} visibles · {activeAgents.length} activos</span></div>
         <div className="rendition-agent-list">
           {filteredActiveAgents.map((agent) => <AgentAccordion key={agent.id} agent={agent} />)}
           {!filteredActiveAgents.length && <div className="agency-empty">{searchTerm ? "No hay subagentes ni ambulantes que coincidan con esa búsqueda." : "No hay agentes activos. "}<Link href="/agencias">Administrar subagentes y ambulantes</Link></div>}
@@ -264,7 +266,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             const total = dayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
             const ids = Array.from(new Set(dayRows.map((row) => String(row.agent_id))));
             return <details className="rendition-archive-day" key={day}>
-              <summary><span><strong>{day}</strong><small>{dayRows.length} rendiciones</small></span><strong>{money(total, activeOrganization.currency_code)}</strong><span className="rendition-open-label">Ver día ▾</span></summary>
+              <summary><span><strong>{formatAgencyDate(day)}</strong><small>{dayRows.length} rendiciones</small></span><strong>{money(total, activeOrganization.currency_code)}</strong><span className="rendition-open-label">Ver día ▾</span></summary>
               <div className="rendition-archive-agents">
                 {ids.map((id) => {
                   const agent = agentRows.find((item) => item.id === id);
@@ -309,7 +311,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
               return (
                 <details className="rendition-record voided-record" key={row.id}>
                   <summary>
-                    <span className="rendition-record-date">{row.rendition_date}<small>{formatAgencyDateTime(row.created_at)}</small></span>
+                    <span className="rendition-record-date">{formatAgencyDate(row.rendition_date)}<small>{formatAgencyDateTime(row.created_at)}</small></span>
                     <span className="rendition-record-period">{agent ? agent.code + " · " + agent.full_name : "Agente"}</span>
                     <span className="rendition-record-amount">{money(row.amount_due, activeOrganization.currency_code)}<small>Anulada</small></span>
                     <span className="badge">Historial</span>

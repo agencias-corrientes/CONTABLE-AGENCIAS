@@ -409,3 +409,22 @@
  .landing-role-enter{white-space:normal}
 }
 @media(max-width:440px){.rendition-agents-panel .rendition-agent-list{grid-template-columns:1fr}.rendition-agents-panel .rendition-agent-summary{min-height:160px}}
+
+
+/* Compact, button-like agent picker: only the selected operator expands to full width. */
+.rendition-agent-list{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px}
+.rendition-agent-accordion{flex:0 1 205px;max-width:240px;min-width:155px;border-radius:10px}
+.rendition-agent-accordion[open]{flex:1 0 100%;max-width:none;width:100%}
+.rendition-agent-summary{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:5px;min-height:82px;padding:10px 12px;border-radius:9px;cursor:pointer}
+.rendition-agent-code{font-size:13px;padding:5px 7px}
+.rendition-agent-name{font-size:12px;line-height:1.25;overflow-wrap:anywhere}
+.rendition-agent-balance{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.rendition-agent-balance small{font-size:9px}
+.rendition-agent-balance strong{font-size:11px;margin:0}
+.rendition-agent-balance .commission-note{display:none}
+.rendition-agent-latest{display:none}
+.rendition-open-label{font-size:10px;white-space:normal}
+.rendition-agent-accordion[open]>.rendition-agent-summary{width:max-content;max-width:100%;min-height:0;min-width:205px;border-radius:9px 9px 0 0}
+.rendition-agent-expanded{width:100%}
+.rendition-record-date{font-variant-numeric:tabular-nums}
+@media(max-width:700px){.rendition-agent-accordion{flex:1 1 145px;max-width:none;min-width:140px}.rendition-agent-accordion[open]{flex-basis:100%}.rendition-agent-summary{min-height:76px;padding:9px}.rendition-agent-accordion[open]>.rendition-agent-summary{min-width:0}.rendition-agent-balance{grid-column:auto}}

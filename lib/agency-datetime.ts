@@ -57,3 +57,14 @@ export function formatAgencyDateTime(value: string | null | undefined): string {
     timeStyle: "short",
   }).format(date);
 }
+
+
+/** Format a date-only value as DD/MM/YYYY without timezone conversion. */
+export function formatAgencyDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const match = String(value).match(/^(\\d{4})-(\\d{2})-(\\d{2})/);
+  if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("es-AR", { timeZone: AGENCY_TIME_ZONE, day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
+}
