@@ -173,3 +173,23 @@
 .success-message{background:#eef6ed;border:1px solid #c7dec7;color:#30603c;padding:11px 13px;border-radius:8px}
 @media(max-width:1050px){.rendition-agent-summary{grid-template-columns:auto auto 1fr auto;gap:8px}.rendition-agent-latest{display:none}.agency-create-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.agency-create-grid button{grid-column:1/-1}.agency-card-grid{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}}
 @media(max-width:700px){.rendition-agent-summary{grid-template-columns:auto 1fr auto;gap:7px;padding:11px}.rendition-agent-kind{grid-column:1/-1}.rendition-agent-code{grid-column:1}.rendition-agent-name{grid-column:2}.rendition-agent-balance{grid-column:1/3}.rendition-open-label{grid-column:3;grid-row:2/4;font-size:10px;white-space:normal}.rendition-record>summary{grid-template-columns:1fr auto;gap:6px}.rendition-record-period{grid-column:1}.rendition-record-amount{text-align:left;grid-column:1}.rendition-record>summary .badge{grid-column:2;grid-row:1/4;max-width:120px;white-space:normal}.rendition-detail-columns{grid-template-columns:1fr}.rendition-agent-expanded{padding:12px}.rendition-agent-expanded-head{align-items:flex-start;flex-direction:column}.rendition-mode-switch{width:100%}.rendition-mode-switch button{flex:1;padding:8px 6px;font-size:11px}.ticket-photo-picker{padding:16px 10px}.agency-create-grid{grid-template-columns:1fr}.agency-create-grid button{grid-column:auto}.agency-card-grid{grid-template-columns:1fr}.lottery-schedule-grid,.lottery-archive-groups{grid-template-columns:1fr}.agency-agent-card{min-height:160px}.agency-delete-content{width:min(250px,calc(100vw - 50px))}}
+
+
+/* Keep availability and destructive actions in a dedicated row so they never overlap. */
+.agency-card-controls{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  min-height:30px;
+  margin:0 0 4px;
+  position:relative;
+  z-index:3;
+}
+.agency-card-controls>.badge{flex-shrink:0}
+.agency-delete-control{position:relative;top:auto;right:auto;margin-left:auto;flex-shrink:0}
+.agency-delete-control>summary{white-space:nowrap}
+.agency-delete-content{top:calc(100% + 5px);right:0;z-index:10}
+.agency-agent-card:has(.agency-delete-control[open]){z-index:10}
+.error-message{border:1px solid #bb6d77;background:#fff0f1;color:#7c1e2e;padding:12px 14px;border-radius:9px}
+.success-message{padding:12px 14px;border-radius:9px}
