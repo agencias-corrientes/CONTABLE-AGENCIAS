@@ -85,6 +85,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             <details className="rendition-record" key={row.id}>
               <summary>
                 <span className="rendition-record-date">{formatAgencyDate(row.rendition_date)}<small>{formatAgencyDateTime(row.created_at)}</small></span>
+                <span className="rendition-record-agent-code">{agent.code}</span>
                 <span className="rendition-record-period">{row.game_period || "Período no identificado"}{row.draw_number ? <small>Sorteo {row.draw_number}</small> : null}</span>
                 <span className="rendition-record-amount">{money(row.amount_due, activeOrganization.currency_code)}<small>{row.capture_method === "manual" ? "Carga manual" : row.capture_method === "qr" ? "Foto / QR" : "Foto del ticket"}</small></span>
                 <span className={totals.pending <= 0 ? "badge success" : "badge"}>{totals.pending <= 0 ? "Saldada" : "Pendiente " + money(totals.pending, activeOrganization.currency_code)}</span>
@@ -185,13 +186,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     const subagent = agent.kind === "subagent";
     return (
       <details className={"rendition-agent-accordion " + (subagent ? "rendition-subagent" : "rendition-ambulant")} open={selectedAgentId === agent.id}>
-        <summary className="rendition-agent-summary">
-          <span className="rendition-agent-kind">{agentLabel(agent).toUpperCase()}</span>
+        <summary className="rendition-agent-summary" aria-label={agentLabel(agent) + " " + agent.code + " — abrir rendición"}>
           <strong className="rendition-agent-code">{agent.code}</strong>
-          <span className="rendition-agent-name">{agent.full_name}</span>
-          <span className="rendition-agent-balance"><small>Pendiente de jornada</small><strong>{money(pending, activeOrganization.currency_code)}</strong><small className="commission-note">Comisión: {money(commission, activeOrganization.currency_code)}</small></span>
-          <span className="rendition-agent-latest"><small>Última rendición</small><strong>{last ? formatAgencyDateTime(last.created_at) : "Sin rendiciones"}</strong></span>
-          <span className="rendition-open-label">Abrir rendiciones ▾</span>
         </summary>
         <div className="rendition-agent-expanded">
           <div className="rendition-agent-expanded-head">

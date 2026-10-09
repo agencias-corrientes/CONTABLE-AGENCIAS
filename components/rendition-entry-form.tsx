@@ -194,6 +194,8 @@ export function RenditionEntryForm({ agentId, games, today, initialRendition }: 
   const [notes, setNotes] = useState(initialRendition?.notes ?? "");
   const [ocrText, setOcrText] = useState("");
   const [fileName, setFileName] = useState("");
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
+  const [photoExpanded, setPhotoExpanded] = useState(false);
   const [progress, setProgress] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -209,6 +211,8 @@ export function RenditionEntryForm({ agentId, games, today, initialRendition }: 
     setError("");
     setNotice("");
     setFileName(file.name);
+    setPhotoPreviewUrl(URL.createObjectURL(file));
+    setPhotoExpanded(false);
     setOcrText("");
     let detectedQr = "";
     try {
@@ -296,13 +300,15 @@ export function RenditionEntryForm({ agentId, games, today, initialRendition }: 
         <div className="ticket-capture-panel">
           <label className="ticket-photo-picker">
             <span className="ticket-photo-icon" aria-hidden="true">▧</span>
-            <strong>Fotografiá el ticket completo</strong>
-            <span>Apuntá la cámara del celular al ticket. Se intentará leer el QR y reconocer juego, importe, fecha y período.</span>
+            <strong>Seleccionar foto del ticket</strong>
+            <span>Elegí una imagen para leer el QR y reconocer los importes.</span>
             <input type="file" name="ticket_photo" accept="image/jpeg,image/png,image/webp" capture="environment" disabled={busy} onChange={(event) => {
               const file = event.target.files?.[0];
               if (file) void processTicket(file);
             }} />
           </label>
+          {photoPreviewUrl && <div className="ticket-photo-preview"><button type="button" className="ticket-photo-preview-button" onClick={() => setPhotoExpanded(true)} aria-label="Ampliar foto del ticket"><img src={photoPreviewUrl} alt="Vista previa del ticket cargado" /><span>Ampliar foto</span></button></div>}
+          {photoExpanded && photoPreviewUrl && <div className="ticket-photo-lightbox" role="dialog" aria-modal="true" aria-label="Foto del ticket ampliada" onClick={() => setPhotoExpanded(false)}><button type="button" className="ticket-photo-lightbox-close" onClick={() => setPhotoExpanded(false)}>Cerrar ✕</button><img src={photoPreviewUrl} alt="Foto del ticket ampliada" onClick={(event) => event.stopPropagation()} /></div>}
           <p className="muted small-text">También podés subir una foto guardada. La lectura se procesa en el navegador; no se guarda la imagen.</p>
           {fileName && <p className="ticket-file-label">Ticket cargado: <strong>{fileName}</strong></p>}
           {busy && <p className="ticket-read-progress" role="status">{progress}</p>}
