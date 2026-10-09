@@ -93,7 +93,14 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     const agentTodayRows = todayRows.filter((row) => String(row.agent_id) === agentId);
     const stored: any = dailyStatusByAgent.get(agentId);
     if (stored?.status === "incomplete") {
-      return { status: "incomplete" as const, note: String(stored.notes ?? ""), reportedAmount: null as number | null };
+      const reportedAmount = stored.reported_amount === null || stored.reported_amount === undefined
+        ? null
+        : Number(stored.reported_amount);
+      return {
+        status: "incomplete" as const,
+        note: String(stored.notes ?? ""),
+        reportedAmount: Number.isFinite(reportedAmount) && reportedAmount !== null && reportedAmount > 0 ? reportedAmount : null,
+      };
     }
     if (!agentTodayRows.length) {
       return { status: "missing" as const, note: "", reportedAmount: null as number | null };
@@ -250,7 +257,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             <div className="rendition-daily-status-copy">
               <strong>Estado diario: {dailyStatusLabels[dailyStatus.status]}</strong>
               <p className="muted">{dailyStatusDescriptions[dailyStatus.status]}</p>
-              {dailyStatus.status === "complete" && dailyStatus.reportedAmount !== null && <p className="rendition-confirmed-amount">Monto informado al confirmar: <strong>{money(dailyStatus.reportedAmount, activeOrganization.currency_code)}</strong></p>}
+              {dailyStatus.reportedAmount !== null && <p className="rendition-confirmed-amount">{dailyStatus.status === "incomplete" ? "Monto declarado al guardar como incompleta:" : "Monto informado al confirmar:"} <strong>{money(dailyStatus.reportedAmount, activeOrganization.currency_code)}</strong></p>}
               {dailyStatus.status === "incomplete" && dailyStatus.note && <p className="rendition-status-note"><strong>Observación:</strong> {dailyStatus.note}</p>}
             </div>
             {canCreateRenditions ? (
@@ -262,6 +269,9 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                   <label>Qué falta (opcional)
                     <input name="notes" defaultValue={dailyStatus.status === "incomplete" ? dailyStatus.note : ""} maxLength={500} placeholder="Ej.: falta el turno vespertino" />
                   </label>
+                  <label className="rendition-confirm-amount-label">Monto rendido hasta ahora
+                    <input type="number" name="reported_amount" min="0.01" max="999999999999.99" step="0.01" inputMode="decimal" defaultValue={dailyStatus.reportedAmount ?? ""} placeholder="Ej.: 12500,00" required />
+                  </label>
                   <button className="button ghost small" type="submit">{dailyStatus.status === "incomplete" ? "Guardar estado incompleto" : "Marcar como incompleta"}</button>
                 </form>
                 {todayAgentRows.length > 0 && dailyStatus.status !== "complete" && (
@@ -269,9 +279,6 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                     <input type="hidden" name="agent_id" value={agent.id} />
                     <input type="hidden" name="operational_date" value={today} />
                     <input type="hidden" name="status" value="complete" />
-                    <label className="rendition-confirm-amount-label">Monto total rendido por el operador
-                      <input type="number" name="reported_amount" min="0.01" max="999999999999.99" step="0.01" inputMode="decimal" placeholder="Ej.: 12500,00" required />
-                    </label>
                     <button className="button primary small" type="submit">Confirmar como rendida</button>
                   </form>
                 )}
@@ -297,9 +304,9 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         <Link href="/agencias" className="button ghost">Administrar agentes</Link>
       </div>
 
-      {params.resultado === "rendicion-creada" && <p className={params.backup === "enviado" ? "message success-message" : "message backup-pending-message"}>Rendición registrada correctamente. {params.backup === "enviado" ? "El backup de texto se envió al correo configurado para el titular." : params.backup === "dominio-no-verificado" ? "La rendición y su copia de texto se conservaron, pero Resend bloqueó el envío porque falta verificar un dominio y usarlo en la dirección del remitente. Configurá el dominio en Resend y RESEND_FROM_EMAIL en los secretos de la función de Supabase; después reintentá desde Personal y permisos." : "El respaldo quedó guardado, pero el correo no confirmó la entrega. Revisá el estado en Personal y permisos."}{params.foto === "no-adjunta" ? " La foto no se adjuntó; el respaldo de texto se conserva." : ""}</p>}
-      {params.resultado === "rendicion-corregida" && <p className={params.backup === "enviado" ? "message success-message" : "message backup-pending-message"}>Rendición corregida. Se conserva la auditoría y se creó una nueva revisión del respaldo. {params.backup === "enviado" ? "El correo se envió." : params.backup === "dominio-no-verificado" ? "Resend rechazó el envío porque falta verificar un dominio y usar una dirección remitente de ese dominio. La copia permanece guardada; configurá Resend y reintentá desde Personal y permisos." : "El correo no confirmó entrega; la revisión permanece guardada para reintento."}</p>}
-      {params.resultado === "rendicion-anulada" && <p className={params.backup === "enviado" ? "message success-message" : "message backup-pending-message"}>Rendición anulada con historial conservado. {params.backup === "enviado" ? "El respaldo actualizado se envió al correo del titular." : params.backup === "dominio-no-verificado" ? "La rendición anulada y su respaldo siguen registrados, pero Resend requiere verificar un dominio y configurar la dirección remitente antes de enviar. Reintentá después de esa configuración." : "El respaldo quedó registrado, pero el correo no confirmó entrega."}</p>}
+      {params.resultado === "rendicion-creada" && <p className={params.backup === "enviado" ? "message success-message" : "message backup-pending-message"}>Rendición registrada correctamente. {params.backup === "cierre-diario" ? "La copia quedó acumulada para enviarse en un único correo al cierre de la jornada." : params.backup === "enviado" ? "El backup de texto se envió al correo configurado para el titular." : params.backup === "dominio-no-verificado" ? "La rendición y su copia de texto se conservaron, pero Resend bloqueó el envío porque falta verificar un dominio y usarlo en la dirección del remitente. Configurá el dominio en Resend y RESEND_FROM_EMAIL en los secretos de la función de Supabase; después reintentá desde Personal y permisos." : "El respaldo quedó guardado, pero el correo no confirmó la entrega. Revisá el estado en Personal y permisos."}{params.foto === "no-adjunta" ? " La foto no se adjuntó; el respaldo de texto se conserva." : ""}</p>}
+      {params.resultado === "rendicion-corregida" && <p className={params.backup === "enviado" ? "message success-message" : "message backup-pending-message"}>Rendición corregida. Se conserva la auditoría y se creó una nueva revisión del respaldo. {params.backup === "cierre-diario" ? "La nueva revisión quedó acumulada para el correo único de cierre diario." : params.backup === "enviado" ? "El correo se envió." : params.backup === "dominio-no-verificado" ? "Resend rechazó el envío porque falta verificar un dominio y usar una dirección remitente de ese dominio. La copia permanece guardada; configurá Resend y reintentá desde Personal y permisos." : "El correo no confirmó entrega; la revisión permanece guardada para reintento."}</p>}
+      {params.resultado === "rendicion-anulada" && <p className={params.backup === "enviado" ? "message success-message" : "message backup-pending-message"}>Rendición anulada con historial conservado. {params.backup === "cierre-diario" ? "El respaldo actualizado quedó acumulado para el correo único de cierre diario." : params.backup === "enviado" ? "El respaldo actualizado se envió al correo del titular." : params.backup === "dominio-no-verificado" ? "La rendición anulada y su respaldo siguen registrados, pero Resend requiere verificar un dominio y configurar la dirección remitente antes de enviar. Reintentá después de esa configuración." : "El respaldo quedó registrado, pero el correo no confirmó entrega."}</p>}
       {params.resultado === "estado-rendida" && <p className="message success-message">Estado actualizado: rendición confirmada como completa para esta jornada.</p>}
       {params.resultado === "estado-incompleta" && <p className="message backup-pending-message">Estado actualizado: rendición marcada como incompleta. Podés dejar una observación para recordar qué falta.</p>}
       {params.error === "solo-titular-configuracion" && <p className="message error-message">La configuración es exclusiva del titular de la agencia.</p>}
