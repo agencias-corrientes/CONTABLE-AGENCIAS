@@ -166,7 +166,7 @@ export async function createAgencyRendition(formData: FormData) {
     redirect("/pagos?error=rendicion-fallida&agent=" + encodeURIComponent(agentId));
   }
 
-  let backupStatus: "enviado" | "pendiente" | "dominio-no-verificado" = "pendiente";
+  let backupStatus: "cierre-diario" | "enviado" | "pendiente" | "dominio-no-verificado" = "cierre-diario";
   let photoStatus: "saved" | "skipped" | "failed" = "skipped";
   if (renditionId) {
     photoStatus = await storeRenditionTicketPhoto(supabase, organizationId, renditionId, formData);
@@ -395,7 +395,7 @@ export async function updateAgencyRendition(formData: FormData) {
     redirect("/pagos?error=edicion-fallida&agent=" + encodeURIComponent(agentId));
   }
 
-  let backupStatus: "enviado" | "pendiente" | "dominio-no-verificado" = "pendiente";
+  let backupStatus: "cierre-diario" | "enviado" | "pendiente" | "dominio-no-verificado" = "cierre-diario";
   let photoStatus: "saved" | "skipped" | "failed" = "skipped";
   if (updatedId) {
     photoStatus = await storeRenditionTicketPhoto(supabase, organizationId, updatedId, formData);
