@@ -1006,3 +1006,45 @@
   .rendition-daily-status-actions { display: grid; grid-template-columns: 1fr; }
   .rendition-daily-status-actions form { display: grid; grid-template-columns: 1fr; }
 }
+
+
+/* Preview 2026-10-09: botones de subagentes y ambulantes al menos 30% más grandes.
+   Mantiene colores, formato, códigos y comportamiento de foco/hover. */
+.agency-agent-button-row .agency-agent-code-button {
+  min-width: 146px !important;
+  min-height: 47px !important;
+  padding: 9px 14px !important;
+  font-size: 15.5px !important;
+  line-height: 1.2 !important;
+  box-sizing: border-box;
+}
+.rendition-agents-panel .rendition-agent-accordion:not([open]) > .rendition-agent-summary,
+.rendition-agents-panel .rendition-agent-accordion[open] > .rendition-agent-summary {
+  min-width: 146px !important;
+  min-height: 45px !important;
+  padding: 9px 13px !important;
+  box-sizing: border-box;
+}
+.rendition-agents-panel .rendition-agent-accordion:not([open]) .rendition-agent-code,
+.rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-code {
+  font-size: 16px !important;
+  line-height: 1.15 !important;
+}
+@media (max-width: 700px) {
+  .agency-agent-button-row .agency-agent-code-button {
+    min-width: 146px !important;
+    min-height: 45px !important;
+    padding: 9px 12px !important;
+    font-size: 15px !important;
+  }
+  .rendition-agents-panel .rendition-agent-accordion:not([open]) > .rendition-agent-summary,
+  .rendition-agents-panel .rendition-agent-accordion[open] > .rendition-agent-summary {
+    min-width: 146px !important;
+    min-height: 43px !important;
+    padding: 9px 11px !important;
+  }
+  .rendition-agents-panel .rendition-agent-accordion:not([open]) .rendition-agent-code,
+  .rendition-agents-panel .rendition-agent-accordion[open] .rendition-agent-code {
+    font-size: 15px !important;
+  }
+}
