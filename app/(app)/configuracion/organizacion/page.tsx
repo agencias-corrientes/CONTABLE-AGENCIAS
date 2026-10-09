@@ -39,7 +39,23 @@ export default async function OrganizacionPage({
         <label>Razón social<input name="legal_name" defaultValue={organization.legal_name ?? ""} maxLength={180} /></label>
         <label>CUIT / identificación<input name="tax_id" defaultValue={organization.tax_id ?? ""} maxLength={40} /></label>
         <label>Moneda (ISO de 3 letras)<input name="currency_code" defaultValue={String(organization.currency_code ?? "ARS").trim()} minLength={3} maxLength={3} pattern="[A-Za-z]{3}" required /></label>
-        <label>Zona horaria<input name="timezone" defaultValue={organization.timezone ?? "America/Argentina/Cordoba"} maxLength={80} required /></label>
+        <label>Zona horaria
+          <select name="timezone" defaultValue={organization.timezone ?? "America/Argentina/Cordoba"} required>
+          <option value="America/Argentina/Buenos_Aires">Buenos Aires</option>
+          <option value="America/Argentina/Catamarca">Catamarca</option>
+          <option value="America/Argentina/ComodRivadavia">Comodoro Rivadavia</option>
+          <option value="America/Argentina/Cordoba">Corrientes / Córdoba</option>
+          <option value="America/Argentina/Jujuy">Jujuy</option>
+          <option value="America/Argentina/La_Rioja">La Rioja</option>
+          <option value="America/Argentina/Mendoza">Mendoza</option>
+          <option value="America/Argentina/Rio_Gallegos">Río Gallegos</option>
+          <option value="America/Argentina/Salta">Salta</option>
+          <option value="America/Argentina/San_Juan">San Juan</option>
+          <option value="America/Argentina/San_Luis">San Luis</option>
+          <option value="America/Argentina/Tucuman">Tucumán</option>
+          <option value="America/Argentina/Ushuaia">Ushuaia</option>
+          </select>
+        </label>
         <button className="button primary" type="submit">Guardar modificaciones</button>
       </form>
     </section>

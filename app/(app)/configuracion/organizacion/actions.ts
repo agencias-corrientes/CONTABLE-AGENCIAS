@@ -5,6 +5,22 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createPublicAuthClient } from "@supabase/supabase-js";
 
+const SUPPORTED_AGENCY_TIMEZONES = new Set([
+  "America/Argentina/Buenos_Aires",
+  "America/Argentina/Catamarca",
+  "America/Argentina/ComodRivadavia",
+  "America/Argentina/Cordoba",
+  "America/Argentina/Jujuy",
+  "America/Argentina/La_Rioja",
+  "America/Argentina/Mendoza",
+  "America/Argentina/Rio_Gallegos",
+  "America/Argentina/Salta",
+  "America/Argentina/San_Juan",
+  "America/Argentina/San_Luis",
+  "America/Argentina/Tucuman",
+  "America/Argentina/Ushuaia",
+]);
+
 async function getAgencyOwnerContext() {
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getClaims();
@@ -46,7 +62,7 @@ export async function updateAgencyProfile(formData: FormData) {
   const timezone = String(formData.get("timezone") ?? "").trim();
 
   if (!name || name.length > 120 || legalName.length > 180 || taxId.length > 40 ||
-      !/^[A-Z]{3}$/.test(currencyCode) || !timezone || timezone.length > 80) {
+      !/^[A-Z]{3}$/.test(currencyCode) || !SUPPORTED_AGENCY_TIMEZONES.has(timezone)) {
     redirect("/configuracion/organizacion?error=datos-invalidos");
   }
 
@@ -61,6 +77,9 @@ export async function updateAgencyProfile(formData: FormData) {
 
   if (error) {
     if (error.code === "42501") redirect("/configuracion/organizacion?error=solo-titular");
+    if (String(error.message ?? "").toLowerCase().includes("zona horaria")) {
+      redirect("/configuracion/organizacion?error=datos-invalidos");
+    }
     redirect("/configuracion/organizacion?error=datos-no-guardados");
   }
 
