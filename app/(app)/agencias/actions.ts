@@ -203,7 +203,7 @@ export async function createAgencyRendition(formData: FormData) {
   if (cashLookupError || !cashAccount?.id) {
     redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
   }
-  let renditionId: string | null = null;
+  let renditionId: string | undefined;
   let error: any = null;
   if (renditionPolicy === "daily") {
     const result = await supabase.rpc("create_agency_rendition_with_capture_and_daily_status", {
@@ -214,9 +214,9 @@ export async function createAgencyRendition(formData: FormData) {
       p_reference: String(formData.get("reference") ?? "").trim() || undefined,
       p_notes: String(formData.get("notes") ?? "").trim() || undefined,
       p_daily_status_notes: dailyStatus === "incomplete" ? (dailyStatusNotes || undefined) : undefined,
-      p_reported_amount: dailyStatus === "incomplete" ? reportedAmount : null,
+      p_reported_amount: dailyStatus === "incomplete" ? reportedAmount : undefined,
     });
-    renditionId = result.data; error = result.error;
+    renditionId = result.data ?? undefined; error = result.error;
   } else {
     const result = await supabase.rpc("create_agency_rendition_with_capture_and_draw_status", {
       p_organization_id: organizationId, p_agent_id: agentId, p_rendition_date: renditionDate,
@@ -228,7 +228,7 @@ export async function createAgencyRendition(formData: FormData) {
       p_status_notes: dailyStatus === "incomplete" ? (dailyStatusNotes || undefined) : undefined,
       p_reported_amount: reportedAmount,
     });
-    renditionId = result.data; error = result.error;
+    renditionId = result.data ?? undefined; error = result.error;
   }
   if (error) {
     const message = String(error.message ?? "").toLowerCase();
@@ -242,6 +242,8 @@ export async function createAgencyRendition(formData: FormData) {
     redirect("/pagos?error=rendicion-fallida&agent=" + encodeURIComponent(agentId));
   }
 
+
+  if (!renditionId) redirect("/pagos?error=rendicion-fallida&agent=" + encodeURIComponent(agentId));
 
   // El mismo envío registra el cobro: total si se confirma, parcial si queda incompleta.
   const paymentAmount = dailyStatus === "complete" ? totalDue : reportedAmount;

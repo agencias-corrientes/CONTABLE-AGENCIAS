@@ -5,7 +5,7 @@ import jsQR from "jsqr";
 import { createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
 import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod } from "@/lib/agency-draw-schedule";
 
-type Game = { id: string; name: string; category: string };
+type Game = { id: string; name: string; category: string; enabled?: boolean };
 type InitialRendition = {
   id: string;
   renditionDate: string;

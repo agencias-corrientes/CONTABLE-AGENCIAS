@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
 import { agencyBusinessDateForCutoff, formatAgencyDate, formatAgencyDateTime } from "@/lib/agency-datetime";
-import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, getAgencyLocalClock, getDrawPeriodStatus, getPreferredPendingDrawPeriod, getUnmappedOfficialGameNames, OFFICIAL_QUINIELA_SCHEDULE_URL, OFFICIAL_EXTRACTS_SCHEDULE_URL } from "@/lib/agency-draw-schedule";
+import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, getAgencyLocalClock, getDrawPeriodStatus, getPreferredPendingDrawPeriod, getUnmappedOfficialGameNames, drawPeriodHasPassed, OFFICIAL_QUINIELA_SCHEDULE_URL, OFFICIAL_EXTRACTS_SCHEDULE_URL } from "@/lib/agency-draw-schedule";
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
 import { RenditionScrollHelper } from "@/components/rendition-scroll-helper";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";

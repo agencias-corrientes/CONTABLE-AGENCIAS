@@ -135,6 +135,8 @@ export type Database = {
           notes: string | null
           organization_id: string
           phone: string | null
+          rendition_periods: string[]
+          rendition_policy: string
           updated_at: string
           whatsapp: string | null
         }
@@ -152,6 +154,8 @@ export type Database = {
           notes?: string | null
           organization_id: string
           phone?: string | null
+          rendition_periods?: string[]
+          rendition_policy?: string
           updated_at?: string
           whatsapp?: string | null
         }
@@ -169,6 +173,8 @@ export type Database = {
           notes?: string | null
           organization_id?: string
           phone?: string | null
+          rendition_periods?: string[]
+          rendition_policy?: string
           updated_at?: string
           whatsapp?: string | null
         }
@@ -2061,6 +2067,15 @@ export type Database = {
           p_user_id: string
         }
         Returns: boolean
+      }
+      update_agency_agent_rendition_policy: {
+        Args: {
+          p_agent_id: string
+          p_organization_id: string
+          p_periods?: string[]
+          p_policy: string
+        }
+        Returns: undefined
       }
       update_agency_rendition_with_capture: {
         Args: {
