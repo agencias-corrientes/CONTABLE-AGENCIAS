@@ -1758,6 +1758,14 @@ export type Database = {
         }
         Returns: string
       }
+      bootstrap_agency_organization: {
+        Args: {
+          p_legal_name?: string
+          p_name: string
+          p_tax_id?: string
+        }
+        Returns: string
+      }
       bootstrap_organization: {
         Args: {
           p_legal_name?: string
