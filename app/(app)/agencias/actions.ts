@@ -544,88 +544,38 @@ export async function setAgencyDailyRenditionStatus(formData: FormData) {
   const status = String(formData.get("status") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
   const reportedAmountRaw = String(formData.get("reported_amount") ?? "").trim();
-  let reportedAmount = Number(reportedAmountRaw.replace(",", "."));
-
-  if (!permissions.can_create_renditions) redirect("/pagos?error=sin-permiso-rendicion");
-  if (!agentId || !/^\d{4}-\d{2}-\d{2}$/.test(operationalDate) || !["complete", "incomplete"].includes(status)) {
-    redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
-  }
+  const reportedAmount = Number(reportedAmountRaw.replace(",", "."));
+  if (!permissions.can_create_renditions) redirect("/pagos?error=sin-permiso-rendicion&agent=" + encodeURIComponent(agentId));
+  if (!agentId || !/^\d{4}-\d{2}-\d{2}$/.test(operationalDate) || !["complete", "incomplete"].includes(status)) redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
   const dateValue = new Date(operationalDate + "T00:00:00.000Z");
-  if (Number.isNaN(dateValue.getTime()) || dateValue.toISOString().slice(0, 10) !== operationalDate) {
-    redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
-  }
+  if (Number.isNaN(dateValue.getTime()) || dateValue.toISOString().slice(0, 10) !== operationalDate) redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
 
   if (status === "complete") {
-    const lastScheduledDraw = getOfficialDrawPeriodsForDate(operationalDate)
-      .filter((period) => Boolean(period.time))
-      .sort((left, right) => String(left.time).localeCompare(String(right.time)))
-      .at(-1);
-    if (!lastScheduledDraw || !drawPeriodHasPassed(lastScheduledDraw, operationalDate)) {
-      redirect("/pagos?error=cierre-diario-antes-de-hora&agent=" + encodeURIComponent(agentId));
+    const lastScheduledDraw = getOfficialDrawPeriodsForDate(operationalDate).filter((period) => Boolean(period.time)).sort((left, right) => String(left.time).localeCompare(String(right.time))).at(-1);
+    if (!lastScheduledDraw || !drawPeriodHasPassed(lastScheduledDraw, operationalDate)) redirect("/pagos?error=cierre-diario-antes-de-hora&agent=" + encodeURIComponent(agentId));
+    const { data: cashAccount, error: cashError } = await supabase.from("cash_accounts").select("id").eq("organization_id", organizationId).eq("is_active", true).eq("name", "Caja").maybeSingle();
+    if (cashError) redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
+    const { error } = await supabase.rpc("confirm_agency_daily_rendition", {
+      p_organization_id: organizationId, p_agent_id: agentId, p_operational_date: operationalDate,
+      p_cash_account_id: cashAccount?.id, p_payment_date: todayInAgencyTimeZone(), p_notes: notes || undefined,
+    });
+    if (error) {
+      const message = String(error.message ?? "").toLowerCase();
+      if (message.includes("permiso")) redirect("/pagos?error=sin-permiso-cobro&agent=" + encodeURIComponent(agentId));
+      if (message.includes("caja")) redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
+      if (message.includes("jornada operativa cambió")) redirect("/pagos?error=jornada-cambio&agent=" + encodeURIComponent(agentId));
+      if (message.includes("no hay una rendición diaria")) redirect("/pagos?error=sin-rendicion-para-confirmar&agent=" + encodeURIComponent(agentId));
+      redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
     }
-
-    const { data: rendition, error: renditionError } = await supabase
-      .from("agency_renditions")
-      .select("id,amount_due")
-      .eq("organization_id", organizationId)
-      .eq("agent_id", agentId)
-      .eq("rendition_date", operationalDate)
-      .eq("game_period", "Cierre diario")
-      .neq("status", "void")
-      .maybeSingle();
-    if (renditionError || !rendition) {
-      redirect("/pagos?error=sin-rendicion-para-confirmar&agent=" + encodeURIComponent(agentId));
-    }
-
-    const { data: paymentRows, error: paymentRowsError } = await supabase
-      .from("agency_rendition_payments")
-      .select("amount")
-      .eq("organization_id", organizationId)
-      .eq("rendition_id", rendition.id);
-    if (paymentRowsError) redirect("/pagos?error=cobro-fallido&agent=" + encodeURIComponent(agentId));
-    const received = (paymentRows ?? []).reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
-    const remaining = Math.max(0, Number(rendition.amount_due ?? 0) - received);
-
-    if (remaining > 0.005) {
-      if (!permissions.can_register_payments) redirect("/pagos?error=sin-permiso-cobro&agent=" + encodeURIComponent(agentId));
-      const { data: cashAccount, error: cashError } = await supabase
-        .from("cash_accounts")
-        .select("id")
-        .eq("organization_id", organizationId)
-        .eq("is_active", true)
-        .eq("name", "Caja")
-        .maybeSingle();
-      if (cashError || !cashAccount?.id) redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
-
-      const { error: paymentError } = await supabase.rpc("receive_agency_rendition", {
-        p_organization_id: organizationId,
-        p_rendition_id: rendition.id,
-        p_payment_date: todayInAgencyTimeZone(),
-        p_amount: remaining,
-        p_cash_account_id: cashAccount.id,
-        p_notes: "Saldo restante al confirmar cierre diario",
-      });
-      if (paymentError) redirect("/pagos?error=cobro-fallido&agent=" + encodeURIComponent(agentId));
-    }
-    reportedAmount = Number(rendition.amount_due ?? 0);
-  } else if (
-    !reportedAmountRaw ||
-    !Number.isFinite(reportedAmount) ||
-    reportedAmount <= 0 ||
-    reportedAmount > 999999999999.99
-  ) {
-    redirect("/pagos?error=monto-rendido-invalido&agent=" + encodeURIComponent(agentId));
+    revalidatePath("/pagos"); revalidatePath("/agencias/" + agentId); revalidatePath("/movimientos"); revalidatePath("/dashboard");
+    redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=estado-rendida");
   }
 
+  if (!reportedAmountRaw || !Number.isFinite(reportedAmount) || reportedAmount <= 0 || reportedAmount > 999999999999.99) redirect("/pagos?error=monto-rendido-invalido&agent=" + encodeURIComponent(agentId));
   const { error } = await supabase.rpc("set_agency_agent_daily_status_with_amount", {
-    p_organization_id: organizationId,
-    p_agent_id: agentId,
-    p_operational_date: operationalDate,
-    p_status: status,
-    p_notes: notes || undefined,
-    p_reported_amount: reportedAmount,
+    p_organization_id: organizationId, p_agent_id: agentId, p_operational_date: operationalDate,
+    p_status: status, p_notes: notes || undefined, p_reported_amount: reportedAmount,
   });
-
   if (error) {
     const message = String(error.message ?? "").toLowerCase();
     if (message.includes("monto rendido") || message.includes("ingresá un monto")) redirect("/pagos?error=monto-rendido-invalido&agent=" + encodeURIComponent(agentId));
@@ -634,10 +584,8 @@ export async function setAgencyDailyRenditionStatus(formData: FormData) {
     if (message.includes("no hay una rendición registrada")) redirect("/pagos?error=sin-rendicion-para-confirmar&agent=" + encodeURIComponent(agentId));
     redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
   }
-
-  revalidatePath("/pagos");
-  revalidatePath("/agencias/" + agentId);
-  redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=" + (status === "complete" ? "estado-rendida" : "estado-incompleta"));
+  revalidatePath("/pagos"); revalidatePath("/agencias/" + agentId);
+  redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=estado-incompleta");
 }
 
 export async function setAgencyDrawRenditionStatus(formData: FormData) {

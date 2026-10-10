@@ -1801,6 +1801,17 @@ export type Database = {
         }
         Returns: string
       }
+      confirm_agency_daily_rendition: {
+        Args: {
+          p_agent_id: string
+          p_cash_account_id?: string
+          p_notes?: string
+          p_operational_date: string
+          p_organization_id: string
+          p_payment_date?: string
+        }
+        Returns: undefined
+      }
       create_agency_rendition:
         | {
             Args: {
