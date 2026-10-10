@@ -105,7 +105,9 @@ export default async function TeamPermissionsPage({
 
     "confirmacion-cuenta-no-valida": "Marcá la confirmación y escribí exactamente ELIMINAR CUENTA: seguido del correo.",
     "cuenta-no-encontrada": "No encontramos una cuenta registrada con ese correo.",
-    "cuenta-vinculada": "Esa cuenta todavía pertenece a una agencia. Quitá su acceso desde la tarjeta del empleado primero; por seguridad no se elimina una cuenta vinculada.",
+    "cuenta-vinculada": "Esa cuenta está vinculada a esta agencia. Quitá primero su acceso desde la tarjeta correspondiente del equipo; después podrás eliminar la cuenta de inicio de sesión si ya no pertenece a ninguna agencia.",
+    "cuenta-titular-otra-agencia": "Esa cuenta es titular de otra agencia, por eso no aparece en las tarjetas de empleados de esta agencia. Para eliminar también su acceso, iniciá sesión con ese titular y usá Configuración → Datos de la agencia → Eliminar agencia y cuenta del titular. No la elimines desde este panel porque podrías dejar otra agencia sin responsable.",
+    "cuenta-vinculada-otra-agencia": "Esa cuenta tiene acceso a otra agencia distinta. No aparece en tu equipo porque pertenece a otra organización; quitá su acceso desde la administración de esa otra agencia antes de eliminar su cuenta.",
     "cuenta-no-eliminada": "No se pudo eliminar la cuenta de acceso. No se modificaron las rendiciones ni los datos de la agencia.",
     "no-borrar-usuario-actual": "No podés eliminar la cuenta con la que estás trabajando.",
 
