@@ -138,10 +138,12 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
               <div className="daily-closure-existing">
                 <div className="draw-period-chip-list"><span className={"draw-period-chip status-" + (dailyStatus?.status === "complete" ? "complete" : dailyStatus?.status === "incomplete" ? "incomplete" : "review")}>{dailyStatus?.status === "complete" ? "Cierre diario rendido" : dailyStatus?.status === "incomplete" ? "Cierre diario incompleto" : "Cierre diario registrado · revisar estado"}</span></div>
                 <p className="muted">Ya existe un cierre diario para esta jornada. El historial conserva todos los juegos y sus importes.</p>
-                {dailyStatus?.status === "incomplete" && <form action={setAgencyDailyRenditionStatus} className="draw-period-status-actions">
-                  <input type="hidden" name="agent_id" value={agent.id} /><input type="hidden" name="operational_date" value={today} /><input type="hidden" name="status" value="complete" />
-                  <button className="button primary" type="submit">Confirmar cierre diario como completo</button>
-                </form>}
+                {dailyStatus?.status === "incomplete" && (dailyCloseAllowed ? (
+                  <form action={setAgencyDailyRenditionStatus} className="draw-period-status-actions">
+                    <input type="hidden" name="agent_id" value={agent.id} /><input type="hidden" name="operational_date" value={today} /><input type="hidden" name="status" value="complete" />
+                    <button className="button primary" type="submit">Confirmar cierre diario como completo</button>
+                  </form>
+                ) : <p className="muted">La rendición quedó guardada como incompleta. Podrás confirmar el cierre completo después del último sorteo{lastScheduledDraw?.time ? " (" + lastScheduledDraw.time + ")" : ""}.</p>)}
               </div>
             ) : (
               <>
