@@ -361,15 +361,16 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             ? renditionPolicy === "daily"
               ? dailyRendition
                 ? <p className="message">La rendición del día ya está registrada para esta jornada. Revisá el historial para ver los importes de todos los juegos.</p>
-                : dailyCloseAllowed
-                  ? <RenditionEntryForm agentId={agent.id} games={games} today={today} periods={[dailyClosurePeriod]} allPeriods={allOfficialDrawPeriods} defaultPeriod="Cierre diario" dailyMode />
-                  : <p className="message">La rendición del día estará disponible después del último horario de sorteo de hoy{lastScheduledDraw?.time ? " (" + lastScheduledDraw.time + ")" : ""}.</p>
+                : <>
+                    <RenditionEntryForm agentId={agent.id} games={games} today={today} periods={[dailyClosurePeriod]} allPeriods={allOfficialDrawPeriods} defaultPeriod="Cierre diario" dailyMode dailyCloseAllowed={dailyCloseAllowed} />
+                    {!dailyCloseAllowed && <p className="message">Podés cargar los importes durante el día y guardar el monto recibido como incompleto. La confirmación como rendición completa se habilita después del último sorteo{lastScheduledDraw?.time ? " (" + lastScheduledDraw.time + ")" : ""}.</p>}
+                  </>
               : formPeriods.length > 0
                 ? <RenditionEntryForm agentId={agent.id} games={games} today={today} periods={formPeriods} allPeriods={allOfficialDrawPeriods} defaultPeriod={defaultPeriod} />
                 : <p className="message">No hay otro sorteo habilitado vencido pendiente para registrar. Los turnos futuros se habilitan cuando llega su horario.</p>
             : <p className="message">No tenés permiso para registrar rendiciones. El titular debe habilitar esta operación.</p>}
           <section className="rendition-agent-history">
-            <div className="panel-head"><div><h3>Rendiciones del día operativo</h3><p className="muted">Los períodos anteriores quedan en el historial; el nuevo sorteo vuelve a quedar pendiente por separado.</p></div><span className="muted">{todayAgentRows.length} registros</span></div>
+            <div className="panel-head"><div><h3>Rendiciones del día operativo</h3><p className="muted">{renditionPolicy === "daily" ? "Una sola rendición reúne todos los juegos de la jornada; el historial conserva los importes registrados." : "Los períodos anteriores quedan en el historial; cada sorteo habilitado se registra por separado."}</p></div><span className="muted">{todayAgentRows.length} registros</span></div>
             <RenditionHistory agent={agent} historyRows={todayRows} />
           </section>
         </div>
