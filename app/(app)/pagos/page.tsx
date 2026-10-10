@@ -109,38 +109,6 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   function drawPeriodStatesForAgent(agentId: string) {
     return drawPeriods.map((period) => ({ period, ...drawPeriodStateForAgent(agentId, period) }));
   }
-  const pendingInventory = activeAgents.flatMap((agent: any) => {
-    const policy = String(agent.rendition_policy ?? "per_draw");
-    const configuredPeriods = Array.isArray(agent.rendition_periods) ? agent.rendition_periods.map(String) : [];
-    if (policy === "daily") {
-      const dailyRendition = todayRows.find((row: any) => String(row.agent_id) === String(agent.id) && String(row.game_period ?? "").trim() === "Cierre diario");
-      const dailyStatus = dailyStatusByAgent.get(String(agent.id)) as any;
-      if (dailyStatus?.status === "complete") return [];
-      if (!dailyRendition && !dailyCloseAllowed) return [];
-      if (!dailyRendition) return [{
-        agent, periodLabel: "Rendición del día", time: lastScheduledDraw?.time ?? null,
-        status: "pending", label: "Pendiente: Rendición del día",
-        description: "Todavía no se registró la rendición del día."
-      }];
-      if (dailyStatus?.status === "incomplete") return [{
-        agent, periodLabel: "Rendición del día", time: lastScheduledDraw?.time ?? null,
-        status: "incomplete", label: "Incompleta: Rendición del día",
-        description: String(dailyStatus.notes || "El cierre diario está marcado como incompleto.")
-      }];
-      return [{
-        agent, periodLabel: "Rendición del día", time: lastScheduledDraw?.time ?? null,
-        status: "review", label: "Revisar: Cierre diario",
-        description: "La rendición del día está registrada, pero falta confirmar su estado."
-      }];
-    }
-    return drawPeriodStatesForAgent(String(agent.id))
-      .filter((entry) => policy !== "selected_draws" || configuredPeriods.includes(entry.period.label))
-      .filter((entry) => ["pending", "incomplete", "review"].includes(entry.status))
-      .map((entry) => ({
-        agent, periodLabel: entry.period.kind === "daily" ? "Rendición del día" : entry.period.label, time: entry.period.time,
-        status: entry.status, label: entry.label, description: entry.description
-      }));
-  });
   const legacyUnlabelledTodayCount = todayRows.filter((row: any) => !String(row.game_period ?? "").trim()).length;
 
   function RenditionHistory({ agent, historyRows = rows }: { agent: any; historyRows?: any[] }) {
@@ -395,33 +363,6 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                 <div className="agency-empty">{searchTerm ? "No hay subagentes ni ambulantes que coincidan con esa búsqueda." : "No hay subagentes ni ambulantes activos."}</div>
               )}
             </div>
-          </section>
-
-          <section className="rendition-pending-panel" aria-labelledby="rendition-pending-title">
-            <div className="rendition-pending-head">
-              <div>
-                <h2 id="rendition-pending-title">Pendientes de rendición</h2>
-                <p>Solo aparecen los turnos que todavía necesitan atención.</p>
-              </div>
-              <span className={pendingInventory.length ? "badge warning" : "badge success"}>{pendingInventory.length} pendiente(s)</span>
-            </div>
-            {pendingInventory.length ? (
-              <div className="rendition-pending-list">
-                {pendingInventory.map((item: any) => (
-                  <Link key={String(item.agent.id) + "|" + item.periodLabel} href={"/pagos?agent=" + item.agent.id}
-                    className={"rendition-pending-item " + (item.status === "pending" ? "is-pending" : "is-attention")}>
-                    <span className="rendition-pending-code">{item.agent.code}</span>
-                    <span className="rendition-pending-detail">
-                      <strong>{item.label}</strong>
-                      <small>{agentLabel(item.agent)} · {item.periodLabel}{item.time ? " · " + item.time : ""}</small>
-                    </span>
-                    <span className="rendition-pending-chevron" aria-hidden="true">›</span>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="rendition-pending-empty">No hay rendiciones pendientes para la jornada actual.</p>
-            )}
           </section>
 
           </>
