@@ -77,11 +77,26 @@ Deno.serve(async (req: Request) => {
 
   const { data: memberships, error: membershipsError } = await admin
     .from("organization_members")
-    .select("organization_id")
-    .eq("user_id", target.id)
-    .limit(1);
+    .select("organization_id,role")
+    .eq("user_id", target.id);
   if (membershipsError) return response(500, { code: "membership_check_failed" });
-  if (memberships?.length) return response(409, { code: "account_still_linked" });
+
+  // Distinguish a staff account attached to this agency from an owner of a
+  // different agency. A different owner will not appear in this agency's team
+  // list and must remove their own agency before their Auth account can be deleted.
+  const targetMemberships = memberships ?? [];
+  const ownsAnotherAgency = targetMemberships.some(
+    (membership) => membership.role === "owner" && membership.organization_id !== organizationId,
+  );
+  if (ownsAnotherAgency) {
+    return response(409, { code: "account_owner_of_other_agency" });
+  }
+  if (targetMemberships.some((membership) => membership.organization_id === organizationId)) {
+    return response(409, { code: "account_still_linked" });
+  }
+  if (targetMemberships.length) {
+    return response(409, { code: "account_linked_to_other_agency" });
+  }
 
   const { error: permissionCleanupError } = await admin
     .from("organization_member_permissions")
