@@ -78,6 +78,7 @@ export async function deleteAgencyProfile(formData: FormData) {
   if (formData.get("confirm_delete") !== "yes" || confirmation !== "ELIMINAR: " + organizationName) {
     redirect("/configuracion/organizacion?error=confirmacion-no-valida");
   }
+  // The Edge Function verifies the password again and performs the account cleanup server-side.
   if (!password) redirect("/configuracion/organizacion?error=verificacion-fallida");
 
   const { data, error } = await supabase.functions.invoke<{ ok?: boolean; code?: string }>(
