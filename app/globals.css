@@ -190,3 +190,49 @@ html,body{background:var(--bg);color:var(--text)}
   filter:none!important;
   transition:none!important;
 }
+
+
+/* Historial diario de rendiciones: presentación del archivo histórico. */
+.rendition-general-history{margin-top:20px;border-top:5px solid var(--burgundy)}
+.rendition-archive-days{display:grid;gap:10px}
+.rendition-archive-day{display:block;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.rendition-archive-day>summary{list-style:none;display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,auto) auto;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;background:linear-gradient(90deg,#f4edcf,#fffdf6);border-left:4px solid #7c3347}
+.rendition-archive-day>summary::-webkit-details-marker,.rendition-archive-agent>summary::-webkit-details-marker{display:none}
+.rendition-archive-day>summary>span:first-child{display:grid;gap:4px}
+.rendition-archive-day>summary>span:first-child strong{font-size:15px}
+.rendition-archive-day>summary small{display:block;font-size:11px;color:var(--muted);font-weight:500;line-height:1.45}
+.rendition-archive-summary-totals{display:grid;gap:4px;text-align:right}
+.rendition-archive-summary-totals>strong{font-size:13px;color:var(--primary)}
+.rendition-archive-agents{display:grid;gap:8px;padding:10px;background:#fbf7e8}
+.rendition-archive-agent{display:block;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fffdf6}
+.rendition-archive-agent>summary{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;cursor:pointer;list-style:none}
+.rendition-archive-agent>summary>strong{flex:1;min-width:180px;font-size:13px}
+.rendition-archive-agent>summary>small{font-size:11px;color:var(--muted)}
+.rendition-archive-agent-body{padding:10px 12px;border-top:1px solid var(--line);display:grid;gap:9px}
+.rendition-archive-status{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 10px;background:#f4edcf;border-left:3px solid #b79a45;border-radius:8px;font-size:12px}
+.rendition-archive-status-badge{display:inline-flex;align-items:center;width:max-content;border:1px solid #d8cba8;border-radius:999px;padding:4px 8px;background:#f3edda;color:#5e4b36;font-size:11px;font-weight:750;line-height:1.2}
+.rendition-archive-status-badge.is-complete{background:#eaf2df;border-color:#bfd3a8;color:#35562b}
+.rendition-archive-status-badge.is-incomplete{background:#fff0dd;border-color:#e7c48b;color:#8a4d17}
+.rendition-archive-status-badge.is-pending{background:#f1edf0;border-color:#ded1d8;color:#6d4653}
+.rendition-archive-draw-statuses{padding:10px;border:1px solid var(--line);border-radius:8px;background:#fffdf6}
+.rendition-archive-draw-statuses h4{margin:0 0 8px;font-size:12px}
+.rendition-archive-draw-statuses ul{display:grid;gap:7px;list-style:none;margin:0;padding:0}
+.rendition-archive-draw-statuses li{display:flex;align-items:center;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--line);padding:7px 0;font-size:12px}
+.rendition-archive-draw-statuses li:last-child{border-bottom:0}
+.rendition-archive-draw-statuses li>span:first-child{display:grid;gap:2px;min-width:100px;flex:1}
+.rendition-archive-draw-statuses li small{display:block;color:var(--muted);font-size:10px}
+.rendition-archive-empty-message{padding:15px;border:1px dashed var(--line);border-radius:9px;background:#fffdf6;color:var(--muted);font-size:12px}
+.rendition-archive-empty{padding:14px;color:var(--muted);font-size:13px}
+.rendition-saved-payments{margin:12px 0;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:#fffdf6}
+.rendition-saved-payments h4{margin:0 0 7px;font-size:12px}
+.rendition-saved-payments ul{margin:0;padding:0;list-style:none;display:grid;gap:5px}
+.rendition-saved-payments li{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px}
+.rendition-saved-payments li:last-child{border-bottom:0}
+.rendition-saved-payments li span{color:var(--muted)}
+@media(max-width:760px){
+  .rendition-archive-day>summary{grid-template-columns:minmax(0,1fr) auto;padding:12px}
+  .rendition-archive-summary-totals{grid-column:1/-1;text-align:left}
+  .rendition-archive-agent>summary>strong{min-width:0;flex-basis:100%}
+  .rendition-archive-agents{padding:7px}
+  .rendition-saved-payments li{align-items:flex-start;flex-direction:column;gap:3px}
+}
