@@ -42,9 +42,21 @@ function LoginForm() {
       .limit(1)
       .maybeSingle();
 
-    if (memberError || !member) {
+    if (memberError) {
       await supabase.auth.signOut();
-      setMessage("Esta cuenta todavía no está vinculada a una agencia. Si sos titular y estás empezando, usá “Crear cuenta de propietario”; si sos empleado, pedile al titular que te habilite.");
+      setMessage("No pudimos verificar la agencia de esta cuenta. Volvé a intentarlo y, si persiste, contactá al soporte.");
+      setLoading(false);
+      return;
+    }
+
+    if (!member) {
+      if (profile === "administrador") {
+        router.push("/setup");
+        router.refresh();
+        return;
+      }
+      await supabase.auth.signOut();
+      setMessage("Esta cuenta todavía no está vinculada a una agencia. Pedile al titular que te habilite el acceso.");
       setLoading(false);
       return;
     }
