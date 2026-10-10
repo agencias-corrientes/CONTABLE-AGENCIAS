@@ -360,7 +360,32 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
           {canCreateRenditions
             ? renditionPolicy === "daily"
               ? dailyRendition
-                ? <p className="message">La rendición del día ya está registrada para esta jornada. Revisá el historial para ver los importes de todos los juegos.</p>
+                ? dailyStatusKind === "incomplete" && canEditRenditions && dailyRendition.status === "open"
+                  ? <>
+                      <p className="message">Rendición incompleta: podés corregir los importes de los juegos. Los cobros ya registrados se conservan y el total no puede quedar por debajo de lo cobrado.</p>
+                      <RenditionEntryForm
+                        agentId={agent.id}
+                        games={games}
+                        today={today}
+                        periods={[dailyClosurePeriod]}
+                        allPeriods={allOfficialDrawPeriods}
+                        defaultPeriod="Cierre diario"
+                        dailyMode
+                        initialRendition={{
+                          id: String(dailyRendition.id),
+                          renditionDate: String(dailyRendition.rendition_date),
+                          period: String(dailyRendition.game_period ?? "Cierre diario"),
+                          drawNumber: String(dailyRendition.draw_number ?? ""),
+                          amounts: Object.fromEntries(((dailyRendition.agency_rendition_game_amounts ?? []) as GameAmount[]).map((item) => [String(item.game_type_id), String(item.amount)])),
+                          ticketNumbers: (dailyRendition.agency_rendition_tickets ?? []).map((ticket: any) => String(ticket.ticket_number ?? "")).filter(Boolean),
+                          qrPayload: (dailyRendition.agency_rendition_tickets ?? []).find((ticket: any) => ticket.ticket_qr_payload)?.ticket_qr_payload ?? "",
+                          reference: String(dailyRendition.reference ?? ""),
+                          notes: String(dailyRendition.notes ?? ""),
+                          captureMethod: String(dailyRendition.capture_method ?? "manual"),
+                        }}
+                      />
+                    </>
+                  : <p className="message">La rendición del día ya está registrada. {dailyStatusKind === "complete" ? "El cierre está confirmado." : "Revisá el historial y los cobros registrados."}</p>
                 : <>
                     <RenditionEntryForm agentId={agent.id} games={games} today={today} periods={[dailyClosurePeriod]} allPeriods={allOfficialDrawPeriods} defaultPeriod="Cierre diario" dailyMode dailyCloseAllowed={dailyCloseAllowed} />
                     {!dailyCloseAllowed && <p className="message">Podés cargar los importes durante el día y guardar el monto recibido como incompleto. La confirmación como rendición completa se habilita después del último sorteo{lastScheduledDraw?.time ? " (" + lastScheduledDraw.time + ")" : ""}.</p>}
