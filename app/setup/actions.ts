@@ -14,16 +14,19 @@ export async function bootstrapOrganization(formData: FormData) {
   const legalName = String(formData.get("legal_name") ?? "").trim();
   const taxId = String(formData.get("tax_id") ?? "").trim();
 
-  if (!name) throw new Error("El nombre de la empresa es obligatorio.");
+  if (!name || name.length > 120) throw new Error("Ingresá un nombre de agencia válido.");
 
-  const { data, error } = await supabase.rpc("bootstrap_organization", {
+  const { data, error } = await supabase.rpc("bootstrap_agency_organization", {
     p_name: name,
     p_legal_name: legalName || undefined,
     p_tax_id: taxId || undefined,
   });
 
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("No se pudo crear la organización.");
+  if (error) {
+    if (/already belongs|ya está asociada|already associated/i.test(error.message)) redirect("/pagos");
+    throw new Error("No se pudo configurar la agencia. Revisá los datos e intentá nuevamente.");
+  }
+  if (!data) throw new Error("No se pudo crear la agencia.");
 
-  redirect("/dashboard");
+  redirect("/pagos");
 }
