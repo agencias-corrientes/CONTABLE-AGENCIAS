@@ -143,9 +143,12 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
                   <button className="button primary" type="submit">Confirmar cierre diario como completo</button>
                 </form>}
               </div>
-            ) : dailyCloseAllowed
-              ? <RenditionEntryForm agentId={agent.id} games={(gameTypes ?? []).filter((game) => game.enabled).map((game) => ({ id: game.id, name: game.name, category: game.category, enabled: game.enabled }))} today={today} periods={[dailyClosurePeriod]} allPeriods={allOfficialDrawPeriods} defaultPeriod="Cierre diario" dailyMode />
-              : <p className="message">El cierre diario estará disponible después del último horario de sorteo de hoy{lastScheduledDraw?.time ? " (" + lastScheduledDraw.time + ")" : ""}.</p>
+            ) : (
+              <>
+                <RenditionEntryForm agentId={agent.id} games={(gameTypes ?? []).filter((game) => game.enabled).map((game) => ({ id: game.id, name: game.name, category: game.category, enabled: game.enabled }))} today={today} periods={[dailyClosurePeriod]} allPeriods={allOfficialDrawPeriods} defaultPeriod="Cierre diario" dailyMode dailyCloseAllowed={dailyCloseAllowed} />
+                {!dailyCloseAllowed && <p className="message">Podés cargar los importes durante el día y guardar el monto recibido como incompleto. La confirmación completa estará habilitada después del último sorteo{lastScheduledDraw?.time ? " (" + lastScheduledDraw.time + ")" : ""}.</p>}
+              </>
+            )
           ) : pendingDrawPeriods.length > 0
             ? <RenditionEntryForm agentId={agent.id} games={(gameTypes ?? []).filter((game) => game.enabled).map((game) => ({ id: game.id, name: game.name, category: game.category, enabled: game.enabled }))} today={today} periods={pendingDrawPeriods} allPeriods={allOfficialDrawPeriods} defaultPeriod={defaultPendingDrawPeriod?.label} />
             : <p className="message">No hay sorteos habilitados vencidos pendientes para esta jornada. Los próximos turnos se habilitan al llegar su horario oficial.</p>}
