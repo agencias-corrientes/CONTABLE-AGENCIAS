@@ -100,11 +100,11 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
               <div className="agent-rendition-policy-periods">
                 {allOfficialDrawPeriods.map((period) => <label key={period.label}>
                   <input type="checkbox" name="rendition_periods" value={period.label} defaultChecked={configuredRenditionPeriods.includes(period.label)} />
-                  <span><strong>{period.label}</strong><small>{period.time ? period.time : "Acumulado diario"}</small></span>
+                  <span><strong>{period.kind === "daily" ? "Rendición diaria" : period.label}</strong><small>{period.time ? period.time : "Acumulado diario"}</small></span>
                 </label>)}
               </div>
             </div>
-            <p className="muted small-text">“Por cada sorteo” mantiene el control actual. “Cierre diario” reúne todos los juegos activos en una sola carga. La lista de sorteos se usa solo si elegís la segunda modalidad.</p>
+            <p className="muted small-text">“Por cada sorteo” mantiene el control actual. “Rendición diaria” reúne todos los juegos activos en una sola carga. La lista de sorteos se usa solo si elegís la segunda modalidad.</p>
             <button className="button primary" type="submit">Guardar modalidad</button>
           </form>
         </section>

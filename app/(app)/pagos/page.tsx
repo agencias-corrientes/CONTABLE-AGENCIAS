@@ -377,6 +377,26 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             <div className="stat-card"><span>Agentes activos</span><strong>{activeAgents.length}</strong><small>{activeAgents.filter((agent) => agent.kind === "subagent").length} subagentes · {activeAgents.filter((agent) => agent.kind === "ambulant").length} ambulantes</small></div>
           </div>
 
+          <section className="rendition-agent-selector" aria-label="Elegir subagente o ambulante">
+            <div className="rendition-agent-selector-head">
+              <h2>Subagentes y ambulantes</h2>
+              <span>{filteredActiveAgents.length} activos</span>
+            </div>
+            <div className="agency-agent-button-list rendition-agent-code-list">
+              {filteredActiveAgents.map((agent) => (
+                <div key={agent.id} className={"agency-agent-button-row " + (agent.kind === "subagent" ? "agency-subagent" : "agency-ambulant")}>
+                  <Link href={"/pagos?agent=" + agent.id} className="agency-agent-code-button"
+                    aria-label={"Abrir rendición de " + (agent.kind === "subagent" ? "subagente " : "ambulante ") + agent.code}>
+                    {agent.code || "SIN CÓDIGO"}
+                  </Link>
+                </div>
+              ))}
+              {!filteredActiveAgents.length && (
+                <div className="agency-empty">{searchTerm ? "No hay subagentes ni ambulantes que coincidan con esa búsqueda." : "No hay subagentes ni ambulantes activos."}</div>
+              )}
+            </div>
+          </section>
+
           <section className="rendition-pending-panel" aria-labelledby="rendition-pending-title">
             <div className="rendition-pending-head">
               <div>
@@ -404,26 +424,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             )}
           </section>
 
-          <section className="rendition-agent-selector" aria-label="Elegir subagente o ambulante">
-            <div className="rendition-agent-selector-head">
-              <h2>Subagentes y ambulantes</h2>
-              <span>{filteredActiveAgents.length} activos</span>
-            </div>
-            <div className="agency-agent-button-list rendition-agent-code-list">
-              {filteredActiveAgents.map((agent) => (
-                <div key={agent.id} className={"agency-agent-button-row " + (agent.kind === "subagent" ? "agency-subagent" : "agency-ambulant")}>
-                  <Link href={"/pagos?agent=" + agent.id} className="agency-agent-code-button"
-                    aria-label={"Abrir rendición de " + (agent.kind === "subagent" ? "subagente " : "ambulante ") + agent.code}>
-                    {agent.code || "SIN CÓDIGO"}
-                  </Link>
-                </div>
-              ))}
-              {!filteredActiveAgents.length && (
-                <div className="agency-empty">{searchTerm ? "No hay subagentes ni ambulantes que coincidan con esa búsqueda." : "No hay subagentes ni ambulantes activos."}</div>
-              )}
-            </div>
-          </section>
-        </>
+          </>
       ) : (
         <div className="rendition-selected-view">
           <div className="rendition-selected-header">

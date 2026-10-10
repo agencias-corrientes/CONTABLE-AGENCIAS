@@ -176,3 +176,20 @@ html,body{background:var(--bg);color:var(--text)}
 @media(prefers-reduced-motion:reduce){.rendition-pending-item.is-pending{animation:none}}
 @media(max-width:760px){.rendition-page-topbar{align-items:flex-start}.rendition-stats.stats-grid.compact{grid-template-columns:repeat(2,minmax(0,1fr))}.agency-agent-button-list.rendition-agent-code-list{grid-template-columns:repeat(2,minmax(0,1fr))}.rendition-pending-list{grid-template-columns:1fr}.draw-period-chip-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:390px){.agency-agent-button-list.rendition-agent-code-list{grid-template-columns:1fr}.draw-period-chip-list{grid-template-columns:1fr}}
+
+
+/* Los bloques de revisión diaria permanecen visualmente estables al pasar el puntero. */
+.rendition-page-clean .draw-period-chip,
+.rendition-page-clean .draw-period-chip:hover,
+.rendition-page-clean .draw-period-chip:focus,
+.rendition-page-clean .draw-period-chip:focus-visible{
+  transform:none!important;
+  box-shadow:none!important;
+  filter:none!important;
+  outline:none!important;
+}
+.rendition-page-clean .draw-period-chip.status-complete:hover{background:#eef4e4;border-color:#cadbb2}
+.rendition-page-clean .draw-period-chip.status-incomplete:hover,
+.rendition-page-clean .draw-period-chip.status-review:hover{background:#fff2df;border-color:#e8cd9c}
+.rendition-page-clean .draw-period-chip.status-pending:hover{background:#fff8e3;border-color:#d7bd72}
+.rendition-page-clean .draw-period-chip.status-upcoming:hover{background:#e4edf4;border-color:#c7d8e4}
