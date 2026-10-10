@@ -191,7 +191,7 @@ function structuredQr(payload: string) {
   }
 }
 
-export function RenditionEntryForm({ agentId, games, today, periods, allPeriods, defaultPeriod, initialRendition, dailyMode = false }: { agentId: string; games: Game[]; today: string; periods: OfficialDrawPeriod[]; allPeriods?: OfficialDrawPeriod[]; defaultPeriod?: string; initialRendition?: InitialRendition; dailyMode?: boolean }) {
+export function RenditionEntryForm({ agentId, games, today, periods, allPeriods, defaultPeriod, initialRendition, dailyMode = false, dailyCloseAllowed = true }: { agentId: string; games: Game[]; today: string; periods: OfficialDrawPeriod[]; allPeriods?: OfficialDrawPeriod[]; defaultPeriod?: string; initialRendition?: InitialRendition; dailyMode?: boolean; dailyCloseAllowed?: boolean }) {
   const [mode, setMode] = useState<"photo" | "manual">(dailyMode || initialRendition?.captureMethod === "manual" ? "manual" : "photo");
   const [date, setDate] = useState(initialRendition?.renditionDate ?? today);
   const [period, setPeriod] = useState(initialRendition?.period ?? (dailyMode ? "Cierre diario" : defaultPeriod ?? periods[0]?.label ?? ""));
@@ -215,7 +215,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [error, setError] = useState("");
   const confirmationId = useId();
   const [confirmationOpen, setConfirmationOpen] = useState(false);
-  const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">("complete");
+  const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">(dailyMode && !dailyCloseAllowed ? "incomplete" : "complete");
   const [reportedAmount, setReportedAmount] = useState("");
 
   const total = useMemo(() =>
@@ -508,11 +508,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                   type="radio"
                   name={confirmationId + "-visible-status"}
                   checked={dailyStatusChoice === "complete"}
+                  disabled={!dailyCloseAllowed}
                   onChange={() => setDailyStatusChoice("complete")}
                 />
                 <span>
                   <strong>Confirmar como rendida</strong>
-                  <small>La rendición queda confirmada como completa para esta jornada.</small>
+                  <small>{dailyCloseAllowed ? "La rendición queda confirmada como completa para esta jornada." : "Se habilita después del último horario de sorteo; ahora podés guardar como incompleta."}</small>
                 </span>
               </label>
               <label className={"rendition-confirmation-option" + (dailyStatusChoice === "incomplete" ? " is-selected" : "")}>
