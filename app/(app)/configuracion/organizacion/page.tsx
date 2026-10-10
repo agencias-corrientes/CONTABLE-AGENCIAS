@@ -29,7 +29,10 @@ export default async function OrganizacionPage({
       "contrasena-incorrecta": "La contraseña del titular no coincide. No se eliminó nada.",
       "verificacion-fallida": "No se pudo verificar la sesión del titular.",
       "archivos-no-eliminados": "No se pudieron limpiar los archivos adjuntos. La agencia se conservó y no se eliminó.",
-      "agencia-no-eliminada": "No se pudo eliminar la agencia. Los datos de la base se conservaron."
+      "agencia-no-eliminada": "No se pudo eliminar la agencia. Los datos de la base se conservaron.",
+      "cuenta-vinculada-otra-agencia": "Esta cuenta tiene acceso a más de una agencia. No se eliminó nada para evitar dejar otra agencia sin titular.",
+      "eliminacion-no-completada": "No se pudo completar la baja. Revisá la conexión e intentá nuevamente.",
+      "cuenta-no-eliminada": "La agencia se eliminó, pero no se pudo borrar la cuenta de acceso. Ingresá nuevamente y contactá al soporte antes de registrarte otra vez."
     } as Record<string, string>)[params.error] ?? "No se pudo completar la operación."}</p>}
 
     <section className="panel agency-profile-edit-panel">
@@ -44,12 +47,12 @@ export default async function OrganizacionPage({
     </section>
 
     <section className="panel agency-delete-panel">
-      <div className="panel-head"><div><h2>Eliminar los datos de la agencia</h2><p className="muted">Acción irreversible: elimina la agencia, su personal vinculado, agentes, rendiciones, cobros, caja, juegos, comisiones, configuraciones e historial asociado. No elimina las cuentas globales de inicio de sesión.</p></div><span className="badge warning">Irreversible</span></div>
+      <div className="panel-head"><div><h2>Eliminar los datos de la agencia</h2><p className="muted">Acción irreversible: elimina la agencia y sus datos asociados, y también la cuenta de inicio de sesión del titular para que el correo pueda registrarse nuevamente. No se puede deshacer.</p></div><span className="badge warning">Irreversible</span></div>
       <form action={deleteAgencyProfile} className="agency-delete-form">
         <label>Contraseña actual del titular<input type="password" name="password" autoComplete="current-password" required /></label>
         <label>Escribí exactamente: <strong>{"ELIMINAR: " + organization.name}</strong><input name="confirmation" placeholder={"ELIMINAR: " + organization.name} autoComplete="off" required /></label>
-        <label className="agency-delete-confirm"><input type="checkbox" name="confirm_delete" value="yes" required /> Entiendo que se borrarán todos los datos de esta agencia y que no se puede deshacer.</label>
-        <button className="button danger" type="submit">Eliminar agencia y todos sus datos</button>
+        <label className="agency-delete-confirm"><input type="checkbox" name="confirm_delete" value="yes" required /> Entiendo que se borrarán los datos de esta agencia y mi cuenta de inicio de sesión; esta acción no se puede deshacer.</label>
+        <button className="button danger" type="submit">Eliminar agencia y cuenta del titular</button>
       </form>
     </section>
   </div>;

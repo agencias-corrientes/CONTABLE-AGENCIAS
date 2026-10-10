@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createPublicAuthClient } from "@supabase/supabase-js";
 
 const AGENCY_TIME_ZONE = "America/Argentina/Cordoba";
 
@@ -71,72 +70,44 @@ export async function updateAgencyProfile(formData: FormData) {
   redirect("/configuracion/organizacion?resultado=datos-guardados");
 }
 
-async function removeAgencyTicketPhotos(supabase: any, organizationId: string): Promise<boolean> {
-  try {
-    const bucket = supabase.storage.from("agency-rendition-tickets");
-    const { data: topLevel, error: listError } = await bucket.list(organizationId, { limit: 1000 });
-    if (listError) return false;
-
-    const paths: string[] = [];
-    for (const item of (topLevel ?? []) as Array<{ name: string; id?: string | null }>) {
-      if (item.id) {
-        paths.push(organizationId + "/" + item.name);
-        continue;
-      }
-      const { data: children, error: childError } = await bucket.list(organizationId + "/" + item.name, { limit: 1000 });
-      if (childError) return false;
-      for (const file of (children ?? []) as Array<{ name: string; id?: string | null }>) {
-        if (file.id) paths.push(organizationId + "/" + item.name + "/" + file.name);
-      }
-    }
-
-    for (let i = 0; i < paths.length; i += 100) {
-      const { error } = await bucket.remove(paths.slice(i, i + 100));
-      if (error) return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export async function deleteAgencyProfile(formData: FormData) {
-  const { supabase, organizationId, organizationName, claims } = await getAgencyOwnerContext();
+  const { supabase, organizationId, organizationName } = await getAgencyOwnerContext();
   const confirmation = String(formData.get("confirmation") ?? "");
   const password = String(formData.get("password") ?? "");
 
   if (formData.get("confirm_delete") !== "yes" || confirmation !== "ELIMINAR: " + organizationName) {
     redirect("/configuracion/organizacion?error=confirmacion-no-valida");
   }
+  if (!password) redirect("/configuracion/organizacion?error=verificacion-fallida");
 
-  const email = typeof claims.email === "string" ? claims.email : "";
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!email || !url || !publishableKey || !password) {
-    redirect("/configuracion/organizacion?error=verificacion-fallida");
-  }
+  const { data, error } = await supabase.functions.invoke<{ ok?: boolean; code?: string }>(
+    "delete-agency-and-owner",
+    { body: { organization_id: organizationId, confirmation, password } }
+  );
 
-  const verifier = createPublicAuthClient(url, publishableKey, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
-  const { error: authError } = await verifier.auth.signInWithPassword({ email, password });
-  if (authError) redirect("/configuracion/organizacion?error=contrasena-incorrecta");
+  if (error || !data?.ok) {
+    let code = data?.code ?? "";
+    try {
+      const context = (error as unknown as { context?: Response } | null)?.context;
+      if (context) {
+        const payload = await context.clone().json() as { code?: string };
+        code = payload.code ?? code;
+      }
+    } catch {
+      // The edge function may return an empty or non-JSON response; use a safe generic message.
+    }
 
-  // Do not orphan private ticket files if the storage operation cannot complete.
-  if (!(await removeAgencyTicketPhotos(supabase, organizationId))) {
-    redirect("/configuracion/organizacion?error=archivos-no-eliminados");
-  }
-
-  const { error } = await (supabase as any).rpc("delete_agency_organization", {
-    p_organization_id: organizationId,
-    p_confirmation: confirmation,
-  });
-  if (error) {
-    if (error.code === "42501") redirect("/configuracion/organizacion?error=solo-titular");
-    redirect("/configuracion/organizacion?error=agencia-no-eliminada");
+    if (code === "password_verification_failed") redirect("/configuracion/organizacion?error=contrasena-incorrecta");
+    if (code === "owner_required") redirect("/configuracion/organizacion?error=solo-titular");
+    if (code === "confirmation_mismatch") redirect("/configuracion/organizacion?error=confirmacion-no-valida");
+    if (code === "account_linked_to_other_agencies") redirect("/configuracion/organizacion?error=cuenta-vinculada-otra-agencia");
+    if (code === "agency_files_cleanup_failed") redirect("/configuracion/organizacion?error=archivos-no-eliminados");
+    if (code === "agency_delete_failed") redirect("/configuracion/organizacion?error=agencia-no-eliminada");
+    if (code === "agency_deleted_account_remains") redirect("/login?error=cuenta-no-eliminada");
+    redirect("/configuracion/organizacion?error=eliminacion-no-completada");
   }
 
   revalidatePath("/configuracion");
   revalidatePath("/dashboard");
-  redirect("/login?mensaje=agencia-eliminada");
+  redirect("/login?mensaje=agencia-y-cuenta-eliminadas");
 }
