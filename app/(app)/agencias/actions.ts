@@ -218,15 +218,16 @@ export async function createAgencyRendition(formData: FormData) {
   let renditionId: string | undefined;
   let error: any = null;
   if (renditionPolicy === "daily") {
-    const result = await supabase.rpc("create_agency_rendition_with_capture_and_daily_status", {
+    const result = await supabase.rpc("create_and_receive_agency_daily_rendition", {
       p_organization_id: organizationId, p_agent_id: agentId, p_rendition_date: renditionDate,
       p_amount_due: totalDue, p_operational_date: operationalDate, p_daily_status: dailyStatus,
+      p_cash_account_id: cashAccount.id, p_payment_date: todayInAgencyTimeZone(),
       p_game_breakdown: breakdown, p_ticket_numbers: ticketNumbers, p_ticket_qr_payload: qrPayload ?? undefined,
       p_game_period: drawPeriod, p_draw_number: drawNumber ?? undefined, p_capture_method: captureMethod,
       p_reference: String(formData.get("reference") ?? "").trim() || undefined,
       p_notes: String(formData.get("notes") ?? "").trim() || undefined,
       p_daily_status_notes: dailyStatus === "incomplete" ? (dailyStatusNotes || undefined) : undefined,
-      p_reported_amount: dailyStatus === "incomplete" ? reportedAmount : undefined,
+      p_reported_amount: reportedAmount,
     });
     renditionId = result.data ?? undefined; error = result.error;
   } else {
@@ -257,19 +258,20 @@ export async function createAgencyRendition(formData: FormData) {
 
   if (!renditionId) redirect("/pagos?error=rendicion-fallida&agent=" + encodeURIComponent(agentId));
 
-  // El mismo envío registra el cobro: total si se confirma, parcial si queda incompleta.
-  const paymentAmount = dailyStatus === "complete" ? totalDue : reportedAmount;
-  const { error: paymentError } = await supabase.rpc("receive_agency_rendition", {
-    p_organization_id: organizationId,
-    p_rendition_id: renditionId,
-    p_payment_date: todayInAgencyTimeZone(),
-    p_amount: paymentAmount,
-    p_cash_account_id: cashAccount.id,
-    p_reference: String(formData.get("reference") ?? "").trim() || undefined,
-    p_notes: dailyStatus === "incomplete" ? "Pago parcial al registrar rendición incompleta" : "Cobro al confirmar rendición diaria",
-  });
-  if (paymentError) {
-    redirect("/pagos?error=cobro-inicial-fallido&agent=" + encodeURIComponent(agentId));
+  // La rendición diaria ya registra el cobro dentro de la misma transacción SQL.
+  // Para la modalidad por sorteo se conserva el flujo vigente.
+  if (renditionPolicy !== "daily") {
+    const paymentAmount = dailyStatus === "complete" ? totalDue : reportedAmount;
+    const { error: paymentError } = await supabase.rpc("receive_agency_rendition", {
+      p_organization_id: organizationId,
+      p_rendition_id: renditionId,
+      p_payment_date: todayInAgencyTimeZone(),
+      p_amount: paymentAmount,
+      p_cash_account_id: cashAccount.id,
+      p_reference: String(formData.get("reference") ?? "").trim() || undefined,
+      p_notes: dailyStatus === "incomplete" ? "Pago parcial al registrar rendición incompleta" : "Cobro al confirmar rendición diaria",
+    });
+    if (paymentError) redirect("/pagos?error=cobro-inicial-fallido&agent=" + encodeURIComponent(agentId));
   }
   let backupStatus: "cierre-diario" | "enviado" | "pendiente" | "dominio-no-verificado" = "cierre-diario";
   let photoStatus: "saved" | "skipped" | "failed" = "skipped";
