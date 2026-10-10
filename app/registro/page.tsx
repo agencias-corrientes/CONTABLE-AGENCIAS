@@ -14,10 +14,12 @@ export default function RegisterOwnerPage() {
   const [message, setMessage] = useState("");
   const [waiting, setWaiting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [accountExists, setAccountExists] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+    setAccountExists(false);
     if (password.length < 8 || password !== confirmation) {
       setMessage(password.length < 8 ? "La contraseña debe tener al menos 8 caracteres." : "Las contraseñas no coinciden.");
       return;
@@ -35,6 +37,16 @@ export default function RegisterOwnerPage() {
       setLoading(false);
       return;
     }
+
+    // Supabase intentionally returns an empty identities array for an already-registered email.
+    // In this case no new confirmation email is sent; guide the user to sign in instead.
+    if (data.user && !data.session && (data.user.identities?.length ?? 0) === 0) {
+      setAccountExists(true);
+      setMessage("Ese correo ya tiene una cuenta. No se envió otro correo de alta; ingresá con esa cuenta para continuar.");
+      setLoading(false);
+      return;
+    }
+
     if (data.session) {
       router.push("/setup");
       router.refresh();
@@ -59,7 +71,12 @@ export default function RegisterOwnerPage() {
             <label>Correo electrónico de acceso<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" /></label>
             <label>Crear contraseña<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete="new-password" /></label>
             <label>Repetir contraseña<input type="password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} required minLength={8} autoComplete="new-password" /></label>
-            {message && <div className="message error-message" role="alert">{message}</div>}
+            {message && (
+              <div className="message error-message" role="alert">
+                {message}
+                {accountExists && <> <Link href="/login?perfil=administrador">Ingresar como administrador</Link>.</>}
+              </div>
+            )}
             <button className="button primary full" disabled={loading}>{loading ? "Creando cuenta..." : "Crear cuenta y continuar"}</button>
           </form>
         ) : <div className="message" role="status">{message}</div>}
