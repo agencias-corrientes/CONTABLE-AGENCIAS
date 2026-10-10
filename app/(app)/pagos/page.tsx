@@ -263,7 +263,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                     </form>
                   </details>
                 )}
-                {row.status !== "void" && totals.pending > 0 && !canRegisterPayments && <p className="muted small-text">No tenés permiso para registrar cobros. El titular debe habilitar esta operación.</p>
+                {row.status !== "void" && totals.pending > 0 && !canRegisterPayments && <p className="muted small-text">No tenés permiso para registrar cobros. El titular debe habilitar esta operación.</p>}
                 {canEditRenditions && totals.received <= 0 && row.status === "open" && String(row.game_period ?? "").trim() && getOfficialDrawPeriodsForDate(String(row.rendition_date)).some((period) => period.label === row.game_period) && (
                   <details className="rendition-edit-details">
                     <summary>Modificar rendición</summary>
