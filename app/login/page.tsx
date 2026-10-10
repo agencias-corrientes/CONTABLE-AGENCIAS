@@ -44,7 +44,7 @@ function LoginForm() {
 
     if (memberError || !member) {
       await supabase.auth.signOut();
-      setMessage("Esta cuenta todavía no está vinculada a una agencia. Contactá al titular para que te habilite el acceso.");
+      setMessage("Esta cuenta todavía no está vinculada a una agencia. Si sos titular y estás empezando, usá “Crear cuenta de propietario”; si sos empleado, pedile al titular que te habilite.");
       setLoading(false);
       return;
     }
@@ -66,7 +66,7 @@ function LoginForm() {
   if (!profile) {
     return (
       <div className="form-stack login-role-selector">
-        <p className="muted">Seleccioná tu perfil para continuar.</p>
+        <p className="muted">Seleccioná el perfil de tu cuenta existente.</p>
         <Link className="landing-role-choice landing-role-admin" href="/login?perfil=administrador">
           <span className="landing-role-copy"><strong>Administrador</strong><small>Acceso del titular y configuración de la agencia</small></span>
           <span className="landing-role-enter">Ingresar →</span>
@@ -75,6 +75,7 @@ function LoginForm() {
           <span className="landing-role-copy"><strong>Empleado</strong><small>Acceso según los permisos asignados</small></span>
           <span className="landing-role-enter">Ingresar →</span>
         </Link>
+        <p className="muted small-text">¿Sos titular y todavía no tenés cuenta? <Link href="/registro">Crear cuenta de propietario</Link></p>
       </div>
     );
   }
@@ -105,7 +106,7 @@ export default function LoginPage() {
         <div className="brand-mark small">AC</div>
         <p className="eyebrow">AGENCIAS CORRIENTES</p>
         <h1>Control de Agencias</h1>
-        <p className="muted">Ingresá con el perfil que te corresponde. La cuenta se verifica contra el rol asignado por la agencia.</p>
+        <p className="muted">Ingresá con una cuenta existente. El sistema verifica el rol asignado por cada agencia.</p>
         <Suspense fallback={<div className="empty-state">Cargando acceso…</div>}><LoginForm /></Suspense>
       </div>
     </main>
