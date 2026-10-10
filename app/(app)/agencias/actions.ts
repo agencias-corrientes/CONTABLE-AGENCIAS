@@ -177,7 +177,7 @@ export async function createAgencyRendition(formData: FormData) {
       (renditionPolicy === "selected_draws" && !selectedRenditionPeriods.includes(drawPeriod))) {
     redirect("/pagos?error=modalidad-sorteo-invalido&agent=" + encodeURIComponent(agentId));
   }
-  if (renditionPolicy === "daily") {
+  if (renditionPolicy === "daily" && dailyStatus === "complete") {
     const lastScheduledDraw = getOfficialDrawPeriodsForDate(operationalDate)
       .filter((period) => Boolean(period.time))
       .sort((left, right) => String(left.time).localeCompare(String(right.time)))
