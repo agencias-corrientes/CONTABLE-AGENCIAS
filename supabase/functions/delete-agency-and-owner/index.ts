@@ -8,6 +8,12 @@ function respond(status: number, code: string, extra: Record<string, unknown> = 
 }
 
 async function removeAgencyFiles(admin: ReturnType<typeof createClient>, organizationId: string) {
+  // Preview currently has no Storage buckets. If this bucket has never been configured,
+  // there are no ticket objects to clean up and agency deletion can safely continue.
+  const { data: buckets, error: bucketsError } = await admin.storage.listBuckets();
+  if (bucketsError) return false;
+  if (!(buckets ?? []).some((item) => item.name === "agency-rendition-tickets")) return true;
+
   const bucket = admin.storage.from("agency-rendition-tickets");
   const paths: string[] = [];
 
