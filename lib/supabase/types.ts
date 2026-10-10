@@ -1812,6 +1812,29 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_and_receive_agency_daily_rendition: {
+        Args: {
+          p_agent_id: string
+          p_amount_due: number
+          p_cash_account_id: string
+          p_daily_status: string
+          p_daily_status_notes?: string
+          p_draw_number?: string
+          p_game_breakdown?: Json
+          p_game_period?: string
+          p_notes?: string
+          p_operational_date: string
+          p_organization_id: string
+          p_payment_date: string
+          p_reference?: string
+          p_rendition_date: string
+          p_reported_amount?: number
+          p_ticket_numbers?: Json
+          p_ticket_qr_payload?: string
+          p_capture_method?: string
+        }
+        Returns: string
+      }
       create_agency_rendition:
         | {
             Args: {
