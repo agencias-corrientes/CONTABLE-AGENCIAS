@@ -32,19 +32,62 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const canDeleteRenditions = Boolean(permissions?.can_delete_renditions);
   const canRegisterPayments = Boolean(permissions?.can_register_payments);
 
-  const [{ data: operationalSettings }, { data: agents }, { data: renditions }, { data: gameTypes }] = await Promise.all([
+  const [{ data: operationalSettings }, { data: agents }, { data: gameTypes }] = await Promise.all([
     supabase.from("agency_operational_settings").select("rendition_cutoff_time").eq("organization_id", activeOrganization.id).maybeSingle(),
     supabase.from("agency_agents").select("id,kind,full_name,code,is_active,phone").eq("organization_id", activeOrganization.id).order("kind").order("code"),
-    supabase.from("agency_renditions").select("id,agent_id,rendition_date,created_at,updated_at,game_period,draw_number,capture_method,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)").eq("organization_id", activeOrganization.id).order("created_at", { ascending: false }).limit(500),
     supabase.from("agency_game_types").select("id,name,category,enabled").eq("organization_id", activeOrganization.id).order("sort_order").order("name"),
   ]);
   const cutoffTime = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);
   const today = agencyBusinessDateForCutoff(cutoffTime);
-  const { data: dailyStatusRows } = await supabase
-    .from("agency_agent_daily_status")
-    .select("agent_id,status,notes,updated_at,reported_amount")
-    .eq("organization_id", activeOrganization.id)
-    .eq("operational_date", today);
+
+  // Paginate so the archive is complete instead of silently stopping at the first 500 rows.
+  async function loadAllRenditions() {
+    const accumulated: any[] = [];
+    const pageSize = 500;
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase
+        .from("agency_renditions")
+        .select("id,agent_id,rendition_date,created_at,updated_at,game_period,draw_number,capture_method,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)")
+        .eq("organization_id", activeOrganization.id)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(offset, offset + pageSize - 1);
+      if (error) throw new Error("No se pudo cargar el historial completo de rendiciones: " + error.message);
+      const batch = data ?? [];
+      accumulated.push(...batch);
+      if (batch.length < pageSize) return accumulated;
+    }
+  }
+
+  async function loadHistoricalDailyStatuses() {
+    const accumulated: any[] = [];
+    const pageSize = 500;
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase
+        .from("agency_agent_daily_status")
+        .select("agent_id,operational_date,status,notes,updated_at,reported_amount")
+        .eq("organization_id", activeOrganization.id)
+        .lt("operational_date", today)
+        .order("operational_date", { ascending: false })
+        .order("agent_id", { ascending: true })
+        .range(offset, offset + pageSize - 1);
+      if (error) throw new Error("No se pudieron cargar los estados de jornadas anteriores: " + error.message);
+      const batch = data ?? [];
+      accumulated.push(...batch);
+      if (batch.length < pageSize) return accumulated;
+    }
+  }
+
+  const [renditions, currentStatusResult, historicalDailyStatusRows] = await Promise.all([
+    loadAllRenditions(),
+    supabase.from("agency_agent_daily_status")
+      .select("agent_id,status,notes,updated_at,reported_amount")
+      .eq("organization_id", activeOrganization.id)
+      .eq("operational_date", today),
+    loadHistoricalDailyStatuses(),
+  ]);
+  if (currentStatusResult.error) throw new Error("No se pudo cargar el estado diario: " + currentStatusResult.error.message);
+  const dailyStatusRows = currentStatusResult.data;
   const dailyStatusByAgent = new Map((dailyStatusRows ?? []).map((row: any) => [String(row.agent_id), row]));
 
   const agentRows = agents ?? [];
@@ -61,7 +104,20 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     const day = agencyBusinessDateForCutoff(cutoffTime, String(row.created_at ?? ""));
     historicalByDay.set(day, [...(historicalByDay.get(day) ?? []), row]);
   }
-  const historicalDays = Array.from(historicalByDay.entries()).sort(([a], [b]) => b.localeCompare(a));
+  const historicalStatusesByDay = new Map<string, any[]>();
+  const historicalStatusByAgentAndDay = new Map<string, any>();
+  for (const status of historicalDailyStatusRows ?? []) {
+    const day = String(status.operational_date);
+    historicalStatusesByDay.set(day, [...(historicalStatusesByDay.get(day) ?? []), status]);
+    historicalStatusByAgentAndDay.set(day + ":" + String(status.agent_id), status);
+  }
+  const historicalDays = Array.from(new Set([...historicalByDay.keys(), ...historicalStatusesByDay.keys()]))
+    .sort((a, b) => b.localeCompare(a))
+    .map((day) => ({
+      day,
+      rows: historicalByDay.get(day) ?? [],
+      statuses: historicalStatusesByDay.get(day) ?? [],
+    }));
   const filteredActiveAgents = activeAgents.filter((agent) => {
     if (!normalizedSearch) return true;
     return [agent.code, agent.full_name, agent.phone ?? "", agent.kind === "subagent" ? "subagente" : "ambulante"]
@@ -167,6 +223,19 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                     {row.notes && <p className="muted rendition-saved-notes">{row.notes}</p>}
                   </div>
                 </div>
+                {totals.payments.length > 0 && (
+                  <div className="rendition-saved-payments">
+                    <h4>Cobros registrados</h4>
+                    <ul>
+                      {totals.payments.map((payment: any) => (
+                        <li key={payment.id}>
+                          <span>{formatAgencyDate(payment.payment_date)}{payment.reference ? " · " + payment.reference : ""}</span>
+                          <strong>{money(payment.amount, activeOrganization.currency_code)}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <div className="rendition-payment-summary"><span>Cobrado: <strong>{money(totals.received, activeOrganization.currency_code)}</strong></span><span>Pendiente: <strong>{money(totals.pending, activeOrganization.currency_code)}</strong></span></div>
                 {totals.pending > 0 && canRegisterPayments && (
                   <details className="agency-pay-details">
@@ -364,27 +433,68 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       </section>
 
       <section className="panel rendition-general-history">
-        <div className="panel-head"><div><h2>Rendiciones generales</h2><p className="muted">Cada registro muestra el código del subagente o ambulante, la fecha y el importe rendido. El historial se separa por día operativo.</p></div><span className="muted">{historicalRows.length} rendiciones anteriores</span></div>
+        <div className="panel-head">
+          <div>
+            <h2>Historial diario de rendiciones</h2>
+            <p className="muted">Listado completo por jornada operativa, con subagentes, ambulantes, juegos, tickets, cobros y estados incompletos. El reinicio del día no borra estas fechas.</p>
+          </div>
+          <span className="muted">{historicalRows.length} rendiciones · {(historicalDailyStatusRows ?? []).length} estados diarios anteriores</span>
+        </div>
         {historicalDays.length ? <div className="rendition-archive-days">
-          {historicalDays.map(([day, dayRows]) => {
+          {historicalDays.map(({ day, rows: dayRows, statuses: dayStatuses }, dayIndex) => {
             const total = dayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
-            const ids = Array.from(new Set(dayRows.map((row) => String(row.agent_id))));
-            return <details className="rendition-archive-day" key={day}>
-              <summary><span><strong>{formatAgencyDate(day)}</strong><small>{dayRows.length} rendiciones</small></span><strong>{money(total, activeOrganization.currency_code)}</strong><span className="rendition-open-label">Ver día ▾</span></summary>
+            const received = dayRows.reduce((sum, row) => sum + rowTotals(row).received, 0);
+            const pending = dayRows.reduce((sum, row) => sum + rowTotals(row).pending, 0);
+            const incompleteCount = dayStatuses.filter((status) => status.status === "incomplete").length;
+            const ids = Array.from(new Set([
+              ...dayRows.map((row) => String(row.agent_id)),
+              ...dayStatuses.map((status) => String(status.agent_id)),
+            ]));
+            return <details className="rendition-archive-day" key={day} open={dayIndex === 0}>
+              <summary>
+                <span><strong>{formatAgencyDate(day)}</strong><small>{dayRows.length} rendiciones · {dayStatuses.length} estados guardados</small></span>
+                <span className="rendition-archive-summary-totals">
+                  <strong>Rendido: {money(total, activeOrganization.currency_code)}</strong>
+                  <small>Cobrado: {money(received, activeOrganization.currency_code)} · Pendiente: {money(pending, activeOrganization.currency_code)} · {incompleteCount} incompletas</small>
+                </span>
+                <span className="rendition-open-label">Ver día ▾</span>
+              </summary>
               <div className="rendition-archive-agents">
                 {ids.map((id) => {
-                  const agent = agentRows.find((item) => item.id === id);
+                  const agent = agentRows.find((item) => String(item.id) === id);
                   if (!agent) return null;
-                  const count = dayRows.filter((row) => row.agent_id === id).length;
+                  const agentDayRows = dayRows.filter((row) => String(row.agent_id) === id);
+                  const dayStatus = historicalStatusByAgentAndDay.get(day + ":" + id);
+                  const statusLabel = dayStatus?.status === "incomplete"
+                    ? "Incompleta"
+                    : dayStatus?.status === "complete"
+                      ? "Rendida"
+                      : "Con rendición";
                   return <details className="rendition-archive-agent" key={id}>
-                    <summary><span>{agent.kind === "subagent" ? "Subagente" : "Ambulante"}</span><strong>{agent.code} · {agent.full_name}</strong><small>{count} rendiciones</small></summary>
-                    <RenditionHistory agent={agent} historyRows={dayRows} />
+                    <summary>
+                      <span>{agent.kind === "subagent" ? "Subagente" : "Ambulante"}</span>
+                      <strong>{agent.code} · {agent.full_name}</strong>
+                      <small>{agentDayRows.length} rendiciones</small>
+                      {dayStatus && <span className={"rendition-status-badge rendition-status-" + dayStatus.status}>{statusLabel}</span>}
+                    </summary>
+                    <div className="rendition-archive-agent-body">
+                      {dayStatus && <div className="rendition-archive-status">
+                        <span className={"rendition-status-badge rendition-status-" + dayStatus.status}>{statusLabel}</span>
+                        {dayStatus.status === "incomplete" && dayStatus.reported_amount !== null && dayStatus.reported_amount !== undefined && Number(dayStatus.reported_amount) > 0 && (
+                          <span>Monto rendido hasta ese momento: <strong>{money(dayStatus.reported_amount, activeOrganization.currency_code)}</strong></span>
+                        )}
+                      </div>}
+                      {dayStatus?.notes && <p className="rendition-archive-note"><strong>Observación:</strong> {dayStatus.notes}</p>}
+                      {agentDayRows.length
+                        ? <RenditionHistory agent={agent} historyRows={agentDayRows} />
+                        : <div className="rendition-archive-empty-message">El estado diario quedó guardado, pero no hay importes por juego asociados a esa jornada.</div>}
+                    </div>
                   </details>;
                 })}
               </div>
             </details>;
           })}
-        </div> : <p className="muted rendition-archive-empty">Todavía no hay rendiciones de jornadas anteriores. Se archivarán automáticamente al comenzar una nueva jornada.</p>}
+        </div> : <p className="muted rendition-archive-empty">Todavía no hay rendiciones ni estados guardados de jornadas anteriores. Cuando comience una nueva jornada, lo anterior seguirá disponible acá, agrupado por fecha.</p>}
       </section>
 
       {!!archivedAgents.length && (
