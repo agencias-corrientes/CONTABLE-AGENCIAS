@@ -34,14 +34,31 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const canDeleteRenditions = Boolean(permissions?.can_delete_renditions);
   const canRegisterPayments = Boolean(permissions?.can_register_payments);
 
-  const [{ data: operationalSettings }, { data: agents }, { data: renditions }, { data: gameTypes }] = await Promise.all([
+  const [{ data: operationalSettings }, { data: agents }, { data: gameTypes }] = await Promise.all([
     supabase.from("agency_operational_settings").select("rendition_cutoff_time").eq("organization_id", activeOrganization.id).maybeSingle(),
     supabase.from("agency_agents").select("id,kind,full_name,code,is_active,phone,rendition_policy,rendition_periods").eq("organization_id", activeOrganization.id).order("kind").order("code"),
-    supabase.from("agency_renditions").select("id,agent_id,rendition_date,created_at,updated_at,game_period,draw_number,capture_method,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)").eq("organization_id", activeOrganization.id).order("created_at", { ascending: false }).limit(500),
     supabase.from("agency_game_types").select("id,name,category,enabled").eq("organization_id", activeOrganization.id).order("sort_order").order("name"),
   ]);
   const cutoffTime = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);
   const today = agencyBusinessDateForCutoff(cutoffTime);
+  async function loadAllRenditions() {
+    const accumulated: any[] = [];
+    const pageSize = 500;
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase
+        .from("agency_renditions")
+        .select("id,agent_id,rendition_date,created_at,updated_at,game_period,draw_number,capture_method,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)")
+        .eq("organization_id", activeOrganization.id)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(offset, offset + pageSize - 1);
+      if (error) throw new Error("No se pudo cargar el historial completo de rendiciones: " + error.message);
+      const batch = data ?? [];
+      accumulated.push(...batch);
+      if (batch.length < pageSize) return accumulated;
+    }
+  }
+  const renditions = await loadAllRenditions();
   const { data: drawStatusRows } = await supabase
     .from("agency_agent_draw_status")
     .select("agent_id,draw_period,rendition_id,status,notes,reported_amount,updated_at")
@@ -51,6 +68,48 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const { data: dailyStatusRows } = await supabase.from("agency_agent_daily_status")
     .select("agent_id,status,notes,reported_amount,updated_at").eq("organization_id", activeOrganization.id).eq("operational_date", today);
   const dailyStatusByAgent = new Map((dailyStatusRows ?? []).map((row: any) => [String(row.agent_id), row]));
+
+  async function loadHistoricalDailyStatuses() {
+    const accumulated: any[] = [];
+    const pageSize = 500;
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase
+        .from("agency_agent_daily_status")
+        .select("agent_id,operational_date,status,notes,reported_amount,updated_at")
+        .eq("organization_id", activeOrganization.id)
+        .lt("operational_date", today)
+        .order("operational_date", { ascending: false })
+        .order("agent_id", { ascending: true })
+        .range(offset, offset + pageSize - 1);
+      if (error) throw new Error("No se pudieron cargar los estados diarios anteriores: " + error.message);
+      const batch = data ?? [];
+      accumulated.push(...batch);
+      if (batch.length < pageSize) return accumulated;
+    }
+  }
+  async function loadHistoricalDrawStatuses() {
+    const accumulated: any[] = [];
+    const pageSize = 500;
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase
+        .from("agency_agent_draw_status")
+        .select("agent_id,operational_date,draw_period,rendition_id,status,notes,reported_amount,updated_at")
+        .eq("organization_id", activeOrganization.id)
+        .lt("operational_date", today)
+        .order("operational_date", { ascending: false })
+        .order("agent_id", { ascending: true })
+        .order("draw_period", { ascending: true })
+        .range(offset, offset + pageSize - 1);
+      if (error) throw new Error("No se pudieron cargar los estados por sorteo anteriores: " + error.message);
+      const batch = data ?? [];
+      accumulated.push(...batch);
+      if (batch.length < pageSize) return accumulated;
+    }
+  }
+  const [historicalDailyStatusRows, historicalDrawStatusRows] = await Promise.all([
+    loadHistoricalDailyStatuses(),
+    loadHistoricalDrawStatuses(),
+  ]);
   const drawPeriods = getOfficialDrawPeriodsForDate(today);
   const allOfficialDrawPeriods = getAllOfficialDrawPeriods();
   const dailyClosurePeriod = { label: "Cierre diario", shortLabel: "Cierre diario", time: null, gameName: "Cierre diario", kind: "daily" as const };
@@ -66,13 +125,40 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const voidRows = allRows.filter((row) => row.status === "void");
   const isCurrentOperationalDay = (row: any) => agencyBusinessDateForCutoff(cutoffTime, String(row.created_at ?? "")) === today;
   const todayRows = rows.filter(isCurrentOperationalDay);
-  const historicalRows = rows.filter((row) => !isCurrentOperationalDay(row));
+  // Las anulaciones también quedan visibles en el historial: no se borra el rastro del día.
+  const historicalRows = allRows.filter((row) => !isCurrentOperationalDay(row));
   const historicalByDay = new Map<string, any[]>();
   for (const row of historicalRows) {
     const day = agencyBusinessDateForCutoff(cutoffTime, String(row.created_at ?? ""));
     historicalByDay.set(day, [...(historicalByDay.get(day) ?? []), row]);
   }
-  const historicalDays = Array.from(historicalByDay.entries()).sort(([a], [b]) => b.localeCompare(a));
+  const historicalDailyStatusesByDay = new Map<string, any[]>();
+  const historicalDailyStatusByAgentAndDay = new Map<string, any>();
+  for (const status of historicalDailyStatusRows ?? []) {
+    const day = String(status.operational_date);
+    historicalDailyStatusesByDay.set(day, [...(historicalDailyStatusesByDay.get(day) ?? []), status]);
+    historicalDailyStatusByAgentAndDay.set(day + "|" + String(status.agent_id), status);
+  }
+  const historicalDrawStatusesByDay = new Map<string, any[]>();
+  const historicalDrawStatusesByAgentAndDay = new Map<string, any[]>();
+  for (const status of historicalDrawStatusRows ?? []) {
+    const day = String(status.operational_date);
+    const key = day + "|" + String(status.agent_id);
+    historicalDrawStatusesByDay.set(day, [...(historicalDrawStatusesByDay.get(day) ?? []), status]);
+    historicalDrawStatusesByAgentAndDay.set(key, [...(historicalDrawStatusesByAgentAndDay.get(key) ?? []), status]);
+  }
+  const historicalDays = Array.from(new Set([
+    ...historicalByDay.keys(),
+    ...historicalDailyStatusesByDay.keys(),
+    ...historicalDrawStatusesByDay.keys(),
+  ]))
+    .sort((a, b) => b.localeCompare(a))
+    .map((day) => ({
+      day,
+      rows: historicalByDay.get(day) ?? [],
+      dailyStatuses: historicalDailyStatusesByDay.get(day) ?? [],
+      drawStatuses: historicalDrawStatusesByDay.get(day) ?? [],
+    }));
   const filteredActiveAgents = activeAgents.filter((agent) => {
     if (!normalizedSearch) return true;
     return [agent.code, agent.full_name, agent.phone ?? "", agent.kind === "subagent" ? "subagente" : "ambulante"]
@@ -112,7 +198,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const legacyUnlabelledTodayCount = todayRows.filter((row: any) => !String(row.game_period ?? "").trim()).length;
 
   function RenditionHistory({ agent, historyRows = rows }: { agent: any; historyRows?: any[] }) {
-    const agentRows = historyRows.filter((row) => row.agent_id === agent.id);
+    const agentRows = historyRows.filter((row) => String(row.agent_id) === String(agent.id));
     if (!agentRows.length) return <div className="rendition-history-empty">Todavía no hay rendiciones guardadas para este operador.</div>;
     return (
       <div className="rendition-history-list">
@@ -127,7 +213,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                 <span className="rendition-record-agent-code" aria-label={"Código del operador " + agent.code} title={"Código del operador " + agent.code}>{agent.code}</span>
                 <span className="rendition-record-period">{row.game_period || "Período no identificado"}{row.draw_number ? <small>Sorteo {row.draw_number}</small> : null}</span>
                 <span className="rendition-record-amount">{money(row.amount_due, activeOrganization.currency_code)}<small>{row.capture_method === "manual" ? "Carga manual" : row.capture_method === "qr" ? "Foto / QR" : "Foto del ticket"}</small></span>
-                <span className={totals.pending <= 0 ? "badge success" : "badge"}>{totals.pending <= 0 ? "Cobrada" : "Pendiente " + money(totals.pending, activeOrganization.currency_code)}</span>
+                <span className={row.status === "void" ? "badge" : totals.pending <= 0 ? "badge success" : "badge"}>{row.status === "void" ? "Anulada" : totals.pending <= 0 ? "Cobrada" : "Pendiente " + money(totals.pending, activeOrganization.currency_code)}</span>
               </summary>
               <div className="rendition-record-detail">
                 <div className="rendition-detail-columns">
@@ -149,8 +235,21 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                     {row.notes && <p className="muted rendition-saved-notes">{row.notes}</p>}
                   </div>
                 </div>
+                {totals.payments.length > 0 && (
+                  <div className="rendition-saved-payments">
+                    <h4>Cobros registrados</h4>
+                    <ul>
+                      {totals.payments.map((payment: any) => (
+                        <li key={payment.id}>
+                          <span>{formatAgencyDate(payment.payment_date)}{payment.reference ? " · " + payment.reference : ""}</span>
+                          <strong>{money(payment.amount, activeOrganization.currency_code)}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <div className="rendition-payment-summary"><span>Cobrado: <strong>{money(totals.received, activeOrganization.currency_code)}</strong></span><span>Pendiente: <strong>{money(totals.pending, activeOrganization.currency_code)}</strong></span></div>
-                {totals.pending > 0 && canRegisterPayments && (
+                {row.status !== "void" && totals.pending > 0 && canRegisterPayments && (
                   <details className="agency-pay-details">
                     <summary>Registrar cobro en Caja</summary>
                     <form action={receiveAgencyRendition} className="agency-pay-form">
@@ -164,7 +263,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                     </form>
                   </details>
                 )}
-                {totals.pending > 0 && !canRegisterPayments && <p className="muted small-text">No tenés permiso para registrar cobros. El titular debe habilitar esta operación.</p>}
+                {row.status !== "void" && totals.pending > 0 && !canRegisterPayments && <p className="muted small-text">No tenés permiso para registrar cobros. El titular debe habilitar esta operación.</p>
                 {canEditRenditions && totals.received <= 0 && row.status === "open" && String(row.game_period ?? "").trim() && getOfficialDrawPeriodsForDate(String(row.rendition_date)).some((period) => period.label === row.game_period) && (
                   <details className="rendition-edit-details">
                     <summary>Modificar rendición</summary>
@@ -363,6 +462,93 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                 <div className="agency-empty">{searchTerm ? "No hay subagentes ni ambulantes que coincidan con esa búsqueda." : "No hay subagentes ni ambulantes activos."}</div>
               )}
             </div>
+          </section>
+
+          <section className="panel rendition-general-history">
+            <div className="panel-head">
+              <div>
+                <h2>Historial diario de rendiciones</h2>
+                <p className="muted">Listado por jornada de rendiciones, juegos, tickets, cobros, observaciones y estados guardados. El reinicio del día no borra el historial anterior.</p>
+              </div>
+              <span className="muted">{historicalRows.length} registros históricos · {(historicalDailyStatusRows ?? []).length + (historicalDrawStatusRows ?? []).length} estados guardados</span>
+            </div>
+            {historicalDays.length ? (
+              <div className="rendition-archive-days">
+                {historicalDays.map(({ day, rows: dayRows, dailyStatuses: dayStatuses, drawStatuses: dayDrawStatuses }, dayIndex) => {
+                  const activeDayRows = dayRows.filter((row) => row.status !== "void");
+                  const total = activeDayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
+                  const received = activeDayRows.reduce((sum, row) => sum + rowTotals(row).received, 0);
+                  const pending = activeDayRows.reduce((sum, row) => sum + rowTotals(row).pending, 0);
+                  const voidCount = dayRows.filter((row) => row.status === "void").length;
+                  const incompleteCount = dayStatuses.filter((status) => status.status === "incomplete").length
+                    + dayDrawStatuses.filter((status) => status.status === "incomplete").length;
+                  const agentIds = Array.from(new Set([
+                    ...dayRows.map((row) => String(row.agent_id)),
+                    ...dayStatuses.map((status) => String(status.agent_id)),
+                    ...dayDrawStatuses.map((status) => String(status.agent_id)),
+                  ]));
+                  return (
+                    <details className="rendition-archive-day" key={day} open={dayIndex === 0}>
+                      <summary>
+                        <span><strong>{formatAgencyDate(day)}</strong><small>{dayRows.length} rendiciones · {dayStatuses.length + dayDrawStatuses.length} estados guardados</small></span>
+                        <span className="rendition-archive-summary-totals">
+                          <strong>Rendido: {money(total, activeOrganization.currency_code)}</strong>
+                          <small>Cobrado: {money(received, activeOrganization.currency_code)} · Pendiente: {money(pending, activeOrganization.currency_code)} · {voidCount} anuladas · {incompleteCount} incompletas</small>
+                        </span>
+                        <span className="rendition-open-label">Ver día ▾</span>
+                      </summary>
+                      <div className="rendition-archive-agents">
+                        {agentIds.map((id) => {
+                          const agent = agentRows.find((item) => String(item.id) === id);
+                          if (!agent) return null;
+                          const agentDayRows = dayRows.filter((row) => String(row.agent_id) === id);
+                          const dayStatus = historicalDailyStatusByAgentAndDay.get(day + "|" + id);
+                          const agentDrawStatuses = historicalDrawStatusesByAgentAndDay.get(day + "|" + id) ?? [];
+                          const statusLabel = dayStatus
+                            ? dayStatus.status === "incomplete" ? "Incompleta" : dayStatus.status === "complete" ? "Rendida" : String(dayStatus.status ?? "Guardado")
+                            : agentDayRows.length ? "Con rendiciones" : agentDrawStatuses.length ? "Estados por sorteo" : "Guardado";
+                          const statusTone = dayStatus?.status === "complete" ? "is-complete" : dayStatus?.status === "incomplete" ? "is-incomplete" : "is-pending";
+                          return (
+                            <details className="rendition-archive-agent" key={id}>
+                              <summary>
+                                <span>{agent.kind === "subagent" ? "Subagente" : "Ambulante"}</span><strong>{agent.code} · {agent.full_name}</strong>
+                                <small>{agentDayRows.length} rendiciones</small><span className={"rendition-archive-status-badge " + statusTone}>{statusLabel}</span>
+                              </summary>
+                              <div className="rendition-archive-agent-body">
+                                {dayStatus && (
+                                  <div className="rendition-archive-status">
+                                    <span className={"rendition-archive-status-badge " + (dayStatus.status === "complete" ? "is-complete" : dayStatus.status === "incomplete" ? "is-incomplete" : "is-pending")}>{statusLabel}</span>
+                                    {dayStatus.status === "incomplete" && dayStatus.reported_amount !== null && dayStatus.reported_amount !== undefined && Number(dayStatus.reported_amount) > 0 && <span>Monto rendido hasta ese momento: <strong>{money(dayStatus.reported_amount, activeOrganization.currency_code)}</strong></span>}
+                                    {dayStatus.notes && <span>Observación: {dayStatus.notes}</span>}
+                                    {dayStatus.updated_at && <small>Actualizado: {formatAgencyDateTime(dayStatus.updated_at)}</small>}
+                                  </div>
+                                )}
+                                {agentDrawStatuses.length > 0 && (
+                                  <div className="rendition-archive-draw-statuses">
+                                    <h4>Estados por sorteo</h4>
+                                    <ul>
+                                      {agentDrawStatuses.map((status: any, index: number) => (
+                                        <li key={String(status.draw_period) + "-" + String(status.updated_at ?? index)}>
+                                          <span><strong>{status.draw_period}</strong>{status.updated_at && <small>{formatAgencyDateTime(status.updated_at)}</small>}</span>
+                                          <span className={"rendition-archive-status-badge " + (status.status === "complete" ? "is-complete" : status.status === "incomplete" ? "is-incomplete" : "is-pending")}>{status.status === "complete" ? "Rendida" : status.status === "incomplete" ? "Incompleta" : status.status === "review" ? "Revisar" : status.status === "pending" ? "Pendiente" : String(status.status ?? "Guardado")}</span>
+                                          {status.reported_amount !== null && status.reported_amount !== undefined && Number(status.reported_amount) > 0 && <strong>Monto informado: {money(status.reported_amount, activeOrganization.currency_code)}</strong>}
+                                          {status.notes && <small>Observación: {status.notes}</small>}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                                {agentDayRows.length ? <RenditionHistory agent={agent} historyRows={agentDayRows} /> : <div className="rendition-archive-empty-message">El estado quedó guardado, pero no hay importes por juego asociados a esa jornada.</div>}
+                              </div>
+                            </details>
+                          );
+                        })}
+                      </div>
+                    </details>
+                  );
+                })}
+              </div>
+            ) : <p className="muted rendition-archive-empty">Todavía no hay jornadas anteriores guardadas. Al cambiar la jornada operativa, las rendiciones y los estados quedarán listados acá sin borrarse.</p>}
           </section>
 
           </>
