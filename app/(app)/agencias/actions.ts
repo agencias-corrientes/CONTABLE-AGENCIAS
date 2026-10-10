@@ -128,7 +128,7 @@ export async function createAgencyRendition(formData: FormData) {
   const { data: agentPolicyRow, error: policyLookupError } = await supabase.from("agency_agents")
     .select("rendition_policy,rendition_periods").eq("id", agentId).eq("organization_id", organizationId).maybeSingle();
   if (policyLookupError || !agentPolicyRow) redirect("/pagos?error=agente-no-encontrado");
-  const renditionPolicy = String(agentPolicyRow.rendition_policy ?? "per_draw");
+  const renditionPolicy = String(agentPolicyRow.rendition_policy ?? "daily");
   const selectedRenditionPeriods = Array.isArray(agentPolicyRow.rendition_periods) ? agentPolicyRow.rendition_periods.map(String) : [];
   const submittedDate = String(formData.get("rendition_date") ?? "").trim();
   const renditionDate = submittedDate || todayInAgencyTimeZone();

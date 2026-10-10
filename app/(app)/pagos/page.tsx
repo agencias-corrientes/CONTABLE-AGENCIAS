@@ -217,7 +217,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
 
   function AgentAccordion({ agent }: { agent: any }) {
     const todayAgentRows = todayRows.filter((row) => row.agent_id === agent.id);
-    const renditionPolicy = String(agent.rendition_policy ?? "per_draw");
+    const renditionPolicy = String(agent.rendition_policy ?? "daily");
     const configuredRenditionPeriods = Array.isArray(agent.rendition_periods) ? agent.rendition_periods.map(String) : [];
     const dailyRendition = todayAgentRows.find((row: any) => String(row.game_period ?? "").trim() === "Cierre diario");
     const dailyStatus = dailyStatusByAgent.get(String(agent.id)) as any;

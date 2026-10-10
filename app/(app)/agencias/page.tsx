@@ -76,7 +76,7 @@ export default async function AgenciasPage({
     <div className="page">
       <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={periods.map((period) => period.time).filter((time): time is string => Boolean(time))} renderedAt={new Date().toISOString()} />
       <div className="topbar">
-        <div><p className="eyebrow">ADMINISTRACIÓN DE AGENTES</p><h1>Subagentes y ambulantes</h1><p className="muted">Cada código muestra el estado independiente de cada sorteo; los turnos vencidos sin rendición quedan pendientes.</p><p className="muted small-text"><a href={OFFICIAL_QUINIELA_SCHEDULE_URL} target="_blank" rel="noreferrer">Cronograma oficial de Lotería Correntina</a> · <a href={OFFICIAL_EXTRACTS_SCHEDULE_URL} target="_blank" rel="noreferrer">Resultados y sorteos publicados</a></p></div>
+        <div><p className="eyebrow">ADMINISTRACIÓN DE AGENTES</p><h1>Subagentes y ambulantes</h1><p className="muted">Por defecto, cada operador hace una sola rendición diaria al cierre. El titular puede cambiar esta modalidad si necesita rendir por sorteo.</p><p className="muted small-text"><a href={OFFICIAL_QUINIELA_SCHEDULE_URL} target="_blank" rel="noreferrer">Cronograma oficial de Lotería Correntina</a> · <a href={OFFICIAL_EXTRACTS_SCHEDULE_URL} target="_blank" rel="noreferrer">Resultados y sorteos publicados</a></p></div>
         <Link href="/pagos" className="button primary">Ir a Rendiciones</Link>
       </div>
       {params.resultado === "archivado" && <p className="message success-message">El agente {params.codigo || ""} tenía rendiciones. Se desactivó para conservar su historial.</p>}

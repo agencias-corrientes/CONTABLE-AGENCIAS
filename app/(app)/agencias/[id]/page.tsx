@@ -40,7 +40,7 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
   const allOfficialDrawPeriods = getAllOfficialDrawPeriods();
   const currentDrawPeriods = getOfficialDrawPeriodsForDate(today);
   const drawNow = new Date();
-  const renditionPolicy = String(agent.rendition_policy ?? "per_draw");
+  const renditionPolicy = String(agent.rendition_policy ?? "daily");
   const configuredRenditionPeriods = Array.isArray(agent.rendition_periods) ? agent.rendition_periods.map(String) : [];
   const dailyClosurePeriod = { label: "Cierre diario", shortLabel: "Cierre diario", time: null, gameName: "Cierre diario", kind: "daily" as const };
   const lastScheduledDraw = currentDrawPeriods.filter((period) => period.time).sort((left, right) => String(left.time).localeCompare(String(right.time))).at(-1);
