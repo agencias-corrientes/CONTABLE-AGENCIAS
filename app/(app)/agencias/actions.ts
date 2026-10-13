@@ -375,18 +375,23 @@ export async function deleteAgencyAgent(formData: FormData) {
     redirect("/agencias?resultado=archivado&codigo=" + encodeURIComponent(agent.code ?? ""));
   }
 
-  const { error } = await supabase
+  const { data: deletedAgent, error } = await supabase
     .from("agency_agents")
     .delete()
     .eq("id", agentId)
-    .eq("organization_id", organizationId);
+    .eq("organization_id", organizationId)
+    .select("id,code")
+    .maybeSingle();
   if (error) {
     if (error.code === "42501" || error.message.toLowerCase().includes("permission")) redirect("/agencias?error=sin-permiso-baja");
     redirect("/agencias?error=baja-fallida");
   }
+  // RLS can filter a DELETE without returning a database error. Never report success unless one row was actually removed.
+  if (!deletedAgent) redirect("/agencias?error=baja-fallida");
+
   revalidatePath("/agencias");
   revalidatePath("/pagos");
-  redirect("/agencias?resultado=eliminado&codigo=" + encodeURIComponent(agent.code ?? ""));
+  redirect("/agencias?resultado=eliminado&codigo=" + encodeURIComponent(deletedAgent.code ?? agent.code ?? ""));
 }
 
 
