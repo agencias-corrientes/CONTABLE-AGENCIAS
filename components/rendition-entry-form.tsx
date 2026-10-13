@@ -231,6 +231,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [confirmationError, setConfirmationError] = useState("");
   const confirmationId = useId();
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">(dailyMode && !dailyCloseAllowed ? "incomplete" : "complete");
@@ -241,10 +242,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     [amounts]
   );
   const receiptNeedsReview = Boolean(receiptData);
-  const receiptHasConfirmedClosure = Boolean(
-    receiptData?.closedAt?.raw &&
-    /DESCARGA.{0,8}CONFIRMAD/i.test(receiptData.downloadStatus ?? "")
-  );
+  // The OCR can misread the printed "Cerrado" / "Descarga confirmada" footer.
+  // A structurally recognized closure ticket that the operator reviewed is sufficient.
+  const receiptHasConfirmedClosure = Boolean(receiptData?.type === "loteria-corrientes-end-of-day-v1");
   const canConfirmClosedTicket = Boolean(
     receiptHasConfirmedClosure && receiptReviewed && receiptData?.userConfirmedReview === true
   );
@@ -368,7 +368,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           return combined;
         });
       }
-      if (parsed.date) setDate(parsed.date);
+      // The ticket's own printed date is preserved in receiptData. The financial posting
+      // date stays on today's operational day so Caja's date guard is not bypassed.
+      if (parsed.date && !parsed.receiptData) setDate(parsed.date);
       if (parsed.period && !dailyMode) {
         const recognized = resolveRecognizedDrawPeriod(parsed.period, allPeriods ?? periods);
         if (!recognized) {
@@ -422,11 +424,29 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     <form
       action={initialRendition ? updateAgencyRendition : createAgencyRendition}
       className="form-stack rendition-entry-form"
+      noValidate
       onSubmit={(event) => {
-        if (!initialRendition && !confirmationOpen) {
+        if (initialRendition) return;
+        if (!confirmationOpen) {
           event.preventDefault();
+          setConfirmationError("");
           setConfirmationOpen(true);
+          return;
         }
+        if (dailyStatusChoice === "complete" && !canConfirmDaily) {
+          event.preventDefault();
+          setConfirmationError("Para confirmar como rendida antes del horario de cierre, cargá y aceptá el ticket oficial de FIN DE JORNADA. También podés guardar como incompleta.");
+          return;
+        }
+        if (dailyStatusChoice === "incomplete") {
+          const value = Number(reportedAmount.replace(",", "."));
+          if (!reportedAmount.trim() || !Number.isFinite(value) || value <= 0 || value > total || value > 999999999999.99) {
+            event.preventDefault();
+            setConfirmationError("Ingresá un importe mayor que cero y no superior al total de ventas, para guardar la rendición incompleta.");
+            return;
+          }
+        }
+        setConfirmationError("");
       }}
     >
       <input type="hidden" name="agent_id" value={agentId} />
@@ -535,7 +555,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               <button type="button" className="button primary" onClick={() => {
                 setReceiptReviewed(true);
                 setReceiptData((previous) => previous ? { ...previous, userConfirmedReview: true } : previous);
-                if (receiptHasConfirmedClosure) setDailyStatusChoice("complete");
+                setDailyStatusChoice("complete");
+                setConfirmationError("");
                 setConfirmationOpen(true);
               }}>Aceptar datos del ticket y continuar</button>
               <button type="button" className="button ghost" onClick={() => {
@@ -589,8 +610,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                   type="radio"
                   name={confirmationId + "-visible-status"}
                   checked={dailyStatusChoice === "complete"}
-                  disabled={!canConfirmDaily}
-                  onChange={() => setDailyStatusChoice("complete")}
+                  onChange={() => { setDailyStatusChoice("complete"); setConfirmationError(""); }}
                 />
                 <span>
                   <strong>Confirmar como rendida</strong>
@@ -602,7 +622,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                   type="radio"
                   name={confirmationId + "-visible-status"}
                   checked={dailyStatusChoice === "incomplete"}
-                  onChange={() => setDailyStatusChoice("incomplete")}
+                  onChange={() => { setDailyStatusChoice("incomplete"); setConfirmationError(""); }}
                 />
                 <span>
                   <strong>Guardar como incompleta</strong>
@@ -622,14 +642,14 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                     step="0.01"
                     inputMode="decimal"
                     value={reportedAmount}
-                    onChange={(event) => setReportedAmount(event.target.value)}
+                    onChange={(event) => { setReportedAmount(event.target.value); setConfirmationError(""); }}
                     placeholder="Ej.: 12500.00"
-                    required
                   />
                 </label>
               </div>
             )}
 
+            {confirmationError && <p className="message error-message rendition-confirmation-error" role="alert">{confirmationError}</p>}
             <div className="rendition-confirmation-actions">
               <button type="button" className="button ghost" onClick={() => setConfirmationOpen(false)}>
                 Volver a revisar
@@ -637,12 +657,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               <button
                 type="submit"
                 className="button primary"
-                disabled={(dailyStatusChoice === "complete" && !canConfirmDaily) || (dailyStatusChoice === "incomplete" && (
-                  !reportedAmount.trim() ||
-                  !Number.isFinite(Number(reportedAmount.replace(",", "."))) ||
-                  Number(reportedAmount.replace(",", ".")) <= 0 ||
-                  Number(reportedAmount.replace(",", ".")) > 999999999999.99
-                )) || (receiptNeedsReview && !receiptReviewed)}
+                disabled={busy}
               >
                 {dailyStatusChoice === "complete" ? "Confirmar y registrar" : "Guardar incompleta"}
               </button>

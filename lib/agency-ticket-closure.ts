@@ -199,13 +199,13 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   const closedLine = lines.find((line) => /\bCERRADO\b/i.test(normalizeTicketText(line))) ?? null;
   const openedAt = parseDateTime(openedLine);
   const closedAt = parseDateTime(closedLine);
-  const periodLine = lines.find((line) => /\bPERIODO\b/i.test(normalizeTicketText(line))) ?? null;
-  const periodMatch = periodLine?.match(/\bPERIODO(?:\s+NRO\.?)?\s*[:#.-]?\s*([0-9OIL][0-9OIL ]{1,11})\s*$/i);
+  const periodLine = lines.find((line) => /\bPER[I1]ODO\b/i.test(normalizeTicketText(line))) ?? null;
+  const periodSuffix = periodLine?.replace(/^.*?\bPER[I1]ODO\b/i, "") ?? "";
+  // Accept only an unambiguous numeric code with at least four digits. Letters
+  // such as OCR's "ABBAAZ2H" must never be displayed as a period number.
+  const periodMatch = periodSuffix.match(/(?:^|\D)(\d[\d ]{2,10}\d)(?=\D*$)/);
   const periodToken = periodMatch?.[1]?.replace(/\s+/g, "") ?? "";
-  // Reject OCR words such as "ABBAAZ2H": a ticket period must be a numeric code.
-  const periodNumber = /^[0-9OIL]{2,12}$/i.test(periodToken)
-    ? periodToken.replace(/[Oo]/g, "0").replace(/[IlL]/g, "1")
-    : null;
+  const periodNumber = /^\d{4,12}$/.test(periodToken) ? periodToken : null;
 
   const drawsStart = findIndex(lines, /SORTEOS?\s+ABIERTOS?/);
   const drawsEnd = findIndex(lines, /TOTALES?\s+EN\s+TJ|TOTALES?\s+TJ/, drawsStart >= 0 ? drawsStart + 1 : 0);

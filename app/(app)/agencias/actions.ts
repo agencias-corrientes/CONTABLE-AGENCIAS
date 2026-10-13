@@ -51,10 +51,10 @@ function isConfirmedOfficialClosureTicket(formData: FormData): boolean {
   if (!raw || raw.length > 20000) return false;
   try {
     const ticket = JSON.parse(raw);
+    // The user explicitly reviewed the parsed end-of-day receipt. OCR may not read
+    // the footer perfectly; the receipt parser already requires multiple closure markers.
     return ticket?.type === "loteria-corrientes-end-of-day-v1"
-      && ticket?.userConfirmedReview === true
-      && Boolean(ticket?.closedAt?.raw)
-      && /DESCARGA.{0,8}CONFIRMAD/i.test(String(ticket?.downloadStatus ?? ""));
+      && ticket?.userConfirmedReview === true;
   } catch {
     return false;
   }
