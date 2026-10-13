@@ -240,6 +240,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
   const [photoExpanded, setPhotoExpanded] = useState(false);
   const [progress, setProgress] = useState("");
+  const [progressPercent, setProgressPercent] = useState(0);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -303,6 +304,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     setBusy(true);
     setError("");
     setNotice("");
+    setProgress("Preparando lectura del ticket…");
+    setProgressPercent(3);
     setDetectedPeriodMismatch("");
     setReceiptData(null);
     setReceiptReviewed(false);
@@ -312,7 +315,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     setOcrText("");
     let detectedQr = "";
     try {
-      setProgress("Buscando el QR del ticket...");
+      setProgress("Buscando el QR del ticket…");
+      setProgressPercent(10);
       detectedQr = (await readQrFromImage(file)) ?? "";
       if (detectedQr) {
         setQrPayload(detectedQr);
@@ -340,12 +344,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         }
       }
 
-      setProgress("Leyendo el texto del ticket...");
+      setProgress("Leyendo el texto del ticket…");
+      setProgressPercent(18);
       const { createWorker } = await import("tesseract.js");
       const worker = await createWorker("spa+eng", 1, {
         logger: (message) => {
           if (message.status === "recognizing text" && typeof message.progress === "number") {
-            setProgress("Reconociendo ticket: " + Math.round(message.progress * 100) + "%");
+            const percent = Math.min(96, 18 + Math.round(message.progress * 78));
+            setProgressPercent(percent);
+            setProgress("Reconociendo ticket…");
           }
         },
       });
@@ -437,11 +444,13 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       } else {
         setNotice("Se leyó el texto, pero no se pudieron confirmar importes. Completalos manualmente.");
       }
+      setProgressPercent(100);
+      setProgress("Lectura completada. Revisá los datos cargados abajo en Juegos e importes.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo leer la foto del ticket.");
+      setProgress("La lectura no pudo completarse. Corregí la imagen e intentá de nuevo.");
     } finally {
       setBusy(false);
-      setProgress("");
     }
   }
 
@@ -490,9 +499,26 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         </>
       )}
 
-      <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
-        <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => setMode("photo")}>Foto / QR (automático)</button>
-        <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => setMode("manual")}>Carga manual</button>
+      <div className="rendition-mode-toolbar">
+        <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
+          <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => setMode("photo")}>Foto (automático)</button>
+          <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => setMode("manual")}>Carga manual</button>
+        </div>
+        {mode === "photo" && (
+          <div className={"ticket-progress-panel" + (busy ? " is-reading" : progressPercent >= 100 ? " is-complete" : fileName ? " has-file" : "")} role="status" aria-live="polite">
+            <div className="ticket-progress-heading">
+              <div>
+                <span>{busy ? "LEYENDO TICKET" : progressPercent >= 100 ? "TICKET LEÍDO" : fileName ? "LECTURA PENDIENTE" : "LECTURA AUTOMÁTICA"}</span>
+                <strong>{busy ? progress || "Procesando imagen…" : progressPercent >= 100 ? "Lectura completada" : fileName || "Esperando foto del ticket"}</strong>
+              </div>
+              <b>{progressPercent}%</b>
+            </div>
+            <div className="ticket-progress-track" role="progressbar" aria-label="Progreso de lectura del ticket" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPercent}>
+              <span style={{ width: progressPercent + "%" }} />
+            </div>
+            <small>{busy ? "No cierres esta pantalla; al terminar, los datos aparecen abajo en Juegos e importes." : progressPercent >= 100 ? "Los datos reconocidos están abajo en Juegos e importes y se pueden editar antes de confirmar." : "Seleccioná una foto para iniciar la lectura."}</small>
+          </div>
+        )}
       </div>
 
       {mode === "photo" && (
@@ -510,7 +536,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           {photoExpanded && photoPreviewUrl && <div className="ticket-photo-lightbox" role="dialog" aria-modal="true" aria-label="Foto del ticket ampliada" onClick={() => setPhotoExpanded(false)}><button type="button" className="ticket-photo-lightbox-close" onClick={() => setPhotoExpanded(false)}>Cerrar ✕</button><img src={photoPreviewUrl} alt="Foto del ticket ampliada" onClick={(event) => event.stopPropagation()} /></div>}
           <p className="muted small-text">También podés subir una foto guardada. La lectura se procesa en el navegador y la imagen se adjunta a la rendición para auditoría.</p>
           {fileName && <p className="ticket-file-label">Ticket cargado: <strong>{fileName}</strong></p>}
-          {busy && <p className="ticket-read-progress" role="status">{progress}</p>}
+
           {error && <p className="ticket-read-error" role="alert">{error}</p>}
           {notice && !error && <p className="ticket-read-notice">{notice}</p>}
           {receiptData && <p className="ticket-read-notice">Ticket de cierre identificado. El detalle completo, los porcentajes y las comisiones estimadas están en <strong>Juegos e importes</strong>.</p>}
