@@ -50,7 +50,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     for (let offset = 0; ; offset += pageSize) {
       const { data, error } = await supabase
         .from("agency_renditions")
-        .select("id,agent_id,rendition_date,created_at,updated_at,game_period,draw_number,capture_method,amount_due,status,reference,notes,ticket_receipt_data,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)")
+        .select("id,agent_id,rendition_date,created_at,updated_at,game_period,draw_number,capture_method,amount_due,net_due,status,reference,notes,ticket_receipt_data,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)")
         .eq("organization_id", activeOrganization.id)
         .order("created_at", { ascending: false })
         .order("id", { ascending: true })
@@ -204,7 +204,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const rowTotals = (row: any) => {
     const payments = Array.isArray(row.agency_rendition_payments) ? row.agency_rendition_payments : [];
     const received = payments.reduce((sum: number, payment: any) => sum + Number(payment.amount ?? 0), 0);
-    return { received, pending: Math.max(0, Number(row.amount_due ?? 0) - received), payments };
+    const cashDue = Number(row.net_due ?? row.amount_due ?? 0);
+    return { received, pending: Math.max(0, cashDue - received), payments };
   };
 
   function drawPeriodStateForAgent(agentId: string, period: ReturnType<typeof getOfficialDrawPeriodsForDate>[number]) {
@@ -242,7 +243,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                 <span className="rendition-record-date">{formatAgencyDate(row.rendition_date)}<small>{formatAgencyDateTime(row.created_at)}</small></span>
                 <span className="rendition-record-agent-code" aria-label={"Código del operador " + agent.code} title={"Código del operador " + agent.code}>{agent.code}</span>
                 <span className="rendition-record-period">{row.game_period || "Período no identificado"}{row.draw_number ? <small>Sorteo {row.draw_number}</small> : null}</span>
-                <span className="rendition-record-amount">{money(row.amount_due, activeOrganization.currency_code)}<small>{row.capture_method === "manual" ? "Carga manual" : row.capture_method === "qr" ? "Foto / QR" : "Foto del ticket"}</small></span>
+                <span className="rendition-record-amount">{money(row.amount_due, activeOrganization.currency_code)}<small>Ventas brutas · {row.capture_method === "manual" ? "Carga manual" : row.capture_method === "qr" ? "Foto / QR" : "Foto del ticket"}</small><small className="commission-note">Neto a rendir: {money(row.net_due ?? row.amount_due, activeOrganization.currency_code)}</small></span>
                 <span className={row.status === "void" ? "badge" : totals.pending <= 0 ? "badge success" : "badge"}>{row.status === "void" ? "Anulada" : totals.pending <= 0 ? "Cobrada" : "Pendiente " + money(totals.pending, activeOrganization.currency_code)}</span>
               </summary>
               <div className="rendition-record-detail">
@@ -250,7 +251,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                   <div>
                     <h4>Detalle por juego</h4>
                     {gameAmounts.length ? <ul className="rendition-game-amounts">{gameAmounts.map((game) => <li key={game.id}><span>{game.agency_game_types?.name ?? "Juego"}<small className="commission-note">{Number(game.commission_percent ?? 0).toFixed(2)}% comisión · {money(game.commission_amount ?? 0, activeOrganization.currency_code)}</small></span><strong>{money(game.amount, activeOrganization.currency_code)}<small className="commission-note">neto {money(Number(game.amount) - Number(game.commission_amount ?? 0), activeOrganization.currency_code)}</small></strong></li>)}</ul> : <p className="muted">No hay juegos asociados.</p>}
-                    <p className="rendition-grand-total"><span>Total rendido</span><strong>{money(row.amount_due, activeOrganization.currency_code)}</strong></p>
+                    <p className="rendition-grand-total"><span>Ventas brutas</span><strong>{money(row.amount_due, activeOrganization.currency_code)}</strong></p>
+                    <p className="rendition-grand-total"><span>Efectivo neto a rendir</span><strong>{money(row.net_due ?? Math.max(0, Number(row.amount_due ?? 0) - gameAmounts.reduce((sum: number, game: any) => sum + Number(game.commission_amount ?? 0), 0)), activeOrganization.currency_code)}</strong></p>
                   </div>
                   <div>
                     <h4>Ticket, período y observaciones</h4>

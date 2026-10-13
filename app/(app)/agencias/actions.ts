@@ -199,7 +199,20 @@ export async function createAgencyRendition(formData: FormData) {
   const dailyStatusNotes = String(formData.get("daily_status_notes") ?? "").trim();
   const confirmedOfficialClosure = isConfirmedOfficialClosureTicket(formData);
   const reportedAmountRaw = String(formData.get("reported_amount") ?? "").trim();
-  const reportedAmount = dailyStatus === "complete" ? totalDue : Number(reportedAmountRaw.replace(",", "."));
+  const [{ data: agentCommissionRows, error: agentCommissionError }, { data: defaultCommissionRows, error: defaultCommissionError }] = await Promise.all([
+    supabase.from("agency_agent_game_commissions").select("game_type_id,commission_percent").eq("organization_id", organizationId).eq("agent_id", agentId).in("game_type_id", submittedGameIds),
+    supabase.from("agency_game_commission_defaults").select("game_type_id,commission_percent").eq("organization_id", organizationId).in("game_type_id", submittedGameIds),
+  ]);
+  if (agentCommissionError || defaultCommissionError) redirect("/pagos?error=rendicion-fallida&agent=" + encodeURIComponent(agentId));
+  const agentCommissionByGame = new Map<string, number>((agentCommissionRows ?? []).map((row: any) => [String(row.game_type_id), Number(row.commission_percent)] as const));
+  const defaultCommissionByGame = new Map<string, number>((defaultCommissionRows ?? []).map((row: any) => [String(row.game_type_id), Number(row.commission_percent)] as const));
+  const commissionDue = breakdown.reduce((sum, item) => {
+    const rate = agentCommissionByGame.has(item.game_type_id) ? agentCommissionByGame.get(item.game_type_id)! : defaultCommissionByGame.get(item.game_type_id) ?? 0;
+    return sum + Math.round((item.amount * rate / 100 + Number.EPSILON) * 100) / 100;
+  }, 0);
+  const netDue = Math.max(0, Math.round((totalDue - commissionDue + Number.EPSILON) * 100) / 100);
+  if (netDue <= 0) redirect("/pagos?error=importe-invalido&agent=" + encodeURIComponent(agentId));
+  const reportedAmount = dailyStatus === "complete" ? netDue : Number(reportedAmountRaw.replace(",", "."));
   const parsedRenditionDate = new Date(renditionDate + "T00:00:00.000Z");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(renditionDate) || Number.isNaN(parsedRenditionDate.getTime()) || parsedRenditionDate.toISOString().slice(0, 10) !== renditionDate) {
     throw new Error("Ingresá una fecha de juego válida.");
@@ -231,7 +244,7 @@ export async function createAgencyRendition(formData: FormData) {
     !reportedAmountRaw ||
     !Number.isFinite(reportedAmount) ||
     reportedAmount <= 0 ||
-    reportedAmount > totalDue ||
+    reportedAmount > netDue ||
     reportedAmount > 999999999999.99
   )) {
     redirect("/pagos?error=monto-rendido-invalido&agent=" + encodeURIComponent(agentId));
@@ -305,7 +318,7 @@ export async function createAgencyRendition(formData: FormData) {
   // La rendición diaria ya registra el cobro dentro de la misma transacción SQL.
   // Para la modalidad por sorteo se conserva el flujo vigente.
   if (renditionPolicy !== "daily") {
-    const paymentAmount = dailyStatus === "complete" ? totalDue : reportedAmount;
+    const paymentAmount = dailyStatus === "complete" ? netDue : reportedAmount;
     const { error: paymentError } = await supabase.rpc("receive_agency_rendition", {
       p_organization_id: organizationId,
       p_rendition_id: renditionId,

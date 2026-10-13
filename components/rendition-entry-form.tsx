@@ -253,7 +253,14 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     Object.values(amounts).reduce((sum, value) => sum + (Number(value) > 0 ? Number(value) : 0), 0),
     [amounts]
   );
-  const receiptNeedsReview = Boolean(receiptData);
+  const commissionTotal = useMemo(() => periodGames.reduce((sum, game) => {
+    const amount = Number(amounts[game.id] ?? 0), rate = game.commissionPercent;
+    if (!Number.isFinite(amount) || amount <= 0 || rate == null || !Number.isFinite(Number(rate))) return sum;
+    return sum + Math.round((amount * Number(rate) / 100 + Number.EPSILON) * 100) / 100;
+  }, 0), [amounts, periodGames]);
+  const netToRemit = Math.max(0, Math.round((total - commissionTotal + Number.EPSILON) * 100) / 100);
+  const effectiveCommissionPercent = total > 0 ? commissionTotal / total * 100 : 0;
+  const hasUnconfiguredCommission = periodGames.some((game) => Number(amounts[game.id] ?? 0) > 0 && (game.commissionPercent == null || !Number.isFinite(Number(game.commissionPercent))));
   // The OCR can misread the printed "Cerrado" / "Descarga confirmada" footer.
   // A structurally recognized closure ticket that the operator reviewed is sufficient.
   const receiptHasConfirmedClosure = Boolean(receiptData?.type === "loteria-corrientes-end-of-day-v1");
@@ -458,9 +465,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         }
         if (dailyStatusChoice === "incomplete") {
           const value = Number(reportedAmount.replace(",", "."));
-          if (!reportedAmount.trim() || !Number.isFinite(value) || value <= 0 || value > total || value > 999999999999.99) {
+          if (!reportedAmount.trim() || !Number.isFinite(value) || value <= 0 || value > netToRemit || value > 999999999999.99) {
             event.preventDefault();
-            setConfirmationError("Ingresá un importe mayor que cero y no superior al total de ventas, para guardar la rendición incompleta.");
+            setConfirmationError("Ingresá un importe mayor que cero y no superior al efectivo neto después de descontar la comisión.");
             return;
           }
         }
@@ -479,7 +486,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <>
           <input type="hidden" name="operational_date" value={today} />
           <input type="hidden" name="draw_status" value={dailyStatusChoice} />
-          <input type="hidden" name="reported_amount" value={dailyStatusChoice === "incomplete" ? reportedAmount : total.toFixed(2)} />
+          <input type="hidden" name="reported_amount" value={dailyStatusChoice === "incomplete" ? reportedAmount : netToRemit.toFixed(2)} />
         </>
       )}
 
@@ -579,14 +586,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             }} />
             {periodGames.map((game) => <input key={game.id} type="hidden" name={"game_" + game.id} value={amounts[game.id] ?? "0"} />)}
             <div className="ticket-closure-accept-actions">
-              <p>Solo los importes de <strong>Válidos</strong> alimentan las ventas de la rendición. Anulados, premios, cobros digitales y totales quedan separados como detalle del ticket.</p>
-              <button type="button" className="button primary" onClick={() => {
-                setReceiptReviewed(true);
-                setReceiptData((previous) => previous ? { ...previous, userConfirmedReview: true } : previous);
-                setDailyStatusChoice("complete");
-                setConfirmationError("");
-                setConfirmationOpen(true);
-              }}>Aceptar datos del ticket y continuar</button>
+              <p>El ticket ya está cargado. Revisá los porcentajes y usá una sola vez el botón principal <strong>Confirmar y guardar rendición</strong> para continuar.</p>
               <button type="button" className="button ghost" onClick={() => {
                 setReceiptData(null);
                 setReceiptReviewed(false);
@@ -606,11 +606,24 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       <label className="ticket-input-block"><span>Número(s) de ticket / cupón</span><textarea name="ticket_numbers" rows={2} value={ticketNumbers} onChange={(event) => setTicketNumbers(event.target.value)} placeholder="Se completa desde la lectura o ingresalo manualmente." /></label>
       <label className="ticket-input-block"><span>Observaciones</span><textarea name="notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Opcional." /></label>
-      <div className="rendition-submit-bar">
-        <div><span>Ventas a rendir</span><strong>{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(total)}</strong></div>
+      <div className="rendition-settlement-bar">
+        <div className="rendition-settlement-values">
+          <div><span>Ventas brutas</span><strong>{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(total)}</strong></div>
+          <div><span>Comisión aplicada ({new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(effectiveCommissionPercent)}%)</span><strong className="commission-deduction">− {new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(commissionTotal)}</strong></div>
+          <div className="rendition-net-value"><span>Efectivo neto a rendir</span><strong>{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(netToRemit)}</strong></div>
+        </div>
+        {hasUnconfiguredCommission && <p className="rendition-commission-warning">Hay juegos con ventas sin porcentaje configurado; para esos juegos se calcula 0%. Revisá la comisión del operador antes de confirmar.</p>}
         <button className="button primary" type={initialRendition ? "submit" : "button"}
-          onClick={initialRendition ? undefined : () => setConfirmationOpen(true)}
-          disabled={!periodGames.length || !period || busy || total <= 0 || Boolean(detectedPeriodMismatch) || (receiptNeedsReview && !receiptReviewed)}>
+          onClick={initialRendition ? undefined : () => {
+            setConfirmationError("");
+            if (receiptData) {
+              setReceiptReviewed(true);
+              setReceiptData((previous) => previous ? { ...previous, userConfirmedReview: true } : previous);
+              setDailyStatusChoice("complete");
+            }
+            setConfirmationOpen(true);
+          }}
+          disabled={!periodGames.length || !period || busy || total <= 0 || netToRemit <= 0 || Boolean(detectedPeriodMismatch)}>
           {busy ? "Leyendo ticket…" : initialRendition ? "Guardar cambios de la rendición" : "Confirmar y guardar rendición"}
         </button>
       </div>
@@ -654,7 +667,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                 />
                 <span>
                   <strong>Guardar como incompleta</strong>
-                  <small>Indicá cuánto rindió hasta el momento; podrás completar lo que falta después.</small>
+                  <small>Indicá cuánto efectivo entregó hasta el momento, sin superar el neto después de comisión.</small>
                 </span>
               </label>
             </div>
@@ -666,7 +679,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                   <input
                     type="number"
                     min="0.01"
-                    max="999999999999.99"
+                    max={netToRemit}
                     step="0.01"
                     inputMode="decimal"
                     value={reportedAmount}

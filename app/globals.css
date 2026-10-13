@@ -268,3 +268,14 @@ html,body{background:var(--bg);color:var(--text)}
 .ticket-sales-row>small{display:block;padding:0 8px 5px;color:var(--primary);font-size:11px;font-weight:700}
 .ticket-sales-row .ticket-closure-edit-line{border-bottom:0}
 @media(max-width:760px){.rendition-confirmation-overlay{padding:8px}.rendition-confirmation-dialog{max-height:calc(100dvh - 16px)}}
+
+.rendition-settlement-bar{position:sticky;bottom:8px;z-index:18;display:flex;flex-direction:column;gap:12px;padding:13px;background:rgba(255,253,246,.98);backdrop-filter:blur(8px);border:2px solid var(--primary);border-radius:12px;box-shadow:0 8px 24px rgba(42,32,32,.18)}
+.rendition-settlement-values{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.rendition-settlement-values>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.rendition-settlement-values span{font-size:11px;color:var(--muted);font-weight:700}
+.rendition-settlement-values strong{font-size:16px;font-variant-numeric:tabular-nums}
+.rendition-settlement-values .commission-deduction{color:var(--primary)}
+.rendition-settlement-values .rendition-net-value{padding-left:10px;border-left:2px solid var(--success)}
+.rendition-settlement-values .rendition-net-value strong{font-size:20px;color:var(--success)}
+.rendition-commission-warning{margin:0;padding:8px 10px;background:#fff0d5;border-radius:8px;color:#744a05;font-size:12px}
+@media(max-width:720px){.rendition-settlement-values{grid-template-columns:1fr}.rendition-settlement-values .rendition-net-value{padding:8px 0 0;border-left:0;border-top:2px solid var(--success)}.rendition-settlement-bar>.button{width:100%}}
