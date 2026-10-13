@@ -293,7 +293,8 @@ export async function createAgencyRendition(formData: FormData) {
     if (message.includes("jornada operativa cambió")) redirect("/pagos?error=jornada-cambio&agent=" + encodeURIComponent(agentId));
     if (message.includes("ya existe una rendición para este sorteo") || message.includes("duplicate key") || message.includes("unique constraint")) redirect("/pagos?error=sorteo-ya-rendido&agent=" + encodeURIComponent(agentId));
     if (message.includes("juegos que no corresponden al período")) redirect("/pagos?error=juegos-periodo-invalido&agent=" + encodeURIComponent(agentId));
-    if (message.includes("fecha del sorteo debe coincidir")) redirect("/pagos?error=fecha-sorteo-invalida&agent=" + encodeURIComponent(agentId));
+    if (message.includes("fecha de la rendición debe coincidir") || message.includes("fecha del sorteo debe coincidir")) redirect("/pagos?error=fecha-sorteo-invalida&agent=" + encodeURIComponent(agentId));
+    if (message.includes("confirmación completa se habilita") || message.includes("último sorteo programado")) redirect("/pagos?error=cierre-diario-antes-de-hora&agent=" + encodeURIComponent(agentId));
     if (message.includes("día no está programado")) redirect("/pagos?error=sorteo-no-programado&agent=" + encodeURIComponent(agentId));
     redirect("/pagos?error=rendicion-fallida&agent=" + encodeURIComponent(agentId));
   }

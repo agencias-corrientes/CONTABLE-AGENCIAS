@@ -298,7 +298,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       if (detectedQr) {
         setQrPayload(detectedQr);
         const qr = structuredQr(detectedQr);
-        if (qr.date) setDate(qr.date);
+        // A historical closure ticket keeps its printed date in receiptData; the financial posting must stay on today's operational day.
+        if (qr.date && !dailyMode) setDate(qr.date);
         if (qr.period && !dailyMode) {
           const recognized = resolveRecognizedDrawPeriod(qr.period, allPeriods ?? periods);
           if (!recognized) {
@@ -527,6 +528,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <label>Número de sorteo<input value={drawNumber} onChange={(event) => setDrawNumber(event.target.value)} placeholder="Se detecta de la foto" /></label>
         <label>Referencia<input name="reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Opcional" /></label>
       </div>
+      {receiptData && (receiptData.closedAt.date || receiptData.printedAt.date) && (
+        <p className="message ticket-operational-date-notice">
+          El ticket informa cierre el <strong>{receiptData.closedAt.date ?? receiptData.printedAt.date}</strong>.
+          Para esta prueba, la rendición financiera se registrará en la jornada operativa actual (<strong>{date}</strong>); no se reabre ni modifica la Caja de la fecha impresa.
+        </p>
+      )}
       {detectedPeriodMismatch && <p className="message error-message">
         {detectedPeriodMismatch === "__DAILY_CLOSURE__" ? (
           <>Este ticket consolida la jornada completa. Configurá la modalidad de este operador en <strong>Rendición diaria / cierre diario</strong> antes de registrarlo.</>
