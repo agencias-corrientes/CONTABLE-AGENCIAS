@@ -23,6 +23,7 @@ export type TicketClosureData = {
   closedAt: { date: string | null; time: string | null; raw: string | null };
   downloadStatus: string | null;
   consistency: { salesTotalsMatch: boolean | null; prizeTotalsMatch: boolean | null };
+  commissionRates?: Record<string, number | null>;
   userConfirmedReview?: boolean;
   rawText: string;
 };
@@ -199,8 +200,12 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   const openedAt = parseDateTime(openedLine);
   const closedAt = parseDateTime(closedLine);
   const periodLine = lines.find((line) => /\bPERIODO\b/i.test(normalizeTicketText(line))) ?? null;
-  const periodMatch = periodLine?.match(/\b([0-9OIL][0-9OIL ]{1,11})\s*$/i);
-  const periodNumber = periodMatch?.[1]?.replace(/\s+/g, "") ?? null;
+  const periodMatch = periodLine?.match(/\bPERIODO(?:\s+NRO\.?)?\s*[:#.-]?\s*([0-9OIL][0-9OIL ]{1,11})\s*$/i);
+  const periodToken = periodMatch?.[1]?.replace(/\s+/g, "") ?? "";
+  // Reject OCR words such as "ABBAAZ2H": a ticket period must be a numeric code.
+  const periodNumber = /^[0-9OIL]{2,12}$/i.test(periodToken)
+    ? periodToken.replace(/[Oo]/g, "0").replace(/[IlL]/g, "1")
+    : null;
 
   const drawsStart = findIndex(lines, /SORTEOS?\s+ABIERTOS?/);
   const drawsEnd = findIndex(lines, /TOTALES?\s+EN\s+TJ|TOTALES?\s+TJ/, drawsStart >= 0 ? drawsStart + 1 : 0);

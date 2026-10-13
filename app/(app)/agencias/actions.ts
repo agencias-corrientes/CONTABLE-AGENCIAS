@@ -46,6 +46,20 @@ async function getOrg() {
 }
 
 
+function isConfirmedOfficialClosureTicket(formData: FormData): boolean {
+  const raw = String(formData.get("ticket_receipt_data") ?? "").trim();
+  if (!raw || raw.length > 20000) return false;
+  try {
+    const ticket = JSON.parse(raw);
+    return ticket?.type === "loteria-corrientes-end-of-day-v1"
+      && ticket?.userConfirmedReview === true
+      && Boolean(ticket?.closedAt?.raw)
+      && /DESCARGA.{0,8}CONFIRMAD/i.test(String(ticket?.downloadStatus ?? ""));
+  } catch {
+    return false;
+  }
+}
+
 async function storeRenditionTicketPhoto(supabase: any, organizationId: string, renditionId: string, formData: FormData): Promise<"saved" | "skipped" | "failed"> {
   const value = formData.get("ticket_photo");
   if (!(value instanceof File) || value.size === 0) return "skipped";
@@ -183,6 +197,7 @@ export async function createAgencyRendition(formData: FormData) {
   const dailyStatus = String(formData.get("draw_status") ?? "").trim();
   const drawPeriod = String(formData.get("draw_period") ?? "").trim();
   const dailyStatusNotes = String(formData.get("daily_status_notes") ?? "").trim();
+  const confirmedOfficialClosure = isConfirmedOfficialClosureTicket(formData);
   const reportedAmountRaw = String(formData.get("reported_amount") ?? "").trim();
   const reportedAmount = dailyStatus === "complete" ? totalDue : Number(reportedAmountRaw.replace(",", "."));
   const parsedRenditionDate = new Date(renditionDate + "T00:00:00.000Z");
@@ -208,7 +223,7 @@ export async function createAgencyRendition(formData: FormData) {
       .filter((period) => Boolean(period.time))
       .sort((left, right) => String(left.time).localeCompare(String(right.time)))
       .at(-1);
-    if (!lastScheduledDraw || !drawPeriodHasPassed(lastScheduledDraw, operationalDate)) {
+    if ((!lastScheduledDraw || !drawPeriodHasPassed(lastScheduledDraw, operationalDate)) && !confirmedOfficialClosure) {
       redirect("/pagos?error=cierre-diario-antes-de-hora&agent=" + encodeURIComponent(agentId));
     }
   }
@@ -252,7 +267,9 @@ export async function createAgencyRendition(formData: FormData) {
       p_game_period: drawPeriod, p_draw_number: drawNumber ?? undefined, p_capture_method: captureMethod,
       p_reference: String(formData.get("reference") ?? "").trim() || undefined,
       p_notes: String(formData.get("notes") ?? "").trim() || undefined,
-      p_daily_status_notes: dailyStatus === "incomplete" ? (dailyStatusNotes || undefined) : undefined,
+      p_daily_status_notes: dailyStatus === "incomplete"
+        ? (dailyStatusNotes || undefined)
+        : confirmedOfficialClosure ? "__CONFIRMED_OFFICIAL_CLOSURE__" : undefined,
       p_reported_amount: reportedAmount,
     });
     renditionId = result.data ?? undefined; error = result.error;

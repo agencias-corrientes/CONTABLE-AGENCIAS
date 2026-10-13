@@ -35,10 +35,12 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const canDeleteRenditions = Boolean(permissions?.can_delete_renditions);
   const canRegisterPayments = Boolean(permissions?.can_register_payments);
 
-  const [{ data: operationalSettings }, { data: agents }, { data: gameTypes }] = await Promise.all([
+  const [{ data: operationalSettings }, { data: agents }, { data: gameTypes }, { data: agentCommissions }, { data: commissionDefaults }] = await Promise.all([
     supabase.from("agency_operational_settings").select("rendition_cutoff_time").eq("organization_id", activeOrganization.id).maybeSingle(),
     supabase.from("agency_agents").select("id,kind,full_name,code,is_active,phone,rendition_policy,rendition_periods").eq("organization_id", activeOrganization.id).order("kind").order("code"),
     supabase.from("agency_game_types").select("id,name,category,enabled").eq("organization_id", activeOrganization.id).order("sort_order").order("name"),
+    supabase.from("agency_agent_game_commissions").select("agent_id,game_type_id,commission_percent").eq("organization_id", activeOrganization.id),
+    supabase.from("agency_game_commission_defaults").select("game_type_id,commission_percent").eq("organization_id", activeOrganization.id),
   ]);
   const cutoffTime = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);
   const today = agencyBusinessDateForCutoff(cutoffTime);
@@ -183,6 +185,21 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     )
     .map((game) => ({ id: game.id, name: game.name, category: game.category, enabled: game.enabled }));
   const games = allGames.filter((game) => game.enabled).map(({ id, name, category }) => ({ id, name, category }));
+  const defaultCommissionByGame = new Map((commissionDefaults ?? []).map((row: any) => [String(row.game_type_id), Number(row.commission_percent)]));
+  const agentCommissionByGame = new Map((agentCommissions ?? []).map((row: any) => [
+    String(row.agent_id) + "|" + String(row.game_type_id),
+    Number(row.commission_percent),
+  ]));
+  function gamesForAgent(agentId: string, includeDisabled = false) {
+    const source = includeDisabled ? allGames : games;
+    return source.map((game) => {
+      const key = agentId + "|" + game.id;
+      const rate = agentCommissionByGame.has(key)
+        ? agentCommissionByGame.get(key)!
+        : defaultCommissionByGame.has(game.id) ? defaultCommissionByGame.get(game.id)! : null;
+      return { ...game, commissionPercent: rate };
+    });
+  }
   const agentLabel = (agent: any) => agent.kind === "subagent" ? "Subagente" : "Ambulante";
   const rowTotals = (row: any) => {
     const payments = Array.isArray(row.agency_rendition_payments) ? row.agency_rendition_payments : [];
@@ -285,7 +302,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                       <p className="muted small-text">Los cambios guardan una revisión nueva y conservan el registro en auditoría. Solo se permite editar antes de registrar cobros.</p>
                       <RenditionEntryForm
                         agentId={agent.id}
-                        games={allGames}
+                        games={gamesForAgent(String(agent.id), true)}
                         today={today}
                         periods={getOfficialDrawPeriodsForDate(String(row.rendition_date))}
                         allPeriods={allOfficialDrawPeriods}
@@ -380,7 +397,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                       <p className="message">Rendición incompleta: podés corregir los importes de los juegos. Los cobros ya registrados se conservan y el total no puede quedar por debajo de lo cobrado.</p>
                       <RenditionEntryForm
                         agentId={agent.id}
-                        games={games}
+                        games={gamesForAgent(String(agent.id))}
                         today={today}
                         periods={[dailyClosurePeriod]}
                         allPeriods={allOfficialDrawPeriods}
@@ -403,11 +420,11 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                     </>
                   : <p className="message">La rendición del día ya está registrada. {dailyStatusKind === "complete" ? "El cierre está confirmado." : "Revisá el historial y los cobros registrados."}</p>
                 : <>
-                    <RenditionEntryForm agentId={agent.id} games={games} today={today} periods={[dailyClosurePeriod]} allPeriods={allOfficialDrawPeriods} defaultPeriod="Cierre diario" dailyMode dailyCloseAllowed={dailyCloseAllowed} />
+                    <RenditionEntryForm agentId={agent.id} games={gamesForAgent(String(agent.id))} today={today} periods={[dailyClosurePeriod]} allPeriods={allOfficialDrawPeriods} defaultPeriod="Cierre diario" dailyMode dailyCloseAllowed={dailyCloseAllowed} />
                     {!dailyCloseAllowed && <p className="message">Podés cargar los importes durante el día y guardar el monto recibido como incompleto. La confirmación como rendición completa se habilita después del último sorteo{lastScheduledDraw?.time ? " (" + lastScheduledDraw.time + ")" : ""}.</p>}
                   </>
               : formPeriods.length > 0
-                ? <RenditionEntryForm agentId={agent.id} games={games} today={today} periods={formPeriods} allPeriods={allOfficialDrawPeriods} defaultPeriod={defaultPeriod} />
+                ? <RenditionEntryForm agentId={agent.id} games={gamesForAgent(String(agent.id))} today={today} periods={formPeriods} allPeriods={allOfficialDrawPeriods} defaultPeriod={defaultPeriod} />
                 : <p className="message">No hay otro sorteo habilitado vencido pendiente para registrar. Los turnos futuros se habilitan cuando llega su horario.</p>
             : <p className="message">No tenés permiso para registrar rendiciones. El titular debe habilitar esta operación.</p>}
           <section className="rendition-agent-history">

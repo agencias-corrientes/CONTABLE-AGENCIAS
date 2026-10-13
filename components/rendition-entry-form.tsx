@@ -7,7 +7,7 @@ import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod 
 import { mapTicketClosureAmounts, parseTicketClosure, type TicketClosureData } from "@/lib/agency-ticket-closure";
 import { TicketClosureReceipt } from "@/components/ticket-closure-receipt";
 
-type Game = { id: string; name: string; category: string; enabled?: boolean };
+type Game = { id: string; name: string; category: string; enabled?: boolean; commissionPercent?: number | null };
 type InitialRendition = {
   id: string;
   renditionDate: string;
@@ -76,14 +76,7 @@ function parseTicketText(text: string, games: Game[]) {
       amountMap: mapTicketClosureAmounts(receiptData, games),
       period: "",
       drawNumber: "",
-      date: (() => {
-        const raw = receiptData.closedAt.date ?? receiptData.printedAt.date ?? receiptData.openedAt.date;
-        if (!raw) return null;
-        const parts = raw.split(/[/-]/);
-        if (parts.length !== 3) return null;
-        const year = (parts[2] ?? "").length === 2 ? "20" + parts[2] : parts[2] ?? "";
-        return year + "-" + (parts[1] ?? "").padStart(2, "0") + "-" + (parts[0] ?? "").padStart(2, "0");
-      })(),
+      date: null,
       ticketNumber: /^\d{2,12}$/.test(receiptData.periodNumber ?? "") ? receiptData.periodNumber ?? "" : "",
       detectedGames: ["Cierre de jornada"],
       receiptData,
@@ -248,6 +241,14 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     [amounts]
   );
   const receiptNeedsReview = Boolean(receiptData);
+  const receiptHasConfirmedClosure = Boolean(
+    receiptData?.closedAt?.raw &&
+    /DESCARGA.{0,8}CONFIRMAD/i.test(receiptData.downloadStatus ?? "")
+  );
+  const canConfirmClosedTicket = Boolean(
+    receiptHasConfirmedClosure && receiptReviewed && receiptData?.userConfirmedReview === true
+  );
+  const canConfirmDaily = dailyCloseAllowed || canConfirmClosedTicket;
 
   // Refresh the proposed period at draw boundaries only while the form is untouched.
   useEffect(() => {
@@ -339,11 +340,16 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       setOcrText(recognizedText);
       const parsed = parseTicketText(recognizedText, periodGames);
       if (parsed.receiptData) {
+        const commissionRates = Object.fromEntries(periodGames.map((game) => [
+          normalize(game.name),
+          game.commissionPercent == null || !Number.isFinite(Number(game.commissionPercent)) ? null : Number(game.commissionPercent),
+        ]));
+        const closureReceipt = { ...parsed.receiptData, commissionRates };
         // A day-close ticket is a complete snapshot: replace values rather than add a duplicate.
-        setReceiptData(parsed.receiptData);
+        setReceiptData(closureReceipt);
         setReceiptReviewed(false);
-        setAmounts(parsed.amountMap);
-        if (/^\d{2,12}$/.test(parsed.receiptData.periodNumber ?? "")) setTicketNumbers(parsed.receiptData.periodNumber ?? "");
+        setAmounts(mapTicketClosureAmounts(closureReceipt, periodGames));
+        if (/^\d{2,12}$/.test(closureReceipt.periodNumber ?? "")) setTicketNumbers(closureReceipt.periodNumber ?? "");
         if (!dailyMode) {
           setDetectedPeriodMismatch("__DAILY_CLOSURE__");
           setNotice("Este comprobante es un FIN DE JORNADA completo. Para registrarlo, configurá este operador con modalidad Rendición diaria / cierre diario; no corresponde a un único sorteo.");
@@ -462,7 +468,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           {busy && <p className="ticket-read-progress" role="status">{progress}</p>}
           {error && <p className="ticket-read-error" role="alert">{error}</p>}
           {notice && !error && <p className="ticket-read-notice">{notice}</p>}
-          {receiptData && <p className="ticket-read-notice">Ticket de cierre identificado. El detalle completo y editable está abajo en <strong>Juegos e importes</strong>.</p>}
+          {receiptData && <p className="ticket-read-notice">Ticket de cierre identificado. El detalle completo, los porcentajes y las comisiones estimadas están en <strong>Juegos e importes</strong>.</p>}
           {qrPayload && <div className="qr-detected"><strong>✓ QR detectado</strong><code>{qrPayload.slice(0, 100)}{qrPayload.length > 100 ? "…" : ""}</code><button type="button" className="button ghost small" onClick={() => setQrPayload("")}>Quitar QR</button></div>}
           {ocrText && <details className="ticket-ocr-text"><summary>Ver texto reconocido</summary><pre>{ocrText}</pre></details>}
         </div>
@@ -529,6 +535,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               <button type="button" className="button primary" onClick={() => {
                 setReceiptReviewed(true);
                 setReceiptData((previous) => previous ? { ...previous, userConfirmedReview: true } : previous);
+                if (receiptHasConfirmedClosure) setDailyStatusChoice("complete");
                 setConfirmationOpen(true);
               }}>Aceptar datos del ticket y continuar</button>
               <button type="button" className="button ghost" onClick={() => {
@@ -582,12 +589,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                   type="radio"
                   name={confirmationId + "-visible-status"}
                   checked={dailyStatusChoice === "complete"}
-                  disabled={!dailyCloseAllowed}
+                  disabled={!canConfirmDaily}
                   onChange={() => setDailyStatusChoice("complete")}
                 />
                 <span>
                   <strong>Confirmar como rendida</strong>
-                  <small>{dailyCloseAllowed ? "La rendición queda confirmada como completa para esta jornada." : "Se habilita después del último horario de sorteo; ahora podés guardar como incompleta."}</small>
+                  <small>{canConfirmClosedTicket && !dailyCloseAllowed ? "El comprobante indica cierre y descarga confirmados; podés confirmar la jornada con este ticket." : dailyCloseAllowed ? "La rendición queda confirmada como completa para esta jornada." : "Se habilita después del último sorteo; aceptá el ticket oficial de cierre para confirmar antes."}</small>
                 </span>
               </label>
               <label className={"rendition-confirmation-option" + (dailyStatusChoice === "incomplete" ? " is-selected" : "")}>
@@ -630,12 +637,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               <button
                 type="submit"
                 className="button primary"
-                disabled={dailyStatusChoice === "incomplete" && (
+                disabled={(dailyStatusChoice === "complete" && !canConfirmDaily) || (dailyStatusChoice === "incomplete" && (
                   !reportedAmount.trim() ||
                   !Number.isFinite(Number(reportedAmount.replace(",", "."))) ||
                   Number(reportedAmount.replace(",", ".")) <= 0 ||
                   Number(reportedAmount.replace(",", ".")) > 999999999999.99
-                ) || (receiptNeedsReview && !receiptReviewed)}
+                )) || (receiptNeedsReview && !receiptReviewed)}
               >
                 {dailyStatusChoice === "complete" ? "Confirmar y registrar" : "Guardar incompleta"}
               </button>
@@ -644,7 +651,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         </div>
       )}
 
-      <small className="muted">Se guardan fecha y hora de registro, fecha del juego, período, sorteo, importes y el QR leído. La lectura se debe revisar antes de confirmar.</small>
+      <small className="muted">La fecha operativa se conserva en la rendición; las fechas y horarios impresos del ticket quedan en su detalle. Un cierre oficial aceptado puede confirmar la jornada antes del horario habitual.</small>
     </form>
   );
 }

@@ -1,5 +1,28 @@
 import type { TicketClosureData, TicketReceiptMetric } from "@/lib/agency-ticket-closure";
 type Props = { data: TicketClosureData; compact?: boolean; editable?: boolean; onChange?: (next: TicketClosureData) => void };
+const normalizeCommissionName = (value: string) =>
+  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
+
+function commissionRate(data: TicketClosureData, label: string): number | null | undefined {
+  const target = normalizeCommissionName(label);
+  const entries = Object.entries(data.commissionRates ?? {});
+  const found = entries.find(([name]) => {
+    const candidate = normalizeCommissionName(name);
+    if (target === "QUINIELA") return candidate === "QUINIELA" || candidate === "QUINIELA CORRENTINA";
+    if (target === "QUINIELA AL TOQUE") return candidate.includes("AL TOQUE");
+    if (target.includes("POCEADA")) return candidate.includes("POCEADA") && !candidate.includes("EXTRA") && !candidate.includes("NAVIDAD");
+    return candidate === target;
+  });
+  return found ? found[1] : undefined;
+}
+
+function commissionText(data: TicketClosureData, label: string, amount: number | null) {
+  const rate = commissionRate(data, label);
+  if (rate === undefined || rate === null) return "Comisión: sin porcentaje configurado";
+  const commission = amount === null ? null : amount * rate / 100;
+  return "Comisión " + rate.toLocaleString("es-AR") + "% · " + (commission === null ? "importe pendiente" : peso(commission));
+}
+
 function peso(value: number | null) { return value === null ? "—" : new Intl.NumberFormat("es-AR", {style:"currency",currency:"ARS"}).format(value); }
 function MetricRow({label,metric,editable=false,onChange}:{label:string;metric:TicketReceiptMetric;editable?:boolean;onChange?:(v:TicketReceiptMetric)=>void}) {
  if(!editable||!onChange)return <div className="ticket-closure-line"><span>{label}</span><strong>{(metric.count===null?"—":String(metric.count))+" · "+peso(metric.amount)}</strong></div>;
@@ -41,16 +64,16 @@ export function TicketClosureReceipt({data,compact=false,editable=false,onChange
   </div>
   <div className="ticket-closure-grid">
    <div className="ticket-closure-section"><h4>Quiniela</h4>
-    <MetricRow label="Válidos" metric={data.quiniela.valids} editable={editable} onChange={v=>metric("quiniela","valids",v)}/>
+    <div className="ticket-sales-row"><MetricRow label="Válidos" metric={data.quiniela.valids} editable={editable} onChange={v=>metric("quiniela","valids",v)}/><small>{commissionText(data, "Quiniela", data.quiniela.valids.amount)}</small></div>
     <MetricRow label="Anulados Esp." metric={data.quiniela.cancelledSpecial} editable={editable} onChange={v=>metric("quiniela","cancelledSpecial",v)}/>
     <MetricRow label="Premios pagados" metric={data.quiniela.prizesPaid} editable={editable} onChange={v=>metric("quiniela","prizesPaid",v)}/>
    </div>
    <div className="ticket-closure-section"><h4>Quiniela al Toque</h4>
-    <MetricRow label="Válidos" metric={data.quinielaAlToque.valids} editable={editable} onChange={v=>metric("quinielaAlToque","valids",v)}/>
+    <div className="ticket-sales-row"><MetricRow label="Válidos" metric={data.quinielaAlToque.valids} editable={editable} onChange={v=>metric("quinielaAlToque","valids",v)}/><small>{commissionText(data, "Quiniela al Toque", data.quinielaAlToque.valids.amount)}</small></div>
     <MetricRow label="Premios pagados" metric={data.quinielaAlToque.prizesPaid} editable={editable} onChange={v=>metric("quinielaAlToque","prizesPaid",v)}/>
    </div>
    <div className="ticket-closure-section"><h4>Otros juegos</h4>
-    {data.otherGames.map((g,i)=><MetricRow key={g.name+i} label={g.name} metric={{count:g.count,amount:g.amount}} editable={editable} onChange={v=>update({...data,otherGames:data.otherGames.map((row,j)=>i===j?{...row,count:v.count,amount:v.amount}:row)})}/>)}
+    {data.otherGames.map((g,i)=><div key={g.name+i} className="ticket-sales-row"><MetricRow label={g.name} metric={{count:g.count,amount:g.amount}} editable={editable} onChange={v=>update({...data,otherGames:data.otherGames.map((row,j)=>i===j?{...row,count:v.count,amount:v.amount}:row)})}/><small>{commissionText(data, g.name, g.amount)}</small></div>)}
     <MetricRow label="Total otros juegos" metric={data.totalOtherGames} editable={editable} onChange={v=>metric("totalOtherGames","",v)}/>
     <MetricRow label="Premios pagados (otros)" metric={data.otherGamesPrizes} editable={editable} onChange={v=>metric("otherGamesPrizes","",v)}/>
    </div>

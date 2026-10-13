@@ -260,3 +260,11 @@ html,body{background:var(--bg);color:var(--text)}
 .rendition-submit-bar>div span{font-size:11px;color:var(--muted)}
 .rendition-submit-bar>div strong{font-size:18px}
 @media(max-width:760px){.ticket-closure-grid{grid-template-columns:1fr}.ticket-closure-identifiers,.ticket-closure-footer{grid-template-columns:repeat(2,minmax(0,1fr))}.ticket-closure-edit-line{grid-template-columns:minmax(80px,1fr) minmax(75px,.7fr) minmax(100px,1fr)}.ticket-clear-row{grid-column:2/4;justify-self:end}.ticket-draw-row{grid-template-columns:minmax(0,1fr) 90px auto}.rendition-submit-bar{bottom:4px}.rendition-submit-bar>.button{width:100%}}
+
+.rendition-confirmation-overlay{overflow-y:auto;align-items:flex-start;padding:16px 12px}
+.rendition-confirmation-dialog{max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain}
+.rendition-confirmation-actions{position:sticky;bottom:0;background:var(--surface);padding-top:12px}
+.ticket-sales-row{margin:0 0 8px}
+.ticket-sales-row>small{display:block;padding:0 8px 5px;color:var(--primary);font-size:11px;font-weight:700}
+.ticket-sales-row .ticket-closure-edit-line{border-bottom:0}
+@media(max-width:760px){.rendition-confirmation-overlay{padding:8px}.rendition-confirmation-dialog{max-height:calc(100dvh - 16px)}}
