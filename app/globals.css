@@ -339,3 +339,7 @@ html,body{background:var(--bg);color:var(--text)}
 .rendition-stats .stat-card small{line-height:1.35}
 @media(max-width:1180px){.stats-grid.compact.rendition-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.stats-grid.compact.rendition-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Crisp, scalable identity mark for the login page. */
+.auth-card .login-agency-brand{width:88px;height:88px;flex:0 0 88px;margin:0 0 14px;overflow:visible!important}
+.auth-card .login-agency-brand img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 5px 9px rgba(42,22,25,.20))}

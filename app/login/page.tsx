@@ -116,7 +116,7 @@ export default function LoginPage() {
     <main className="auth-page">
       <div className="auth-card">
         <Link href="/" className="back-link">← Volver</Link>
-        <div className="brand-mark small brand-logo-wrap"><Image src="/logo-agencias-quiniela.webp" alt="Agencias de Quiniela" width={44} height={44} priority /></div>
+        <div className="brand-mark small brand-logo-wrap login-agency-brand"><Image src="/logo-agencias-quiniela.svg" alt="Agencias de Quiniela Corrientes" width={88} height={88} priority /></div>
         <p className="eyebrow">AGENCIAS CORRIENTES</p>
         <h1>Control de Agencias</h1>
         <p className="muted">Ingresá con una cuenta existente. El sistema verifica el rol asignado por cada agencia.</p>
