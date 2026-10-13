@@ -439,7 +439,12 @@ async function removeAgencyTicketPhotos(supabase: any, organizationId: string): 
   try {
     const bucket = supabase.storage.from("agency-rendition-tickets");
     const { data: topLevel, error: listError } = await bucket.list(organizationId, { limit: 1000 });
-    if (listError) return false;
+    if (listError) {
+      const message = String(listError.message ?? "").toLowerCase();
+      const code = String((listError as any).statusCode ?? (listError as any).status ?? "");
+      if (code === "404" || message.includes("bucket not found") || message.includes("bucket does not exist")) return true;
+      return false;
+    }
 
     const paths: string[] = [];
     for (const item of (topLevel ?? []) as Array<{ name: string; id?: string | null }>) {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ConfirmDeleteAccountButton } from "@/components/confirm-delete-account-button";
 import { getCurrentContext } from "@/lib/accounting";
+import { formatAgencyDateTime } from "@/lib/agency-datetime";
 import { addEmployeeByEmail, removeEmployeeAccess, saveBackupEmail, retryRenditionBackup, saveAgencySchedules, saveEmployeePermissions, saveEmployeeRole, cleanupAgencyTestData, deleteUnlinkedAuthAccount } from "./actions";
 
 const roleLabels: Record<string, string> = { owner: "Propietario", admin: "Administrador", accountant: "Contador", viewer: "Consulta" };
@@ -272,8 +273,8 @@ export default async function TeamPermissionsPage({
           {!backupRowsError && (!backupRows || !backupRows.length) && <p className="muted">Todavía no se generaron respaldos para las rendiciones. Las que se registren después de configurar un correo se encolarán aquí.</p>}
           {(backupRows ?? []).map((backup) => <details className="team-backup-record" key={backup.id}>
             <summary><span>{backup.subject}</span><span className={backup.status === "sent" ? "badge success" : backup.status === "failed" ? "badge warning" : "badge"}>{backup.status === "sent" ? "Enviado" : backup.status === "failed" ? "Falló" : backup.status === "sending" ? "Enviando" : "Pendiente"}</span></summary>
-            <div className="team-backup-record-body"><p><strong>Destino:</strong> {backup.recipient_email} · <strong>Creado:</strong> {backup.created_at}</p>
-              {backup.sent_at && <p><strong>Enviado:</strong> {backup.sent_at}</p>}
+            <div className="team-backup-record-body"><p><strong>Destino:</strong> {backup.recipient_email} · <strong>Creado:</strong> {formatAgencyDateTime(String(backup.created_at)).replace(" (Buenos Aires, Argentina)", "")}</p>
+              {backup.sent_at && <p><strong>Enviado:</strong> {formatAgencyDateTime(String(backup.sent_at)).replace(" (Buenos Aires, Argentina)", "")}</p>}
               {backup.last_error && <p className="message error-message">{(String(backup.last_error).toLowerCase().includes("you can only send testing emails to your own email address") || String(backup.last_error).toLowerCase().includes("verify a domain at resend.com/domains")) ? <>Resend está en modo de prueba y bloquea envíos a otros destinatarios. Conservá esta copia y verificá un dominio propio en <a href="https://resend.com/domains" target="_blank" rel="noreferrer">Resend → Domains</a>. Después configurá <code>RESEND_FROM_EMAIL</code> con una dirección de ese dominio en los secretos de la función de Supabase y volvé a intentar.</> : backup.last_error}</p>}
               <pre>{backup.text_body}</pre>
               {backup.status !== "sent" && <form action={retryRenditionBackup}><input type="hidden" name="backup_id" value={backup.id} /><button className="button ghost small" type="submit">Enviar / reintentar</button></form>}
@@ -294,14 +295,15 @@ export default async function TeamPermissionsPage({
           {cleanupRows.length > 0
             ? <div className="team-cleanup-counts">{cleanupRows.map(([key, count]) => <div className="team-cleanup-count" key={key}><span>{cleanupLabels[key] ?? key}</span><strong>{count}</strong></div>)}</div>
             : <p className="muted">No hay registros operativos de prueba para limpiar en este momento.</p>}
-          <form action={cleanupAgencyTestData} className="team-cleanup-form">
-            <label>Para habilitar la limpieza, escribí exactamente: <strong>LIMPIAR DATOS DE PRUEBA</strong>
-              <input type="text" name="confirmation" placeholder="LIMPIAR DATOS DE PRUEBA" autoComplete="off" required />
-            </label>
-            <label className="team-cleanup-confirm"><input type="checkbox" name="confirm_cleanup" value="yes" required /> Confirmo que se eliminarán todos los registros operativos que muestra el inventario, no solo los de prueba, y que no se podrán recuperar desde la aplicación.</label>
-            <button className="button danger" type="submit">Limpiar los datos de prueba</button>
-          </form>
         </>}
+        <form action={cleanupAgencyTestData} className="team-cleanup-form">
+          <label>Para habilitar la limpieza, escribí exactamente: <strong>LIMPIAR DATOS DE PRUEBA</strong>
+            <input type="text" name="confirmation" placeholder="LIMPIAR DATOS DE PRUEBA" autoComplete="off" required />
+          </label>
+          <label className="team-cleanup-confirm"><input type="checkbox" name="confirm_cleanup" value="yes" required /> Confirmo que se eliminarán todos los registros operativos que muestra el inventario, no solo los de prueba, y que no se podrán recuperar desde la aplicación.</label>
+          <button className="button danger" type="submit" disabled={Boolean(cleanupPreviewError)}>Limpiar los datos de prueba</button>
+          {cleanupPreviewError && <small className="muted">El botón queda deshabilitado hasta recuperar el inventario; no se borrarán datos sin mostrar primero qué se limpiaría.</small>}
+        </form>
         <p className="muted team-cleanup-footnote">La acción solo la puede ejecutar el titular y vuelve a comprobarlo en Supabase. Esta limpieza no elimina la cuenta de acceso del titular ni las cuentas de autenticación de empleados: a los empleados se les quita la membresía de esta agencia; si son cuentas ficticias, deben eliminarse después en Supabase → Authentication → Users.</p>
       </section>
 

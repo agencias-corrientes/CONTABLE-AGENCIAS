@@ -26,6 +26,18 @@ function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 }
 
+function formatDateDdMmYyyy(value: string | null | undefined): string {
+  if (!value) return "—";
+  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return iso[3] + "/" + iso[2] + "/" + iso[1];
+  const local = value.match(/^(\d{2})[/-](\d{2})[/-](\d{2,4})$/);
+  if (local) {
+    const year = local[3]!.length === 2 ? "20" + local[3] : local[3]!;
+    return local[1] + "/" + local[2] + "/" + year;
+  }
+  return value;
+}
+
 function parseMoney(value: string): number | null {
   let amount = value.replace(/[^0-9,.-]/g, "");
   if (!amount || !/\d/.test(amount)) return null;
@@ -346,7 +358,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           game.commissionPercent == null || !Number.isFinite(Number(game.commissionPercent)) ? null : Number(game.commissionPercent),
         ]));
         const closureReceipt = { ...parsed.receiptData, commissionRates };
-        // A day-close ticket is a complete snapshot: replace values rather than add a duplicate.
+        // The printed date stays in receipt metadata; the financial entry stays on today's operational day.
+        setDate(initialRendition?.renditionDate ?? today);
         setReceiptData(closureReceipt);
         setReceiptReviewed(false);
         setAmounts(mapTicketClosureAmounts(closureReceipt, periodGames));
@@ -401,8 +414,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       const recognizedCount = Object.keys(parsed.amountMap).length;
       if (parsed.receiptData) {
-        const populatedCount = Object.keys(parsed.amountMap).length;
-        setNotice("Ticket leído. Los renglones y valores se muestran directamente dentro de Juegos e importes, donde podés editarlos antes de confirmar.");
+        const printedDate = closureReceipt.closedAt.date ?? closureReceipt.printedAt.date ?? closureReceipt.openedAt.date;
+        setNotice(
+          "Ticket leído. Cierre impreso: " + formatDateDdMmYyyy(printedDate) +
+          ". La rendición financiera se registrará en la jornada operativa " + formatDateDdMmYyyy(today) +
+          "; la fecha impresa queda en el comprobante y no modifica la Caja de ese día. Los renglones editables están abajo en Juegos e importes."
+        );
         document.querySelector(".game-rendition-block")?.scrollIntoView({ behavior: "smooth", block: "start" });
       } else if (detectedQr && recognizedCount) {
         setNotice("QR e importes detectados. Revisá fecha, período y valores antes de registrar.");
@@ -496,7 +513,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       )}
 
       <div className="detail-grid rendition-meta-grid">
-        <label>Fecha de la jornada<input type="date" name="rendition_date" value={date} onChange={(event) => setDate(event.target.value)} required /></label>
+        <label>Fecha de la jornada financiera
+          <input type="date" name={receiptData ? undefined : "rendition_date"} value={date} onChange={(event) => setDate(event.target.value)} disabled={Boolean(receiptData)} required />
+          {receiptData && <input type="hidden" name="rendition_date" value={initialRendition?.renditionDate ?? today} />}
+          <small className="muted">Día/mes/año: {formatDateDdMmYyyy(date)}{receiptData ? " · fijada a la jornada operativa para no alterar una Caja anterior" : ""}</small>
+        </label>
         {dailyMode ? (
           <div className="rendition-daily-mode-summary"><strong>Modalidad</strong><span>Cierre diario único · se consolidan todos los juegos activos y sus importes.</span></div>
         ) : (
