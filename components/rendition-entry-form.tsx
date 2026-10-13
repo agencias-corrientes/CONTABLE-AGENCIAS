@@ -77,6 +77,14 @@ function parseTicketText(text: string, games: Game[]) {
       date: null,
       period: "",
       drawNumber: "",
+      date: (() => {
+        const raw = receiptData.closedAt.date ?? receiptData.printedAt.date ?? receiptData.openedAt.date;
+        if (!raw) return null;
+        const parts = raw.split(/[/-]/);
+        if (parts.length !== 3) return null;
+        const year = (parts[2] ?? "").length === 2 ? "20" + parts[2] : parts[2] ?? "";
+        return year + "-" + (parts[1] ?? "").padStart(2, "0") + "-" + (parts[0] ?? "").padStart(2, "0");
+      })(),
       ticketNumber: /^\d{2,12}$/.test(receiptData.periodNumber ?? "") ? receiptData.periodNumber ?? "" : "",
       detectedGames: ["Cierre de jornada"],
       receiptData,
@@ -386,9 +394,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       const recognizedCount = Object.keys(parsed.amountMap).length;
       if (parsed.receiptData) {
         const populatedCount = Object.keys(parsed.amountMap).length;
-        setNotice(parsed.receiptData.consistency.salesTotalsMatch === true && parsed.receiptData.consistency.prizeTotalsMatch === true
-          ? "Cierre diario reconocido: " + populatedCount + " campos de Juegos e importes se completaron automáticamente. Se reemplazó la carga anterior; premios y totales informativos no se suman como ventas. Revisá los valores antes de confirmar."
-          : "Cierre diario detectado: " + populatedCount + " campos de Juegos e importes se completaron automáticamente. Algún subtotal no se pudo validar; compará los valores con la foto antes de confirmar.");
+        setNotice("Ticket leído. Los renglones y valores se muestran directamente dentro de Juegos e importes, donde podés editarlos antes de confirmar.");
         document.querySelector(".game-rendition-block")?.scrollIntoView({ behavior: "smooth", block: "start" });
       } else if (detectedQr && recognizedCount) {
         setNotice("QR e importes detectados. Revisá fecha, período y valores antes de registrar.");
@@ -457,12 +463,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           {busy && <p className="ticket-read-progress" role="status">{progress}</p>}
           {error && <p className="ticket-read-error" role="alert">{error}</p>}
           {notice && !error && <p className="ticket-read-notice">{notice}</p>}
-          {receiptData && <TicketClosureReceipt data={receiptData} compact />}
-          {receiptData && receiptNeedsReview && <label className="ticket-closure-review-check"><input type="checkbox" checked={receiptReviewed} onChange={(event) => {
-            const checked = event.target.checked;
-            setReceiptReviewed(checked);
-            setReceiptData((previous) => previous ? { ...previous, userConfirmedReview: checked } : previous);
-          }} /> Revisé los valores contra la foto y confirmo esta lectura para continuar.</label>}
+          {receiptData && <p className="ticket-read-notice">Ticket de cierre identificado. El detalle completo y editable está abajo en <strong>Juegos e importes</strong>.</p>}
           {qrPayload && <div className="qr-detected"><strong>✓ QR detectado</strong><code>{qrPayload.slice(0, 100)}{qrPayload.length > 100 ? "…" : ""}</code><button type="button" className="button ghost small" onClick={() => setQrPayload("")}>Quitar QR</button></div>}
           {ocrText && <details className="ticket-ocr-text"><summary>Ver texto reconocido</summary><pre>{ocrText}</pre></details>}
         </div>
@@ -516,23 +517,48 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       <div className="game-rendition-block">
         <div className="game-rendition-head"><div><h3>Juegos e importes</h3><p className="muted">{mode === "photo" ? "El lector completa lo que reconoce. Corregí o agregá importes antes de guardar." : "Cargá manualmente los importes por juego."}</p></div><span className="rendition-live-total">{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(total)}</span></div>
-        <div className="game-rendition-list">
-          {periodGames.map((game) => <label className="game-rendition-row" key={game.id}><span><strong>{game.name}</strong><small>{game.category}</small></span><input type="number" name={"game_" + game.id} min="0" step="0.01" inputMode="decimal" placeholder="0,00" value={amounts[game.id] ?? ""} onChange={(event) => setAmounts((previous) => ({ ...previous, [game.id]: event.target.value }))} /></label>)}
-          {!period && <p className="message">Elegí el período del sorteo.</p>}
-          {period && !periodGames.length && <p className="message">No hay un juego activo asignado a este turno; no se mezclarán juegos de otros sorteos.</p>}
-        </div>
+        {receiptData ? (
+          <>
+            <TicketClosureReceipt data={receiptData} editable onChange={(next) => {
+              setReceiptData({ ...next, userConfirmedReview: false });
+              setReceiptReviewed(false);
+              setAmounts(mapTicketClosureAmounts(next, periodGames));
+            }} />
+            {periodGames.map((game) => <input key={game.id} type="hidden" name={"game_" + game.id} value={amounts[game.id] ?? "0"} />)}
+            <div className="ticket-closure-accept-actions">
+              <p>Solo los importes de <strong>Válidos</strong> alimentan las ventas de la rendición. Anulados, premios, cobros digitales y totales quedan separados como detalle del ticket.</p>
+              <button type="button" className="button primary" onClick={() => {
+                setReceiptReviewed(true);
+                setReceiptData((previous) => previous ? { ...previous, userConfirmedReview: true } : previous);
+                setConfirmationOpen(true);
+              }}>Aceptar datos del ticket y continuar</button>
+              <button type="button" className="button ghost" onClick={() => {
+                setReceiptData(null);
+                setReceiptReviewed(false);
+                setAmounts({});
+                setNotice("Se quitó la lectura. Podés cargar manualmente.");
+              }}>Quitar ticket y cargar manualmente</button>
+            </div>
+          </>
+        ) : (
+          <div className="game-rendition-list">
+            {periodGames.map((game) => <label className="game-rendition-row" key={game.id}><span><strong>{game.name}</strong><small>{game.category}</small></span><input type="number" name={"game_" + game.id} min="0" step="0.01" inputMode="decimal" placeholder="0,00" value={amounts[game.id] ?? ""} onChange={(event) => setAmounts((previous) => ({ ...previous, [game.id]: event.target.value }))} /></label>)}
+            {!period && <p className="message">Elegí el período del sorteo.</p>}
+            {period && !periodGames.length && <p className="message">No hay un juego activo asignado a este turno; no se mezclarán juegos de otros sorteos.</p>}
+          </div>
+        )}
       </div>
 
       <label className="ticket-input-block"><span>Número(s) de ticket / cupón</span><textarea name="ticket_numbers" rows={2} value={ticketNumbers} onChange={(event) => setTicketNumbers(event.target.value)} placeholder="Se completa desde la lectura o ingresalo manualmente." /></label>
       <label className="ticket-input-block"><span>Observaciones</span><textarea name="notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Opcional." /></label>
-      <button
-        className="button primary"
-        type={initialRendition ? "submit" : "button"}
-        onClick={initialRendition ? undefined : () => setConfirmationOpen(true)}
-        disabled={!periodGames.length || !period || busy || total <= 0 || Boolean(detectedPeriodMismatch) || (receiptNeedsReview && !receiptReviewed)}
-      >
-        {busy ? "Leyendo ticket…" : initialRendition ? "Guardar cambios de la rendición" : "Registrar rendición diaria"}
-      </button>
+      <div className="rendition-submit-bar">
+        <div><span>Ventas a rendir</span><strong>{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(total)}</strong></div>
+        <button className="button primary" type={initialRendition ? "submit" : "button"}
+          onClick={initialRendition ? undefined : () => setConfirmationOpen(true)}
+          disabled={!periodGames.length || !period || busy || total <= 0 || Boolean(detectedPeriodMismatch) || (receiptNeedsReview && !receiptReviewed)}>
+          {busy ? "Leyendo ticket…" : initialRendition ? "Guardar cambios de la rendición" : "Confirmar y guardar rendición"}
+        </button>
+      </div>
 
       {!initialRendition && confirmationOpen && (
         <div className="rendition-confirmation-overlay">

@@ -50,9 +50,15 @@ function moneyAllowZero(value: string): number | null {
 }
 
 function metricFromLine(line: string): TicketReceiptMetric | null {
-  const values = line.match(/\d[\d.,]*/g) ?? [];
-  if (values.length === 0) return null;
+  // The digits in "Quini 6" and "Loto 5 Plus" are game names, not amounts.
+  const cleaned = normalizeTicketText(line)
+    .replace(/^(?:LOTO\s+5\s+PLUS|LOTO\s+PLUS|QUINI\s*6|MUINI\s*6|HUI[I1]NI\s*6|QUINIELA\s+POCEADA|LOTER[I1]A\s+ONLINE|POZO\s+QUINIELA|BRINCO|TELEKINO|QUINIELA\s+AL\s+TOQUE|QUINIELA(?:\s+CORRIENTES?)?)\s*/i, "").trim();
+  const values = cleaned.match(/\d[\d.,]*/g) ?? [];
+  if (!values.length) return null;
   const amountToken = values[values.length - 1] ?? "";
+  const hasCurrency = /\$|\bARS\b|PESOS/i.test(cleaned);
+  const hasCents = /[.,]\d{2}\b/.test(amountToken);
+  if (values.length === 1 && !hasCurrency && !hasCents) return null;
   const amount = moneyAllowZero(amountToken);
   if (amount === null) return null;
   if (values.length === 1) return { count: 0, amount };
@@ -143,10 +149,8 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   // The same game names occur in "Sorteos abiertos"; read only inside "Otros juegos".
   const otherRowsStart = otherIndex >= 0 ? otherIndex + 1 : (qToqueIndex >= 0 ? qToqueIndex + 1 : 0);
   const otherRowsEnd = totalOtherIndex > otherRowsStart ? totalOtherIndex : otherEnd;
-  const otherDataLines = lines.slice(otherRowsStart, otherRowsEnd)
-    .filter((line) => !/PREMIOS?\s+P[A-Z]{2,3}|TOTAL\s+GENERAL/i.test(normalizeTicketText(line)));
-  const metricLines = otherDataLines.filter((line) => metricFromLine(line) !== null);
-  const otherGames = gameLabels.map(({ name, matcher }, gameIndex) => {
+  const otherGames = gameLabels.map(({ name, matcher }) => {
+    // Never map an arbitrary numeric row by position: that produced false prices.
     const index = normalized.findIndex((line, i) => i >= otherRowsStart && i < otherRowsEnd && matcher.test(line));
     let metric = index >= 0 ? metricFromLine(lines[index] ?? "") : null;
     if (!metric && index >= 0) {
@@ -157,7 +161,6 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
         if (metric) break;
       }
     }
-    if (!metric) metric = metricFromLine(metricLines[gameIndex] ?? "");
     return { name, count: metric?.count ?? null, amount: metric?.amount ?? null };
   });
   const totalOtherGames = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, totalOtherMatcher);
