@@ -51,14 +51,15 @@ function moneyAllowZero(value: string): number | null {
 
 function metricFromLine(line: string): TicketReceiptMetric | null {
   const values = line.match(/\d[\d.,]*/g) ?? [];
-  if (values.length < 2) return null;
-  const countToken = values[values.length - 2] ?? "";
+  if (values.length === 0) return null;
   const amountToken = values[values.length - 1] ?? "";
-  const countPrefix = countToken.replace(/[.,].*$/, "");
-  const count = countPrefix ? Number(countPrefix) : NaN;
   const amount = moneyAllowZero(amountToken);
-  if (!Number.isFinite(count) || amount === null) return null;
-  return { count: Math.max(0, Math.trunc(count)), amount };
+  if (amount === null) return null;
+  if (values.length === 1) return { count: 0, amount };
+  const countToken = values[values.length - 2] ?? "";
+  const countPrefix = countToken.replace(/[.,].*$/, "");
+  const count = countPrefix ? Number(countPrefix) : 0;
+  return { count: Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0, amount };
 }
 
 const emptyMetric = (): TicketReceiptMetric => ({ count: null, amount: null });
@@ -72,7 +73,7 @@ function metricInRange(lines: string[], start: number, end: number, matcher: Reg
     if (!metric) {
       for (let j = i + 1; j < Math.min(end, i + 3); j += 1) {
         const nextText = normalizeTicketText(lines[j] ?? "");
-        if (/^(QUINIELA|OTROS JUEGOS|MEDIOS DIGITALES|TOTAL GENERAL)/.test(nextText)) break;
+        if (/^(QUINIELA|OTROS\s+JU|MEDIOS\s+DIGITALES|NEDIOS\s+DIGITALES|TOTAL\s+(?:O|0)\.?\s*JUEGOS|TOTAL\s+GENERAL|PREMIOS?\s+PAG)/.test(nextText)) break;
         metric = metricFromLine(lines[j] ?? "");
         if (metric) break;
       }
@@ -104,14 +105,17 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   if (!lines.length) return null;
   const normalized = lines.map(normalizeTicketText);
   const joined = normalized.join("\n");
-  const isEndOfDay = /FIN\s+DE\s+JORNADA/.test(joined) &&
-    (/TOTALES?\s+EN\s+TJ/.test(joined) || /CERRADO/.test(joined) || /DESCARGA?\s+CONFIRMADA/.test(joined));
+  // Térmica borrosa: el OCR puede leer "FIN DE TORNADA". Usamos también el pie del ticket.
+  const hasClosureFooter = /TOTALES?\s+EN\s+TJ/.test(joined) &&
+    /TOTAL\s+GENERAL/.test(joined) && /ABIERTO\s+EL/.test(joined) && /CERRADO/.test(joined);
+  const isEndOfDay = (/FIN\s+DE\s+(?:JOR|TOR)NADA/.test(joined) &&
+    (/TOTALES?\s+EN\s+TJ/.test(joined) || /CERRADO/.test(joined) || /DESCARGA?\s+CONFIRMADA/.test(joined))) || hasClosureFooter;
   if (!isEndOfDay) return null;
 
   const qIndex = findIndex(lines, /^QUINIELA(?:\s+CORRIENTES?)?$/);
-  const qToqueIndex = findIndex(lines, /QUINIELA\s+AL\s+TOQUE/);
-  const otherIndex = findIndex(lines, /OTROS\s+JUEGOS/);
-  const digitalIndex = findIndex(lines, /MEDIOS\s+DIGITALES/);
+  const qToqueIndex = findIndex(lines, /AL\s+TOQUE/);
+  const otherIndex = findIndex(lines, /OTROS\s+JUE\w{2,3}/);
+  const digitalIndex = findIndex(lines, /[MN]EDIOS\s+DIGITALES/);
   const otherEnd = digitalIndex >= 0 ? digitalIndex : lines.length;
   const qEnd = qToqueIndex >= 0 ? qToqueIndex : (otherIndex >= 0 ? otherIndex : lines.length);
   const qToqueEnd = otherIndex >= 0 ? otherIndex : lines.length;
@@ -123,31 +127,38 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   const toquePrizes = metricInRange(lines, qToqueIndex >= 0 ? qToqueIndex : 0, qToqueEnd, /PREMIOS?\s+PAG/);
 
   const gameLabels: Array<{ name: string; matcher: RegExp }> = [
-    { name: "Loto Plus", matcher: /^LOTO\s+PLUS(?!\s+EXTRA)(?!\s+5)/ },
-    { name: "Quini 6", matcher: /^QUINI[\s-]*6\b/ },
-    { name: "Pozo Quiniela", matcher: /^POZO\s+QUINIELA/ },
-    { name: "Brinco", matcher: /^BRINCO/ },
-    { name: "Loto 5 Plus", matcher: /^LOTO\s+5\s+PLUS/ },
-    { name: "Lotería Online", matcher: /^LOTERIA\s+ONLINE/ },
-    { name: "Quiniela Poceada", matcher: /^QUINIELA\s+POCEADA/ },
-    { name: "Telekino", matcher: /^TELEKINO/ },
+    { name: "Loto Plus", matcher: /^(?:L?OTO)\s+PLUS(?!\s+EXTRA)(?!\s+5)/ },
+    { name: "Quini 6", matcher: /^(?:QUINI|MUINI|HUI[I1]NI)[\s-]*6\b/ },
+    { name: "Pozo Quiniela", matcher: /^(?:POZO\s+QUINIELA|0?2?0\s+FUINIEL|POZO\s+FUINIEL)/ },
+    { name: "Brinco", matcher: /^(?:BRINCO|BR\s+INTO)/ },
+    { name: "Loto 5 Plus", matcher: /^(?:L?OTO)\s+5\s+PLUS/ },
+    { name: "Lotería Online", matcher: /^(?:LOTERIA|L?ATERIA)\s+ONLINE/ },
+    { name: "Quiniela Poceada", matcher: /^QUINIELA\s+POC/ },
+    { name: "Telekino", matcher: /^TELEK/ },
   ];
-  const otherGames = gameLabels.map(({ name, matcher }) => {
-    const index = normalized.findIndex((line) => matcher.test(line));
+  const totalOtherMatcher = /TOTAL\s+(?:(?:O|0)\.?\s*)?JUEGOS|TOTAL\s+OTROS\s+JUEGOS/;
+  const totalOtherIndex = findIndex(lines, totalOtherMatcher, otherIndex >= 0 ? otherIndex : 0);
+  // The same game names occur in "Sorteos abiertos"; read only inside "Otros juegos".
+  const otherRowsStart = otherIndex >= 0 ? otherIndex + 1 : (qToqueIndex >= 0 ? qToqueIndex + 1 : 0);
+  const otherRowsEnd = totalOtherIndex > otherRowsStart ? totalOtherIndex : otherEnd;
+  const otherDataLines = lines.slice(otherRowsStart, otherRowsEnd)
+    .filter((line) => !/PREMIOS?\s+PAG|TOTAL\s+GENERAL/i.test(normalizeTicketText(line)));
+  const metricLines = otherDataLines.filter((line) => metricFromLine(line) !== null);
+  const otherGames = gameLabels.map(({ name, matcher }, gameIndex) => {
+    const index = normalized.findIndex((line, i) => i >= otherRowsStart && i < otherRowsEnd && matcher.test(line));
     let metric = index >= 0 ? metricFromLine(lines[index] ?? "") : null;
     if (!metric && index >= 0) {
-      for (let j = index + 1; j < Math.min(otherEnd, index + 3); j += 1) {
+      for (let j = index + 1; j < Math.min(otherRowsEnd, index + 3); j += 1) {
         const nextText = normalizeTicketText(lines[j] ?? "");
-        if (/^(LOTO PLUS|QUINI[\s-]*6|POZO QUINIELA|BRINCO|LOTO 5 PLUS|LOTERIA ONLINE|QUINIELA POCEADA|TELEKINO|TOTAL O|TOTAL OTROS|PREMIOS PAG)/.test(nextText)) break;
+        if (/^(?:L?OTO|QUINI|MUINI|HUI|POZO|020|BRINCO|BR\s+INTO|LOTERIA|ATERIA|QUINIELA|TELEK|TOTAL|PREMIOS?\s+PAG)/.test(nextText)) break;
         metric = metricFromLine(lines[j] ?? "");
         if (metric) break;
       }
     }
+    if (!metric) metric = metricFromLine(metricLines[gameIndex] ?? "");
     return { name, count: metric?.count ?? null, amount: metric?.amount ?? null };
   });
-
-  const totalOtherIndex = findIndex(lines, /TOTAL\s+(?:O\.?\s*)?JUEGOS|TOTAL\s+OTROS\s+JUEGOS/, otherIndex >= 0 ? otherIndex : 0);
-  const totalOtherGames = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /TOTAL\s+(?:O\.?\s*)?JUEGOS|TOTAL\s+OTROS\s+JUEGOS/);
+  const totalOtherGames = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, totalOtherMatcher);
   const otherGamesPrizes = metricInRange(lines, totalOtherIndex >= 0 ? totalOtherIndex + 1 : (otherIndex >= 0 ? otherIndex : 0), otherEnd, /PREMIOS?\s+PAG/);
   const totalPrizes = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /PREMIOS?\s+PAG/, true);
   const generalTotal = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /TOTAL\s+GENERAL/);
@@ -229,7 +240,9 @@ export function mapTicketClosureAmounts(receipt: TicketClosureData, games: { id:
     { amount: receipt.otherGames.find((item) => item.name === "Brinco")?.amount ?? null, match: (name) => name === "BRINCO" },
     { amount: receipt.otherGames.find((item) => item.name === "Loto 5 Plus")?.amount ?? null, match: (name) => name.includes("LOTO 5") },
     { amount: receipt.otherGames.find((item) => item.name === "Quiniela Poceada")?.amount ?? null, match: (name) => name.includes("POCEADA") },
-    { amount: receipt.otherGames.find((item) => item.name === "Telekino")?.amount ?? null, match: (name) => name === "TELEKINO" },
+    { amount: receipt.otherGames.find((item) => item.name === "Telekino")?.amount ?? null, match: (name) => name.includes("TELEK") },
+    { amount: receipt.otherGames.find((item) => item.name === "Pozo Quiniela")?.amount ?? null, match: (name) => name.includes("POZO QUINIELA") },
+    { amount: receipt.otherGames.find((item) => item.name === "Lotería Online")?.amount ?? null, match: (name) => name.includes("LOTERIA ONLINE") },
   ];
   const mapped: Record<string, string> = {};
   for (const entry of entries) {

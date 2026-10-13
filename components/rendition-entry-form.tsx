@@ -385,9 +385,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       const recognizedCount = Object.keys(parsed.amountMap).length;
       if (parsed.receiptData) {
+        const populatedCount = Object.keys(parsed.amountMap).length;
         setNotice(parsed.receiptData.consistency.salesTotalsMatch === true && parsed.receiptData.consistency.prizeTotalsMatch === true
-          ? "Cierre diario reconocido. Las ventas válidas reemplazaron la carga anterior; premios, anulaciones y totales quedan separados y no se suman como ventas. Verificá el detalle antes de registrar."
-          : "Cierre diario detectado, pero algún subtotal no se pudo validar. Compará todos los importes con la foto antes de confirmar.");
+          ? "Cierre diario reconocido: " + populatedCount + " campos de Juegos e importes se completaron automáticamente. Se reemplazó la carga anterior; premios y totales informativos no se suman como ventas. Revisá los valores antes de confirmar."
+          : "Cierre diario detectado: " + populatedCount + " campos de Juegos e importes se completaron automáticamente. Algún subtotal no se pudo validar; compará los valores con la foto antes de confirmar.");
+        document.querySelector(".game-rendition-block")?.scrollIntoView({ behavior: "smooth", block: "start" });
       } else if (detectedQr && recognizedCount) {
         setNotice("QR e importes detectados. Revisá fecha, período y valores antes de registrar.");
       } else if (detectedQr) {

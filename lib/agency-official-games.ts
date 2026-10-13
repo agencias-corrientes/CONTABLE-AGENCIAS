@@ -7,6 +7,8 @@ export const OFFICIAL_AGENCY_GAME_CATALOG = [
   { name: "Quini 6", category: "Otros juegos", sortOrder: 60, enabledByDefault: true, type: "regular" },
   { name: "Brinco", category: "Otros juegos", sortOrder: 70, enabledByDefault: true, type: "regular" },
   { name: "Telekino", category: "Otros juegos", sortOrder: 80, enabledByDefault: true, type: "regular" },
+  { name: "Pozo Quiniela", category: "Otros juegos", sortOrder: 85, enabledByDefault: true, type: "regular" },
+  { name: "Lotería Online", category: "Otros juegos", sortOrder: 90, enabledByDefault: true, type: "regular" },
   { name: "Quiniela Poceada Extra", category: "Poceada", sortOrder: 130, enabledByDefault: false, type: "special" },
   { name: "Quiniela Poceada Navidad", category: "Poceada", sortOrder: 140, enabledByDefault: false, type: "special" },
   { name: "Loto Plus Extra", category: "Otros juegos", sortOrder: 150, enabledByDefault: false, type: "special" },
