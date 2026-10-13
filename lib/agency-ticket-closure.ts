@@ -113,11 +113,27 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   if (!lines.length) return null;
   const normalized = lines.map(normalizeTicketText);
   const joined = normalized.join("\n");
-  // Térmica borrosa: el OCR puede leer "FIN DE TORNADA". Usamos también el pie del ticket.
-  const hasClosureFooter = /TOTALES?\s+EN\s+TJ/.test(joined) &&
-    /TOTAL\s+GENERAL/.test(joined) && /ABIERTO\s+EL/.test(joined) && /CERRADO/.test(joined);
-  const isEndOfDay = (/FIN\s+DE\s+(?:JOR|TOR)NADA/.test(joined) &&
-    (/TOTALES?\s+EN\s+TJ/.test(joined) || /CERRADO/.test(joined) || /DESCARGA?\s+CONFIRMADA/.test(joined))) || hasClosureFooter;
+  // Térmica borrosa: no depender de que una sola frase salga perfecta en OCR.
+  // Un cierre válido se reconoce por varias marcas independientes del ticket.
+  const closureMarkers = {
+    header: /FIN\s+DE\s+(?:JOR|TOR)NADA/.test(joined),
+    totalsTj: /TOTALES?\s+EN\s+T[J7I1]|TOTALES?\s+EN\s+T[I1J7]/.test(joined),
+    general: /TOTAL\s+GENE?RA[L1I]?/.test(joined),
+    opened: /AB[I1L]ERTO\s+E[L1I]/.test(joined),
+    closed: /CERRAD[O0]?/.test(joined),
+    digital: /[MN]ED[I1]OS\s+D[I1]G[I1]T[A4][L1I]ES/.test(joined),
+    period: /PER[I1]ODO/.test(joined),
+    prizes: /PREM[I1]OS?\s+P[A-Z]{2,3}/.test(joined),
+    otherGames: /OTROS\s+JUE/.test(joined),
+    alToque: /AL\s+TOQUE/.test(joined),
+  };
+  const markerCount = Object.values(closureMarkers).filter(Boolean).length;
+  const hasClosureFooter = closureMarkers.totalsTj && closureMarkers.general &&
+    (closureMarkers.opened || closureMarkers.closed || closureMarkers.period);
+  const isEndOfDay = (closureMarkers.header && markerCount >= 2) ||
+    hasClosureFooter ||
+    (markerCount >= 4 && (closureMarkers.general || closureMarkers.totalsTj) &&
+      (closureMarkers.opened || closureMarkers.closed || closureMarkers.period));
   if (!isEndOfDay) return null;
 
   const qIndex = findIndex(lines, /^QUINIELA(?:\s+CORRIENTES?)?$/);
