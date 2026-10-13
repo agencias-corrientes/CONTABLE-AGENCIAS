@@ -74,7 +74,6 @@ function parseTicketText(text: string, games: Game[]) {
   if (receiptData) {
     return {
       amountMap: mapTicketClosureAmounts(receiptData, games),
-      date: null,
       period: "",
       drawNumber: "",
       date: (() => {
