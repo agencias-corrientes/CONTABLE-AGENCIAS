@@ -414,7 +414,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       const recognizedCount = Object.keys(parsed.amountMap).length;
       if (parsed.receiptData) {
-        const printedDate = closureReceipt.closedAt.date ?? closureReceipt.printedAt.date ?? closureReceipt.openedAt.date;
+        const printedDate = parsed.receiptData?.closedAt.date ?? parsed.receiptData?.printedAt.date ?? parsed.receiptData?.openedAt.date;
         setNotice(
           "Ticket leído. Cierre impreso: " + formatDateDdMmYyyy(printedDate) +
           ". La rendición financiera se registrará en la jornada operativa " + formatDateDdMmYyyy(today) +
