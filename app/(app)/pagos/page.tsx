@@ -169,7 +169,19 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const todayRendido = todayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
   const todayCobrado = todayRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_payments) ? row.agency_rendition_payments : []).reduce((subtotal: number, payment: any) => subtotal + Number(payment.amount ?? 0), 0), 0);
   const todayPendiente = Math.max(0, todayRendido - todayCobrado);
-  const allGames = (gameTypes ?? []).filter((game) => Boolean(getOfficialAgencyGame(game.name))).map((game) => ({ id: game.id, name: game.name, category: game.category, enabled: game.enabled }));
+  const ticketGameOrder = new Map([
+    "Quiniela Correntina", "Quiniela Al Toque", "Loto Plus", "Quini 6",
+    "Pozo Quiniela", "Brinco", "Loto 5 Plus", "Lotería Online",
+    "Quiniela Poceada Correntina", "Telekino",
+  ].map((name, index) => [name.toLocaleLowerCase("es-AR"), index] as const));
+  const allGames = (gameTypes ?? [])
+    .filter((game) => Boolean(getOfficialAgencyGame(game.name)))
+    .sort((left, right) =>
+      (ticketGameOrder.get(left.name.toLocaleLowerCase("es-AR")) ?? 999) -
+      (ticketGameOrder.get(right.name.toLocaleLowerCase("es-AR")) ?? 999)
+      || left.name.localeCompare(right.name, "es-AR")
+    )
+    .map((game) => ({ id: game.id, name: game.name, category: game.category, enabled: game.enabled }));
   const games = allGames.filter((game) => game.enabled).map(({ id, name, category }) => ({ id, name, category }));
   const agentLabel = (agent: any) => agent.kind === "subagent" ? "Subagente" : "Ambulante";
   const rowTotals = (row: any) => {

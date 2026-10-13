@@ -73,7 +73,7 @@ function metricInRange(lines: string[], start: number, end: number, matcher: Reg
     if (!metric) {
       for (let j = i + 1; j < Math.min(end, i + 3); j += 1) {
         const nextText = normalizeTicketText(lines[j] ?? "");
-        if (/^(QUINIELA|OTROS\s+JU|MEDIOS\s+DIGITALES|NEDIOS\s+DIGITALES|TOTAL\s+(?:O|0)\.?\s*JUEGOS|TOTAL\s+GENERAL|PREMIOS?\s+PAG)/.test(nextText)) break;
+        if (/^(QUINIELA|OTROS\s+JU|MEDIOS\s+DIGITALES|NEDIOS\s+DIGITALES|TOTAL\s+(?:O|0)\.?\s*JUEGOS|TOTAL\s+GENERAL|PREMIOS?\s+P[A-Z]{2,3})/.test(nextText)) break;
         metric = metricFromLine(lines[j] ?? "");
         if (metric) break;
       }
@@ -90,8 +90,10 @@ function findIndex(lines: string[], matcher: RegExp, fallback = -1): number {
 
 function parseDateTime(rawLine: string | null) {
   if (!rawLine) return { date: null, time: null, raw: null };
-  const match = rawLine.match(/(\d{2}[/-]\d{2}[/-]\d{2,4})(?:\s+(?:A\s+LAS\s+)?(\d{2}:\d{2}:\d{2}))?/i);
-  return { date: match?.[1] ?? null, time: match?.[2] ?? null, raw: rawLine.trim() || null };
+  const date = rawLine.match(/\d{2}[/-]\d{2}[/-]\d{2,4}/i)?.[0] ?? null;
+  // OCR may garble "A LAS" between date and time; extract them independently.
+  const time = rawLine.match(/\d{2}:\d{2}:\d{2}/)?.[0] ?? null;
+  return { date, time, raw: rawLine.trim() || null };
 }
 
 function readTaggedCode(codeLine: string, tag: string): string | null {
@@ -122,9 +124,9 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
 
   const qValid = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /\bVALIDOS?\b/);
   const qCancelled = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /ANULADOS?\s*(?:ESP|ESPECIALES?)/);
-  const qPrizes = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /PREMIOS?\s+PAG/);
+  const qPrizes = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /PREMIOS?\s+P[A-Z]{2,3}/);
   const toqueValid = metricInRange(lines, qToqueIndex >= 0 ? qToqueIndex : 0, qToqueEnd, /\bVALIDOS?\b/);
-  const toquePrizes = metricInRange(lines, qToqueIndex >= 0 ? qToqueIndex : 0, qToqueEnd, /PREMIOS?\s+PAG/);
+  const toquePrizes = metricInRange(lines, qToqueIndex >= 0 ? qToqueIndex : 0, qToqueEnd, /PREMIOS?\s+P[A-Z]{2,3}/);
 
   const gameLabels: Array<{ name: string; matcher: RegExp }> = [
     { name: "Loto Plus", matcher: /^(?:L?OTO)\s+PLUS(?!\s+EXTRA)(?!\s+5)/ },
@@ -142,7 +144,7 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   const otherRowsStart = otherIndex >= 0 ? otherIndex + 1 : (qToqueIndex >= 0 ? qToqueIndex + 1 : 0);
   const otherRowsEnd = totalOtherIndex > otherRowsStart ? totalOtherIndex : otherEnd;
   const otherDataLines = lines.slice(otherRowsStart, otherRowsEnd)
-    .filter((line) => !/PREMIOS?\s+PAG|TOTAL\s+GENERAL/i.test(normalizeTicketText(line)));
+    .filter((line) => !/PREMIOS?\s+P[A-Z]{2,3}|TOTAL\s+GENERAL/i.test(normalizeTicketText(line)));
   const metricLines = otherDataLines.filter((line) => metricFromLine(line) !== null);
   const otherGames = gameLabels.map(({ name, matcher }, gameIndex) => {
     const index = normalized.findIndex((line, i) => i >= otherRowsStart && i < otherRowsEnd && matcher.test(line));
@@ -150,7 +152,7 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
     if (!metric && index >= 0) {
       for (let j = index + 1; j < Math.min(otherRowsEnd, index + 3); j += 1) {
         const nextText = normalizeTicketText(lines[j] ?? "");
-        if (/^(?:L?OTO|QUINI|MUINI|HUI|POZO|020|BRINCO|BR\s+INTO|LOTERIA|ATERIA|QUINIELA|TELEK|TOTAL|PREMIOS?\s+PAG)/.test(nextText)) break;
+        if (/^(?:L?OTO|QUINI|MUINI|HUI|POZO|020|BRINCO|BR\s+INTO|LOTERIA|ATERIA|QUINIELA|TELEK|TOTAL|PREMIOS?\s+P[A-Z]{2,3})/.test(nextText)) break;
         metric = metricFromLine(lines[j] ?? "");
         if (metric) break;
       }
@@ -159,8 +161,8 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
     return { name, count: metric?.count ?? null, amount: metric?.amount ?? null };
   });
   const totalOtherGames = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, totalOtherMatcher);
-  const otherGamesPrizes = metricInRange(lines, totalOtherIndex >= 0 ? totalOtherIndex + 1 : (otherIndex >= 0 ? otherIndex : 0), otherEnd, /PREMIOS?\s+PAG/);
-  const totalPrizes = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /PREMIOS?\s+PAG/, true);
+  const otherGamesPrizes = metricInRange(lines, totalOtherIndex >= 0 ? totalOtherIndex + 1 : (otherIndex >= 0 ? otherIndex : 0), otherEnd, /PREMIOS?\s+P[A-Z]{2,3}/);
+  const totalPrizes = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /PREMIOS?\s+P[A-Z]{2,3}/, true);
   const generalTotal = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /TOTAL\s+GENERAL/);
   const cobros = digitalIndex >= 0 ? metricInRange(lines, digitalIndex, lines.length, /^COBROS?\b/) : emptyMetric();
   const devoluciones = digitalIndex >= 0 ? metricInRange(lines, digitalIndex, lines.length, /^DEVOLUCIONES?\b/) : emptyMetric();
