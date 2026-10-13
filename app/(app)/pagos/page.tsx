@@ -170,7 +170,13 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const selectedAgent = activeAgents.find((agent) => String(agent.id) === selectedAgentId);
   const todayRendido = todayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
   const todayCobrado = todayRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_payments) ? row.agency_rendition_payments : []).reduce((subtotal: number, payment: any) => subtotal + Number(payment.amount ?? 0), 0), 0);
-  const todayPendiente = Math.max(0, todayRendido - todayCobrado);
+  const todayComisiones = todayRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_game_amounts) ? row.agency_rendition_game_amounts : []).reduce((subtotal: number, game: any) => subtotal + Number(game.commission_amount ?? 0), 0), 0);
+  // Pending is based on net cash due after commission, not gross sales minus cash received.
+  const todayPendiente = todayRows.reduce((sum, row) => {
+    const due = Number(row.net_due ?? row.amount_due ?? 0);
+    const paid = (Array.isArray(row.agency_rendition_payments) ? row.agency_rendition_payments : []).reduce((subtotal: number, payment: any) => subtotal + Number(payment.amount ?? 0), 0);
+    return sum + Math.max(0, due - paid);
+  }, 0);
   const ticketGameOrder = new Map([
     "Quiniela Correntina", "Quiniela Al Toque", "Loto Plus", "Quini 6",
     "Pozo Quiniela", "Brinco", "Loto 5 Plus", "Lotería Online",
@@ -503,7 +509,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
           <div className="stats-grid compact rendition-stats">
             <div className="stat-card"><span>Rendido hoy</span><strong>{money(todayRendido, activeOrganization.currency_code)}</strong><small>{todayRows.length} registros</small></div>
             <div className="stat-card"><span>Cobrado hoy</span><strong>{money(todayCobrado, activeOrganization.currency_code)}</strong><small>cobros registrados</small></div>
-            <div className="stat-card"><span>Pendiente hoy</span><strong>{money(todayPendiente, activeOrganization.currency_code)}</strong><small>saldo del día</small></div>
+            <div className="stat-card"><span>Pendiente hoy</span><strong>{money(todayPendiente, activeOrganization.currency_code)}</strong><small>efectivo neto pendiente después de comisión</small></div>
+            <div className="stat-card"><span>Comisiones rendidas</span><strong>{money(todayComisiones, activeOrganization.currency_code)}</strong><small>comisiones reconocidas en las rendiciones del día</small></div>
             <div className="stat-card"><span>Agentes activos</span><strong>{activeAgents.length}</strong><small>{activeAgents.filter((agent) => agent.kind === "subagent").length} subagentes · {activeAgents.filter((agent) => agent.kind === "ambulant").length} ambulantes</small></div>
           </div>
 

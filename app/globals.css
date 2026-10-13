@@ -301,3 +301,41 @@ html,body{background:var(--bg);color:var(--text)}
 .ticket-progress-panel.is-complete .ticket-progress-track>span{background:#2c8a5e}
 .ticket-progress-panel small{display:block;color:var(--muted);font-size:11px;line-height:1.35}
 @media(max-width:760px){.rendition-mode-toolbar{grid-template-columns:1fr}.rendition-mode-switch button{min-height:54px}.ticket-progress-panel{min-height:82px}}
+
+
+/* Final usability pass: supplied quiniela logo, clear current section and larger file picker. */
+.brand-logo-wrap{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important;display:flex!important;align-items:center;justify-content:center}
+.brand-logo-wrap img{display:block;width:100%;height:100%;object-fit:contain}
+.sidebar-brand .brand-logo-wrap{width:48px;height:48px;flex:0 0 48px}
+.auth-card .brand-logo-wrap{width:66px;height:66px;margin:0 0 12px}
+.landing-card .brand-logo-wrap{width:76px;height:76px;margin:0 0 12px}
+.sidebar .nav-list .nav-item.active{outline:2px solid #121212;outline-offset:-2px;box-shadow:inset 0 0 0 1px #121212,inset 4px 0 #d1b35a!important;border-radius:9px}
+.sidebar .nav-list .nav-item:hover:not(.active){outline:1px solid rgba(18,18,18,.55);outline-offset:-1px}
+
+/* Put the three-dot menu beside the agent code button, never on a separate line. */
+.agency-agent-button-row{display:flex;align-items:stretch;gap:8px;min-width:0}
+.agency-agent-code-button{width:auto;flex:1 1 auto;min-width:0}
+.agency-agent-actions{position:relative;flex:0 0 44px;display:flex;align-items:center}
+.agency-agent-actions>summary{list-style:none;display:flex;align-items:center;justify-content:center;width:44px;min-height:54px;border:1px solid #171717;border-radius:10px;background:#fffdf6;color:#282020;font-size:26px;font-weight:800;line-height:1;cursor:pointer;user-select:none}
+.agency-agent-actions>summary::-webkit-details-marker{display:none}
+.agency-agent-actions[open]>summary,.agency-agent-actions>summary:hover,.agency-agent-actions>summary:focus-visible{background:#f0e2b4;outline:2px solid #171717;outline-offset:1px}
+.agency-agent-actions-menu{position:absolute;z-index:70;right:0;top:calc(100% + 5px);width:min(285px,calc(100vw - 36px));display:grid;gap:10px;padding:13px;background:#fffdf6;border:1px solid #171717;border-radius:10px;box-shadow:0 12px 28px rgba(0,0,0,.22);font-size:13px}
+.agency-agent-actions-menu>a{display:block;padding:9px 10px;border-radius:7px;background:#f4edcf;border:1px solid #ded3b4;font-weight:700}
+.agency-agent-actions-menu>form{display:grid;gap:10px;padding-top:8px;border-top:1px solid #ded3b4}
+.agency-agent-actions-menu>form label{display:flex;align-items:flex-start;gap:8px;line-height:1.4}
+.agency-agent-actions-menu>form label input{flex:0 0 auto;margin:3px 0 0}
+
+/* Large, professional file selector button for photographed tickets. */
+.ticket-photo-picker{display:flex;flex-direction:column;gap:8px;padding:16px;border:1px solid #d4c18b;border-radius:13px;background:#fffdf6;cursor:pointer}
+.ticket-photo-picker>strong{font-size:16px;color:#40242a}
+.ticket-photo-picker>span:not(.ticket-photo-icon){font-size:13px;line-height:1.4;color:#70666a}
+.ticket-photo-picker input[type="file"]{display:block;width:100%;min-height:62px;margin-top:7px;padding:9px;border:1px solid #c5ae73;border-radius:10px;background:#f8f0d9;color:#2a2020;font-size:14px;cursor:pointer}
+.ticket-photo-picker input[type="file"]::file-selector-button{min-height:42px;margin:0 12px 0 0;padding:11px 18px;border:0;border-radius:8px;background:#7c3347;color:#fff;font-weight:800;font-size:14px;cursor:pointer}
+.ticket-photo-picker input[type="file"]::file-selector-button:hover{background:#64283a}
+
+/* Five independent summary cards; commissions are not an outstanding debt. */
+.stats-grid.compact.rendition-stats{grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.rendition-stats .stat-card span{font-weight:800;line-height:1.3}
+.rendition-stats .stat-card small{line-height:1.35}
+@media(max-width:1180px){.stats-grid.compact.rendition-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.stats-grid.compact.rendition-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
