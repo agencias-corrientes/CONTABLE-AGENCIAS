@@ -6,6 +6,7 @@ import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, getAgencyLoca
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
 import { RenditionScrollHelper } from "@/components/rendition-scroll-helper";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
+import { TicketClosureReceipt } from "@/components/ticket-closure-receipt";
 import { receiveAgencyRendition, voidAgencyRendition, setAgencyDrawRenditionStatus, setAgencyDailyRenditionStatus, sendAgencyBackupManually } from "../agencias/actions";
 
 type GameAmount = {
@@ -17,7 +18,7 @@ type GameAmount = {
   agency_game_types: { id: string; name: string; category: string } | null;
 };
 
-export default async function PagosPage({ searchParams }: { searchParams?: Promise<{ agent?: string; busqueda?: string; resultado?: string; error?: string; backup?: string; foto?: string; copias?: string }> }) {
+export default async function PagosPage({ searchParams }: { searchParams?: Promise<{ agent?: string; busqueda?: string; resultado?: string; error?: string; backup?: string; foto?: string; copias?: string; ticket?: string }> }) {
   const params = searchParams ? await searchParams : {};
   const selectedAgentId = params.agent ?? "";
   const searchTerm = (params.busqueda ?? "").trim();
@@ -47,7 +48,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     for (let offset = 0; ; offset += pageSize) {
       const { data, error } = await supabase
         .from("agency_renditions")
-        .select("id,agent_id,rendition_date,created_at,updated_at,game_period,draw_number,capture_method,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)")
+        .select("id,agent_id,rendition_date,created_at,updated_at,game_period,draw_number,capture_method,amount_due,status,reference,notes,ticket_receipt_data,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)")
         .eq("organization_id", activeOrganization.id)
         .order("created_at", { ascending: false })
         .order("id", { ascending: true })
@@ -235,6 +236,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                     {row.notes && <p className="muted rendition-saved-notes">{row.notes}</p>}
                   </div>
                 </div>
+                {row.ticket_receipt_data?.type === "loteria-corrientes-end-of-day-v1" && <TicketClosureReceipt data={row.ticket_receipt_data} />}
                 {totals.payments.length > 0 && (
                   <div className="rendition-saved-payments">
                     <h4>Cobros registrados</h4>
@@ -287,6 +289,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                           reference: row.reference,
                           notes: row.notes,
                           captureMethod: row.capture_method,
+                          receiptData: row.ticket_receipt_data ?? null,
                         }}
                       />
                     </div>
@@ -382,6 +385,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                           reference: String(dailyRendition.reference ?? ""),
                           notes: String(dailyRendition.notes ?? ""),
                           captureMethod: String(dailyRendition.capture_method ?? "manual"),
+                          receiptData: dailyRendition.ticket_receipt_data ?? null,
                         }}
                       />
                     </>
@@ -407,6 +411,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     <div className="page rendition-page-clean">
       <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={drawPeriods.map((period) => period.time).filter((time): time is string => Boolean(time))} renderedAt={new Date().toISOString()} />
       <RenditionScrollHelper />
+      {params.ticket === "guardado" && <p className="message success-message">Se guardó el detalle completo del ticket de fin de jornada junto con la rendición.</p>}
+      {params.ticket === "error" && <p className="message error-message">La rendición financiera ya se guardó, pero el detalle OCR del ticket no pudo adjuntarse. No vuelvas a registrar la rendición para corregir esto; abrí el registro existente.</p>}
       {!selectedAgentId ? (
         <>
           <div className="topbar rendition-page-topbar">

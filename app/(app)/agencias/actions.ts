@@ -62,6 +62,32 @@ async function storeRenditionTicketPhoto(supabase: any, organizationId: string, 
   return attachError ? "failed" : "saved";
 }
 
+async function storeRenditionTicketReceiptData(
+  supabase: any,
+  organizationId: string,
+  renditionId: string,
+  formData: FormData,
+  clearWhenEmpty: boolean,
+): Promise<"saved" | "none" | "failed"> {
+  const raw = String(formData.get("ticket_receipt_data") ?? "").trim();
+  if (!raw && !clearWhenEmpty) return "none";
+  let receiptData: any = null;
+  if (raw) {
+    if (raw.length > 20000) return "failed";
+    try { receiptData = JSON.parse(raw); } catch { return "failed"; }
+    if (!receiptData || receiptData.type !== "loteria-corrientes-end-of-day-v1") return "failed";
+  }
+  const { data, error } = await supabase
+    .from("agency_renditions")
+    .update({ ticket_receipt_data: receiptData })
+    .eq("organization_id", organizationId)
+    .eq("id", renditionId)
+    .select("id")
+    .maybeSingle();
+  if (error || !data?.id) return "failed";
+  return receiptData ? "saved" : "none";
+}
+
 async function sendRenditionBackup(_supabase: any, _renditionId: string): Promise<"cierre-diario"> {
   // The audit trigger has already stored this revision in the outbox.
   // All queued revisions are sent together by the scheduled end-of-day job.
@@ -275,8 +301,10 @@ export async function createAgencyRendition(formData: FormData) {
   }
   let backupStatus: "cierre-diario" | "enviado" | "pendiente" | "dominio-no-verificado" = "cierre-diario";
   let photoStatus: "saved" | "skipped" | "failed" = "skipped";
+  let ticketReceiptStatus: "saved" | "none" | "failed" = "none";
   if (renditionId) {
     photoStatus = await storeRenditionTicketPhoto(supabase, organizationId, renditionId, formData);
+    ticketReceiptStatus = await storeRenditionTicketReceiptData(supabase, organizationId, renditionId, formData, false);
     backupStatus = await sendRenditionBackup(supabase, renditionId);
   }
 
@@ -284,7 +312,7 @@ export async function createAgencyRendition(formData: FormData) {
   revalidatePath("/agencias/" + agentId);
   revalidatePath("/pagos");
   revalidatePath("/equipo");
-  redirect("/pagos?agent=" + agentId + "&resultado=rendicion-creada&backup=" + backupStatus + "&foto=" + (photoStatus === "failed" ? "no-adjunta" : photoStatus === "saved" ? "adjunta" : "sin-foto"));
+  redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=rendicion-creada&backup=" + backupStatus + "&foto=" + (photoStatus === "failed" ? "no-adjunta" : photoStatus === "saved" ? "adjunta" : "sin-foto") + "&ticket=" + (ticketReceiptStatus === "failed" ? "error" : ticketReceiptStatus === "saved" ? "guardado" : "sin-datos"));
 }
 
 export async function receiveAgencyRendition(formData: FormData) {
@@ -530,15 +558,17 @@ export async function updateAgencyRendition(formData: FormData) {
 
   let backupStatus: "cierre-diario" | "enviado" | "pendiente" | "dominio-no-verificado" = "cierre-diario";
   let photoStatus: "saved" | "skipped" | "failed" = "skipped";
+  let ticketReceiptStatus: "saved" | "none" | "failed" = "none";
   if (updatedId) {
     photoStatus = await storeRenditionTicketPhoto(supabase, organizationId, updatedId, formData);
+    ticketReceiptStatus = await storeRenditionTicketReceiptData(supabase, organizationId, updatedId, formData, true);
     backupStatus = await sendRenditionBackup(supabase, updatedId);
   }
   revalidatePath("/agencias");
   revalidatePath("/agencias/" + agentId);
   revalidatePath("/pagos");
   revalidatePath("/equipo");
-  redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=rendicion-corregida&backup=" + backupStatus + "&foto=" + (photoStatus === "failed" ? "no-adjunta" : photoStatus === "saved" ? "adjunta" : "sin-foto"));
+  redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=rendicion-corregida&backup=" + backupStatus + "&foto=" + (photoStatus === "failed" ? "no-adjunta" : photoStatus === "saved" ? "adjunta" : "sin-foto") + "&ticket=" + (ticketReceiptStatus === "failed" ? "error" : ticketReceiptStatus === "saved" ? "guardado" : "sin-datos"));
 }
 
 

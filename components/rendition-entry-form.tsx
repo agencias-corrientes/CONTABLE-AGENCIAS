@@ -4,6 +4,8 @@ import { useEffect, useId, useMemo, useState } from "react";
 import jsQR from "jsqr";
 import { createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
 import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod } from "@/lib/agency-draw-schedule";
+import { mapTicketClosureAmounts, parseTicketClosure, type TicketClosureData } from "@/lib/agency-ticket-closure";
+import { TicketClosureReceipt } from "@/components/ticket-closure-receipt";
 
 type Game = { id: string; name: string; category: string; enabled?: boolean };
 type InitialRendition = {
@@ -17,6 +19,7 @@ type InitialRendition = {
   reference?: string | null;
   notes?: string | null;
   captureMethod?: string | null;
+  receiptData?: TicketClosureData | null;
 };
 
 function normalize(value: string) {
@@ -67,6 +70,18 @@ function aliasesFor(game: Game) {
 }
 
 function parseTicketText(text: string, games: Game[]) {
+  const receiptData = parseTicketClosure(text);
+  if (receiptData) {
+    return {
+      amountMap: mapTicketClosureAmounts(receiptData, games),
+      date: null,
+      period: "",
+      drawNumber: "",
+      ticketNumber: /^\d{2,12}$/.test(receiptData.periodNumber ?? "") ? receiptData.periodNumber ?? "" : "",
+      detectedGames: ["Cierre de jornada"],
+      receiptData,
+    };
+  }
   const normalText = normalize(text);
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const normalizedLines = lines.map(normalize);
@@ -131,6 +146,7 @@ function parseTicketText(text: string, games: Game[]) {
     drawNumber: drawMatch?.[1] ?? "",
     ticketNumber: ticketMatch?.[1] ?? "",
     detectedGames: matchedGames.map((game) => game.name),
+    receiptData: null,
   };
 }
 
@@ -205,6 +221,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [qrPayload, setQrPayload] = useState(initialRendition?.qrPayload ?? "");
   const [reference, setReference] = useState(initialRendition?.reference ?? "");
   const [notes, setNotes] = useState(initialRendition?.notes ?? "");
+  const [receiptData, setReceiptData] = useState<TicketClosureData | null>(initialRendition?.receiptData ?? null);
+  const [receiptReviewed, setReceiptReviewed] = useState(Boolean(initialRendition?.receiptData?.userConfirmedReview));
   const [ocrText, setOcrText] = useState("");
   const [fileName, setFileName] = useState("");
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
@@ -222,6 +240,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     Object.values(amounts).reduce((sum, value) => sum + (Number(value) > 0 ? Number(value) : 0), 0),
     [amounts]
   );
+  const receiptNeedsReview = Boolean(receiptData && (receiptData.consistency.salesTotalsMatch !== true || receiptData.consistency.prizeTotalsMatch !== true));
 
   // Refresh the proposed period at draw boundaries only while the form is untouched.
   useEffect(() => {
@@ -258,6 +277,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     setError("");
     setNotice("");
     setDetectedPeriodMismatch("");
+    setReceiptData(null);
+    setReceiptReviewed(false);
     setFileName(file.name);
     setPhotoPreviewUrl(URL.createObjectURL(file));
     setPhotoExpanded(false);
@@ -310,17 +331,30 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       setOcrText(recognizedText);
       const parsed = parseTicketText(recognizedText, periodGames);
-      setAmounts((previous) => {
-        if (!dailyMode) return { ...previous, ...parsed.amountMap };
-        const combined = { ...previous };
-        for (const [gameId, rawAmount] of Object.entries(parsed.amountMap)) {
-          const scannedAmount = parseMoney(String(rawAmount));
-          if (scannedAmount === null) continue;
-          const priorAmount = parseMoney(previous[gameId] ?? "") ?? 0;
-          combined[gameId] = (priorAmount + scannedAmount).toFixed(2);
+      if (parsed.receiptData) {
+        // A day-close ticket is a complete snapshot: replace values rather than add a duplicate.
+        setReceiptData(parsed.receiptData);
+        setReceiptReviewed(false);
+        setAmounts(parsed.amountMap);
+        if (/^\d{2,12}$/.test(parsed.receiptData.periodNumber ?? "")) setTicketNumbers(parsed.receiptData.periodNumber ?? "");
+        if (!dailyMode) {
+          setDetectedPeriodMismatch("__DAILY_CLOSURE__");
+          setNotice("Este comprobante es un FIN DE JORNADA completo. Para registrarlo, configurá este operador con modalidad Rendición diaria / cierre diario; no corresponde a un único sorteo.");
         }
-        return combined;
-      });
+      } else {
+        setReceiptData(null);
+        setAmounts((previous) => {
+          if (!dailyMode) return { ...previous, ...parsed.amountMap };
+          const combined = { ...previous };
+          for (const [gameId, rawAmount] of Object.entries(parsed.amountMap)) {
+            const scannedAmount = parseMoney(String(rawAmount));
+            if (scannedAmount === null) continue;
+            const priorAmount = parseMoney(previous[gameId] ?? "") ?? 0;
+            combined[gameId] = (priorAmount + scannedAmount).toFixed(2);
+          }
+          return combined;
+        });
+      }
       if (parsed.date) setDate(parsed.date);
       if (parsed.period && !dailyMode) {
         const recognized = resolveRecognizedDrawPeriod(parsed.period, allPeriods ?? periods);
@@ -335,7 +369,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         }
       }
       if (parsed.drawNumber) setDrawNumber(parsed.drawNumber);
-      if (parsed.ticketNumber && !ticketNumbers.includes(parsed.ticketNumber)) {
+      if (!parsed.receiptData && parsed.ticketNumber && !ticketNumbers.includes(parsed.ticketNumber)) {
         setTicketNumbers((previous) => previous ? previous + "\n" + parsed.ticketNumber : parsed.ticketNumber);
       }
       const qr = detectedQr ? structuredQr(detectedQr) : null;
@@ -350,7 +384,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       }
 
       const recognizedCount = Object.keys(parsed.amountMap).length;
-      if (detectedQr && recognizedCount) {
+      if (parsed.receiptData) {
+        setNotice(parsed.receiptData.consistency.salesTotalsMatch === true && parsed.receiptData.consistency.prizeTotalsMatch === true
+          ? "Cierre diario reconocido. Las ventas válidas reemplazaron la carga anterior; premios, anulaciones y totales quedan separados y no se suman como ventas. Verificá el detalle antes de registrar."
+          : "Cierre diario detectado, pero algún subtotal no se pudo validar. Compará todos los importes con la foto antes de confirmar.");
+      } else if (detectedQr && recognizedCount) {
         setNotice("QR e importes detectados. Revisá fecha, período y valores antes de registrar.");
       } else if (detectedQr) {
         setNotice("QR leído. Si el código no contiene los montos, completá lo que falte en la lista.");
@@ -381,6 +419,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       <input type="hidden" name="agent_id" value={agentId} />
       <input type="hidden" name="rendition_id" value={initialRendition?.id ?? ""} />
       <input type="hidden" name="ticket_qr_payload" value={qrPayload} />
+      <input type="hidden" name="ticket_receipt_data" value={receiptData ? JSON.stringify(receiptData) : ""} />
       <input type="hidden" name="game_period" value={period} />
       <input type="hidden" name="draw_period" value={period} />
       <input type="hidden" name="draw_number" value={drawNumber} />
@@ -411,11 +450,17 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           </label>
           {photoPreviewUrl && <div className="ticket-photo-preview"><button type="button" className="ticket-photo-preview-button" onClick={() => setPhotoExpanded(true)} aria-label="Ampliar foto del ticket"><img src={photoPreviewUrl} alt="Vista previa del ticket cargado" /><span>Ampliar foto</span></button></div>}
           {photoExpanded && photoPreviewUrl && <div className="ticket-photo-lightbox" role="dialog" aria-modal="true" aria-label="Foto del ticket ampliada" onClick={() => setPhotoExpanded(false)}><button type="button" className="ticket-photo-lightbox-close" onClick={() => setPhotoExpanded(false)}>Cerrar ✕</button><img src={photoPreviewUrl} alt="Foto del ticket ampliada" onClick={(event) => event.stopPropagation()} /></div>}
-          <p className="muted small-text">También podés subir una foto guardada. La lectura se procesa en el navegador; no se guarda la imagen.</p>
+          <p className="muted small-text">También podés subir una foto guardada. La lectura se procesa en el navegador y la imagen se adjunta a la rendición para auditoría.</p>
           {fileName && <p className="ticket-file-label">Ticket cargado: <strong>{fileName}</strong></p>}
           {busy && <p className="ticket-read-progress" role="status">{progress}</p>}
           {error && <p className="ticket-read-error" role="alert">{error}</p>}
           {notice && !error && <p className="ticket-read-notice">{notice}</p>}
+          {receiptData && <TicketClosureReceipt data={receiptData} compact />}
+          {receiptData && receiptNeedsReview && <label className="ticket-closure-review-check"><input type="checkbox" checked={receiptReviewed} onChange={(event) => {
+            const checked = event.target.checked;
+            setReceiptReviewed(checked);
+            setReceiptData((previous) => previous ? { ...previous, userConfirmedReview: checked } : previous);
+          }} /> Revisé los valores contra la foto y confirmo esta lectura para continuar.</label>}
           {qrPayload && <div className="qr-detected"><strong>✓ QR detectado</strong><code>{qrPayload.slice(0, 100)}{qrPayload.length > 100 ? "…" : ""}</code><button type="button" className="button ghost small" onClick={() => setQrPayload("")}>Quitar QR</button></div>}
           {ocrText && <details className="ticket-ocr-text"><summary>Ver texto reconocido</summary><pre>{ocrText}</pre></details>}
         </div>
@@ -455,7 +500,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <label>Referencia<input name="reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Opcional" /></label>
       </div>
       {detectedPeriodMismatch && <p className="message error-message">
-        {detectedPeriodMismatch.startsWith("__UNRECOGNIZED__:") ? (
+        {detectedPeriodMismatch === "__DAILY_CLOSURE__" ? (
+          <>Este ticket consolida la jornada completa. Configurá la modalidad de este operador en <strong>Rendición diaria / cierre diario</strong> antes de registrarlo.</>
+        ) : detectedPeriodMismatch.startsWith("__UNRECOGNIZED__:") ? (
           <>El ticket contiene el período <strong>{detectedPeriodMismatch.slice("__UNRECOGNIZED__:".length)}</strong>, que no está en el cronograma oficial. Seleccioná manualmente el sorteo oficial correcto y volvé a leer el ticket antes de guardar.</>
         ) : (
           <>El ticket corresponde a <strong>{detectedPeriodMismatch}</strong>. Cambiá al sorteo indicado y volvé a leerlo antes de guardar.</>
@@ -480,7 +527,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         className="button primary"
         type={initialRendition ? "submit" : "button"}
         onClick={initialRendition ? undefined : () => setConfirmationOpen(true)}
-        disabled={!periodGames.length || !period || busy || total <= 0 || Boolean(detectedPeriodMismatch)}
+        disabled={!periodGames.length || !period || busy || total <= 0 || Boolean(detectedPeriodMismatch) || (receiptNeedsReview && !receiptReviewed)}
       >
         {busy ? "Leyendo ticket…" : initialRendition ? "Guardar cambios de la rendición" : "Registrar rendición diaria"}
       </button>
@@ -561,7 +608,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                   !Number.isFinite(Number(reportedAmount.replace(",", "."))) ||
                   Number(reportedAmount.replace(",", ".")) <= 0 ||
                   Number(reportedAmount.replace(",", ".")) > 999999999999.99
-                )}
+                ) || (receiptNeedsReview && !receiptReviewed)}
               >
                 {dailyStatusChoice === "complete" ? "Confirmar y registrar" : "Guardar incompleta"}
               </button>
