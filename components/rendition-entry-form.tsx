@@ -208,7 +208,7 @@ function structuredQr(payload: string) {
 }
 
 export function RenditionEntryForm({ agentId, games, today, periods, allPeriods, defaultPeriod, initialRendition, dailyMode = false, dailyCloseAllowed = true }: { agentId: string; games: Game[]; today: string; periods: OfficialDrawPeriod[]; allPeriods?: OfficialDrawPeriod[]; defaultPeriod?: string; initialRendition?: InitialRendition; dailyMode?: boolean; dailyCloseAllowed?: boolean }) {
-  const [mode, setMode] = useState<"photo" | "manual">(dailyMode || initialRendition?.captureMethod === "manual" ? "manual" : "photo");
+  const [mode, setMode] = useState<"photo" | "manual">(initialRendition?.captureMethod === "manual" ? "manual" : "photo");
   const [date, setDate] = useState(initialRendition?.renditionDate ?? today);
   const [period, setPeriod] = useState(initialRendition?.period ?? (dailyMode ? "Cierre diario" : defaultPeriod ?? periods[0]?.label ?? ""));
   const [periodManuallySelected, setPeriodManuallySelected] = useState(Boolean(initialRendition));
@@ -240,7 +240,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     Object.values(amounts).reduce((sum, value) => sum + (Number(value) > 0 ? Number(value) : 0), 0),
     [amounts]
   );
-  const receiptNeedsReview = Boolean(receiptData && (receiptData.consistency.salesTotalsMatch !== true || receiptData.consistency.prizeTotalsMatch !== true));
+  const receiptNeedsReview = Boolean(receiptData);
 
   // Refresh the proposed period at draw boundaries only while the form is untouched.
   useEffect(() => {
