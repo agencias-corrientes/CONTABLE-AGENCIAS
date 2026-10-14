@@ -335,6 +335,17 @@ html,body{background:var(--bg);color:var(--text)}
 .ticket-photo-picker input[type="file"]{display:block;width:100%;min-height:62px;margin-top:7px;padding:9px;border:1px solid #c5ae73;border-radius:10px;background:#f8f0d9;color:#2a2020;font-size:14px;cursor:pointer}
 .ticket-photo-picker input[type="file"]::file-selector-button{min-height:42px;margin:0 12px 0 0;padding:11px 18px;border:0;border-radius:8px;background:#7c3347;color:#fff;font-weight:800;font-size:14px;cursor:pointer}
 .ticket-photo-picker input[type="file"]::file-selector-button:hover{background:#64283a}
+.ticket-photo-input-target{position:relative;display:inline-flex;align-self:flex-start;min-height:48px;max-width:100%;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.ticket-photo-input-target .ticket-photo-select-button{pointer-events:none}
+.ticket-photo-input-target input[type="file"]{position:absolute;inset:0;z-index:2;display:block;width:100%;height:100%;min-height:48px;margin:0;padding:0;opacity:0;border:0;cursor:pointer;overflow:hidden}
+.ticket-photo-input-target:focus-within .ticket-photo-select-button{outline:3px solid #171717;outline-offset:3px}
+.ticket-photo-deadline-alert{margin:12px 0 18px;padding:15px 16px;border:2px solid #b45b24;border-left-width:7px;border-radius:12px;background:#fff2df;color:#542b15;box-shadow:0 5px 15px rgba(80,40,10,.12)}
+.ticket-photo-deadline-alert h2{margin:0 0 6px;font-size:17px}
+.ticket-photo-deadline-alert p{margin:5px 0;font-size:13px;line-height:1.45}
+.ticket-photo-deadline-alert ul{display:grid;gap:7px;margin:10px 0 0;padding:0;list-style:none}
+.ticket-photo-deadline-alert li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e3c19f;border-radius:8px;background:#fffaf2}
+.ticket-photo-deadline-alert li a{font-weight:900;color:#7c3347;text-decoration:underline}
+
 
 /* Five independent summary cards; commissions are not an outstanding debt. */
 .stats-grid.compact.rendition-stats{grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
