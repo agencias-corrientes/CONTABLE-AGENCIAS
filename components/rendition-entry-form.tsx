@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
 import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod } from "@/lib/agency-draw-schedule";
@@ -246,6 +246,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [error, setError] = useState("");
   const [confirmationError, setConfirmationError] = useState("");
   const confirmationId = useId();
+  const ticketPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">(dailyMode && !dailyCloseAllowed ? "incomplete" : "complete");
   const [reportedAmount, setReportedAmount] = useState("");
@@ -523,15 +524,29 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       {mode === "photo" && (
         <div className="ticket-capture-panel">
-          <label className="ticket-photo-picker">
+          <div className="ticket-photo-picker">
             <span className="ticket-photo-icon" aria-hidden="true">▧</span>
             <strong>Seleccionar foto del ticket</strong>
             <span>Elegí una imagen para leer el QR y reconocer los importes.</span>
-            <input type="file" name="ticket_photo" accept="image/*" disabled={busy} onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) void processTicket(file);
-            }} />
-          </label>
+            <button type="button" className="ticket-photo-select-button" disabled={busy} onClick={() => ticketPhotoInputRef.current?.click()}>
+              Seleccionar archivo
+            </button>
+            <input
+              ref={ticketPhotoInputRef}
+              type="file"
+              name="ticket_photo"
+              accept="image/*"
+              aria-label="Elegir foto del ticket"
+              disabled={busy}
+              tabIndex={-1}
+              style={{ position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0, 0, 0, 0)", whiteSpace: "nowrap", border: 0 }}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) void processTicket(file);
+              }}
+            />
+          </div>
           {photoPreviewUrl && <div className="ticket-photo-preview"><button type="button" className="ticket-photo-preview-button" onClick={() => setPhotoExpanded(true)} aria-label="Ampliar foto del ticket"><img src={photoPreviewUrl} alt="Vista previa del ticket cargado" /><span>Ampliar foto</span></button></div>}
           {photoExpanded && photoPreviewUrl && <div className="ticket-photo-lightbox" role="dialog" aria-modal="true" aria-label="Foto del ticket ampliada" onClick={() => setPhotoExpanded(false)}><button type="button" className="ticket-photo-lightbox-close" onClick={() => setPhotoExpanded(false)}>Cerrar ✕</button><img src={photoPreviewUrl} alt="Foto del ticket ampliada" onClick={(event) => event.stopPropagation()} /></div>}
           <p className="muted small-text">También podés subir una foto guardada. La lectura se procesa en el navegador y la imagen se adjunta a la rendición para auditoría.</p>
