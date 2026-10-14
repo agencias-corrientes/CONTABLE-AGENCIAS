@@ -528,17 +528,25 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             <span className="ticket-photo-icon" aria-hidden="true">▧</span>
             <strong>Comprobante del ticket</strong>
             <span>Seleccioná una foto guardada en el teléfono o sacá una nueva.</span>
+            <span className="ticket-photo-picker-cta" aria-hidden="true">Elegir foto o archivo</span>
             <input
               id={ticketPhotoInputId}
               className="ticket-photo-native-input"
               type="file"
               name="ticket_photo"
-              accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.avif"
-              aria-label="Seleccionar foto del comprobante del ticket"
+              aria-label="Elegir foto o archivo del comprobante del ticket"
               disabled={busy}
               onChange={(event) => {
                 const file = event.currentTarget.files?.[0];
-                if (file) void processTicket(file);
+                if (file) {
+                  const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
+                  if (isImage) {
+                    void processTicket(file);
+                  } else {
+                    setError("El archivo elegido no parece ser una imagen. Seleccioná una foto del ticket en Fotos, Galería o Archivos.");
+                    setNotice("");
+                  }
+                }
                 event.currentTarget.value = "";
               }}
             />
