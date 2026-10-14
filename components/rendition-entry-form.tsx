@@ -103,7 +103,7 @@ function parseTicketText(text: string, games: Game[]) {
       period: "",
       drawNumber: "",
       date: null,
-      ticketNumber: extractTicketNumber(text),
+      ticketNumber: receiptData.periodNumber || extractTicketNumber(text),
       detectedGames: ["Cierre de jornada"],
       receiptData,
     };

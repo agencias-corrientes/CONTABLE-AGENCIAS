@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
 import { getOfficialAgencyGame } from "@/lib/agency-official-games";
 import { agencyBusinessDateForCutoff, formatAgencyDate, formatAgencyDateTime } from "@/lib/agency-datetime";
-import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, getAgencyLocalClock, getDrawPeriodStatus, getPreferredPendingDrawPeriod, drawPeriodHasPassed } from "@/lib/agency-draw-schedule";
+import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, getAgencyLocalClock, getDrawPeriodStatus, getPreferredPendingDrawPeriod } from "@/lib/agency-draw-schedule";
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
 import { RenditionScrollHelper } from "@/components/rendition-scroll-helper";
 import { RenditionDeadlineAlert } from "@/components/rendition-deadline-alert";
@@ -119,7 +119,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const dailyClosurePeriod = { label: "Cierre diario", shortLabel: "Cierre diario", time: null, gameName: "Cierre diario", kind: "daily" as const };
   const drawNow = new Date();
   const lastScheduledDraw = drawPeriods.filter((period) => period.time).sort((left, right) => String(left.time).localeCompare(String(right.time))).at(-1);
-  const dailyCloseAllowed = lastScheduledDraw ? drawPeriodHasPassed(lastScheduledDraw, today, drawNow) : false;
+  const dailyCloseAllowed = true;
 
   const agentRows = agents ?? [];
   const activeAgents = agentRows.filter((agent) => agent.is_active);
@@ -455,7 +455,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                   : <p className="message">La rendición del día ya está registrada. {dailyStatusKind === "complete" ? "El cierre está confirmado." : "Revisá el historial y los cobros registrados."}</p>
                 : <>
                     <RenditionEntryForm agentId={agent.id} games={gamesForAgent(String(agent.id))} today={today} periods={[dailyClosurePeriod]} allPeriods={allOfficialDrawPeriods} defaultPeriod="Cierre diario" dailyMode dailyCloseAllowed={dailyCloseAllowed} />
-                    {!dailyCloseAllowed && <p className="message">Podés cargar los importes durante el día y guardar el monto recibido como incompleto. La confirmación como rendición completa se habilita después del último sorteo{lastScheduledDraw?.time ? " (" + lastScheduledDraw.time + ")" : ""}.</p>}
+
                   </>
               : formPeriods.length > 0
                 ? <RenditionEntryForm agentId={agent.id} games={gamesForAgent(String(agent.id))} today={today} periods={formPeriods} allPeriods={allOfficialDrawPeriods} defaultPeriod={defaultPeriod} />

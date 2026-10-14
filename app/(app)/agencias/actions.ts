@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getOfficialAgencyGame } from "@/lib/agency-official-games";
 import { todayInAgencyTimeZone } from "@/lib/agency-datetime";
-import { drawPeriodHasPassed, getOfficialDrawPeriodsForDate } from "@/lib/agency-draw-schedule";
 
 async function getOrg() {
   const supabase = await createClient();
@@ -230,15 +229,6 @@ export async function createAgencyRendition(formData: FormData) {
       (renditionPolicy !== "daily" && drawPeriod === "Cierre diario") ||
       (renditionPolicy === "selected_draws" && !selectedRenditionPeriods.includes(drawPeriod))) {
     redirect("/pagos?error=modalidad-sorteo-invalido&agent=" + encodeURIComponent(agentId));
-  }
-  if (renditionPolicy === "daily" && dailyStatus === "complete") {
-    const lastScheduledDraw = getOfficialDrawPeriodsForDate(operationalDate)
-      .filter((period) => Boolean(period.time))
-      .sort((left, right) => String(left.time).localeCompare(String(right.time)))
-      .at(-1);
-    if ((!lastScheduledDraw || !drawPeriodHasPassed(lastScheduledDraw, operationalDate)) && !confirmedOfficialClosure) {
-      redirect("/pagos?error=cierre-diario-antes-de-hora&agent=" + encodeURIComponent(agentId));
-    }
   }
   if (dailyStatus === "incomplete" && (
     !reportedAmountRaw ||
@@ -628,8 +618,6 @@ export async function setAgencyDailyRenditionStatus(formData: FormData) {
   if (Number.isNaN(dateValue.getTime()) || dateValue.toISOString().slice(0, 10) !== operationalDate) redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
 
   if (status === "complete") {
-    const lastScheduledDraw = getOfficialDrawPeriodsForDate(operationalDate).filter((period) => Boolean(period.time)).sort((left, right) => String(left.time).localeCompare(String(right.time))).at(-1);
-    if (!lastScheduledDraw || !drawPeriodHasPassed(lastScheduledDraw, operationalDate)) redirect("/pagos?error=cierre-diario-antes-de-hora&agent=" + encodeURIComponent(agentId));
     const { data: cashAccount, error: cashError } = await supabase.from("cash_accounts").select("id").eq("organization_id", organizationId).eq("is_active", true).eq("name", "Caja").maybeSingle();
     if (cashError) redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
     let cashAccountId: string | null = cashAccount?.id ?? null;

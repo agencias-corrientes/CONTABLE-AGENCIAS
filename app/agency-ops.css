@@ -1512,3 +1512,57 @@ input[type="time"]{font-variant-numeric:tabular-nums}
  .game-rendition-collapsed{padding:10px;gap:8px}
  .game-rendition-collapsed-mark{flex-basis:24px;width:24px;height:24px}
 }
+
+
+/* Ajuste estrictamente móvil: compactar título, leyenda, total y botón de detalle. */
+@media(max-width:600px){
+  .game-rendition-block .game-rendition-head{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:center!important;
+    gap:3px 8px!important;
+  }
+  .game-rendition-block .game-rendition-head>div:first-child{
+    display:contents!important;
+  }
+  .game-rendition-block .game-rendition-head>div:first-child h3{
+    grid-column:1;
+    grid-row:1;
+    min-width:0;
+    margin:0!important;
+    font-size:15px;
+    line-height:1.15;
+  }
+  .game-rendition-block .game-rendition-head>div:first-child p{
+    grid-column:1/-1;
+    grid-row:2;
+    min-width:0;
+    margin:0!important;
+    font-size:11px;
+    line-height:1.3;
+  }
+  .game-rendition-block .game-rendition-head-actions{
+    display:contents!important;
+  }
+  .game-rendition-block .game-rendition-head .rendition-live-total{
+    grid-column:2;
+    grid-row:1;
+    justify-self:end;
+    align-self:center;
+    margin:0!important;
+    white-space:nowrap;
+    font-size:15px;
+    line-height:1.1;
+  }
+  .game-rendition-block .game-rendition-head .game-rendition-toggle{
+    grid-column:1/-1;
+    grid-row:3;
+    justify-self:stretch;
+    width:100%;
+    min-height:34px;
+    margin:2px 0 0!important;
+    padding:7px 10px;
+    font-size:12px;
+    line-height:1.2;
+  }
+}

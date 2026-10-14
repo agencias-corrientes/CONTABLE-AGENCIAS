@@ -175,6 +175,57 @@ export function AppShell({
           :global(.ticket-closure-edit-line > strong) { font-size: 9px; }
         }
 
+
+        /* Jerarquía visual exclusiva para el menú en celular. */
+        @media (max-width: 640px) {
+          .sidebar .nav-list {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 12px;
+            padding: 10px;
+            border: 1px solid rgba(255,255,255,.15);
+            border-radius: 15px;
+            background: rgba(39, 10, 20, .22);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+          }
+          .sidebar .nav-list::before {
+            content: "MENÚ PRINCIPAL";
+            grid-column: 1 / -1;
+            display: block;
+            padding: 1px 2px 4px;
+            color: #eadcc2;
+            font-size: 10px;
+            font-weight: 850;
+            letter-spacing: .14em;
+          }
+          .sidebar .nav-list .nav-item:nth-child(1) { order: 1; }
+          .sidebar .nav-list .nav-item:nth-child(3) { order: 2; }
+          .sidebar .nav-list .nav-item:nth-child(5) { order: 3; }
+          .sidebar .nav-list .nav-item:nth-child(2) { order: 4; }
+          .sidebar .nav-list .nav-item:nth-child(4) { order: 5; }
+          .sidebar .nav-list .nav-item:nth-child(6) { order: 6; }
+          .sidebar .nav-list .nav-item {
+            min-width: 0;
+            min-height: 58px;
+            padding: 10px 11px;
+            border-radius: 10px;
+            font-size: 13.5px;
+            line-height: 1.22;
+            font-weight: 800;
+            text-align: left;
+            justify-content: flex-start;
+            overflow-wrap: anywhere;
+            box-shadow: 0 2px 0 rgba(48,12,23,.2), 0 4px 8px rgba(35,8,16,.1);
+          }
+          .sidebar .nav-list .nav-item.active {
+            transform: none;
+            box-shadow: inset 4px 0 #d1b35a, 0 2px 0 rgba(48,12,23,.13);
+          }
+          .sidebar .nav-list .nav-item:active:not(.active) {
+            transform: translateY(1px);
+          }
+        }
+
       `}</style>
     </div>
   );
