@@ -123,4 +123,4 @@ export function AppShell({
           .sidebar .nav-list .nav-item { font-size: 13.5px; min-height: 58px; padding: 10px 8px; }
           .brand-subline { gap: 5px; }
           .official-agency-number { min-width: 32px; padding: 4px 6px; font-size: 13px !important; }
-        }\n      `}</style>\\n    </div>\n  );\n}\n
+        }\n      `}</style>\n    </div>\n  );\n}\n
