@@ -266,16 +266,27 @@ export async function createAgencyRendition(formData: FormData) {
     .eq("is_active", true)
     .eq("name", "Caja")
     .maybeSingle();
-  if (cashLookupError || !cashAccount?.id) {
-    redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
+  if (cashLookupError) redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
+  let cashAccountId: string | null = cashAccount?.id ?? null;
+  if (!cashAccountId) {
+    const { data: fallbackCash, error: fallbackCashError } = await supabase
+      .from("cash_accounts")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("is_active", true)
+      .eq("name", "Caja principal")
+      .maybeSingle();
+    if (fallbackCashError) redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
+    cashAccountId = fallbackCash?.id ?? null;
   }
+  if (!cashAccountId) redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
   let renditionId: string | undefined;
   let error: any = null;
   if (renditionPolicy === "daily") {
     const result = await supabase.rpc("create_and_receive_agency_daily_rendition", {
       p_organization_id: organizationId, p_agent_id: agentId, p_rendition_date: renditionDate,
       p_amount_due: totalDue, p_operational_date: operationalDate, p_daily_status: dailyStatus,
-      p_cash_account_id: cashAccount.id, p_payment_date: todayInAgencyTimeZone(),
+      p_cash_account_id: cashAccountId, p_payment_date: todayInAgencyTimeZone(),
       p_game_breakdown: breakdown, p_ticket_numbers: ticketNumbers, p_ticket_qr_payload: qrPayload ?? undefined,
       p_game_period: drawPeriod, p_draw_number: drawNumber ?? undefined, p_capture_method: captureMethod,
       p_reference: String(formData.get("reference") ?? "").trim() || undefined,
@@ -324,7 +335,7 @@ export async function createAgencyRendition(formData: FormData) {
       p_rendition_id: renditionId,
       p_payment_date: todayInAgencyTimeZone(),
       p_amount: paymentAmount,
-      p_cash_account_id: cashAccount.id,
+      p_cash_account_id: cashAccountId,
       p_reference: String(formData.get("reference") ?? "").trim() || undefined,
       p_notes: dailyStatus === "incomplete" ? "Pago parcial al registrar rendición incompleta" : "Cobro al confirmar rendición diaria",
     });
@@ -621,9 +632,16 @@ export async function setAgencyDailyRenditionStatus(formData: FormData) {
     if (!lastScheduledDraw || !drawPeriodHasPassed(lastScheduledDraw, operationalDate)) redirect("/pagos?error=cierre-diario-antes-de-hora&agent=" + encodeURIComponent(agentId));
     const { data: cashAccount, error: cashError } = await supabase.from("cash_accounts").select("id").eq("organization_id", organizationId).eq("is_active", true).eq("name", "Caja").maybeSingle();
     if (cashError) redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
+    let cashAccountId: string | null = cashAccount?.id ?? null;
+    if (!cashAccountId) {
+      const { data: fallbackCash, error: fallbackCashError } = await supabase.from("cash_accounts").select("id").eq("organization_id", organizationId).eq("is_active", true).eq("name", "Caja principal").maybeSingle();
+      if (fallbackCashError) redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
+      cashAccountId = fallbackCash?.id ?? null;
+    }
+    if (!cashAccountId) redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
     const { error } = await supabase.rpc("confirm_agency_daily_rendition", {
       p_organization_id: organizationId, p_agent_id: agentId, p_operational_date: operationalDate,
-      p_cash_account_id: cashAccount?.id, p_payment_date: todayInAgencyTimeZone(), p_notes: notes || undefined,
+      p_cash_account_id: cashAccountId, p_payment_date: todayInAgencyTimeZone(), p_notes: notes || undefined,
     });
     if (error) {
       const message = String(error.message ?? "").toLowerCase();

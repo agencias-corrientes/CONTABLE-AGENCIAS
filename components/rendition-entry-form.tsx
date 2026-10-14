@@ -248,6 +248,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [reference, setReference] = useState(initialRendition?.reference ?? "");
   const [notes, setNotes] = useState(initialRendition?.notes ?? "");
   const [receiptData, setReceiptData] = useState<TicketClosureData | null>(initialRendition?.receiptData ?? null);
+  const [gameListExpanded, setGameListExpanded] = useState(false);
   const [receiptReviewed, setReceiptReviewed] = useState(Boolean(initialRendition?.receiptData?.userConfirmedReview));
   const [ocrText, setOcrText] = useState("");
   const [fileName, setFileName] = useState("");
@@ -637,31 +638,57 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         : period && periods.length > 0 && <p className="muted small-text">Esta rendición corresponde exclusivamente a <strong>{period}</strong>; no se mezclan importes de otros sorteos.</p>}
 
       <div className="game-rendition-block">
-        <div className="game-rendition-head"><div><h3>Juegos e importes</h3><p className="muted">{mode === "photo" ? "El lector completa lo que reconoce. Corregí o agregá importes antes de guardar." : "Cargá manualmente los importes por juego."}</p></div><span className="rendition-live-total">{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(total)}</span></div>
-        {receiptData ? (
-          <>
-            <TicketClosureReceipt data={receiptData} editable onChange={(next) => {
-              setReceiptData({ ...next, userConfirmedReview: false });
-              setReceiptReviewed(false);
-              setAmounts(mapTicketClosureAmounts(next, periodGames));
-            }} />
-            {periodGames.map((game) => <input key={game.id} type="hidden" name={"game_" + game.id} value={amounts[game.id] ?? "0"} />)}
-            <div className="ticket-closure-accept-actions">
-              <p>El ticket ya está cargado. Revisá los porcentajes y usá una sola vez el botón principal <strong>Confirmar y guardar rendición</strong> para continuar.</p>
-              <button type="button" className="button ghost" onClick={() => {
-                setReceiptData(null);
+        <div className="game-rendition-head">
+          <div><h3>Juegos e importes</h3><p className="muted">{mode === "photo" ? "Los importes se leen automáticamente. Abrí el detalle para revisar o corregir los datos." : "La lista de carga manual está oculta para mantener la pantalla compacta."}</p></div>
+          <div className="game-rendition-head-actions">
+            <span className="rendition-live-total">{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(total)}</span>
+            <button type="button" className="button ghost game-rendition-toggle" aria-expanded={gameListExpanded} onClick={() => setGameListExpanded((open) => !open)}>
+              {gameListExpanded ? "Cerrar lista completa" : "Abrir la lista completa"}
+            </button>
+          </div>
+        </div>
+        {gameListExpanded ? (
+          receiptData ? (
+            <>
+              <TicketClosureReceipt data={receiptData} editable onChange={(next) => {
+                setReceiptData({ ...next, userConfirmedReview: false });
                 setReceiptReviewed(false);
-                setAmounts({});
-                setNotice("Se quitó la lectura. Podés cargar manualmente.");
-              }}>Quitar ticket y cargar manualmente</button>
+                setAmounts(mapTicketClosureAmounts(next, periodGames));
+              }} />
+              {periodGames.map((game) => <input key={game.id} type="hidden" name={"game_" + game.id} value={amounts[game.id] ?? "0"} />)}
+              <div className="ticket-closure-accept-actions">
+                <p>El ticket ya está cargado. Revisá los porcentajes y usá una sola vez el botón principal <strong>Confirmar y guardar rendición</strong> para continuar.</p>
+                <button type="button" className="button ghost" onClick={() => {
+                  setReceiptData(null);
+                  setReceiptReviewed(false);
+                  setAmounts({});
+                  setGameListExpanded(false);
+                  setNotice("Se quitó la lectura. Podés cargar manualmente.");
+                }}>Quitar ticket y cargar manualmente</button>
+              </div>
+            </>
+          ) : (
+            <div className="game-rendition-list">
+              {periodGames.map((game) => <label className="game-rendition-row" key={game.id}><span><strong>{game.name}</strong><small>{game.category}</small></span><input type="number" name={"game_" + game.id} min="0" step="0.01" inputMode="decimal" placeholder="0,00" value={amounts[game.id] ?? ""} onChange={(event) => setAmounts((previous) => ({ ...previous, [game.id]: event.target.value }))} /></label>)}
+              {!period && <p className="message">Elegí el período del sorteo.</p>}
+              {period && !periodGames.length && <p className="message">No hay un juego activo asignado a este turno; no se mezclarán juegos de otros sorteos.</p>}
+            </div>
+          )
+        ) : (
+          <>
+            {periodGames.map((game) => <input key={game.id} type="hidden" name={"game_" + game.id} value={amounts[game.id] ?? ""} />)}
+            <div className="game-rendition-collapsed" role="status">
+              <span className="game-rendition-collapsed-mark" aria-hidden="true">{receiptData ? "✓" : "…"}</span>
+              <div>
+                <strong>{receiptData ? "Ticket de fin de jornada leído" : total > 0 ? "Importes reconocidos y listos para revisar" : "Lista de juegos contraída"}</strong>
+                <p>{receiptData
+                  ? "Los datos detectados se conservaron. Abrí la lista completa para revisar juegos, sorteos, importes y totales antes de guardar."
+                  : total > 0
+                    ? "Se detectaron importes por " + new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(total) + ". Abrí la lista para verificar o corregir cada valor."
+                    : "La lista completa se mantiene oculta para que la pantalla no sea tan larga. Tocá “Abrir la lista completa” para cargar o revisar los importes manualmente."}</p>
+              </div>
             </div>
           </>
-        ) : (
-          <div className="game-rendition-list">
-            {periodGames.map((game) => <label className="game-rendition-row" key={game.id}><span><strong>{game.name}</strong><small>{game.category}</small></span><input type="number" name={"game_" + game.id} min="0" step="0.01" inputMode="decimal" placeholder="0,00" value={amounts[game.id] ?? ""} onChange={(event) => setAmounts((previous) => ({ ...previous, [game.id]: event.target.value }))} /></label>)}
-            {!period && <p className="message">Elegí el período del sorteo.</p>}
-            {period && !periodGames.length && <p className="message">No hay un juego activo asignado a este turno; no se mezclarán juegos de otros sorteos.</p>}
-          </div>
         )}
       </div>
 
