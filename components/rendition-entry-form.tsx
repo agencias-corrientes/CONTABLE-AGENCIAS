@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import jsQR from "jsqr";
 import { createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
 import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod } from "@/lib/agency-draw-schedule";
@@ -247,7 +247,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [confirmationError, setConfirmationError] = useState("");
   const confirmationId = useId();
   const ticketPhotoInputId = useId();
-  const ticketPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">(dailyMode && !dailyCloseAllowed ? "incomplete" : "complete");
   const [reportedAmount, setReportedAmount] = useState("");
@@ -529,22 +528,14 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             <span className="ticket-photo-icon" aria-hidden="true">▧</span>
             <strong>Comprobante del ticket</strong>
             <span>Seleccioná una foto guardada en el teléfono o sacá una nueva.</span>
-            <button
-              type="button"
-              className="ticket-photo-select-button"
-              disabled={busy}
-              onClick={() => ticketPhotoInputRef.current?.click()}
-            >
-              {busy ? "Procesando foto…" : "Cargar comprobante del ticket"}
-            </button>
             <input
-              ref={ticketPhotoInputRef}
               id={ticketPhotoInputId}
               className="ticket-photo-native-input"
               type="file"
               name="ticket_photo"
               accept="image/*"
-              aria-label="Cargar comprobante del ticket desde el teléfono"
+              capture="environment"
+              aria-label="Seleccionar foto del comprobante del ticket"
               disabled={busy}
               onChange={(event) => {
                 const file = event.currentTarget.files?.[0];
