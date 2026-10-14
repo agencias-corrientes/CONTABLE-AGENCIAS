@@ -143,11 +143,11 @@ export default async function TeamPermissionsPage({
         <form action={saveAgencySchedules} className="operational-schedule-form">
           <div className="operational-schedule-grid">
             <label>Hora de reinicio diario
-              <input type="time" name="rendition_cutoff_time" defaultValue={cutoff} required />
+              <input type="time" lang="en-GB" name="rendition_cutoff_time" defaultValue={cutoff} required />
               <span className="muted small-text">Cambia el día operativo sin borrar el historial.</span>
             </label>
             <label>Hora de envío del backup
-              <input type="time" name="backup_send_time" defaultValue={backupSendTime} required />
+              <input type="time" lang="en-GB" name="backup_send_time" defaultValue={backupSendTime} required />
               <span className="muted small-text">Horario local de Argentina; envío automático todos los días.</span>
             </label>
           </div>
