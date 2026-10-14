@@ -117,3 +117,28 @@ html,body{background:var(--bg);color:var(--text)}
 .operational-cutoff-form{display:grid;gap:12px;max-width:620px}
 .operational-cutoff-form label{display:grid;gap:6px;font-size:13px;font-weight:750}
 @media(max-width:640px){.landing-role-grid{grid-template-columns:1fr}.landing-role-choice{padding:15px}.user-role-line{grid-template-columns:1fr}.landing-role-enter{white-space:normal}}
+
+
+/* Corrección exclusiva: botones del menú lateral */
+.sidebar .nav-list .nav-item {
+  background: linear-gradient(180deg, #91485e 0%, #7c3347 100%);
+  border: 1px solid rgba(255,255,255,.18);
+  border-top-color: rgba(255,255,255,.38);
+  box-shadow: 0 4px 0 #512031, 0 5px 8px rgba(35,12,20,.18), inset 0 1px 0 rgba(255,255,255,.12);
+  transition: background .15s ease, box-shadow .15s ease, transform .15s ease, color .15s ease;
+}
+.sidebar .nav-list .nav-item:hover {
+  background: linear-gradient(180deg, #a25369 0%, #874056 100%);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 0 #512031, 0 7px 10px rgba(35,12,20,.2), inset 0 1px 0 rgba(255,255,255,.18);
+}
+.sidebar .nav-list .nav-item.active,
+.sidebar .nav-list .nav-item.active:hover {
+  background: #fff;
+  border-color: #fff;
+  color: #64283a;
+  transform: translateY(1px);
+  box-shadow: 0 2px 0 #d8c8cc, inset 0 1px 2px rgba(80,35,50,.08);
+}
+.sidebar .nav-list .nav-item.active .nav-icon { color: #64283a; }
