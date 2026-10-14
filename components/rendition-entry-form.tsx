@@ -534,7 +534,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               type="file"
               name="ticket_photo"
               accept="image/*"
-              capture="environment"
               aria-label="Seleccionar foto del comprobante del ticket"
               disabled={busy}
               onChange={(event) => {
