@@ -533,7 +533,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               className="ticket-photo-native-input"
               type="file"
               name="ticket_photo"
-              accept="image/*"
+              accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.avif"
               aria-label="Seleccionar foto del comprobante del ticket"
               disabled={busy}
               onChange={(event) => {
