@@ -402,7 +402,7 @@ function readFocusedAddress(values:string[],fallback:string|null):string|null {
   for(const value of values){
     const text=normalize(value).replace(/\s+/g," ").trim();if(!text)continue;
     const number=[...text.matchAll(/\b\d{1,5}\b/g)].at(-1)?.[0]??null;
-    if(number&&/\b(?:RIOJA|RIOJ|RIGT?A|RIGIA|RITA)\b/i.test(text))return "LA RIOJA N.º "+number;
+    if(number&&/\b(?:RIOJA|RIOJ|RIGT?A|RIGIA|RITA|RIUTA)\b/i.test(text))return "LA RIOJA N.º "+number;
     if(number&&/\b(?:CALLE|AVENIDA|AV\.?|RUTA|DOMICILIO|DIRECCION)\b/i.test(text))return value.trim();
   }
   return fallback;
