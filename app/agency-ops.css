@@ -1463,3 +1463,21 @@
 .rendition-daily-mode-summary { display: grid; align-content: start; gap: .3rem; padding: .8rem .95rem; border: 1px solid #dfd0ba; border-radius: .6rem; background: #fffaf0; }
 .daily-closure-existing { display: grid; gap: .6rem; }
 @media (max-width: 640px) { .agent-rendition-policy-periods { grid-template-columns: 1fr; } }
+
+
+/* Ajustes visuales: Juegos e importes más compactos en pantallas pequeñas. */
+.game-rendition-list{gap:5px}
+.rendition-entry-form .game-rendition-row{min-height:0;padding:5px 7px;gap:6px}
+.rendition-entry-form .game-rendition-row>span{min-width:0}
+.rendition-entry-form .game-rendition-row strong{display:block;line-height:1.15;overflow-wrap:anywhere}
+.rendition-entry-form .game-rendition-row small{display:block;line-height:1.1;margin-top:2px}
+.rendition-entry-form .game-rendition-row input{min-width:0;min-height:34px;padding:5px 6px;font-variant-numeric:tabular-nums}
+.rendition-agent-code{display:inline-flex;width:max-content;max-width:100%;background:#fff!important;color:#111!important;align-items:center;justify-content:center}
+input[type="time"]{font-variant-numeric:tabular-nums}
+@media(max-width:700px){
+  .game-rendition-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+  .rendition-entry-form .game-rendition-row{grid-template-columns:minmax(0,1fr) 88px;padding:5px 6px;gap:5px}
+  .rendition-entry-form .game-rendition-row strong{font-size:11px}
+  .rendition-entry-form .game-rendition-row small{font-size:9px}
+  .rendition-entry-form .game-rendition-row input{font-size:12px;min-height:32px}
+}
