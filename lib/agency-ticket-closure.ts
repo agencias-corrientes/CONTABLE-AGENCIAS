@@ -109,6 +109,58 @@ function readTaggedCode(codeLine: string, tag: string): string | null {
   return match[1].replace(/[O]/g, "0").replace(/[IL]/g, "1");
 }
 
+/**
+ * Lee el número impreso después de "Período N.º" en cualquier ticket,
+ * incluso cuando el OCR separa el rótulo o los dígitos en varias líneas.
+ * Devuelve texto para conservar ceros iniciales; no confundirlo con la fecha.
+ */
+export function extractTicketPeriodNumber(text: string): string | null {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const normalized = lines.map(normalizeTicketText);
+  const isPeriodLabel = (line: string) => {
+    // Acepta confusiones frecuentes de OCR: I/1/L y O/0.
+    const compact = line.replace(/[|!]/g, "I").replace(/0/g, "O");
+    return /\bPER[I1L]O?D[O0]\b/.test(line) ||
+      /\bPER[I1L]OD[O0]\b/.test(line) ||
+      /\bPERIODO\b/.test(compact) ||
+      /\bPER[I1L]ODO\b/.test(line);
+  };
+  const readDigits = (value: string): string | null => {
+    const withoutDates = value
+      .replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g, " ")
+      .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, " ");
+    const matches = withoutDates.match(/(?<!\d)\d(?:[\s.-]*\d){1,11}(?!\d)/g) ?? [];
+    const candidates = matches
+      .map((match) => match.replace(/\D/g, ""))
+      .filter((digits) => /^\d{2,12}$/.test(digits));
+    return candidates.sort((a, b) => b.length - a.length)[0] ?? null;
+  };
+
+  for (let index = 0; index < normalized.length; index += 1) {
+    const label = normalized[index] ?? "";
+    if (!isPeriodLabel(label)) continue;
+
+    const labelPosition = label.search(/PER[I1L|!O0D]+/);
+    const suffix = labelPosition >= 0 ? label.slice(labelPosition + label.match(/PER[I1L|!O0D]+/)![0].length) : label;
+    let candidate = readDigits(suffix);
+    if (candidate) return candidate;
+
+    let context = suffix;
+    for (let next = index + 1; next < Math.min(normalized.length, index + 5); next += 1) {
+      const line = normalized[next] ?? "";
+      if (/^(?:AG(?:ENCIA)?\b|SUBAG(?:ENTE)?\b|MAQ(?:UINA)?\b|ABIERTO\b|CERRADO\b|IMPRESO\b|SORTEOS?\b|TOTALES?\b|TOTAL\b|QUINIELA\b|MEDIOS?\s+DIGITALES?\b|OTROS\s+JUEGOS?\b|FIN\s+DE\s+JORNADA\b|PREMIOS?\b)/.test(line)) break;
+      if (/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/.test(line) || /\b\d{1,2}:\d{2}(?::\d{2})?\b/.test(line)) break;
+      context += " " + line;
+      candidate = readDigits(context);
+      if (candidate) return candidate;
+    }
+  }
+  return null;
+}
+
 export function parseTicketClosure(text: string): TicketClosureData | null {
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   if (!lines.length) return null;
@@ -199,55 +251,7 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   const closedLine = lines.find((line) => /\bCERRADO\b/i.test(normalizeTicketText(line))) ?? null;
   const openedAt = parseDateTime(openedLine);
   const closedAt = parseDateTime(closedLine);
-  // El OCR suele separar "Período N.º" de sus dígitos en líneas distintas,
-  // o insertar espacios entre cada dígito. Buscar el campo y recomponer el número
-  // sin convertirlo a Number, para conservar los ceros iniciales.
-  const periodLineIndexes = normalized
-    .map((line, index) => (/\bPER[I1]ODO\b/i.test(line) ? index : -1))
-    .filter((index) => index >= 0);
-  const periodTokenFrom = (value: string): string | null => {
-    const withoutDates = value
-      .replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g, " ")
-      .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, " ");
-    const matches = withoutDates.match(/(?<!\d)\d(?:[\s.-]?\d){3,11}(?!\d)/g) ?? [];
-    const candidates = matches
-      .map((match) => match.replace(/\D/g, ""))
-      .filter((token) => /^\d{4,12}$/.test(token))
-      .sort((left, right) => right.length - left.length);
-    return candidates[0] ?? null;
-  };
-  let periodNumber: string | null = null;
-  let shorterPeriodCandidate: string | null = null;
-  for (const periodLineIndex of periodLineIndexes) {
-    const labelLine = normalized[periodLineIndex] ?? "";
-    const periodSuffix = labelLine.replace(/^.*?\bPER[I1]ODO\b/i, "");
-    const directCandidate = periodTokenFrom(periodSuffix);
-    if (directCandidate && directCandidate.length >= 5) {
-      periodNumber = directCandidate;
-      break;
-    }
-    if (directCandidate && (!shorterPeriodCandidate || directCandidate.length > shorterPeriodCandidate.length)) {
-      shorterPeriodCandidate = directCandidate;
-    }
-
-    let context = periodSuffix;
-    for (let i = periodLineIndex + 1; i < Math.min(lines.length, periodLineIndex + 5); i += 1) {
-      const candidate = normalized[i] ?? "";
-      if (/^(?:AG\b|SUBAG\b|MAQ\b|ABIERTO\b|CERRADO\b|IMPRESO\b|SORTEOS?\b|TOTALES?\b|TOTAL\b|QUINIELA\b|MEDIOS\s+DIGITALES\b|OTROS\s+JUEGOS\b|FIN\s+DE\s+JORNADA\b|PREMIOS?\b)/.test(candidate)) break;
-      if (/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/.test(candidate) || /\b\d{1,2}:\d{2}(?::\d{2})?\b/.test(candidate)) break;
-      context += " " + candidate;
-      const combinedCandidate = periodTokenFrom(context);
-      if (combinedCandidate && combinedCandidate.length >= 5) {
-        periodNumber = combinedCandidate;
-        break;
-      }
-      if (combinedCandidate && (!shorterPeriodCandidate || combinedCandidate.length > shorterPeriodCandidate.length)) {
-        shorterPeriodCandidate = combinedCandidate;
-      }
-    }
-    if (periodNumber) break;
-  }
-  if (!periodNumber) periodNumber = shorterPeriodCandidate;
+  const periodNumber = extractTicketPeriodNumber(text);
 
   const drawsStart = findIndex(lines, /SORTEOS?\s+ABIERTOS?/);
   const drawsEnd = findIndex(lines, /TOTALES?\s+EN\s+TJ|TOTALES?\s+TJ/, drawsStart >= 0 ? drawsStart + 1 : 0);

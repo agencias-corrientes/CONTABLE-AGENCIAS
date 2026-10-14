@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import jsQR from "jsqr";
 import { createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
 import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod } from "@/lib/agency-draw-schedule";
-import { mapTicketClosureAmounts, parseTicketClosure, type TicketClosureData } from "@/lib/agency-ticket-closure";
+import { extractTicketPeriodNumber, mapTicketClosureAmounts, parseTicketClosure, type TicketClosureData } from "@/lib/agency-ticket-closure";
 import { TicketClosureReceipt } from "@/components/ticket-closure-receipt";
 
 type Game = { id: string; name: string; category: string; enabled?: boolean; commissionPercent?: number | null };
@@ -95,7 +95,7 @@ function aliasesFor(game: Game) {
   return [name];
 }
 
-function parseTicketText(text: string, games: Game[]) {
+function parseTicketText(text: string, games: Game[], recoveredPeriodNumber = "") {
   const receiptData = parseTicketClosure(text);
   if (receiptData) {
     return {
@@ -103,7 +103,7 @@ function parseTicketText(text: string, games: Game[]) {
       period: "",
       drawNumber: "",
       date: null,
-      ticketNumber: receiptData.periodNumber ?? "",
+      ticketNumber: receiptData.periodNumber ?? recoveredPeriodNumber ?? "",
       detectedGames: ["Cierre de jornada"],
       receiptData,
     };
@@ -163,7 +163,7 @@ function parseTicketText(text: string, games: Game[]) {
     ["NOCTURNA", "Nocturna"],
   ];
   const detectedPeriod = periodOptions.find(([label]) => normalText.includes(label))?.[1] ?? "";
-  const ticketNumber = extractTicketNumber(text);
+  const ticketNumber = extractTicketPeriodNumber(text) ?? (recoveredPeriodNumber || extractTicketNumber(text));
 
   return {
     amountMap,
@@ -316,6 +316,36 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     }
   }, [amounts, busy, confirmationOpen, dailyStatusChoice, date, defaultPeriod, drawNumber, fileName, initialRendition, notes, period, periodManuallySelected, periods, photoPreviewUrl, qrPayload, reference, ticketNumbers, today]);
 
+  async function makeEnhancedTicketImage(file: File): Promise<HTMLCanvasElement> {
+    const bitmap = await createImageBitmap(file);
+    const longestSide = Math.max(bitmap.width, bitmap.height);
+    const scale = Math.min(3, 2800 / longestSide);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) {
+      bitmap.close();
+      throw new Error("No se pudo preparar la imagen para mejorar la lectura.");
+    }
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+
+    // Grises + contraste moderado: ayuda con papel térmico pálido sin umbralizar
+    // los números finos ni destruir los puntos y separadores del comprobante.
+    const image = context.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = image.data;
+    for (let i = 0; i < pixels.length; i += 4) {
+      const gray = 0.299 * pixels[i]! + 0.587 * pixels[i + 1]! + 0.114 * pixels[i + 2]!;
+      const contrasted = Math.max(0, Math.min(255, (gray - 128) * 1.55 + 128));
+      pixels[i] = contrasted;
+      pixels[i + 1] = contrasted;
+      pixels[i + 2] = contrasted;
+    }
+    context.putImageData(image, 0, 0);
+    return canvas;
+  }
+
   async function processTicket(file: File) {
     setBusy(true);
     setError("");
@@ -363,16 +393,31 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         },
       });
       let recognizedText = "";
+      let recoveredPeriodNumber = "";
       try {
         const result = await worker.recognize(file);
         recognizedText = result.data.text ?? "";
+
+        // No dependemos de que Tesseract lea bien la primera foto: los tickets térmicos
+        // suelen salir muy claros. Una segunda lectura ampliada busca específicamente
+        // "Período N.º" y solo recupera ese dato; no reemplaza los importes originales.
+        if (!extractTicketPeriodNumber(recognizedText)) {
+          try {
+            const enhancedImage = await makeEnhancedTicketImage(file);
+            const enhancedResult = await worker.recognize(enhancedImage);
+            const enhancedText = enhancedResult.data.text ?? "";
+            recoveredPeriodNumber = extractTicketPeriodNumber(enhancedText) ?? "";
+          } catch {
+            // Si falla el preprocesamiento, se conserva la lectura original y se puede corregir manualmente.
+          }
+        }
       } finally {
         await worker.terminate();
       }
 
       setOcrText(recognizedText);
       const activeGames = games.filter((game) => game.enabled !== false);
-      const parsed = parseTicketText(recognizedText, activeGames);
+      const parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber);
       const detectedPeriod = parsed.period || qrPeriodCandidate;
       let autoDetectedPeriodChanged = false;
       let detectedPeriodDefinition: OfficialDrawPeriod | null = null;
@@ -402,7 +447,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           normalize(game.name),
           game.commissionPercent == null || !Number.isFinite(Number(game.commissionPercent)) ? null : Number(game.commissionPercent),
         ]));
-        const closureReceipt = { ...parsed.receiptData, commissionRates };
+        const closureReceipt = { ...parsed.receiptData, periodNumber: parsed.receiptData.periodNumber ?? (recoveredPeriodNumber || null), commissionRates };
         // The printed date stays in receipt metadata; the financial entry stays on today's operational day.
         setDate(initialRendition?.renditionDate ?? today);
         setReceiptData(closureReceipt);
