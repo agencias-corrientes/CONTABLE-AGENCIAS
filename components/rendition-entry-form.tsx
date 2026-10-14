@@ -233,7 +233,7 @@ function structuredQr(payload: string) {
   }
 }
 
-type ReceiptFocusRegion = "codes" | "agencyCode" | "machineCode" | "address" | "terminalId" | "printedAt" | "periodNumber";
+type ReceiptFocusRegion = "codes" | "agencyCode" | "subagentCode" | "machineCode" | "address" | "terminalId" | "printedAt" | "periodNumber";
 type ReceiptFocusSpec = { left:number; right:number; top:number; bottom:number; scale:number; contrast:number };
 type ReceiptPaperBounds = { left:number; top:number; width:number; height:number };
 type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
@@ -243,7 +243,8 @@ type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
 const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   codes:       {left:0.041,right:0.934,top:0.259,bottom:0.289,scale:3,contrast:1.8},
   agencyCode:  {left:0.087,right:0.366,top:0.266,bottom:0.290,scale:5,contrast:2.0},
-  machineCode: {left:0.672,right:0.930,top:0.266,bottom:0.290,scale:5,contrast:2.0},
+  subagentCode:{left:0.348,right:0.681,top:0.263,bottom:0.291,scale:3,contrast:1.8},
+  machineCode: {left:0.772,right:0.880,top:0.266,bottom:0.290,scale:5,contrast:2.0},
   address:     {left:0.041,right:0.502,top:0.288,bottom:0.311,scale:3,contrast:1.8},
   terminalId:  {left:0.393,right:0.592,top:0.307,bottom:0.329,scale:3,contrast:2.0},
   printedAt:   {left:0.041,right:0.951,top:0.322,bottom:0.349,scale:3,contrast:1.8},
@@ -325,6 +326,25 @@ function makeReceiptFocusCrop(bitmap:ImageBitmap,bounds:ReceiptPaperBounds,regio
     const v=Math.max(0,Math.min(255,(gray-128)*spec.contrast+128));
     data[i]=v;data[i+1]=v;data[i+2]=v;
   }
+  // En los números del período, el papel térmico borroso convierte los ceros en bloques.
+  // Un enfoque suave recupera los bordes sin binarizar ni borrar los trazos finos.
+  if(region==="periodNumber"||region==="terminalId"||region==="agencyCode"||region==="subagentCode"||region==="machineCode"){
+    const original=new Uint8ClampedArray(data);
+    const width=canvas.width,height=canvas.height;
+    for(let y=1;y<height-1;y+=1){
+      for(let x=1;x<width-1;x+=1){
+        const i=(y*width+x)*4;
+        const center=original[i]!;
+        const blur=(center+
+          original[i-4]!+original[i+4]!+
+          original[i-width*4]!+original[i+width*4]!+
+          original[i-width*4-4]!+original[i-width*4+4]!+
+          original[i+width*4-4]!+original[i+width*4+4]!+center*4)/13;
+        const v=Math.max(0,Math.min(255,center+(center-blur)));
+        data[i]=v;data[i+1]=v;data[i+2]=v;
+      }
+    }
+  }
   context.putImageData(image,0,0);return canvas;
 }
 
@@ -335,6 +355,7 @@ async function makeFocusedReceiptCrops(file:File) {
     return {
       codes:makeReceiptFocusCrop(bitmap,bounds,"codes"),
       agencyCode:makeReceiptFocusCrop(bitmap,bounds,"agencyCode"),
+      subagentCode:makeReceiptFocusCrop(bitmap,bounds,"subagentCode"),
       machineCode:makeReceiptFocusCrop(bitmap,bounds,"machineCode"),
       address:makeReceiptFocusCrop(bitmap,bounds,"address"),
       terminalId:makeReceiptFocusCrop(bitmap,bounds,"terminalId"),
@@ -609,6 +630,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const codesLine6 = (await worker.recognize(crops.codes)).data.text ?? "";
           const addressLine6 = (await worker.recognize(crops.address)).data.text ?? "";
           const printedLine6 = (await worker.recognize(crops.printedAt)).data.text ?? "";
+          await setOcrMode(8);
+          const subagentLine8 = (await worker.recognize(crops.subagentCode)).data.text ?? "";
 
           // Los ceros iniciales de AG y MAQ suelen desaparecer en el reconocimiento completo.
           await setOcrMode(7,"0123456789OQIL");
@@ -627,13 +650,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
           const read7 = readFocusedCodes(codesLine7,agencyDigits,machineDigits);
           const read6 = readFocusedCodes(codesLine6,agencyDigits,machineDigits);
+          const focusedSubagent = readFocusedCodes(subagentLine8,"","").subagentCode ??
+            [read7.subagentCode,read6.subagentCode].filter((value): value is string => Boolean(value)).sort((a,b)=>b.length-a.length)[0] ?? null;
           const focusedPeriod = readFocusedPeriodNumber([periodDigits10,periodDigits13]);
           const focusedTerminal = readFocusedDigitValue([terminalDigits7,terminalDigits6],4);
           const focusedPrint = readFocusedPrintedAt([printedLine6,printedLine7]);
           const focusedAddress = readFocusedAddress([addressLine6,addressLine7],null);
           focusedClosureMetadata = {
             agencyCode:read7.agencyCode??read6.agencyCode??undefined,
-            subagentCode:read7.subagentCode??read6.subagentCode??undefined,
+            subagentCode:focusedSubagent??undefined,
             machineCode:read7.machineCode??read6.machineCode??undefined,
             address:focusedAddress??undefined,
             terminalId:focusedTerminal??undefined,
@@ -645,6 +670,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             "[LECTURA FOCALIZADA FIN DE JORNADA]",
             "Códigos (PSM 7): "+codesLine7.trim(),
             "Códigos (PSM 6): "+codesLine6.trim(),
+            "Subagente (PSM 8): "+subagentLine8.trim(),
             "Dirección: "+addressLine6.trim(),
             "Máquina real (dígitos): "+terminalDigits7.trim()+" / "+terminalDigits6.trim(),
             "Impresión: "+printedLine6.trim()+" / "+printedLine7.trim(),
