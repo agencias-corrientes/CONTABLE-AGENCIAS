@@ -199,24 +199,55 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   const closedLine = lines.find((line) => /\bCERRADO\b/i.test(normalizeTicketText(line))) ?? null;
   const openedAt = parseDateTime(openedLine);
   const closedAt = parseDateTime(closedLine);
-  const periodLineIndex = normalized.findIndex((line) => /\bPER[I1]ODO\b/i.test(line));
-  const periodSuffix = (normalized[periodLineIndex] ?? "").replace(/^.*?\bPER[I1]ODO\b/i, "");
-  // Read the period number even when OCR splits the label and digits across lines.
-  // The period is independent from the ticket/coupon identifier.
+  // El OCR suele separar "Período N.º" de sus dígitos en líneas distintas,
+  // o insertar espacios entre cada dígito. Buscar el campo y recomponer el número
+  // sin convertirlo a Number, para conservar los ceros iniciales.
+  const periodLineIndexes = normalized
+    .map((line, index) => (/\bPER[I1]ODO\b/i.test(line) ? index : -1))
+    .filter((index) => index >= 0);
   const periodTokenFrom = (value: string): string | null => {
-    const match = value.match(/(?:^|\D)(\d(?:[\d .-]{0,18}\d)?)(?=\D*$)/);
-    const token = (match?.[1] ?? "").replace(/\D/g, "");
-    return /^\d{2,12}$/.test(token) ? token : null;
+    const withoutDates = value
+      .replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g, " ")
+      .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, " ");
+    const matches = withoutDates.match(/(?<!\d)\d(?:[\s.-]?\d){3,11}(?!\d)/g) ?? [];
+    const candidates = matches
+      .map((match) => match.replace(/\D/g, ""))
+      .filter((token) => /^\d{4,12}$/.test(token))
+      .sort((left, right) => right.length - left.length);
+    return candidates[0] ?? null;
   };
-  let periodNumber = periodTokenFrom(periodSuffix);
-  if (!periodNumber && periodLineIndex >= 0) {
-    for (let i = periodLineIndex + 1; i < Math.min(lines.length, periodLineIndex + 3); i += 1) {
-      const candidate = normalized[i] ?? "";
-      if (/ABIERTO|CERRADO|IMPRESO|SORTEOS?\s+ABIERTOS?|TOTAL|QUINIELA|MEDIOS\s+DIGITALES|OTROS\s+JUEGOS/.test(candidate)) break;
-      periodNumber = periodTokenFrom(candidate);
-      if (periodNumber) break;
+  let periodNumber: string | null = null;
+  let shorterPeriodCandidate: string | null = null;
+  for (const periodLineIndex of periodLineIndexes) {
+    const labelLine = normalized[periodLineIndex] ?? "";
+    const periodSuffix = labelLine.replace(/^.*?\bPER[I1]ODO\b/i, "");
+    const directCandidate = periodTokenFrom(periodSuffix);
+    if (directCandidate && directCandidate.length >= 5) {
+      periodNumber = directCandidate;
+      break;
     }
+    if (directCandidate && (!shorterPeriodCandidate || directCandidate.length > shorterPeriodCandidate.length)) {
+      shorterPeriodCandidate = directCandidate;
+    }
+
+    let context = periodSuffix;
+    for (let i = periodLineIndex + 1; i < Math.min(lines.length, periodLineIndex + 5); i += 1) {
+      const candidate = normalized[i] ?? "";
+      if (/^(?:AG\b|SUBAG\b|MAQ\b|ABIERTO\b|CERRADO\b|IMPRESO\b|SORTEOS?\b|TOTALES?\b|TOTAL\b|QUINIELA\b|MEDIOS\s+DIGITALES\b|OTROS\s+JUEGOS\b|FIN\s+DE\s+JORNADA\b|PREMIOS?\b)/.test(candidate)) break;
+      if (/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/.test(candidate) || /\b\d{1,2}:\d{2}(?::\d{2})?\b/.test(candidate)) break;
+      context += " " + candidate;
+      const combinedCandidate = periodTokenFrom(context);
+      if (combinedCandidate && combinedCandidate.length >= 5) {
+        periodNumber = combinedCandidate;
+        break;
+      }
+      if (combinedCandidate && (!shorterPeriodCandidate || combinedCandidate.length > shorterPeriodCandidate.length)) {
+        shorterPeriodCandidate = combinedCandidate;
+      }
+    }
+    if (periodNumber) break;
   }
+  if (!periodNumber) periodNumber = shorterPeriodCandidate;
 
   const drawsStart = findIndex(lines, /SORTEOS?\s+ABIERTOS?/);
   const drawsEnd = findIndex(lines, /TOTALES?\s+EN\s+TJ|TOTALES?\s+TJ/, drawsStart >= 0 ? drawsStart + 1 : 0);

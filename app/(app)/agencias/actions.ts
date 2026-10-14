@@ -202,7 +202,13 @@ export async function createAgencyRendition(formData: FormData) {
     supabase.from("agency_agent_game_commissions").select("game_type_id,commission_percent").eq("organization_id", organizationId).eq("agent_id", agentId).in("game_type_id", submittedGameIds),
     supabase.from("agency_game_commission_defaults").select("game_type_id,commission_percent").eq("organization_id", organizationId).in("game_type_id", submittedGameIds),
   ]);
-  if (agentCommissionError || defaultCommissionError) redirect("/pagos?error=rendicion-fallida&agent=" + encodeURIComponent(agentId));
+  if (agentCommissionError || defaultCommissionError) {
+    console.error("[rendicion] failed to read commission settings", {
+      agentCommission: agentCommissionError ? { code: agentCommissionError.code, message: agentCommissionError.message } : null,
+      defaultCommission: defaultCommissionError ? { code: defaultCommissionError.code, message: defaultCommissionError.message } : null,
+    });
+    redirect("/pagos?error=rendicion-fallida&agent=" + encodeURIComponent(agentId));
+  }
   const agentCommissionByGame = new Map<string, number>((agentCommissionRows ?? []).map((row: any) => [String(row.game_type_id), Number(row.commission_percent)] as const));
   const defaultCommissionByGame = new Map<string, number>((defaultCommissionRows ?? []).map((row: any) => [String(row.game_type_id), Number(row.commission_percent)] as const));
   const commissionDue = breakdown.reduce((sum, item) => {
@@ -301,6 +307,13 @@ export async function createAgencyRendition(formData: FormData) {
     renditionId = result.data ?? undefined; error = result.error;
   }
   if (error) {
+    console.error("[rendicion] database rejected rendition save", {
+      rpc: renditionPolicy === "daily" ? "create_and_receive_agency_daily_rendition" : "create_agency_rendition_with_capture_and_draw_status",
+      code: error.code ?? null,
+      message: error.message ?? null,
+      details: error.details ?? null,
+      hint: error.hint ?? null,
+    });
     const message = String(error.message ?? "").toLowerCase();
     if (message.includes("permiso")) redirect("/pagos?error=sin-permiso-rendicion&agent=" + encodeURIComponent(agentId));
     if (message.includes("monto rendido")) redirect("/pagos?error=monto-rendido-invalido&agent=" + encodeURIComponent(agentId));

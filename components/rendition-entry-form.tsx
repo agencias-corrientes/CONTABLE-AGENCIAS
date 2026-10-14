@@ -103,7 +103,7 @@ function parseTicketText(text: string, games: Game[]) {
       period: "",
       drawNumber: "",
       date: null,
-      ticketNumber: receiptData.periodNumber || extractTicketNumber(text),
+      ticketNumber: receiptData.periodNumber ?? "",
       detectedGames: ["Cierre de jornada"],
       receiptData,
     };
@@ -430,7 +430,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       // date stays on today's operational day so Caja's date guard is not bypassed.
       if (parsed.date && !parsed.receiptData) setDate(parsed.date);
       if (parsed.drawNumber) setDrawNumber(parsed.drawNumber);
-      if (parsed.ticketNumber) {
+      if (parsed.receiptData) {
+        // Para un FIN DE JORNADA, el identificador del cupón es exactamente
+        // el valor impreso en "Período N.º"; no anexar otro número detectado.
+        setTicketNumbers(parsed.receiptData.periodNumber ?? "");
+      } else if (parsed.ticketNumber) {
         setTicketNumbers((previous) => previous.split(/\s+/).includes(parsed.ticketNumber) ? previous : previous ? previous + "\n" + parsed.ticketNumber : parsed.ticketNumber);
       }
       const qr = detectedQr ? structuredQr(detectedQr) : null;
@@ -654,6 +658,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                 setReceiptData({ ...next, userConfirmedReview: false });
                 setReceiptReviewed(false);
                 setAmounts(mapTicketClosureAmounts(next, periodGames));
+                // Si se corrige manualmente el Período N.º, reflejarlo en el
+                // identificador que se guarda como número de ticket/cupón.
+                setTicketNumbers(String(next.periodNumber ?? "").trim());
               }} />
               {periodGames.map((game) => <input key={game.id} type="hidden" name={"game_" + game.id} value={amounts[game.id] ?? "0"} />)}
               <div className="ticket-closure-accept-actions">
