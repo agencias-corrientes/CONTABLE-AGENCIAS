@@ -298,12 +298,16 @@ function detectReceiptPaperBounds(bitmap:ImageBitmap):ReceiptPaperBounds {
   }
   const vertical=longestBrightRun(rows,150,scan.height*.01,scan.height*.99);
   const sx=bitmap.width/scan.width,sy=bitmap.height/scan.height;
-  if(!vertical||vertical.end-vertical.start<scan.height*.42){
-    return {left:Math.round(horizontal.start*sx),top:0,width:Math.round((horizontal.end-horizontal.start)*sx),height:bitmap.height};
+  const paperLeft=Math.max(0,Math.round(horizontal.start*sx));
+  const paperWidth=Math.max(1,Math.min(bitmap.width,Math.round((horizontal.end-horizontal.start)*sx)));
+  // Cuando el papel llega casi hasta ambos bordes de la foto, no recortar el primer
+  // ni el último renglón: allí están justamente los datos de cabecera y el período.
+  const reachesPhotoEdges=Boolean(vertical&&vertical.start<=scan.height*.03&&vertical.end>=scan.height*.97);
+  if(!vertical||vertical.end-vertical.start<scan.height*.42||reachesPhotoEdges){
+    return {left:paperLeft,top:0,width:paperWidth,height:bitmap.height};
   }
-  return {left:Math.max(0,Math.round(horizontal.start*sx)),top:Math.max(0,Math.round(vertical.start*sy)),
-    width:Math.max(1,Math.min(bitmap.width,Math.round((horizontal.end-horizontal.start)*sx))),
-    height:Math.max(1,Math.min(bitmap.height,Math.round((vertical.end-vertical.start)*sy)))};
+  return {left:paperLeft,top:Math.max(0,Math.round(vertical.start*sy)),
+    width:paperWidth,height:Math.max(1,Math.min(bitmap.height,Math.round((vertical.end-vertical.start)*sy)))};
 }
 
 function makeReceiptFocusCrop(bitmap:ImageBitmap,bounds:ReceiptPaperBounds,region:ReceiptFocusRegion):HTMLCanvasElement {
