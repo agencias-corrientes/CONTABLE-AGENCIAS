@@ -527,21 +527,19 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             <span className="ticket-photo-icon" aria-hidden="true">▧</span>
             <strong>Seleccionar foto del ticket</strong>
             <span>Elegí una imagen para leer el QR y reconocer los importes.</span>
-            <label className="ticket-photo-input-target">
-              <span className="ticket-photo-select-button">Seleccionar archivo</span>
-              <input
-                type="file"
-                name="ticket_photo"
-                accept="image/*"
-                aria-label="Seleccionar archivo de foto del ticket"
-                disabled={busy}
-                onChange={(event) => {
-                  const file = event.currentTarget.files?.[0];
-                  if (file) void processTicket(file);
-                  event.currentTarget.value = "";
-                }}
-              />
-            </label>
+            <input
+              className="ticket-photo-native-input"
+              type="file"
+              name="ticket_photo"
+              accept="image/*"
+              aria-label="Seleccionar foto del ticket desde el teléfono"
+              disabled={busy}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                if (file) void processTicket(file);
+                event.currentTarget.value = "";
+              }}
+            />
           </div>
           {photoPreviewUrl && <div className="ticket-photo-preview"><button type="button" className="ticket-photo-preview-button" onClick={() => setPhotoExpanded(true)} aria-label="Ampliar foto del ticket"><img src={photoPreviewUrl} alt="Vista previa del ticket cargado" /><span>Ampliar foto</span></button></div>}
           {photoExpanded && photoPreviewUrl && <div className="ticket-photo-lightbox" role="dialog" aria-modal="true" aria-label="Foto del ticket ampliada" onClick={() => setPhotoExpanded(false)}><button type="button" className="ticket-photo-lightbox-close" onClick={() => setPhotoExpanded(false)}>Cerrar ✕</button><img src={photoPreviewUrl} alt="Foto del ticket ampliada" onClick={(event) => event.stopPropagation()} /></div>}
