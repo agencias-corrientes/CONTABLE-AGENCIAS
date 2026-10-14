@@ -328,6 +328,9 @@ html,body{background:var(--bg);color:var(--text)}
 /* Large, professional file selector button for photographed tickets. */
 .ticket-photo-picker{display:flex;flex-direction:column;gap:8px;padding:16px;border:1px solid #d4c18b;border-radius:13px;background:#fffdf6;cursor:pointer}
 .ticket-photo-picker>strong{font-size:16px;color:#40242a}
+.ticket-photo-select-button{display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;min-height:48px;padding:12px 22px;border:0;border-radius:9px;background:#7c3347;color:#fff;font-size:15px;font-weight:800;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.ticket-photo-select-button:active{background:#64283a;transform:translateY(1px)}
+.ticket-photo-select-button:disabled{opacity:.6;cursor:wait}
 .ticket-photo-picker>span:not(.ticket-photo-icon){font-size:13px;line-height:1.4;color:#70666a}
 .ticket-photo-picker input[type="file"]{display:block;width:100%;min-height:62px;margin-top:7px;padding:9px;border:1px solid #c5ae73;border-radius:10px;background:#f8f0d9;color:#2a2020;font-size:14px;cursor:pointer}
 .ticket-photo-picker input[type="file"]::file-selector-button{min-height:42px;margin:0 12px 0 0;padding:11px 18px;border:0;border-radius:8px;background:#7c3347;color:#fff;font-weight:800;font-size:14px;cursor:pointer}
