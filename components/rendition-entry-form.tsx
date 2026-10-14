@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
 import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod } from "@/lib/agency-draw-schedule";
@@ -247,6 +247,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [confirmationError, setConfirmationError] = useState("");
   const confirmationId = useId();
   const ticketPhotoInputId = useId();
+  const ticketPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">(dailyMode && !dailyCloseAllowed ? "incomplete" : "complete");
   const [reportedAmount, setReportedAmount] = useState("");
@@ -524,11 +525,20 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       {mode === "photo" && (
         <div className="ticket-capture-panel">
-          <label htmlFor={ticketPhotoInputId} className="ticket-photo-picker">
+          <div className="ticket-photo-picker">
             <span className="ticket-photo-icon" aria-hidden="true">▧</span>
-            <strong>Cargar comprobante del ticket</strong>
-            <span>Podés tocar aquí o el botón de abajo para elegir la foto desde el teléfono.</span>
+            <strong>Comprobante del ticket</strong>
+            <span>Seleccioná una foto guardada en el teléfono o sacá una nueva.</span>
+            <button
+              type="button"
+              className="ticket-photo-select-button"
+              disabled={busy}
+              onClick={() => ticketPhotoInputRef.current?.click()}
+            >
+              {busy ? "Procesando foto…" : "Cargar comprobante del ticket"}
+            </button>
             <input
+              ref={ticketPhotoInputRef}
               id={ticketPhotoInputId}
               className="ticket-photo-native-input"
               type="file"
@@ -542,7 +552,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                 event.currentTarget.value = "";
               }}
             />
-          </label>
+          </div>
           {photoPreviewUrl && <div className="ticket-photo-preview"><button type="button" className="ticket-photo-preview-button" onClick={() => setPhotoExpanded(true)} aria-label="Ampliar foto del ticket"><img src={photoPreviewUrl} alt="Vista previa del ticket cargado" /><span>Ampliar foto</span></button></div>}
           {photoExpanded && photoPreviewUrl && <div className="ticket-photo-lightbox" role="dialog" aria-modal="true" aria-label="Foto del ticket ampliada" onClick={() => setPhotoExpanded(false)}><button type="button" className="ticket-photo-lightbox-close" onClick={() => setPhotoExpanded(false)}>Cerrar ✕</button><img src={photoPreviewUrl} alt="Foto del ticket ampliada" onClick={(event) => event.stopPropagation()} /></div>}
           <p className="muted small-text">También podés subir una foto guardada. La lectura se procesa en el navegador y la imagen se adjunta a la rendición para auditoría.</p>
