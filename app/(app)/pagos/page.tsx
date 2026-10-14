@@ -5,6 +5,7 @@ import { agencyBusinessDateForCutoff, formatAgencyDate, formatAgencyDateTime } f
 import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, getAgencyLocalClock, getDrawPeriodStatus, getPreferredPendingDrawPeriod, drawPeriodHasPassed } from "@/lib/agency-draw-schedule";
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
 import { RenditionScrollHelper } from "@/components/rendition-scroll-helper";
+import { RenditionDeadlineAlert } from "@/components/rendition-deadline-alert";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
 import { TicketClosureReceipt } from "@/components/ticket-closure-receipt";
 import { receiveAgencyRendition, voidAgencyRendition, setAgencyDrawRenditionStatus, setAgencyDailyRenditionStatus, sendAgencyBackupManually } from "../agencias/actions";
@@ -232,6 +233,31 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   function drawPeriodStatesForAgent(agentId: string) {
     return drawPeriods.map((period) => ({ period, ...drawPeriodStateForAgent(agentId, period) }));
   }
+  const closeAlertTime = String(lastScheduledDraw?.time ?? cutoffTime).slice(0, 5);
+  const pendingBeforeCloseAgents = activeAgents.filter((agent: any) => {
+    const policy = String(agent.rendition_policy ?? "daily");
+    if (policy === "daily") {
+      const dailyRendition = todayRows.find((row: any) =>
+        String(row.agent_id) === String(agent.id) &&
+        String(row.game_period ?? "").trim() === "Cierre diario" &&
+        row.status !== "void"
+      );
+      const dailyStatus = dailyStatusByAgent.get(String(agent.id)) as any;
+      return !dailyRendition || dailyStatus?.status !== "complete";
+    }
+    const configuredPeriods = Array.isArray(agent.rendition_periods) ? agent.rendition_periods.map(String) : [];
+    return drawPeriods.some((period) => {
+      if (!period.time || period.time > closeAlertTime) return false;
+      if (policy === "selected_draws" && !configuredPeriods.includes(period.label)) return false;
+      const state = drawPeriodStateForAgent(String(agent.id), period);
+      return state.status === "pending" || state.status === "incomplete";
+    });
+  }).map((agent: any) => ({
+    id: String(agent.id),
+    code: String(agent.code ?? ""),
+    fullName: String(agent.full_name ?? ""),
+    kind: agent.kind === "subagent" ? "subagent" as const : "ambulant" as const,
+  }));
   const legacyUnlabelledTodayCount = todayRows.filter((row: any) => !String(row.game_period ?? "").trim()).length;
 
   function RenditionHistory({ agent, historyRows = rows }: { agent: any; historyRows?: any[] }) {
@@ -513,6 +539,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             <div className="stat-card"><span>Comisiones rendidas</span><strong>{money(todayComisiones, activeOrganization.currency_code)}</strong><small>comisiones reconocidas en las rendiciones del día</small></div>
             <div className="stat-card"><span>Agentes activos</span><strong>{activeAgents.length}</strong><small>{activeAgents.filter((agent) => agent.kind === "subagent").length} subagentes · {activeAgents.filter((agent) => agent.kind === "ambulant").length} ambulantes</small></div>
           </div>
+
+          <RenditionDeadlineAlert closeTime={closeAlertTime} agents={pendingBeforeCloseAgents} />
 
           <section className="rendition-agent-selector" aria-label="Elegir subagente o ambulante">
             <div className="rendition-agent-selector-head">
