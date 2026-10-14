@@ -110,21 +110,17 @@ export function AppShell({
           .sidebar .nav-list { gap: 7px; }
           .sidebar .nav-list .nav-item { min-height: 56px; padding: 9px 7px; gap: 6px; font-size: 12.5px; }
           .sidebar .nav-list .nav-item .nav-icon { flex-basis: 25px; width: 25px; height: 25px; border-radius: 7px; }
-        }\n      `}
-.brand-copy { min-width: 0; flex: 1; }
-.brand-subline { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
-.brand-subline > span:first-child { min-width: 0; overflow-wrap: anywhere; }
-.official-agency-number { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; min-width: 36px; padding: 5px 8px; border: 1px solid #e5d9b9; border-radius: 7px; background: #fff; color: #171717; font-size: 14px !important; font-weight: 900; line-height: 1.1; letter-spacing: .02em; box-shadow: 0 2px 0 rgba(30,10,16,.14); }
-@media (max-width: 1000px) {
-  .sidebar .nav-list .nav-item { font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; min-width: 0; }
-  .sidebar .nav-list .nav-item .nav-icon { flex-shrink: 0; }
-}
-@media (max-width: 420px) {
-  .sidebar .nav-list .nav-item { font-size: 13.5px; min-height: 58px; padding: 10px 8px; }
-  .brand-subline { gap: 5px; }
-  .official-agency-number { min-width: 32px; padding: 4px 6px; font-size: 13px !important; }
-}
-
-      </style>\n    </div>
-  );
-}
+        }
+        .brand-copy { min-width: 0; flex: 1; }
+        .brand-subline { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+        .brand-subline > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+        .official-agency-number { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; min-width: 36px; padding: 5px 8px; border: 1px solid #e5d9b9; border-radius: 7px; background: #fff; color: #171717; font-size: 14px !important; font-weight: 900; line-height: 1.1; letter-spacing: .02em; box-shadow: 0 2px 0 rgba(30,10,16,.14); }
+        @media (max-width: 1000px) {
+          .sidebar .nav-list .nav-item { font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; min-width: 0; }
+          .sidebar .nav-list .nav-item .nav-icon { flex-shrink: 0; }
+        }
+        @media (max-width: 420px) {
+          .sidebar .nav-list .nav-item { font-size: 13.5px; min-height: 58px; padding: 10px 8px; }
+          .brand-subline { gap: 5px; }
+          .official-agency-number { min-width: 32px; padding: 4px 6px; font-size: 13px !important; }
+        }\n      `}</style>\\n    </div>\n  );\n}\n
