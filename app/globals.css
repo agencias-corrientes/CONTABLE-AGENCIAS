@@ -56,3 +56,63 @@
 .ticket-input-block textarea:focus{border-color:#a77716;box-shadow:0 0 0 3px rgba(167,119,22,.10)}
 .ticket-input-block small{font-size:11px;color:var(--muted);line-height:1.4}
 @media(max-width:640px){.global-search-form{grid-template-columns:1fr}.global-search-form .button{width:100%}}
+
+
+/* Botones de configuración: relieve 3D y selección blanca */
+.settings-card{
+  position:relative;
+  border:1px solid #d4c59a;
+  border-bottom:4px solid #b5a16d;
+  box-shadow:0 4px 0 rgba(91,67,31,.12),0 7px 14px rgba(74,51,26,.08);
+  transition:background-color .16s ease, color .16s ease, transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+  cursor:pointer;
+}
+.settings-card:hover{
+  transform:translateY(-2px);
+  border-color:#b79a45;
+  border-bottom-color:#8c7330;
+  box-shadow:0 6px 0 rgba(91,67,31,.12),0 11px 20px rgba(74,51,26,.14);
+}
+.settings-card:active{
+  transform:translateY(2px);
+  background:#fff;
+  border-color:#b79a45;
+  border-bottom-width:2px;
+  box-shadow:0 1px 0 rgba(91,67,31,.12),0 3px 8px rgba(74,51,26,.08);
+}
+.settings-card:focus-visible{
+  outline:3px solid #b79a45;
+  outline-offset:3px;
+  background:#fff;
+}
+.settings-card:focus,
+.settings-card:focus-within{
+  background:#fff;
+  border-color:#b79a45;
+}
+.nav-item{
+  border:1px solid rgba(255,255,255,.14);
+  border-bottom:3px solid rgba(47,17,28,.35);
+  box-shadow:0 3px 0 rgba(47,17,28,.16);
+  transition:background-color .16s ease,color .16s ease,transform .16s ease,box-shadow .16s ease;
+}
+.nav-item:hover{
+  transform:translateY(-1px);
+  box-shadow:0 5px 0 rgba(47,17,28,.18);
+}
+.nav-item:active{
+  transform:translateY(2px);
+  background:#fff;
+  color:#64283a;
+  border-bottom-width:1px;
+  box-shadow:0 1px 0 rgba(47,17,28,.12);
+}
+.nav-item.active{
+  background:#fff;
+  color:#64283a;
+  border-color:#fff;
+  border-bottom-color:#d8c9a2;
+  box-shadow:0 3px 0 rgba(47,17,28,.18),0 5px 12px rgba(47,17,28,.12);
+  font-weight:800;
+}
+.nav-item.active .nav-icon{color:#64283a}
