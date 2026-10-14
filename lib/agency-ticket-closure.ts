@@ -199,13 +199,24 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   const closedLine = lines.find((line) => /\bCERRADO\b/i.test(normalizeTicketText(line))) ?? null;
   const openedAt = parseDateTime(openedLine);
   const closedAt = parseDateTime(closedLine);
-  const periodLine = lines.find((line) => /\bPER[I1]ODO\b/i.test(normalizeTicketText(line))) ?? null;
-  const periodSuffix = periodLine?.replace(/^.*?\bPER[I1]ODO\b/i, "") ?? "";
-  // Accept only an unambiguous numeric code with at least four digits. Letters
-  // such as OCR's "ABBAAZ2H" must never be displayed as a period number.
-  const periodMatch = periodSuffix.match(/(?:^|\D)(\d[\d ]{2,10}\d)(?=\D*$)/);
-  const periodToken = periodMatch?.[1]?.replace(/\s+/g, "") ?? "";
-  const periodNumber = /^\d{4,12}$/.test(periodToken) ? periodToken : null;
+  const periodLineIndex = normalized.findIndex((line) => /\bPER[I1]ODO\b/i.test(line));
+  const periodSuffix = (normalized[periodLineIndex] ?? "").replace(/^.*?\bPER[I1]ODO\b/i, "");
+  // Read the period number even when OCR splits the label and digits across lines.
+  // The period is independent from the ticket/coupon identifier.
+  const periodTokenFrom = (value: string): string | null => {
+    const match = value.match(/(?:^|\D)(\d(?:[\d .-]{0,18}\d)?)(?=\D*$)/);
+    const token = (match?.[1] ?? "").replace(/\D/g, "");
+    return /^\d{2,12}$/.test(token) ? token : null;
+  };
+  let periodNumber = periodTokenFrom(periodSuffix);
+  if (!periodNumber && periodLineIndex >= 0) {
+    for (let i = periodLineIndex + 1; i < Math.min(lines.length, periodLineIndex + 3); i += 1) {
+      const candidate = normalized[i] ?? "";
+      if (/ABIERTO|CERRADO|IMPRESO|SORTEOS?\s+ABIERTOS?|TOTAL|QUINIELA|MEDIOS\s+DIGITALES|OTROS\s+JUEGOS/.test(candidate)) break;
+      periodNumber = periodTokenFrom(candidate);
+      if (periodNumber) break;
+    }
+  }
 
   const drawsStart = findIndex(lines, /SORTEOS?\s+ABIERTOS?/);
   const drawsEnd = findIndex(lines, /TOTALES?\s+EN\s+TJ|TOTALES?\s+TJ/, drawsStart >= 0 ? drawsStart + 1 : 0);

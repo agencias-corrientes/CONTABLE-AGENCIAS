@@ -58,11 +58,11 @@ export function TicketClosureReceipt({data,compact=false,editable=false,onChange
    <TextField label="Domicilio" value={data.address} editable={editable} onChange={v=>update({...data,address:v||null})}/>
    <TextField label="Terminal" value={data.terminalId} editable={editable} onChange={v=>update({...data,terminalId:v||null})}/>
   </div>
+  <div className="ticket-closure-grid">
   <div className="ticket-closure-section ticket-closure-draws"><h4>Sorteos abiertos</h4>
    {(data.openDraws??[]).map((draw,i)=><div className="ticket-closure-line ticket-draw-row" key={draw.name+i}>{editable?<><input aria-label={"Sorteo "+(i+1)} value={draw.name} onChange={e=>update({...data,openDraws:data.openDraws.map((v,j)=>i===j?{...v,name:e.target.value}:v)})}/><input aria-label={"Estado "+(i+1)} value={draw.status} onChange={e=>update({...data,openDraws:data.openDraws.map((v,j)=>i===j?{...v,status:e.target.value}:v)})}/><button type="button" className="ticket-clear-row" onClick={()=>update({...data,openDraws:data.openDraws.filter((_,j)=>j!==i)})}>Quitar</button></>:<><span>{draw.name}</span><strong>{draw.status}</strong></>}</div>)}
    {editable&&<button type="button" className="button ghost ticket-add-draw" onClick={()=>update({...data,openDraws:[...data.openDraws,{name:"",status:"ON-OFF"}]})}>Agregar sorteo</button>}
   </div>
-  <div className="ticket-closure-grid">
    <div className="ticket-closure-section"><h4>Quiniela</h4>
     <div className="ticket-sales-row"><MetricRow label="Válidos" metric={data.quiniela.valids} editable={editable} onChange={v=>metric("quiniela","valids",v)}/><small>{commissionText(data, "Quiniela", data.quiniela.valids.amount)}</small></div>
     <MetricRow label="Anulados Esp." metric={data.quiniela.cancelledSpecial} editable={editable} onChange={v=>metric("quiniela","cancelledSpecial",v)}/>

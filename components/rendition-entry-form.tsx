@@ -26,6 +26,20 @@ function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 }
 
+function extractTicketNumber(text: string): string {
+  const normalizedText = normalize(text);
+  const patterns = [
+    /\b(?:CUPON|TICKET|TKT|COMPROBANTE)\s*(?:(?:NRO|NUM(?:ERO)?|N[°º]|N|#)\s*)?[:.#º°-]?\s*([A-Z0-9][A-Z0-9-]{1,23})\b/,
+    /\b(?:NRO|NUM(?:ERO)?|N[°º]|#)\s*(?:DE\s*)?(?:CUPON|TICKET|COMPROBANTE)\s*[:.#º°-]?\s*([A-Z0-9][A-Z0-9-]{1,23})\b/,
+  ];
+  for (const pattern of patterns) {
+    const match = normalizedText.match(pattern);
+    const candidate = match?.[1]?.replace(/[.,;:]$/, "") ?? "";
+    if (candidate.length >= 2 && /\d/.test(candidate)) return candidate;
+  }
+  return "";
+}
+
 function formatDateDdMmYyyy(value: string | null | undefined): string {
   if (!value) return "—";
   const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -89,7 +103,7 @@ function parseTicketText(text: string, games: Game[]) {
       period: "",
       drawNumber: "",
       date: null,
-      ticketNumber: /^\d{2,12}$/.test(receiptData.periodNumber ?? "") ? receiptData.periodNumber ?? "" : "",
+      ticketNumber: extractTicketNumber(text),
       detectedGames: ["Cierre de jornada"],
       receiptData,
     };
@@ -149,14 +163,14 @@ function parseTicketText(text: string, games: Game[]) {
     ["NOCTURNA", "Nocturna"],
   ];
   const detectedPeriod = periodOptions.find(([label]) => normalText.includes(label))?.[1] ?? "";
-  const ticketMatch = normalText.match(/\b(?:CUPON|TICKET|TKT|COMPROBANTE)\s*(?:NRO|N|#|:)?\s*([A-Z0-9-]{6,24})\b/);
+  const ticketNumber = extractTicketNumber(text);
 
   return {
     amountMap,
     date,
     period: detectedPeriod,
     drawNumber: drawMatch?.[1] ?? "",
-    ticketNumber: ticketMatch?.[1] ?? "",
+    ticketNumber,
     detectedGames: matchedGames.map((game) => game.name),
     receiptData: null,
   };
@@ -315,6 +329,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     setPhotoExpanded(false);
     setOcrText("");
     let detectedQr = "";
+    let qrPeriodCandidate = "";
     try {
       setProgress("Buscando el QR del ticket…");
       setProgressPercent(10);
@@ -324,23 +339,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         const qr = structuredQr(detectedQr);
         // A historical closure ticket keeps its printed date in receiptData; the financial posting must stay on today's operational day.
         if (qr.date && !dailyMode) setDate(qr.date);
-        if (qr.period && !dailyMode) {
-          const recognized = resolveRecognizedDrawPeriod(qr.period, allPeriods ?? periods);
-          if (!recognized) {
-            setDetectedPeriodMismatch("__UNRECOGNIZED__:" + qr.period);
-            setNotice("El QR contiene un período que no está reconocido en el cronograma oficial. Elegí manualmente el sorteo correcto.");
-          } else if (recognized.label !== period) {
-            setDetectedPeriodMismatch(recognized.label);
-            setNotice("El QR indica " + recognized.label + ", pero está seleccionado " + period + ". Cambiá al sorteo indicado y volvé a leer el ticket.");
-          } else {
-            setDetectedPeriodMismatch("");
-          }
-        }
+        if (qr.period) qrPeriodCandidate = qr.period;
         if (qr.drawNumber) setDrawNumber(qr.drawNumber);
-        if (qr.ticketNumber) setTicketNumbers((previous) => previous ? previous + "\n" + qr.ticketNumber : qr.ticketNumber);
+        if (qr.ticketNumber) setTicketNumbers((previous) => previous.split(/\s+/).includes(qr.ticketNumber) ? previous : previous ? previous + "\n" + qr.ticketNumber : qr.ticketNumber);
         if (qr.amount && qr.game && !dailyMode) {
           const normalizedGame = normalize(qr.game);
-          const target = periodGames.find((game) => aliasesFor(game).some((alias) => normalizedGame.includes(alias)));
+          const target = games.find((game) => game.enabled !== false && aliasesFor(game).some((alias) => normalizedGame.includes(alias)));
           if (target) setAmounts((previous) => ({ ...previous, [target.id]: qr.amount!.toFixed(2) }));
         }
       }
@@ -366,7 +370,32 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       }
 
       setOcrText(recognizedText);
-      const parsed = parseTicketText(recognizedText, periodGames);
+      const activeGames = games.filter((game) => game.enabled !== false);
+      const parsed = parseTicketText(recognizedText, activeGames);
+      const detectedPeriod = parsed.period || qrPeriodCandidate;
+      let autoDetectedPeriodChanged = false;
+      let detectedPeriodDefinition: OfficialDrawPeriod | null = null;
+      if (detectedPeriod && !dailyMode) {
+        const recognized = resolveRecognizedDrawPeriod(detectedPeriod, allPeriods ?? periods);
+        const selectablePeriod = recognized && periods.find((candidate) => candidate.label === recognized.label);
+        if (!recognized || !selectablePeriod) {
+          setDetectedPeriodMismatch("__UNRECOGNIZED__:" + detectedPeriod);
+          setNotice("El ticket indica el período " + detectedPeriod + ", pero no coincide con una opción del cronograma actual. Revisá el período antes de guardar.");
+        } else {
+          detectedPeriodDefinition = selectablePeriod;
+          autoDetectedPeriodChanged = recognized.label !== period;
+          setPeriod(recognized.label);
+          setPeriodManuallySelected(true);
+          setDetectedPeriodMismatch("");
+          setNotice("Período reconocido automáticamente: " + recognized.label + ". Revisá los importes antes de guardar.");
+        }
+      }
+      const gamesForDetectedPeriod = dailyMode
+        ? activeGames
+        : getGamesForDrawPeriod(detectedPeriodDefinition ?? selectedPeriodDefinition, activeGames);
+      const parsedAmountMap = Object.fromEntries(
+        Object.entries(parsed.amountMap).filter(([gameId]) => gamesForDetectedPeriod.some((game) => game.id === gameId))
+      );
       if (parsed.receiptData) {
         const commissionRates = Object.fromEntries(periodGames.map((game) => [
           normalize(game.name),
@@ -378,7 +407,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         setReceiptData(closureReceipt);
         setReceiptReviewed(false);
         setAmounts(mapTicketClosureAmounts(closureReceipt, periodGames));
-        if (/^\d{2,12}$/.test(closureReceipt.periodNumber ?? "")) setTicketNumbers(closureReceipt.periodNumber ?? "");
         if (!dailyMode) {
           setDetectedPeriodMismatch("__DAILY_CLOSURE__");
           setNotice("Este comprobante es un FIN DE JORNADA completo. Para registrarlo, configurá este operador con modalidad Rendición diaria / cierre diario; no corresponde a un único sorteo.");
@@ -386,9 +414,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       } else {
         setReceiptData(null);
         setAmounts((previous) => {
-          if (!dailyMode) return { ...previous, ...parsed.amountMap };
+          if (!dailyMode) return autoDetectedPeriodChanged ? parsedAmountMap : { ...previous, ...parsedAmountMap };
           const combined = { ...previous };
-          for (const [gameId, rawAmount] of Object.entries(parsed.amountMap)) {
+          for (const [gameId, rawAmount] of Object.entries(parsedAmountMap)) {
             const scannedAmount = parseMoney(String(rawAmount));
             if (scannedAmount === null) continue;
             const priorAmount = parseMoney(previous[gameId] ?? "") ?? 0;
@@ -400,25 +428,13 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       // The ticket's own printed date is preserved in receiptData. The financial posting
       // date stays on today's operational day so Caja's date guard is not bypassed.
       if (parsed.date && !parsed.receiptData) setDate(parsed.date);
-      if (parsed.period && !dailyMode) {
-        const recognized = resolveRecognizedDrawPeriod(parsed.period, allPeriods ?? periods);
-        if (!recognized) {
-          setDetectedPeriodMismatch("__UNRECOGNIZED__:" + parsed.period);
-          setNotice("El texto del ticket contiene un período que no está reconocido en el cronograma oficial. Elegí manualmente el sorteo correcto.");
-        } else if (recognized.label !== period) {
-          setDetectedPeriodMismatch(recognized.label);
-          setNotice("El ticket indica " + recognized.label + ", pero está seleccionado " + period + ". Cambiá al sorteo indicado y volvé a leer el ticket.");
-        } else {
-          setDetectedPeriodMismatch("");
-        }
-      }
       if (parsed.drawNumber) setDrawNumber(parsed.drawNumber);
-      if (!parsed.receiptData && parsed.ticketNumber && !ticketNumbers.includes(parsed.ticketNumber)) {
-        setTicketNumbers((previous) => previous ? previous + "\n" + parsed.ticketNumber : parsed.ticketNumber);
+      if (parsed.ticketNumber) {
+        setTicketNumbers((previous) => previous.split(/\s+/).includes(parsed.ticketNumber) ? previous : previous ? previous + "\n" + parsed.ticketNumber : parsed.ticketNumber);
       }
       const qr = detectedQr ? structuredQr(detectedQr) : null;
-      if (qr?.amount && parsed.detectedGames.length === 1 && !parsed.amountMap[periodGames.find((game) => game.name === parsed.detectedGames[0])?.id ?? ""]) {
-        const target = periodGames.find((game) => game.name === parsed.detectedGames[0]);
+      if (qr?.amount && parsed.detectedGames.length === 1 && !parsedAmountMap[activeGames.find((game) => game.name === parsed.detectedGames[0])?.id ?? ""]) {
+        const target = activeGames.find((game) => game.name === parsed.detectedGames[0]);
         if (target) setAmounts((previous) => ({
           ...previous,
           [target.id]: dailyMode
@@ -427,7 +443,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         }));
       }
 
-      const recognizedCount = Object.keys(parsed.amountMap).length;
+      const recognizedCount = Object.keys(parsedAmountMap).length;
       if (parsed.receiptData) {
         const printedDate = parsed.receiptData?.closedAt.date ?? parsed.receiptData?.printedAt.date ?? parsed.receiptData?.openedAt.date;
         setNotice(

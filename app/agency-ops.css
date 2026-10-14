@@ -1481,3 +1481,15 @@ input[type="time"]{font-variant-numeric:tabular-nums}
   .rendition-entry-form .game-rendition-row small{font-size:9px}
   .rendition-entry-form .game-rendition-row input{font-size:12px;min-height:32px}
 }
+
+
+/* Preview: agrupar FIN DE JORNADA, centrar la foto ampliada y adaptar botones al código. */
+.ticket-closure-draws{grid-column:1 / -1;min-width:0}
+.ticket-closure-draws .ticket-draw-row{grid-template-columns:minmax(0,1fr) minmax(72px,.3fr) auto}
+.ticket-photo-lightbox{position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;box-sizing:border-box;padding:calc(16px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom));overflow:auto;background:rgba(10,8,9,.94);overscroll-behavior:contain}
+.ticket-photo-lightbox img{display:block;flex:0 1 auto;width:auto!important;height:auto!important;max-width:calc(100vw - 24px)!important;max-height:calc(100dvh - 92px)!important;object-fit:contain!important;object-position:center center;margin:0 auto;transform:none!important}
+.ticket-photo-lightbox-close{position:fixed;top:calc(8px + env(safe-area-inset-top));right:12px;z-index:2;min-height:38px;padding:8px 12px;border:1px solid rgba(255,255,255,.55);border-radius:8px;background:#7c3347;color:#fff;font-size:14px;font-weight:800}
+.rendition-agent-selector .agency-agent-button-list.rendition-agent-code-list{display:flex!important;flex-wrap:wrap;align-items:flex-start;justify-content:flex-start;gap:8px}
+.rendition-agent-selector .agency-agent-button-row{display:inline-flex;width:max-content;max-width:100%;min-width:0;flex:0 0 auto}
+.rendition-agent-selector .agency-agent-code-button{width:auto!important;min-width:0!important;max-width:100%;flex:0 0 auto!important;min-height:45px;padding:9px 12px!important;font-size:15.5px!important;line-height:1.2!important;white-space:nowrap}
+@media(max-width:700px){.ticket-photo-lightbox{padding:calc(54px + env(safe-area-inset-top)) 10px calc(12px + env(safe-area-inset-bottom));justify-content:center;align-items:center}.ticket-photo-lightbox img{max-width:calc(100vw - 20px)!important;max-height:calc(100dvh - 92px)!important;object-position:center center;margin-left:auto!important;margin-right:auto!important}.ticket-photo-lightbox-close{top:calc(8px + env(safe-area-inset-top));right:10px}.rendition-agent-selector .agency-agent-button-list.rendition-agent-code-list{display:flex!important}.rendition-agent-selector .agency-agent-code-button{font-size:15.5px!important;min-height:45px;padding:9px 12px!important}}
