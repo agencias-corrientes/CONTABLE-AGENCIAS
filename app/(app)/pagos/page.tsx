@@ -522,7 +522,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             <div className="agency-agent-button-list rendition-agent-code-list">
               {filteredActiveAgents.map((agent) => (
                 <div key={agent.id} className={"agency-agent-button-row " + (agent.kind === "subagent" ? "agency-subagent" : "agency-ambulant")}>
-                  <Link href={"/pagos?agent=" + agent.id} className="agency-agent-code-button"
+                  <Link href={"/pagos?agent=" + agent.id} className={"agency-agent-code-button" + (String(agent.id) === selectedAgentId ? " is-selected" : "")}
+                    aria-current={String(agent.id) === selectedAgentId ? "page" : undefined}
                     aria-label={"Abrir rendición de " + (agent.kind === "subagent" ? "subagente " : "ambulante ") + agent.code}>
                     {agent.code || "SIN CÓDIGO"}
                   </Link>
