@@ -523,15 +523,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       {mode === "photo" && (
         <div className="ticket-capture-panel">
-          <label className="ticket-photo-picker">
+          <div className="ticket-photo-picker">
             <span className="ticket-photo-icon" aria-hidden="true">▧</span>
             <strong>Seleccionar foto del ticket</strong>
             <span>Elegí una imagen para leer el QR y reconocer los importes.</span>
-            <input type="file" name="ticket_photo" accept="image/jpeg,image/png,image/webp" capture="environment" disabled={busy} onChange={(event) => {
+            <input type="file" name="ticket_photo" accept="image/*" disabled={busy} onChange={(event) => {
               const file = event.target.files?.[0];
               if (file) void processTicket(file);
             }} />
-          </label>
+          </div>
           {photoPreviewUrl && <div className="ticket-photo-preview"><button type="button" className="ticket-photo-preview-button" onClick={() => setPhotoExpanded(true)} aria-label="Ampliar foto del ticket"><img src={photoPreviewUrl} alt="Vista previa del ticket cargado" /><span>Ampliar foto</span></button></div>}
           {photoExpanded && photoPreviewUrl && <div className="ticket-photo-lightbox" role="dialog" aria-modal="true" aria-label="Foto del ticket ampliada" onClick={() => setPhotoExpanded(false)}><button type="button" className="ticket-photo-lightbox-close" onClick={() => setPhotoExpanded(false)}>Cerrar ✕</button><img src={photoPreviewUrl} alt="Foto del ticket ampliada" onClick={(event) => event.stopPropagation()} /></div>}
           <p className="muted small-text">También podés subir una foto guardada. La lectura se procesa en el navegador y la imagen se adjunta a la rendición para auditoría.</p>
