@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const nav = [
@@ -27,6 +28,13 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const officialAgencyNumber = organizationName.match(/\b(\d{3})\b/)?.[1] ?? null;
+
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 1000px)").matches) {
+      document.querySelector(".content-area")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [pathname]);
   const isOwner = userRole === "owner";
   const visibleNav = nav.filter(([slug]) => isOwner || !["juegos", "equipo", "configuracion"].includes(slug));
 
@@ -44,7 +52,7 @@ export function AppShell({
       <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="brand-mark small brand-logo-wrap"><Image src="/logo-agencias-quiniela.webp" alt="Agencias de Quiniela" width={44} height={44} priority /></div>
-          <div><strong>Agencias</strong><span>Subagentes · Ambulantes</span></div>
+          <div className="brand-copy"><strong>Agencias</strong><div className="brand-subline"><span>Subagentes · Ambulantes</span>{officialAgencyNumber && <span className="official-agency-number" aria-label={"Agencia oficial " + officialAgencyNumber}>{officialAgencyNumber}</span>}</div></div>
         </div>
         <div className="org-chip"><span className="status-dot" /><span>{organizationName}</span></div>
         <nav className="nav-list">
@@ -102,6 +110,21 @@ export function AppShell({
           .sidebar .nav-list { gap: 7px; }
           .sidebar .nav-list .nav-item { min-height: 56px; padding: 9px 7px; gap: 6px; font-size: 12.5px; }
           .sidebar .nav-list .nav-item .nav-icon { flex-basis: 25px; width: 25px; height: 25px; border-radius: 7px; }
-        }\n      `}</style>\n    </div>
+        }\n      `}
+.brand-copy { min-width: 0; flex: 1; }
+.brand-subline { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.brand-subline > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.official-agency-number { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; min-width: 36px; padding: 5px 8px; border: 1px solid #e5d9b9; border-radius: 7px; background: #fff; color: #171717; font-size: 14px !important; font-weight: 900; line-height: 1.1; letter-spacing: .02em; box-shadow: 0 2px 0 rgba(30,10,16,.14); }
+@media (max-width: 1000px) {
+  .sidebar .nav-list .nav-item { font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; min-width: 0; }
+  .sidebar .nav-list .nav-item .nav-icon { flex-shrink: 0; }
+}
+@media (max-width: 420px) {
+  .sidebar .nav-list .nav-item { font-size: 13.5px; min-height: 58px; padding: 10px 8px; }
+  .brand-subline { gap: 5px; }
+  .official-agency-number { min-width: 32px; padding: 4px 6px; font-size: 13px !important; }
+}
+
+      </style>\n    </div>
   );
 }
