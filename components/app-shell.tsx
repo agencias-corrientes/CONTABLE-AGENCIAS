@@ -83,7 +83,8 @@ export function AppShell({
         </div>
       </aside>
       <main className="content-area">{children}</main>
-      <style jsx>{`\n        .sidebar { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      <style jsx>{`
+        .sidebar { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
         .sidebar-brand strong { font-size: 17px; font-weight: 800; letter-spacing: -.025em; }
         .sidebar-brand span { font-size: 11px; line-height: 1.45; letter-spacing: .015em; }
         .sidebar .org-chip { min-height: 42px; border: 1px solid rgba(255,255,255,.14); border-radius: 11px; font-size: 12px; font-weight: 700; letter-spacing: .015em; }
@@ -123,4 +124,8 @@ export function AppShell({
           .sidebar .nav-list .nav-item { font-size: 13.5px; min-height: 58px; padding: 10px 8px; }
           .brand-subline { gap: 5px; }
           .official-agency-number { min-width: 32px; padding: 4px 6px; font-size: 13px !important; }
-        }\n      `}</style>\n    </div>\n  );\n}\n
+        }
+      `}</style>
+    </div>
+  );
+}
