@@ -143,12 +143,12 @@ export default async function TeamPermissionsPage({
         <form action={saveAgencySchedules} className="operational-schedule-form">
           <div className="operational-schedule-grid">
             <label>Hora de reinicio diario
-              <input type="time" lang="en-GB" name="rendition_cutoff_time" defaultValue={cutoff} required />
-              <span className="muted small-text">Cambia el día operativo sin borrar el historial.</span>
+              <input type="text" inputMode="text" name="rendition_cutoff_time" defaultValue={cutoff} placeholder="HH:MM" pattern="(?:[01][0-9]|2[0-3]):[0-5][0-9]" maxLength={5} autoComplete="off" aria-label="Hora de reinicio diario en formato 24 horas HH:MM" required />
+              <span className="muted small-text">Formato de 24 horas (00:00 a 23:59). Cambia el día operativo sin borrar el historial.</span>
             </label>
             <label>Hora de envío del backup
-              <input type="time" lang="en-GB" name="backup_send_time" defaultValue={backupSendTime} required />
-              <span className="muted small-text">Horario local de Argentina; envío automático todos los días.</span>
+              <input type="text" inputMode="text" name="backup_send_time" defaultValue={backupSendTime} placeholder="HH:MM" pattern="(?:[01][0-9]|2[0-3]):[0-5][0-9]" maxLength={5} autoComplete="off" aria-label="Hora de envío del backup en formato 24 horas HH:MM" required />
+              <span className="muted small-text">Formato de 24 horas (00:00 a 23:59). Horario local de Argentina; envío automático todos los días.</span>
             </label>
           </div>
           <button className="button primary" type="submit">Guardar horarios</button>
