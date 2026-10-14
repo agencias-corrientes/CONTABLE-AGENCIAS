@@ -97,16 +97,45 @@ function findIndex(lines: string[], matcher: RegExp, fallback = -1): number {
 
 function parseDateTime(rawLine: string | null) {
   if (!rawLine) return { date: null, time: null, raw: null };
-  const date = rawLine.match(/\d{2}[/-]\d{2}[/-]\d{2,4}/i)?.[0] ?? null;
-  // OCR may garble "A LAS" between date and time; extract them independently.
-  const time = rawLine.match(/\d{2}:\d{2}:\d{2}/)?.[0] ?? null;
+  const date = rawLine.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/i)?.[0] ?? null;
+  // El cierre puede imprimir solo hora:minuto; se conserva siempre el renglón original.
+  const time = rawLine.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0] ?? null;
   return { date, time, raw: rawLine.trim() || null };
 }
 
-function readTaggedCode(codeLine: string, tag: string): string | null {
-  const match = normalizeTicketText(codeLine).match(new RegExp("\\b" + tag + "\\s*[:.]?\\s*([0-9OIL]{1,8})"));
-  if (!match?.[1]) return null;
-  return match[1].replace(/[O]/g, "0").replace(/[IL]/g, "1");
+function readShortCode(value: string): string | null {
+  const match = value.match(/[0-9OQIL|!](?:[\s.-]*[0-9OQIL|!]){0,7}/);
+  if (!match) return null;
+  const digits = match[0].replace(/[OQ]/g, "0").replace(/[IL|!]/g, "1").replace(/\D/g, "");
+  return /^\d{1,8}$/.test(digits) ? digits : null;
+}
+
+function readNumberAfterLabel(value: string, labelPattern: RegExp): string | null {
+  const match = value.match(labelPattern);
+  if (!match || match.index === undefined) return null;
+  const suffix = value.slice(match.index + match[0].length)
+    .replace(/^\s*(?:(?:NRO|NUM(?:ERO)?|NO|N[º°.]?|#)\s*[:.#º°-]?\s*)+/i, " ");
+  return readShortCode(suffix);
+}
+
+function readCodeAfterLabel(lines: string[], labelPattern: RegExp, skipPattern?: RegExp): string | null {
+  const normalized = lines.map(normalizeTicketText);
+  for (let index = 0; index < normalized.length; index += 1) {
+    const line = normalized[index] ?? "";
+    if (skipPattern?.test(line)) continue;
+    const code = readNumberAfterLabel(line, labelPattern);
+    if (code) return code;
+    if (!labelPattern.test(line)) continue;
+
+    for (let next = index + 1; next < Math.min(normalized.length, index + 3); next += 1) {
+      const candidateLine = normalized[next] ?? "";
+      if (/\b(?:AGENCIA|SUBAG(?:ENTE)?|MAQ(?:UINA)?|DOMICILIO|DIRECCION|ABIERTO|CERRADO|IMPRESO|SORTEOS?|TOTALES?|TOTAL|QUINIELA|MEDIOS|OTROS\s+JUEGOS|PREMIOS?)\b/.test(candidateLine)) break;
+      if (!/^[0-9OQIL|!\s.-]{1,20}$/.test(candidateLine)) continue;
+      const nextCode = readShortCode(candidateLine);
+      if (nextCode) return nextCode;
+    }
+  }
+  return null;
 }
 
 /**
@@ -115,49 +144,65 @@ function readTaggedCode(codeLine: string, tag: string): string | null {
  * Devuelve texto para conservar ceros iniciales; no confundirlo con la fecha.
  */
 export function extractTicketPeriodNumber(text: string): string | null {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const normalized = lines.map(normalizeTicketText);
-  const isPeriodLabel = (line: string) => {
-    // Acepta confusiones frecuentes de OCR: I/1/L y O/0.
-    const compact = line.replace(/[|!]/g, "I").replace(/0/g, "O");
-    return /\bPER[I1L]O?D[O0]\b/.test(line) ||
-      /\bPER[I1L]OD[O0]\b/.test(line) ||
-      /\bPERIODO\b/.test(compact) ||
-      /\bPER[I1L]ODO\b/.test(line);
-  };
-  const readDigits = (value: string): string | null => {
-    const withoutDates = value
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const normalizedLines = lines.map(normalizeTicketText);
+  // Acepta también rótulos cuyos caracteres o espacios fueron confundidos por el OCR.
+  const periodLabelPattern = /\bP\s*E\s*R\s*[I1L]\s*[O0Q]?\s*D\s*[O0Q]\b/i;
+
+  const normalizeDigits = (value: string) =>
+    value.replace(/[OQ]/g, "0").replace(/[IL|!]/g, "1").replace(/\D/g, "");
+
+  const readCandidate = (value: string): string | null => {
+    let fragment = normalizeTicketText(value)
+      .replace(/\b(?:NRO|NUM(?:ERO)?|NO|N[º°.]|N|#)\b/gi, " ")
+      .replace(/\b\d{1,2}\s+DE[L]?\s+\d{1,2}\s+DE[L]?\s+\d{2,4}\b/gi, " ")
       .replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g, " ")
       .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, " ");
-    const matches = withoutDates.match(/(?<!\d)\d(?:[\s.-]*\d){1,11}(?!\d)/g) ?? [];
-    const candidates = matches
-      .map((match) => match.replace(/\D/g, ""))
+
+    const nextField = /\b(?:AGENCIA|SUBAG(?:ENTE)?|MAQ(?:UINA)?|DOMICILIO|DIRECCION|ABIERTO|CERRADO|IMPRESO|SORTEOS?\s+ABIERTOS?|TOTALES?|TOTAL\s+GENERAL|QUINIELA|MEDIOS\s+DIGITALES|OTROS\s+JUEGOS|PREMIOS?\s+PAGADOS?)\b/i;
+    const fieldIndex = fragment.search(nextField);
+    if (fieldIndex >= 0) fragment = fragment.slice(0, fieldIndex);
+
+    const groups = fragment.match(/[0-9OQIL|!]+(?:[\s.:_-]*[0-9OQIL|!]+){0,11}/g) ?? [];
+    const candidates = groups
+      .map(normalizeDigits)
       .filter((digits) => /^\d{2,12}$/.test(digits));
     return candidates.sort((a, b) => b.length - a.length)[0] ?? null;
   };
 
-  for (let index = 0; index < normalized.length; index += 1) {
-    const label = normalized[index] ?? "";
-    if (!isPeriodLabel(label)) continue;
+  const isBoundary = (line: string) =>
+    /^(?:AGENCIA\b|AG\b|SUBAG(?:ENTE)?\b|MAQ(?:UINA)?\b|DOMICILIO\b|DIRECCION\b|ABIERTO\b|CERRADO\b|IMPRESO\b|SORTEOS?\b|TOTALES?\b|TOTAL\b|QUINIELA\b|MEDIOS?\s+DIGITALES?\b|OTROS\s+JUEGOS?\b|FIN\s+DE\s+JORNADA\b|PREMIOS?\b)/i.test(line);
 
-    const labelPosition = label.search(/PER[I1L|!O0D]+/);
-    const suffix = labelPosition >= 0 ? label.slice(labelPosition + label.match(/PER[I1L|!O0D]+/)![0].length) : label;
-    let candidate = readDigits(suffix);
-    if (candidate) return candidate;
+  for (let index = 0; index < normalizedLines.length; index += 1) {
+    const line = normalizedLines[index] ?? "";
+    const label = line.match(periodLabelPattern);
+    if (!label || label.index === undefined) continue;
+
+    const suffix = line.slice(label.index + label[0].length);
+    const direct = readCandidate(suffix);
+    if (direct) return direct;
 
     let context = suffix;
-    for (let next = index + 1; next < Math.min(normalized.length, index + 5); next += 1) {
-      const line = normalized[next] ?? "";
-      if (/^(?:AG(?:ENCIA)?\b|SUBAG(?:ENTE)?\b|MAQ(?:UINA)?\b|ABIERTO\b|CERRADO\b|IMPRESO\b|SORTEOS?\b|TOTALES?\b|TOTAL\b|QUINIELA\b|MEDIOS?\s+DIGITALES?\b|OTROS\s+JUEGOS?\b|FIN\s+DE\s+JORNADA\b|PREMIOS?\b)/.test(line)) break;
-      if (/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/.test(line) || /\b\d{1,2}:\d{2}(?::\d{2})?\b/.test(line)) break;
-      context += " " + line;
-      candidate = readDigits(context);
+    for (let next = index + 1; next < Math.min(normalizedLines.length, index + 5); next += 1) {
+      const nextLine = normalizedLines[next] ?? "";
+      if (isBoundary(nextLine)) break;
+      context += " " + nextLine;
+      const candidate = readCandidate(context);
       if (candidate) return candidate;
     }
   }
+
+  // Último recurso: el OCR puede intercalar saltos de línea dentro de "Período N.º".
+  const wholeText = normalizeTicketText(text).replace(/\s+/g, " ");
+  const label = wholeText.match(periodLabelPattern);
+  if (label && label.index !== undefined) {
+    let fragment = wholeText.slice(label.index + label[0].length, label.index + label[0].length + 140);
+    const boundaryIndex = fragment.search(/\b(?:AGENCIA|SUBAG(?:ENTE)?|MAQUINA?\s+REAL|ABIERTO|CERRADO|IMPRESO|SORTEOS?\s+ABIERTOS?|TOTALES?|TOTAL\s+GENERAL|MEDIOS\s+DIGITALES|OTROS\s+JUEGOS|PREMIOS?\s+PAGADOS?)\b/i);
+    if (boundaryIndex >= 0) fragment = fragment.slice(0, boundaryIndex);
+    const candidate = readCandidate(fragment);
+    if (candidate) return candidate;
+  }
+
   return null;
 }
 
@@ -239,16 +284,35 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   const cobros = digitalIndex >= 0 ? metricInRange(lines, digitalIndex, lines.length, /^COBROS?\b/) : emptyMetric();
   const devoluciones = digitalIndex >= 0 ? metricInRange(lines, digitalIndex, lines.length, /^DEVOLUCIONES?\b/) : emptyMetric();
 
-  const codeIndex = findIndex(lines, /\bAG\s*[:.]?.*\bSUBAG\b/);
-  const codeLine = codeIndex >= 0 ? lines[codeIndex] ?? "" : "";
-  const address = lines.find((line) => /\b(LA RIOJA|CALLE|AVENIDA|AV\.|RUTA|DOMICILIO|DIRECCION)\b/i.test(normalizeTicketText(line))) ?? null;
-  const terminalLine = lines.find((line) => /MAQU[I1]NOLA?\s+REAL|MAQUINOLA\s+REAL/i.test(normalizeTicketText(line))) ?? null;
-  const terminalId = terminalLine?.match(/(\d{3,8})\s*$/)?.[1] ?? null;
+  const agencyCode = readCodeAfterLabel(lines, /\b(?:AGENCIA|AG)\b/);
+  const subagentCode = readCodeAfterLabel(lines, /\b(?:SUBAGENTE|SUBAG)\b/);
+  const machineCode = readCodeAfterLabel(lines, /\b(?:MAQUINA|MAQ)\b/, /\bMAQU[I1L]N[A4]?\s+REAL\b|\bMAQ\s+REAL\b/);
 
-  const printedLine = lines.find((line) => /IMPRESO\s+EL\b/i.test(normalizeTicketText(line))) ?? null;
+  const normalizedLines = lines.map(normalizeTicketText);
+  const terminalPattern = /\b(?:MAQU[I1L]N[A4]?\s+REAL|MAQ\s+REAL)\b/;
+  const terminalIndex = normalizedLines.findIndex((line) => terminalPattern.test(line));
+  let terminalId = terminalIndex >= 0
+    ? readNumberAfterLabel(normalizedLines[terminalIndex] ?? "", terminalPattern)
+    : null;
+  if (!terminalId && terminalIndex >= 0 && terminalIndex + 1 < lines.length) {
+    const nextLine = normalizedLines[terminalIndex + 1] ?? "";
+    if (/^[0-9OQIL|!\s.-]{1,20}$/.test(nextLine)) terminalId = readShortCode(nextLine);
+  }
+
+  const explicitAddressIndex = normalizedLines.findIndex((line) => /\b(?:DOMICILIO|DIRECCION|DIREC)\b/.test(line));
+  const streetAddressIndex = normalizedLines.findIndex((line) => /\b(?:CALLE|AVENIDA|AV\.|RUTA|LA RIOJA)\b/.test(line));
+  const addressIndex = explicitAddressIndex >= 0 ? explicitAddressIndex : streetAddressIndex;
+  let address: string | null = addressIndex >= 0 ? (lines[addressIndex] ?? "").trim() || null : null;
+  if (addressIndex >= 0 && address && !/\d|\b(?:CALLE|AVENIDA|AV\.|RUTA|LA RIOJA)\b/i.test(address)) {
+    const nextLine = lines[addressIndex + 1]?.trim() ?? "";
+    if (nextLine && !/^(?:AGENCIA|AG|SUBAG|MAQ|ABIERTO|CERRADO|IMPRESO|TOTAL|FIN DE JORNADA)\b/i.test(normalizedLines[addressIndex + 1] ?? "")) {
+      address = nextLine;
+    }
+  }
+  const printedLine = lines.find((line) => /\bIMPRES[O0]\b/i.test(normalizeTicketText(line))) ?? null;
   const printedAt = parseDateTime(printedLine);
-  const openedLine = lines.find((line) => /\bABIERTO\s+EL\b/i.test(normalizeTicketText(line))) ?? null;
-  const closedLine = lines.find((line) => /\bCERRADO\b/i.test(normalizeTicketText(line))) ?? null;
+  const openedLine = lines.find((line) => /\bAB[I1L]ERTO\s+E[L1I]\b/i.test(normalizeTicketText(line))) ?? null;
+  const closedLine = lines.find((line) => /\bCERRAD[O0]?\b/i.test(normalizeTicketText(line))) ?? null;
   const openedAt = parseDateTime(openedLine);
   const closedAt = parseDateTime(closedLine);
   const periodNumber = extractTicketPeriodNumber(text);
@@ -279,9 +343,9 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   return {
     type: "loteria-corrientes-end-of-day-v1",
     header: "FIN DE JORNADA",
-    agencyCode: readTaggedCode(codeLine, "AG"),
-    subagentCode: readTaggedCode(codeLine, "SUBAG"),
-    machineCode: readTaggedCode(codeLine, "MAQ"),
+    agencyCode,
+    subagentCode,
+    machineCode,
     address: address?.trim() ?? null,
     terminalId,
     printedAt,

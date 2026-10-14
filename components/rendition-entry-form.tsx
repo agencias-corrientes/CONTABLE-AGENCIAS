@@ -319,7 +319,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   async function makeEnhancedTicketImage(file: File): Promise<HTMLCanvasElement> {
     const bitmap = await createImageBitmap(file);
     const longestSide = Math.max(bitmap.width, bitmap.height);
-    const scale = Math.min(3, 2800 / longestSide);
+    const scale = Math.max(1, Math.min(2, 3000 / longestSide));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(bitmap.width * scale));
     canvas.height = Math.max(1, Math.round(bitmap.height * scale));
@@ -447,10 +447,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           normalize(game.name),
           game.commissionPercent == null || !Number.isFinite(Number(game.commissionPercent)) ? null : Number(game.commissionPercent),
         ]));
-        const closureReceipt = { ...parsed.receiptData, periodNumber: parsed.receiptData.periodNumber ?? (recoveredPeriodNumber || null), commissionRates };
+        const closureReceipt = { ...parsed.receiptData, periodNumber: parsed.receiptData.periodNumber ?? (recoveredPeriodNumber || extractTicketPeriodNumber(recognizedText) || null), commissionRates };
         // The printed date stays in receipt metadata; the financial entry stays on today's operational day.
         setDate(initialRendition?.renditionDate ?? today);
         setReceiptData(closureReceipt);
+        setGameListExpanded(true);
         setReceiptReviewed(false);
         setAmounts(mapTicketClosureAmounts(closureReceipt, periodGames));
         if (!dailyMode) {
@@ -478,7 +479,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       if (parsed.receiptData) {
         // Para un FIN DE JORNADA, el identificador del cupón es exactamente
         // el valor impreso en "Período N.º"; no anexar otro número detectado.
-        setTicketNumbers(parsed.receiptData.periodNumber ?? "");
+        setTicketNumbers(parsed.receiptData.periodNumber ?? recoveredPeriodNumber ?? extractTicketPeriodNumber(recognizedText) ?? "");
       } else if (parsed.ticketNumber) {
         setTicketNumbers((previous) => previous.split(/\s+/).includes(parsed.ticketNumber) ? previous : previous ? previous + "\n" + parsed.ticketNumber : parsed.ticketNumber);
       }
@@ -686,6 +687,20 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         ? <p className="muted small-text">Podés leer tickets de distintos sorteos: los importes detectados se agregan al mismo cierre. Verificá que no se dupliquen tickets y revisá todos los importes antes de confirmar.</p>
         : period && periods.length > 0 && <p className="muted small-text">Esta rendición corresponde exclusivamente a <strong>{period}</strong>; no se mezclan importes de otros sorteos.</p>}
 
+      {receiptData && !gameListExpanded && (
+        <section className="ticket-closure-quick-meta" aria-label="Datos identificatorios del FIN DE JORNADA">
+          <h3>Identificación del FIN DE JORNADA</h3>
+          <div className="ticket-closure-quick-meta-grid">
+            <div><span>Agencia N.º</span><strong>{receiptData.agencyCode || "No detectado"}</strong></div>
+            <div><span>Subagente N.º</span><strong>{receiptData.subagentCode || "No detectado"}</strong></div>
+            <div><span>Máquina</span><strong>{receiptData.machineCode || "No detectada"}</strong></div>
+            <div><span>Dirección de agencia</span><strong>{receiptData.address || "No detectada"}</strong></div>
+            <div><span>Máquina real</span><strong>{receiptData.terminalId || "No detectada"}</strong></div>
+            <div><span>Período N.º</span><strong>{receiptData.periodNumber || extractTicketPeriodNumber(receiptData.rawText) || "No detectado"}</strong></div>
+            <div className="ticket-closure-quick-meta-printed"><span>Impreso el</span><strong>{receiptData.printedAt.raw ?? ([receiptData.printedAt.date, receiptData.printedAt.time].filter(Boolean).join(" ") || "No detectado")}</strong></div>
+          </div>
+        </section>
+      )}
       <div className="game-rendition-block">
         <div className="game-rendition-head">
           <div><h3>Juegos e importes</h3><p className="muted">{mode === "photo" ? "Los importes se leen automáticamente. Abrí el detalle para revisar o corregir los datos." : "La lista de carga manual está oculta para mantener la pantalla compacta."}</p></div>
