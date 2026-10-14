@@ -243,7 +243,7 @@ type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
 const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   codes:       {left:0.041,right:0.934,top:0.259,bottom:0.289,scale:3,contrast:1.8},
   agencyCode:  {left:0.087,right:0.366,top:0.266,bottom:0.290,scale:5,contrast:2.0},
-  subagentCode:{left:0.348,right:0.681,top:0.263,bottom:0.291,scale:3,contrast:1.8},
+  subagentCode:{left:0.490,right:0.656,top:0.266,bottom:0.288,scale:3,contrast:1.4},
   machineCode: {left:0.772,right:0.880,top:0.266,bottom:0.290,scale:5,contrast:2.0},
   address:     {left:0.041,right:0.502,top:0.288,bottom:0.311,scale:3,contrast:1.8},
   terminalId:  {left:0.393,right:0.592,top:0.307,bottom:0.329,scale:3,contrast:2.0},
@@ -654,7 +654,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
           const read7 = readFocusedCodes(codesLine7,agencyDigits,machineDigits);
           const read6 = readFocusedCodes(codesLine6,agencyDigits,machineDigits);
-          const focusedSubagent = readFocusedCodes(subagentLine8,"","").subagentCode ??
+          const focusedSubagent = readFocusedDigitValue([subagentLine8],2) ??
             [read7.subagentCode,read6.subagentCode].filter((value): value is string => Boolean(value)).sort((a,b)=>b.length-a.length)[0] ?? null;
           const focusedPeriod = readFocusedPeriodNumber([periodDigits10,periodDigits13]);
           const focusedTerminal = readFocusedDigitValue([terminalDigits7,terminalDigits6],4);
