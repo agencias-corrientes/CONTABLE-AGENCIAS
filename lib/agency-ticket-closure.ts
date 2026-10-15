@@ -162,7 +162,7 @@ export function extractTicketPeriodNumber(text: string): string | null {
     const match = fragment.match(/(?:^|[^A-Z])([0-9OQIL|!]+(?:[ .:_-]+[0-9OQIL|!]+){0,8})(?=$|[^A-Z])/i);
     if (!match?.[1]) return null;
     const digits = normalizeDigits(match[1]);
-    return /^\d{4,10}$/.test(digits) ? digits : null;
+    return /^\d{7}$/.test(digits) ? digits : null;
   };
 
   for (let i = 0; i < normalizedLines.length; i += 1) {
@@ -181,7 +181,7 @@ export function extractTicketPeriodNumber(text: string): string | null {
       if (!next || !/^[0-9OQIL|! .:_-]+$/.test(next)) break;
       pieces += " " + next;
       const digits = normalizeDigits(pieces);
-      if (/^\d{4,10}$/.test(digits)) return digits;
+      if (/^\d{7}$/.test(digits)) return digits;
     }
   }
   return null;

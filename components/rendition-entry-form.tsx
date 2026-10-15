@@ -410,7 +410,7 @@ function readFocusedPrintedAt(values:string[]):TicketClosureData["printedAt"]|nu
   return null;
 }
 function readFocusedPeriodNumber(values:string[]):string|null {
-  const candidates=values.map((value)=>ocrDigitSequence(value)).filter((value)=>/^\d{5,12}$/.test(value));
+  const candidates=values.map((value)=>ocrDigitSequence(value)).filter((value)=>/^\d{7}$/.test(value));
   if(!candidates.length)return null;
   const counts=new Map<string,number>();for(const candidate of candidates)counts.set(candidate,(counts.get(candidate)??0)+1);
   return candidates.sort((a,b)=>(b.length+(counts.get(b)??0)*.2)-(a.length+(counts.get(a)??0)*.2))[0]??null;
@@ -718,6 +718,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           normalize(game.name),
           game.commissionPercent == null || !Number.isFinite(Number(game.commissionPercent)) ? null : Number(game.commissionPercent),
         ]));
+        const validPeriod = (value: string | null | undefined) =>
+          value && /^\d{7}$/.test(value.replace(/\s+/g, "")) ? value.replace(/\s+/g, "") : null;
+        const labelledPeriod = validPeriod(extractTicketPeriodNumber(recognizedText)) ??
+          validPeriod(recoveredPeriodNumber) ??
+          validPeriod(parsed.receiptData.periodNumber) ??
+          validPeriod(focusedClosureMetadata.periodNumber);
         const closureReceipt = {
           ...parsed.receiptData,
           agencyCode: focusedClosureMetadata.agencyCode ?? parsed.receiptData.agencyCode,
@@ -726,7 +732,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           address: focusedClosureMetadata.address ?? parsed.receiptData.address,
           terminalId: focusedClosureMetadata.terminalId ?? parsed.receiptData.terminalId,
           printedAt: focusedClosureMetadata.printedAt ?? parsed.receiptData.printedAt,
-          periodNumber: focusedClosureMetadata.periodNumber ?? recoveredPeriodNumber ?? parsed.receiptData.periodNumber ?? extractTicketPeriodNumber(recognizedText) ?? null,
+          periodNumber: labelledPeriod,
           commissionRates,
         };
         // The printed date stays in receipt metadata; the financial entry stays on today's operational day.
@@ -760,7 +766,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       if (parsed.receiptData) {
         // Para un FIN DE JORNADA, el identificador del cupón es exactamente
         // el valor impreso en "Período N.º"; no anexar otro número detectado.
-        setTicketNumbers(focusedClosureMetadata.periodNumber ?? recoveredPeriodNumber ?? parsed.receiptData.periodNumber ?? extractTicketPeriodNumber(recognizedText) ?? "");
+        setTicketNumbers("");
       } else if (parsed.ticketNumber) {
         setTicketNumbers((previous) => previous.split(/\s+/).includes(parsed.ticketNumber) ? previous : previous ? previous + "\n" + parsed.ticketNumber : parsed.ticketNumber);
       }
