@@ -599,17 +599,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         const result = await worker.recognize(file);
         recognizedText = result.data.text ?? "";
 
-        // La pasada general sigue siendo la fuente de importes. Se conserva el segundo
-        // intento anterior solo como alternativa de texto general.
-        if (!extractTicketPeriodNumber(recognizedText)) {
-          try {
-            const enhancedImage = await makeEnhancedTicketImage(file);
-            const enhancedResult = await worker.recognize(enhancedImage);
-            recoveredPeriodNumber = extractTicketPeriodNumber(enhancedResult.data.text ?? "") ?? "";
-          } catch {
-            // La lectura focalizada no depende de este segundo intento general.
-          }
-        }
+        // No recuperar el período de una segunda lectura de la hoja completa:
+        // ese OCR puede asociar un número vecino al rótulo. Se acepta el recorte
+        // focalizado con etiqueta y consenso; si no es legible, queda sin detectar.
 
         const closureCandidate = Boolean(parseTicketClosure(recognizedText)) ||
           /\bFIN\s+DE\s+(?:JOR|TOR)NADA\b/i.test(normalize(recognizedText)) ||
