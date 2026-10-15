@@ -106,23 +106,23 @@ function parseDateTime(rawLine: string | null) {
 function readShortCode(value: string): string | null {
   // No corregir letras parecidas a números: eso inventa códigos no verificables.
   // Solo aceptar dígitos explícitos del OCR.
-  const match = value.match(/(?:^|\\D)(\\d(?:[\\s.-]*\\d){0,7})(?=\\D|$)/);
+  const match = value.match(/(?:^|\D)(\d(?:[\s.-]*\d){0,7})(?=\D|$)/);
   if (!match?.[1]) return null;
-  const digits = match[1].replace(/\\D/g, "");
-  return /^\\d{1,8}$/.test(digits) ? digits : null;
+  const digits = match[1].replace(/\D/g, "");
+  return /^\d{1,8}$/.test(digits) ? digits : null;
 }
 
 function readNumberAfterLabel(value: string, labelPattern: RegExp): string | null {
   const match = labelPattern.exec(value);
   if (!match || match.index === undefined) return null;
   const suffix = value.slice(match.index + match[0].length)
-    .replace(/^\\s*(?:(?:NRO|NUM(?:ERO)?|NO|N[º°.]?|#)\\s*[:.#º°-]?\\s*)+/i, "")
+    .replace(/^\s*(?:(?:NRO|NUM(?:ERO)?|NO|N[º°.]?|#)\s*[:.#º°-]?\s*)+/i, "")
     .trim();
   // El código debe comenzar inmediatamente después del rótulo; no buscar números más adelante.
-  const token = suffix.match(/^(\\d(?:[\\s.-]*\\d){0,7})(?=\\s|$)/)?.[1];
+  const token = suffix.match(/^(\d(?:[\s.-]*\d){0,7})(?=\s|$)/)?.[1];
   if (!token) return null;
-  const digits = token.replace(/\\D/g, "");
-  return /^\\d{1,8}$/.test(digits) ? digits : null;
+  const digits = token.replace(/\D/g, "");
+  return /^\d{1,8}$/.test(digits) ? digits : null;
 }
 
 function readCodeAfterLabel(lines: string[], labelPattern: RegExp, skipPattern?: RegExp): string | null {
@@ -153,15 +153,15 @@ function readCodeAfterLabel(lines: string[], labelPattern: RegExp, skipPattern?:
 export function extractTicketPeriodNumber(text: string): string | null {
   // Aceptar el período únicamente si el número aparece explícitamente junto al rótulo.
   // No unir renglones ni convertir letras en dígitos: eso puede inventar otro código.
-  const lines = text.split(/\\r?\\n/).map((line) => line.trim()).filter(Boolean);
-  const label = /\\bPER[IÍ1]ODO\\b\\s*(?:(?:NRO|NUM(?:ERO)?|N[º°.]?|NO|#)\\s*[:.#º°-]?\\s*)?/i;
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const label = /\bPER[IÍ1]ODO\b\s*(?:(?:NRO|NUM(?:ERO)?|N[º°.]?|NO|#)\s*[:.#º°-]?\s*)?/i;
   for (const rawLine of lines) {
     const normalized = normalizeTicketText(rawLine);
     const match = label.exec(normalized);
     if (!match || match.index === undefined) continue;
     const suffix = normalized.slice(match.index + match[0].length).trim();
     // Si el OCR mezcla otros caracteres o campos, dejar vacío para revisión.
-    const token = suffix.match(/^(\\d{1,10})$/)?.[1] ?? null;
+    const token = suffix.match(/^(\d{1,10})$/)?.[1] ?? null;
     if (token) return token;
   }
   return null;
