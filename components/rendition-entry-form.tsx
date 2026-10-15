@@ -301,7 +301,7 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   machineCode: {left:0.745,right:0.865,top:0.263,bottom:0.292,scale:8,contrast:1.7},
   address:     {left:0.040,right:0.555,top:0.285,bottom:0.307,scale:5,contrast:1.8},
   // La máquina real está en su propia línea; no incluir la dirección que termina en 410.
-  terminalId:  {left:0.360,right:0.540,top:0.307,bottom:0.331,scale:8,contrast:1.8},
+  terminalId:  {left:0.362,right:0.534,top:0.3075,bottom:0.3295,scale:6,contrast:1.6},
   printedAt:   {left:0.035,right:0.965,top:0.324,bottom:0.347,scale:5,contrast:1.8},
   // Período N.º: aislar los siete dígitos, sin las letras "Periodo nro".
   periodNumber:{left:0.400,right:0.715,top:0.888,bottom:0.912,scale:9,contrast:1.9},
@@ -375,7 +375,7 @@ function makeReceiptFocusCrop(bitmap:ImageBitmap,bounds:ReceiptPaperBounds,regio
   }
   // En los números del período, el papel térmico borroso convierte los ceros en bloques.
   // Un enfoque suave recupera los bordes sin binarizar ni borrar los trazos finos.
-  if(region==="periodNumber"||region==="terminalId"||region==="agencyCode"||region==="subagentCode"||region==="machineCode"){
+  if(region==="periodNumber"||region==="agencyCode"||region==="subagentCode"||region==="machineCode"){
     const original=new Uint8ClampedArray(data);
     const width=canvas.width,height=canvas.height;
     for(let y=1;y<height-1;y+=1){
@@ -461,7 +461,7 @@ function readFocusedPrintedAt(values:string[]):TicketClosureData["printedAt"]|nu
     if(d.length!==3||(d[0]??0)<1||(d[0]??0)>31||(d[1]??0)<1||(d[1]??0)>12||
       t.length<2||(t[0]??-1)<0||(t[0]??99)>23||(t[1]??-1)<0||(t[1]??99)>59||
       (t[2]!==undefined&&(t[2]<0||t[2]>59)))continue;
-    return {date,time,raw:text};
+    return {date,time,raw:date+" "+time};
   }
   return null;
 }
