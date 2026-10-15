@@ -53,11 +53,16 @@ export function TicketClosureReceipt({data,compact=false,editable=false,onChange
  return <section className={"ticket-closure-receipt"+(compact?" is-compact":"")+(editable?" is-editable":"")} aria-label="Detalle completo del ticket de fin de jornada">
   <header className="ticket-closure-title"><span>{editable?"DATOS EDITABLES LEÍDOS DE LA FOTO":"COMPROBANTE OFICIAL · LECTURA AUTOMÁTICA"}</span><h3>{data.header||"FIN DE JORNADA"}</h3>{editable&&<p>Editá cualquier cantidad o importe. Solo los renglones Válidos se suman a las ventas; premios y totales quedan separados.</p>}</header>
   <div className="ticket-closure-identifiers">
-   <TextField label="Agencia N.º" value={data.agencyCode} editable={editable} onChange={v=>update({...data,agencyCode:v||null})}/>
-   <TextField label="Subagente N.º" value={data.subagentCode} editable={editable} onChange={v=>update({...data,subagentCode:v||null})}/>
-   <TextField label="Máquina" value={data.machineCode} editable={editable} onChange={v=>update({...data,machineCode:v||null})}/>
-   <TextField label="Dirección de agencia" value={data.address} editable={editable} onChange={v=>update({...data,address:v||null})}/>
-   <TextField label="Máquina real" value={data.terminalId} editable={editable} onChange={v=>update({...data,terminalId:v||null})}/>
+   <div className="ticket-receipt-code-row">
+    <TextField label="AG" value={data.agencyCode} editable={editable} onChange={v=>update({...data,agencyCode:v||null})}/>
+    <TextField label="SUBAG" value={data.subagentCode} editable={editable} onChange={v=>update({...data,subagentCode:v||null})}/>
+    <TextField label="MAQ" value={data.machineCode} editable={editable} onChange={v=>update({...data,machineCode:v||null})}/>
+   </div>
+   <div className="ticket-receipt-detail-row">
+    <TextField label="Dirección" value={data.address} editable={editable} onChange={v=>update({...data,address:v||null})}/>
+    <TextField label="Máquina real" value={data.terminalId} editable={editable} onChange={v=>update({...data,terminalId:v||null})}/>
+    <TextField label="Impreso el" value={dtText(data.printedAt)} editable={editable} onChange={v=>time("printedAt",v)}/>
+   </div>
   </div>
   <div className="ticket-closure-grid">
   <div className="ticket-closure-section ticket-closure-draws"><h4>Sorteos abiertos</h4>
@@ -89,7 +94,6 @@ export function TicketClosureReceipt({data,compact=false,editable=false,onChange
   </div>
   <div className="ticket-closure-footer">
    <TextField label="Período N.º" value={visiblePeriodNumber} editable={editable} onChange={v=>update({...data,periodNumber:v||null})}/>
-   <TextField label="Impreso el" value={dtText(data.printedAt)} editable={editable} onChange={v=>time("printedAt",v)}/>
    <TextField label="Abierto el" value={dtText(data.openedAt)} editable={editable} onChange={v=>time("openedAt",v)}/>
    <TextField label="Cerrado el" value={dtText(data.closedAt)} editable={editable} onChange={v=>time("closedAt",v)}/>
    <TextField label="Descarga" value={data.downloadStatus} editable={editable} onChange={v=>update({...data,downloadStatus:v||null})}/>

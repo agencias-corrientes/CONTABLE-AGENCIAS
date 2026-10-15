@@ -290,27 +290,12 @@ function detectReceiptPaperBounds(bitmap:ImageBitmap):ReceiptPaperBounds {
   if(!horizontal||horizontal.end-horizontal.start<scan.width*.34)return {left:0,top:0,width:bitmap.width,height:bitmap.height};
   const innerLeft=Math.round(horizontal.start+(horizontal.end-horizontal.start)*.04);
   const innerRight=Math.round(horizontal.end-(horizontal.end-horizontal.start)*.04);
-  const rows=new Array<number>(scan.height).fill(0);
-  for(let y=0;y<scan.height;y+=1){
-    let total=0,count=0;
-    for(let x=innerLeft;x<innerRight;x+=2){
-      const i=(y*scan.width+x)*4;
-      total+=.299*pixels[i]!+.587*pixels[i+1]!+.114*pixels[i+2]!;count+=1;
-    }
-    rows[y]=count?total/count:0;
-  }
-  const vertical=longestBrightRun(rows,150,scan.height*.01,scan.height*.99);
-  const sx=bitmap.width/scan.width,sy=bitmap.height/scan.height;
+  // El texto térmico divide el papel en franjas claras/oscuras; no usar esas franjas
+  // como límites verticales. Mantener la altura completa evita desplazar los recortes OCR.
+  const sx=bitmap.width/scan.width;
   const paperLeft=Math.max(0,Math.round(horizontal.start*sx));
   const paperWidth=Math.max(1,Math.min(bitmap.width,Math.round((horizontal.end-horizontal.start)*sx)));
-  // Cuando el papel llega casi hasta ambos bordes de la foto, no recortar el primer
-  // ni el último renglón: allí están justamente los datos de cabecera y el período.
-  const reachesPhotoEdges=Boolean(vertical&&vertical.start<=scan.height*.03&&vertical.end>=scan.height*.97);
-  if(!vertical||vertical.end-vertical.start<scan.height*.42||reachesPhotoEdges){
-    return {left:paperLeft,top:0,width:paperWidth,height:bitmap.height};
-  }
-  return {left:paperLeft,top:Math.max(0,Math.round(vertical.start*sy)),
-    width:paperWidth,height:Math.max(1,Math.min(bitmap.height,Math.round((vertical.end-vertical.start)*sy)))};
+  return {left:paperLeft,top:0,width:paperWidth,height:bitmap.height};
 }
 
 function makeReceiptFocusCrop(bitmap:ImageBitmap,bounds:ReceiptPaperBounds,region:ReceiptFocusRegion):HTMLCanvasElement {
