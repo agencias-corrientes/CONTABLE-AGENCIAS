@@ -478,17 +478,28 @@ function normalizePrintedPeriodGlyphs(raw:string):string|null {
   }).join("");
   return /^\d{6,7}$/.test(digits)?digits.padStart(7,"0"):null;
 }
-function readFocusedPeriodNumber(values:string[]):string|null {
+function readFocusedPeriodNumber(values:string[],tailValues:string[]):string|null {
+  const tail=readPeriodTail(tailValues);
   const candidates:string[]=[];
   for(const raw of values){
-    const labelled=extractTicketPeriodNumber(raw);
-    if(labelled)candidates.push(labelled);
-    const tokens=raw.toUpperCase().match(/(?<![0-9A-Z|!])[0-9OQIL|!BDGCEAZ]{6,7}(?![0-9A-Z|!])/g)??[];
-    for(const token of tokens){const candidate=normalizePrintedPeriodGlyphs(token);if(candidate)candidates.push(candidate);}
+    const tokens=raw.toUpperCase().match(/[0-9OQIL|!BDGCEAZ]{3,8}/g)??[];
+    for(const token of tokens){
+      const digits=periodDigits(token);
+      if(digits.length<3||digits.length>7)continue;
+      const padded=digits.padStart(7,"0");
+      // El recorte de cola valida que el OCR de página no haya convertido letras del rótulo
+      // o los datos de fecha en números de período.
+      if(tail&&padded.endsWith(tail))candidates.push(padded);
+    }
   }
-  if(!candidates.length)return null;
-  const counts=new Map<string,number>();for(const candidate of candidates)counts.set(candidate,(counts.get(candidate)??0)+1);
-  return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0))[0]??null;
+  if(candidates.length){
+    const counts=new Map<string,number>();
+    for(const candidate of candidates)counts.set(candidate,(counts.get(candidate)??0)+1);
+    return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0))[0]??null;
+  }
+  if(tail) return tail.padStart(7,"0");
+  // Sin validación de la cola, no reutilizar una cifra de siete dígitos dudosa.
+  return null;
 }
 function readFocusedDigitValue(values:string[],minimumLength:number,maximumLength=10):string|null {
   const candidates=values
@@ -512,7 +523,7 @@ function readFocusedSubagentCode(values:string[]):string|null {
   }
   if(!candidates.length)return null;
   const counts=new Map<string,number>();for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
-  return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0))[0]??null;
+  return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0)||a.length-b.length)[0]??null;
 }
 
 function readFocusedMachineCode(values:string[],labelledValues:string[]):string|null {
@@ -883,8 +894,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         ]));
         const validPeriod = (value: string | null | undefined) =>
           value && /^\d{7}$/.test(value.replace(/\s+/g, "")) ? value.replace(/\s+/g, "") : null;
-        const labelledPeriod = validPeriod(focusedClosureMetadata.periodNumber) ??
-          validPeriod(recoveredPeriodNumber);
+        const labelledPeriod = validPeriod(focusedClosureMetadata.periodNumber);
         const closureReceipt = {
           ...parsed.receiptData,
           agencyCode: focusedClosureMetadata.agencyCode ?? parsed.receiptData.agencyCode,
@@ -1156,7 +1166,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             <div><span>Máquina</span><strong>{receiptData.machineCode || "No detectada"}</strong></div>
             <div><span>Dirección de agencia</span><strong>{receiptData.address || "No detectada"}</strong></div>
             <div><span>Máquina real</span><strong>{receiptData.terminalId || "No detectada"}</strong></div>
-            <div><span>Período N.º</span><strong>{receiptData.periodNumber || extractTicketPeriodNumber(receiptData.rawText) || "No detectado"}</strong></div>
+            <div><span>Período N.º</span><strong>{receiptData.periodNumber || "No detectado"}</strong></div>
             <div className="ticket-closure-quick-meta-printed"><span>Impreso el</span><strong>{receiptData.printedAt.raw ?? ([receiptData.printedAt.date, receiptData.printedAt.time].filter(Boolean).join(" ") || "No detectado")}</strong></div>
           </div>
         </section>
