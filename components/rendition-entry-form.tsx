@@ -391,9 +391,9 @@ function readFocusedCodes(codesText:string,agencyDigitsText:string,machineDigits
   const agencyLabels=[/\bAGENCIA\s*[:.]/i,/\bAG\s*[:.]/i,/\bAB\s*[:.]/i,/\bA[BG86]\s*[:.]/i];
   const subagentLabels=[/\bSUBAG(?:ENTE)?\s*[:.]/i,/\bSUBA?G\s*[:.]/i,/\bSUA\s*[:.]/i,/\bSIEAG\s*[:.]/i,/\bSILAG\s*[:.]/i,/\bS[UI1]B?A?G\s*[:.]/i,/\bS[UI1]E?A?G\s*[:.]/i];
   const machineLabels=[/\bMAQUINA\s*[:.]/i,/\bMAQ\s*[:.]/i,/\bM0+\s*[:.]/i,/\bMAO\s*[:.]/i,/\bM[A4]Q\s*[:.]/i];
-  let agency=numericSequenceInSegment(labelledNumberSegment(codesText,agencyLabels,[...subagentLabels,...machineLabels]))||ocrDigitSequence(agencyDigitsText);
+  let agency=numericSequenceInSegment(labelledNumberSegment(codesText,agencyLabels,[...subagentLabels,...machineLabels]));
   const subagent=numericSequenceInSegment(labelledNumberSegment(codesText,subagentLabels,machineLabels));
-  let machine=numericSequenceInSegment(labelledNumberSegment(codesText,machineLabels,[]))||ocrDigitSequence(machineDigitsText);
+  let machine=numericSequenceInSegment(labelledNumberSegment(codesText,machineLabels,[]));
   if(agency)agency=agency.length<4?agency.padStart(4,"0"):agency.slice(-4);
   if(machine)machine=machine.length<2?machine.padStart(2,"0"):machine.slice(-2);
   return {agencyCode:agency||null,subagentCode:subagent||null,machineCode:machine||null};
@@ -647,16 +647,17 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
           // El período se lee en su propio renglón con dos segmentaciones distintas:
           // así se reconstruyen los ceros impresos que la lectura general confunde con letras.
-          await setOcrMode(10,"0123456789OQIL");
-          const periodDigits10 = (await worker.recognize(crops.periodNumber)).data.text ?? "";
+          await setOcrMode(7,"0123456789OQIL");
+          const periodDigits7 = (await worker.recognize(crops.periodNumber)).data.text ?? "";
+          await setOcrMode(8,"0123456789OQIL");
+          const periodDigits8 = (await worker.recognize(crops.periodNumber)).data.text ?? "";
           await setOcrMode(13,"0123456789OQIL");
           const periodDigits13 = (await worker.recognize(crops.periodNumber)).data.text ?? "";
 
           const read7 = readFocusedCodes(codesLine7,agencyDigits,machineDigits);
           const read6 = readFocusedCodes(codesLine6,agencyDigits,machineDigits);
-          const focusedSubagent = readFocusedDigitValue([subagentLine8],2) ??
-            [read7.subagentCode,read6.subagentCode].filter((value): value is string => Boolean(value)).sort((a,b)=>b.length-a.length)[0] ?? null;
-          const focusedPeriod = readFocusedPeriodNumber([periodDigits10,periodDigits13]);
+          const focusedSubagent = [read7.subagentCode,read6.subagentCode].filter((value): value is string => Boolean(value)).sort((a,b)=>b.length-a.length)[0] ?? null;
+          const focusedPeriod = readFocusedPeriodNumber([periodDigits7,periodDigits8,periodDigits13]);
           const focusedTerminal = readFocusedDigitValue([terminalDigits7,terminalDigits6],4);
           const focusedPrint = readFocusedPrintedAt([printedLine6,printedLine7]);
           const focusedAddress = readFocusedAddress([addressLine6,addressLine7],null);
@@ -678,7 +679,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             "Dirección: "+addressLine6.trim(),
             "Máquina real (dígitos): "+terminalDigits7.trim()+" / "+terminalDigits6.trim(),
             "Impresión: "+printedLine6.trim()+" / "+printedLine7.trim(),
-            "Período N.º (dígitos): "+periodDigits10.trim()+" / "+periodDigits13.trim(),
+            "Período N.º (dígitos): "+periodDigits7.trim()+" / "+periodDigits8.trim()+" / "+periodDigits13.trim(),
           ].join("\n");
         }
       } finally {
