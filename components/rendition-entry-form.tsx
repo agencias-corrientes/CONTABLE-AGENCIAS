@@ -424,7 +424,7 @@ function readFocusedPeriodNumber(values:string[]):string|null {
   for(const raw of values){
     const labelled=extractTicketPeriodNumber(raw);
     if(labelled)candidates.push(labelled);
-    const tokens=raw.toUpperCase().match(/(?<![0-9A-Z|!])[0-9OQIL|!BDGCEAZ]{6,7}(?![0-9A-Z|!)/g)??[];
+    const tokens=raw.toUpperCase().match(/(?<![0-9A-Z|!])[0-9OQIL|!BDGCEAZ]{6,7}(?![0-9A-Z|!])/g)??[];
     for(const token of tokens){const candidate=normalizePrintedPeriodGlyphs(token);if(candidate)candidates.push(candidate);}
   }
   if(!candidates.length)return null;
