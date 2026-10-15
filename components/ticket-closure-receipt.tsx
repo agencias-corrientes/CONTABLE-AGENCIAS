@@ -1,4 +1,4 @@
-import { extractTicketPeriodNumber, type TicketClosureData, type TicketReceiptMetric } from "@/lib/agency-ticket-closure";
+import type { TicketClosureData, TicketReceiptMetric } from "@/lib/agency-ticket-closure";
 type Props = { data: TicketClosureData; compact?: boolean; editable?: boolean; onChange?: (next: TicketClosureData) => void };
 const normalizeCommissionName = (value: string) =>
   value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
@@ -45,7 +45,7 @@ export function TicketClosureReceipt({data,compact=false,editable=false,onChange
   else update({...data,[section]:value} as TicketClosureData);
  };
  const time=(key:"printedAt"|"openedAt"|"closedAt",value:string)=>update({...data,[key]:dtParse(value)});
- const visiblePeriodNumber = data.periodNumber || extractTicketPeriodNumber(data.rawText);
+ const visiblePeriodNumber = data.periodNumber;
  const sales=[data.quiniela.valids.amount,data.quinielaAlToque.valids.amount,...data.otherGames.map(g=>g.amount)];
  const salesOk=data.generalTotal.amount!==null&&sales.every(v=>v!==null)?Math.round(sales.reduce<number>((s,v)=>s+(v??0),0)*100)===Math.round(data.generalTotal.amount*100):false;
  const prizes=[data.quiniela.prizesPaid.amount,data.quinielaAlToque.prizesPaid.amount,data.otherGamesPrizes.amount];
