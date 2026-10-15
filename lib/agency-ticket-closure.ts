@@ -146,63 +146,44 @@ function readCodeAfterLabel(lines: string[], labelPattern: RegExp, skipPattern?:
 export function extractTicketPeriodNumber(text: string): string | null {
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const normalizedLines = lines.map(normalizeTicketText);
-  // Acepta también rótulos cuyos caracteres o espacios fueron confundidos por el OCR.
-  const periodLabelPattern = /\bP\s*E\s*R\s*[I1L]\s*[O0Q]?\s*D\s*[O0Q]\b/i;
-
+  // El período solo se lee junto a su rótulo. No buscar números en el resto del cupón:
+  // eso provocaba que agencia, fechas, importes u otros códigos terminaran como período.
+  const periodLabelPattern = /P\s*E\s*R\s*[I1L]\s*[O0Q]?\s*D\s*[O0Q]/i;
   const normalizeDigits = (value: string) =>
-    value.replace(/[OQ]/g, "0").replace(/[IL|!]/g, "1").replace(/\D/g, "");
+    value.replace(/[OQ]/g, "0").replace(/[IL|!]/g, "1").replace(/[^0-9]/g, "");
 
-  const readCandidate = (value: string): string | null => {
+  const candidateFrom = (value: string): string | null => {
     let fragment = normalizeTicketText(value)
       .replace(/\b(?:NRO|NUM(?:ERO)?|NO|N[º°.]|N|#)\b/gi, " ")
       .replace(/\b\d{1,2}\s+DE[L]?\s+\d{1,2}\s+DE[L]?\s+\d{2,4}\b/gi, " ")
       .replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g, " ")
       .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, " ");
-
-    const nextField = /\b(?:AGENCIA|SUBAG(?:ENTE)?|MAQ(?:UINA)?|DOMICILIO|DIRECCION|ABIERTO|CERRADO|IMPRESO|SORTEOS?\s+ABIERTOS?|TOTALES?|TOTAL\s+GENERAL|QUINIELA|MEDIOS\s+DIGITALES|OTROS\s+JUEGOS|PREMIOS?\s+PAGADOS?)\b/i;
-    const fieldIndex = fragment.search(nextField);
-    if (fieldIndex >= 0) fragment = fragment.slice(0, fieldIndex);
-
-    const groups = fragment.match(/[0-9OQIL|!]+(?:[\s.:_-]*[0-9OQIL|!]+){0,11}/g) ?? [];
-    const candidates = groups
-      .map(normalizeDigits)
-      .filter((digits) => /^\d{2,12}$/.test(digits));
-    return candidates.sort((a, b) => b.length - a.length)[0] ?? null;
+    // Solo dígitos y separadores de impresión; jamás incorporar palabras o renglones vecinos.
+    const match = fragment.match(/(?:^|[^A-Z])([0-9OQIL|!]+(?:[ .:_-]+[0-9OQIL|!]+){0,8})(?=$|[^A-Z])/i);
+    if (!match?.[1]) return null;
+    const digits = normalizeDigits(match[1]);
+    return /^\d{4,10}$/.test(digits) ? digits : null;
   };
 
-  const isBoundary = (line: string) =>
-    /^(?:AGENCIA\b|AG\b|SUBAG(?:ENTE)?\b|MAQ(?:UINA)?\b|DOMICILIO\b|DIRECCION\b|ABIERTO\b|CERRADO\b|IMPRESO\b|SORTEOS?\b|TOTALES?\b|TOTAL\b|QUINIELA\b|MEDIOS?\s+DIGITALES?\b|OTROS\s+JUEGOS?\b|FIN\s+DE\s+JORNADA\b|PREMIOS?\b)/i.test(line);
-
-  for (let index = 0; index < normalizedLines.length; index += 1) {
-    const line = normalizedLines[index] ?? "";
-    const label = line.match(periodLabelPattern);
+  for (let i = 0; i < normalizedLines.length; i += 1) {
+    const line = normalizedLines[i] ?? "";
+    const label = periodLabelPattern.exec(line);
     if (!label || label.index === undefined) continue;
-
-    const suffix = line.slice(label.index + label[0].length);
-    const direct = readCandidate(suffix);
+    const suffix = line.slice(label.index + label[0].length).replace(/^\s*(?:NRO|N[º°.]|NUMERO|NO)?\s*/i, "");
+    const direct = candidateFrom(suffix);
     if (direct) return direct;
 
-    let context = suffix;
-    for (let next = index + 1; next < Math.min(normalizedLines.length, index + 5); next += 1) {
-      const nextLine = normalizedLines[next] ?? "";
-      if (isBoundary(nextLine)) break;
-      context += " " + nextLine;
-      const candidate = readCandidate(context);
-      if (candidate) return candidate;
+    // Si el OCR separó el número en renglones, aceptar solo renglones vecinos compuestos
+    // exclusivamente por dígitos/separadores; nunca atravesar texto de otro campo.
+    let pieces = "";
+    for (let j = i + 1; j < Math.min(normalizedLines.length, i + 4); j += 1) {
+      const next = normalizedLines[j] ?? "";
+      if (!next || !/^[0-9OQIL|! .:_-]+$/.test(next)) break;
+      pieces += " " + next;
+      const digits = normalizeDigits(pieces);
+      if (/^\d{4,10}$/.test(digits)) return digits;
     }
   }
-
-  // Último recurso: el OCR puede intercalar saltos de línea dentro de "Período N.º".
-  const wholeText = normalizeTicketText(text).replace(/\s+/g, " ");
-  const label = wholeText.match(periodLabelPattern);
-  if (label && label.index !== undefined) {
-    let fragment = wholeText.slice(label.index + label[0].length, label.index + label[0].length + 140);
-    const boundaryIndex = fragment.search(/\b(?:AGENCIA|SUBAG(?:ENTE)?|MAQUINA?\s+REAL|ABIERTO|CERRADO|IMPRESO|SORTEOS?\s+ABIERTOS?|TOTALES?|TOTAL\s+GENERAL|MEDIOS\s+DIGITALES|OTROS\s+JUEGOS|PREMIOS?\s+PAGADOS?)\b/i);
-    if (boundaryIndex >= 0) fragment = fragment.slice(0, boundaryIndex);
-    const candidate = readCandidate(fragment);
-    if (candidate) return candidate;
-  }
-
   return null;
 }
 
