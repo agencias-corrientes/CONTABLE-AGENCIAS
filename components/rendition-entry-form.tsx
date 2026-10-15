@@ -251,7 +251,7 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   terminalId:  {left:0.320,right:0.690,top:0.303,bottom:0.335,scale:5,contrast:2.0},
   printedAt:   {left:0.035,right:0.960,top:0.319,bottom:0.354,scale:4,contrast:1.8},
   // Período es una única línea al pie del comprobante; evitar capturar ABIERTO/CERRADO.
-  periodNumber:{left:0.045,right:0.780,top:0.882,bottom:0.911,scale:7,contrast:2.0},
+  periodNumber:{left:0.020,right:0.980,top:0.875,bottom:0.925,scale:7,contrast:1.8},
 };
 
 function longestBrightRun(scores:number[],threshold:number,from:number,to:number) {
@@ -410,10 +410,20 @@ function readFocusedPrintedAt(values:string[]):TicketClosureData["printedAt"]|nu
   return null;
 }
 function readFocusedPeriodNumber(values:string[]):string|null {
-  const candidates=values.map((value)=>ocrDigitSequence(value)).filter((value)=>/^\d{5,12}$/.test(value));
-  if(!candidates.length)return null;
+  // Nunca tomar una secuencia de dígitos del recorte si no está asociada al rótulo
+  // impreso PERIODO. No convertir O/I/L ni escoger simplemente la secuencia más larga.
+  const candidates=values.map((value)=>{
+    const lines=normalize(value).split(/\r?\n/).map((line)=>line.trim()).filter(Boolean);
+    for(const line of lines){
+      const match=line.match(/\bPER[IÍ1]ODO\b[^\d\n]{0,16}(\d{5,12})(?!\d)/i);
+      if(match?.[1])return match[1];
+    }
+    return "";
+  }).filter((value)=>/^\d{5,12}$/.test(value));
   const counts=new Map<string,number>();for(const candidate of candidates)counts.set(candidate,(counts.get(candidate)??0)+1);
-  return candidates.sort((a,b)=>(b.length+(counts.get(b)??0)*.2)-(a.length+(counts.get(a)??0)*.2))[0]??null;
+  const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
+  // Exigir al menos dos lecturas independientes iguales; si discrepan, no inventar el período.
+  return ranked[0]?.[1]>=2?ranked[0][0]:null;
 }
 function readFocusedDigitValue(values:string[],minimumLength:number):string|null {
   const candidates=values.map((value)=>ocrDigitSequence(value)).filter((value)=>value.length>=minimumLength&&value.length<=10);
@@ -633,13 +643,13 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           await setOcrMode(6,"0123456789OQIL");
           const terminalDigits6 = (await worker.recognize(crops.terminalId)).data.text ?? "";
 
-          // El período se lee en su propio renglón con dos segmentaciones distintas:
-          // así se reconstruyen los ceros impresos que la lectura general confunde con letras.
-          await setOcrMode(7,"0123456789OQIL");
+          // Leer el rótulo y el número juntos. Un recorte solo numérico podía confundir
+          // el período con el número de cupón/terminal de otra zona del ticket.
+          await setOcrMode(7);
           const periodDigits7 = (await worker.recognize(crops.periodNumber)).data.text ?? "";
-          await setOcrMode(8,"0123456789OQIL");
+          await setOcrMode(8);
           const periodDigits8 = (await worker.recognize(crops.periodNumber)).data.text ?? "";
-          await setOcrMode(13,"0123456789OQIL");
+          await setOcrMode(13);
           const periodDigits13 = (await worker.recognize(crops.periodNumber)).data.text ?? "";
 
           const read7 = readFocusedCodes(codesLine7,agencyDigits,machineDigits);
