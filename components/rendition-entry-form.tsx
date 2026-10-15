@@ -678,7 +678,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           focusedClosureMetadata = {
             agencyCode:agencyOnly.agencyCode??read7.agencyCode??read6.agencyCode??undefined,
             subagentCode:focusedSubagent??undefined,
-            machineCode:machineOnly.machineCode??read7.machineCode??read6.machineCode??undefined,
+            machineCode:machineOnly??read7.machineCode??read6.machineCode??undefined,
             address:focusedAddress??undefined,
             terminalId:focusedTerminal??undefined,
             printedAt:focusedPrint??undefined,
