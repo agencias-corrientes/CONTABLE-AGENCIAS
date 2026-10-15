@@ -296,7 +296,7 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   codes:       {left:0.030,right:0.955,top:0.263,bottom:0.292,scale:5,contrast:1.8},
   agencyCode:  {left:0.030,right:0.365,top:0.263,bottom:0.292,scale:6,contrast:1.8},
   // Solo el valor impreso: el rótulo SUBAG no puede transformarse en cifras.
-  subagentCode:{left:0.500,right:0.665,top:0.263,bottom:0.292,scale:8,contrast:1.7},
+  subagentCode:{left:0.520,right:0.655,top:0.263,bottom:0.292,scale:8,contrast:1.7},
   // Solo los dígitos de MAQ:01, a la derecha del rótulo.
   machineCode: {left:0.745,right:0.865,top:0.263,bottom:0.292,scale:8,contrast:1.7},
   address:     {left:0.040,right:0.555,top:0.285,bottom:0.307,scale:5,contrast:1.8},
@@ -304,9 +304,9 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   terminalId:  {left:0.362,right:0.534,top:0.3075,bottom:0.3295,scale:6,contrast:1.6},
   printedAt:   {left:0.035,right:0.965,top:0.324,bottom:0.347,scale:5,contrast:1.8},
   // Período N.º: aislar los siete dígitos, sin las letras "Periodo nro".
-  periodNumber:{left:0.400,right:0.715,top:0.888,bottom:0.912,scale:9,contrast:1.9},
+  periodNumber:{left:0.320,right:0.740,top:0.888,bottom:0.912,scale:9,contrast:1.9},
   // Lectura independiente de las dos últimas cifras; se usa para validar el número completo.
-  periodTail:  {left:0.590,right:0.715,top:0.888,bottom:0.912,scale:10,contrast:2.0},
+  periodTail:  {left:0.620,right:0.730,top:0.888,bottom:0.912,scale:10,contrast:2.0},
 };
 
 function longestBrightRun(scores:number[],threshold:number,from:number,to:number) {
@@ -480,16 +480,22 @@ function normalizePrintedPeriodGlyphs(raw:string):string|null {
 }
 function readFocusedPeriodNumber(values:string[],tailValues:string[]):string|null {
   const tail=readPeriodTail(tailValues);
+  if(!tail||!/^\d{2}$/.test(tail))return null;
   const candidates:string[]=[];
   for(const raw of values){
     const tokens=raw.toUpperCase().match(/[0-9OQIL|!BDGCEAZ]{3,8}/g)??[];
     for(const token of tokens){
-      const digits=periodDigits(token);
+      let digits=periodDigits(token);
       if(digits.length<3||digits.length>7)continue;
-      const padded=digits.padStart(7,"0");
-      // El recorte de cola valida que el OCR de página no haya convertido letras del rótulo
-      // o los datos de fecha en números de período.
-      if(tail&&padded.endsWith(tail))candidates.push(padded);
+      let padded=digits.padStart(7,"0");
+      // Los ceros de este papel térmico se reconocen a veces como 8/9. Solo corregimos
+      // esa confusión cuando el prefijo de cinco cifras tiene formas cero-like (0/8/9)
+      // y el recorte independiente confirma los dos últimos dígitos.
+      const prefix=padded.slice(0,5);
+      if(/^[089]{5}$/.test(prefix)&&[...prefix].filter((digit)=>digit==="8"||digit==="9").length>=3){
+        padded="00000"+padded.slice(5);
+      }
+      if(padded.endsWith(tail))candidates.push(padded);
     }
   }
   if(candidates.length){
@@ -497,9 +503,9 @@ function readFocusedPeriodNumber(values:string[],tailValues:string[]):string|nul
     for(const candidate of candidates)counts.set(candidate,(counts.get(candidate)??0)+1);
     return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0))[0]??null;
   }
-  if(tail) return tail.padStart(7,"0");
-  // Sin validación de la cola, no reutilizar una cifra de siete dígitos dudosa.
-  return null;
+  // Si el OCR de la secuencia completa no es fiable, usar la cola leída en su propio
+  // recorte y conservar el formato de siete posiciones en vez de inventar otros dígitos.
+  return tail.padStart(7,"0");
 }
 function readFocusedDigitValue(values:string[],minimumLength:number,maximumLength=10):string|null {
   const candidates=values
@@ -513,17 +519,16 @@ function readFocusedDigitValue(values:string[],minimumLength:number,maximumLengt
 function readFocusedSubagentCode(values:string[]):string|null {
   const candidates:string[]=[];
   for(const raw of values){
-    const tokens=raw.toUpperCase().match(/[0-9OQIL|!BDGCEAZ8]{3,4}/g)??[];
-    for(const token of tokens){
-      // En este comprobante térmico el cero del subagente puede ser clasificado como "8".
-      // Esto se aplica solo al recorte numérico de SUBAG; nunca al resto del texto del ticket.
-      const normalized=token.replace(/[OQBDGCEA8]/g,"0").replace(/[IL|!]/g,"1").replace(/Z/g,"2").replace(/[^0-9]/g,"");
-      if(/^\d{3,4}$/.test(normalized))candidates.push(normalized);
-    }
+    // Esta región contiene solo el valor SUBAG. No aceptar cuatro dígitos: normalmente
+    // ese "4" falso viene de los dos puntos de la etiqueta vecina cuando el recorte es ancho.
+    const token=raw.toUpperCase().replace(/[^0-9OQIL|!BDGCEAZ8]/g,"");
+    if(token.length!==3)continue;
+    const normalized=token.replace(/[OQBDGCEA8]/g,"0").replace(/[IL|!]/g,"1").replace(/Z/g,"2");
+    if(/^\d{3}$/.test(normalized))candidates.push(normalized);
   }
   if(!candidates.length)return null;
   const counts=new Map<string,number>();for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
-  return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0)||a.length-b.length)[0]??null;
+  return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0))[0]??null;
 }
 
 function readFocusedMachineCode(values:string[],labelledValues:string[]):string|null {
