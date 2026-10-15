@@ -659,9 +659,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
           const read7 = readFocusedCodes(codesLine7,agencyDigits,machineDigits);
           const read6 = readFocusedCodes(codesLine6,agencyDigits,machineDigits);
-          const agencyOnly = readFocusedCodes(await worker.recognize(crops.agencyCode).then(r=>r.data.text??""),"","");
-          const subagentOnly = readFocusedCodes(await worker.recognize(crops.subagentCode).then(r=>r.data.text??""),"","");
-          const machineOnly = readFocusedCodes(await worker.recognize(crops.machineCode).then(r=>r.data.text??""),"","");
+          const agencyCropText = await worker.recognize(crops.agencyCode).then(r=>r.data.text??"");
+          const subagentCropText = await worker.recognize(crops.subagentCode).then(r=>r.data.text??"");
+          const machineCropText = await worker.recognize(crops.machineCode).then(r=>r.data.text??"");
+          const agencyCropDigits = readFocusedDigitValue([agencyCropText],3);
+          const subagentCropDigits = readFocusedDigitValue([subagentCropText],2);
+          const machineCropDigits = readFocusedDigitValue([machineCropText],1);
+          const agencyOnly = {agencyCode:agencyCropDigits&&agencyCropDigits.length<=4?agencyCropDigits.padStart(4,"0"):null};
+          const subagentOnly = {subagentCode:subagentCropDigits&&subagentCropDigits.length<=4?subagentCropDigits:null};
+          const machineOnly = {machineCode:machineCropDigits&&machineCropDigits.length<=2?machineCropDigits.padStart(2,"0"):null};
           const focusedSubagent = subagentOnly.subagentCode ?? [read7.subagentCode,read6.subagentCode].filter((value): value is string => Boolean(value)).sort((a,b)=>b.length-a.length)[0] ?? null;
           const focusedPeriod = readFocusedPeriodNumber([periodDigits7,periodDigits8,periodDigits13]);
           const focusedTerminal = readFocusedDigitValue([terminalDigits7,terminalDigits6],4);
@@ -682,6 +688,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             "Códigos (PSM 7): "+codesLine7.trim(),
             "Códigos (PSM 6): "+codesLine6.trim(),
             "Subagente (PSM 8): "+subagentLine8.trim(),
+            "Agencia (recorte): "+agencyCropText.trim(),
+            "Subagente (recorte): "+subagentCropText.trim(),
+            "Máquina (recorte): "+machineCropText.trim(),
             "Dirección: "+addressLine6.trim(),
             "Máquina real (dígitos): "+terminalDigits7.trim()+" / "+terminalDigits6.trim(),
             "Impresión: "+printedLine6.trim()+" / "+printedLine7.trim(),
