@@ -113,11 +113,16 @@ function readShortCode(value: string): string | null {
 }
 
 function readNumberAfterLabel(value: string, labelPattern: RegExp): string | null {
-  const match = value.match(labelPattern);
+  const match = labelPattern.exec(value);
   if (!match || match.index === undefined) return null;
   const suffix = value.slice(match.index + match[0].length)
-    .replace(/^\s*(?:(?:NRO|NUM(?:ERO)?|NO|N[º°.]?|#)\s*[:.#º°-]?\s*)+/i, " ");
-  return readShortCode(suffix);
+    .replace(/^\\s*(?:(?:NRO|NUM(?:ERO)?|NO|N[º°.]?|#)\\s*[:.#º°-]?\\s*)+/i, "")
+    .trim();
+  // El código debe comenzar inmediatamente después del rótulo; no buscar números más adelante.
+  const token = suffix.match(/^(\\d(?:[\\s.-]*\\d){0,7})(?=\\s|$)/)?.[1];
+  if (!token) return null;
+  const digits = token.replace(/\\D/g, "");
+  return /^\\d{1,8}$/.test(digits) ? digits : null;
 }
 
 function readCodeAfterLabel(lines: string[], labelPattern: RegExp, skipPattern?: RegExp): string | null {
