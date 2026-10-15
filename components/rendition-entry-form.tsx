@@ -557,26 +557,6 @@ function readPeriodTail(values:string[]):string|null {
   return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0))[0]??null;
 }
 
-function readFocusedPeriodNumber(values:string[],tailValues:string[]):string|null {
-  const tail=readPeriodTail(tailValues);
-  const candidates:string[]=[];
-  for(const raw of values){
-    const tokens=raw.toUpperCase().match(/[0-9OQIL|!BDGCEAZ]{3,8}/g)??[];
-    for(const token of tokens){
-      const digits=periodDigits(token);
-      if(digits.length<3||digits.length>7)continue;
-      const padded=digits.padStart(7,"0");
-      if(!tail||padded.endsWith(tail))candidates.push(padded);
-    }
-  }
-  if(candidates.length){
-    const counts=new Map<string,number>();for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
-    return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0))[0]??null;
-  }
-  // Si las casillas de cero se pierden en OCR, el recorte de las dos cifras finales
-  // permite reconstruir el formato de período de siete posiciones, sin usar texto de otros campos.
-  return tail ? tail.padStart(7,"0") : null;
-}
 
 export function RenditionEntryForm({ agentId, games, today, periods, allPeriods, defaultPeriod, initialRendition, dailyMode = false, dailyCloseAllowed = true }: { agentId: string; games: Game[]; today: string; periods: OfficialDrawPeriod[]; allPeriods?: OfficialDrawPeriod[]; defaultPeriod?: string; initialRendition?: InitialRendition; dailyMode?: boolean; dailyCloseAllowed?: boolean }) {
   const [mode, setMode] = useState<"photo" | "manual">(initialRendition?.captureMethod === "manual" ? "manual" : "photo");
