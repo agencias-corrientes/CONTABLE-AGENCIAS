@@ -40,6 +40,58 @@ function extractTicketNumber(text: string): string {
   return "";
 }
 
+function createManualClosureTemplate(games: Game[]): TicketClosureData {
+  const metric = () => ({ count: 0, amount: 0 });
+  const time = () => ({ date: null, time: null, raw: null });
+  return {
+    type: "loteria-corrientes-end-of-day-v1",
+    header: "FIN DE JORNADA",
+    agencyCode: null,
+    subagentCode: null,
+    machineCode: null,
+    address: null,
+    terminalId: null,
+    printedAt: time(),
+    openDraws: [
+      { name: "Loto Plus Ciudad B.A.", status: "ON-OFF" },
+      { name: "Loto Plus Extraordinario", status: "ON-OFF" },
+      { name: "Quini 6 Santa Fe", status: "ON-OFF" },
+      { name: "Brinco Santa Fe", status: "ON-OFF" },
+      { name: "Loto 5 Plus Ciudad B.A.", status: "ON-OFF" },
+      { name: "Telekino", status: "ON-OFF" },
+      { name: "Quiniela Corrientes", status: "ON-OFF" },
+    ],
+    quiniela: { valids: metric(), cancelledSpecial: metric(), prizesPaid: metric() },
+    quinielaAlToque: { valids: metric(), prizesPaid: metric() },
+    otherGames: [
+      { name: "Loto Plus", count: 0, amount: 0 },
+      { name: "Quini 6", count: 0, amount: 0 },
+      { name: "Pozo Quiniela", count: 0, amount: 0 },
+      { name: "Brinco", count: 0, amount: 0 },
+      { name: "Loto 5 Plus", count: 0, amount: 0 },
+      { name: "Lotería Online", count: 0, amount: 0 },
+      { name: "Quiniela Poceada", count: 0, amount: 0 },
+      { name: "Telekino", count: 0, amount: 0 },
+    ],
+    totalOtherGames: metric(),
+    otherGamesPrizes: metric(),
+    totalPrizes: metric(),
+    generalTotal: metric(),
+    digital: { cobros: metric(), devoluciones: metric() },
+    periodNumber: null,
+    openedAt: time(),
+    closedAt: time(),
+    downloadStatus: null,
+    consistency: { salesTotalsMatch: true, prizeTotalsMatch: true },
+    commissionRates: Object.fromEntries(games.map((game) => [
+      normalize(game.name),
+      game.commissionPercent == null || !Number.isFinite(Number(game.commissionPercent))
+        ? null : Number(game.commissionPercent),
+    ])),
+    rawText: "",
+  };
+}
+
 function formatDateDdMmYyyy(value: string | null | undefined): string {
   if (!value) return "—";
   const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -233,7 +285,7 @@ function structuredQr(payload: string) {
   }
 }
 
-type ReceiptFocusRegion = "codes" | "agencyCode" | "subagentCode" | "machineCode" | "address" | "terminalId" | "printedAt" | "periodNumber";
+type ReceiptFocusRegion = "codes" | "agencyCode" | "subagentCode" | "machineCode" | "address" | "terminalId" | "printedAt" | "periodNumber" | "periodTail";
 type ReceiptFocusSpec = { left:number; right:number; top:number; bottom:number; scale:number; contrast:number };
 type ReceiptPaperBounds = { left:number; top:number; width:number; height:number };
 type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
@@ -243,12 +295,18 @@ type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
 const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   codes:       {left:0.030,right:0.955,top:0.263,bottom:0.292,scale:5,contrast:1.8},
   agencyCode:  {left:0.030,right:0.365,top:0.263,bottom:0.292,scale:6,contrast:1.8},
-  subagentCode:{left:0.350,right:0.675,top:0.263,bottom:0.292,scale:6,contrast:1.8},
-  machineCode: {left:0.640,right:0.920,top:0.263,bottom:0.292,scale:6,contrast:1.8},
+  // Solo el valor impreso: el rótulo SUBAG no puede transformarse en cifras.
+  subagentCode:{left:0.500,right:0.665,top:0.263,bottom:0.292,scale:8,contrast:1.7},
+  // Solo los dígitos de MAQ:01, a la derecha del rótulo.
+  machineCode: {left:0.745,right:0.865,top:0.263,bottom:0.292,scale:8,contrast:1.7},
   address:     {left:0.040,right:0.555,top:0.285,bottom:0.307,scale:5,contrast:1.8},
-  terminalId:  {left:0.040,right:0.610,top:0.307,bottom:0.324,scale:6,contrast:1.9},
+  // La máquina real está en su propia línea; no incluir la dirección que termina en 410.
+  terminalId:  {left:0.360,right:0.540,top:0.307,bottom:0.331,scale:8,contrast:1.8},
   printedAt:   {left:0.035,right:0.965,top:0.324,bottom:0.347,scale:5,contrast:1.8},
-  periodNumber:{left:0.045,right:0.790,top:0.888,bottom:0.911,scale:7,contrast:1.8},
+  // Período N.º: aislar los siete dígitos, sin las letras "Periodo nro".
+  periodNumber:{left:0.400,right:0.715,top:0.888,bottom:0.912,scale:9,contrast:1.9},
+  // Lectura independiente de las dos últimas cifras; se usa para validar el número completo.
+  periodTail:  {left:0.590,right:0.715,top:0.888,bottom:0.912,scale:10,contrast:2.0},
 };
 
 function longestBrightRun(scores:number[],threshold:number,from:number,to:number) {
@@ -350,6 +408,7 @@ async function makeFocusedReceiptCrops(file:File) {
       terminalId:makeReceiptFocusCrop(bitmap,bounds,"terminalId"),
       printedAt:makeReceiptFocusCrop(bitmap,bounds,"printedAt"),
       periodNumber:makeReceiptFocusCrop(bitmap,bounds,"periodNumber"),
+      periodTail:makeReceiptFocusCrop(bitmap,bounds,"periodTail"),
     };
   } finally { bitmap.close(); }
 }
@@ -431,11 +490,81 @@ function readFocusedPeriodNumber(values:string[]):string|null {
   const counts=new Map<string,number>();for(const candidate of candidates)counts.set(candidate,(counts.get(candidate)??0)+1);
   return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0))[0]??null;
 }
-function readFocusedDigitValue(values:string[],minimumLength:number):string|null {
-  const candidates=values.map((value)=>ocrDigitSequence(value)).filter((value)=>value.length>=minimumLength&&value.length<=10);
+function readFocusedDigitValue(values:string[],minimumLength:number,maximumLength=10):string|null {
+  const candidates=values
+    .map((value)=>ocrDigitSequence(value,true))
+    .filter((value)=>value.length>=minimumLength&&value.length<=maximumLength);
   if(!candidates.length)return null;
   const counts=new Map<string,number>();for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
   return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0)||b.length-a.length)[0]??null;
+}
+
+function readFocusedSubagentCode(values:string[]):string|null {
+  const candidates:string[]=[];
+  for(const raw of values){
+    const tokens=raw.toUpperCase().match(/[0-9OQIL|!BDGCEAZ8]{3,4}/g)??[];
+    for(const token of tokens){
+      // En este comprobante térmico el cero del subagente puede ser clasificado como "8".
+      // Esto se aplica solo al recorte numérico de SUBAG; nunca al resto del texto del ticket.
+      const normalized=token.replace(/[OQBDGCEA8]/g,"0").replace(/[IL|!]/g,"1").replace(/Z/g,"2").replace(/[^0-9]/g,"");
+      if(/^\d{3,4}$/.test(normalized))candidates.push(normalized);
+    }
+  }
+  if(!candidates.length)return null;
+  const counts=new Map<string,number>();for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
+  return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0))[0]??null;
+}
+
+function readFocusedMachineCode(values:string[],labelledValues:string[]):string|null {
+  const labelled=labelledValues
+    .map((value)=>readFocusedCodes(value,"","").machineCode)
+    .filter((value):value is string=>Boolean(value&&/^\d{1,2}$/.test(value)));
+  const direct=values.map((value)=>readFocusedDigitValue([value],1,2)).filter((value):value is string=>Boolean(value));
+  const candidates=[...labelled,...direct];
+  if(!candidates.length)return null;
+  const counts=new Map<string,number>();for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
+  const best=candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0)||a.length-b.length)[0]??null;
+  return best ? best.padStart(2,"0") : null;
+}
+
+function periodDigits(raw:string):string {
+  return raw.toUpperCase().replace(/[^0-9OQIL|!BDGCEAZ]/g,"")
+    .replace(/[OQBDGCEA]/g,"0").replace(/[IL|!]/g,"1").replace(/Z/g,"2");
+}
+
+function readPeriodTail(values:string[]):string|null {
+  const candidates:string[]=[];
+  for(const raw of values){
+    const tokens=raw.toUpperCase().match(/[0-9OQIL|!BDGCEAZ]{2,8}/g)??[];
+    for(const token of tokens){
+      const digits=periodDigits(token);
+      if(digits.length>=2)candidates.push(digits.slice(-2));
+    }
+  }
+  if(!candidates.length)return null;
+  const counts=new Map<string,number>();for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
+  return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0))[0]??null;
+}
+
+function readFocusedPeriodNumber(values:string[],tailValues:string[]):string|null {
+  const tail=readPeriodTail(tailValues);
+  const candidates:string[]=[];
+  for(const raw of values){
+    const tokens=raw.toUpperCase().match(/[0-9OQIL|!BDGCEAZ]{3,8}/g)??[];
+    for(const token of tokens){
+      const digits=periodDigits(token);
+      if(digits.length<3||digits.length>7)continue;
+      const padded=digits.padStart(7,"0");
+      if(!tail||padded.endsWith(tail))candidates.push(padded);
+    }
+  }
+  if(candidates.length){
+    const counts=new Map<string,number>();for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
+    return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0))[0]??null;
+  }
+  // Si las casillas de cero se pierden en OCR, el recorte de las dos cifras finales
+  // permite reconstruir el formato de período de siete posiciones, sin usar texto de otros campos.
+  return tail ? tail.padStart(7,"0") : null;
 }
 
 export function RenditionEntryForm({ agentId, games, today, periods, allPeriods, defaultPeriod, initialRendition, dailyMode = false, dailyCloseAllowed = true }: { agentId: string; games: Game[]; today: string; periods: OfficialDrawPeriod[]; allPeriods?: OfficialDrawPeriod[]; defaultPeriod?: string; initialRendition?: InitialRendition; dailyMode?: boolean; dailyCloseAllowed?: boolean }) {
@@ -663,22 +792,36 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           // Restablecer el modo de texto después de las lecturas numéricas del período.
           await setOcrMode(6);
           const agencyCropText = await worker.recognize(crops.agencyCode).then(r=>r.data.text??"");
+          await setOcrMode(7,"0123456789OQILBDGCEAZ8");
+          const subagentDigits7 = (await worker.recognize(crops.subagentCode)).data.text ?? "";
+          const machineDigits7 = (await worker.recognize(crops.machineCode)).data.text ?? "";
+          await setOcrMode(8,"0123456789OQILBDGCEAZ8");
+          const subagentDigits8 = (await worker.recognize(crops.subagentCode)).data.text ?? "";
+          const machineDigits8 = (await worker.recognize(crops.machineCode)).data.text ?? "";
+          await setOcrMode(6);
           const subagentCropText = await worker.recognize(crops.subagentCode).then(r=>r.data.text??"");
           const machineCropText = await worker.recognize(crops.machineCode).then(r=>r.data.text??"");
-          const agencyCropDigits = readFocusedDigitValue([agencyCropText],3);
-          const agencyOnly = {agencyCode:agencyCropDigits&&agencyCropDigits.length<=4?agencyCropDigits.padStart(4,"0"):null};
-          // No desnudar a dígitos el campo SUBAG: 1BZ puede representar el impreso 102.
-          const subagentOnly = readFocusedCodes(subagentCropText,"","").subagentCode;
-          const machineOnly = readFocusedCodes(machineCropText,"","").machineCode;
-          const focusedSubagent = subagentOnly ?? read7.subagentCode ?? read6.subagentCode ?? null;
-          const focusedPeriod = readFocusedPeriodNumber([periodDigits7,periodDigits8,periodDigits13]);
-          const focusedTerminal = readFocusedDigitValue([terminalDigits7,terminalDigits6],4);
+          const agencyCropDigits = readFocusedDigitValue([agencyCropText],3,4);
+          const agencyOnly = {agencyCode:agencyCropDigits?agencyCropDigits.padStart(4,"0"):null};
+          const focusedSubagent = readFocusedSubagentCode([subagentDigits7,subagentDigits8,subagentCropText]);
+          const focusedMachine = readFocusedMachineCode([machineDigits7,machineDigits8,machineCropText],[codesLine7,codesLine6]);
+          await setOcrMode(7,"0123456789OQILBDGCEAZ8");
+          const periodTail7 = (await worker.recognize(crops.periodTail)).data.text ?? "";
+          await setOcrMode(8,"0123456789OQILBDGCEAZ8");
+          const periodTail8 = (await worker.recognize(crops.periodTail)).data.text ?? "";
+          await setOcrMode(13,"0123456789OQILBDGCEAZ8");
+          const periodTail13 = (await worker.recognize(crops.periodTail)).data.text ?? "";
+          const focusedPeriod = readFocusedPeriodNumber(
+            [periodDigits7,periodDigits8,periodDigits13],
+            [periodTail7,periodTail8,periodTail13]
+          );
+          const focusedTerminal = readFocusedDigitValue([terminalDigits7,terminalDigits6],4,6);
           const focusedPrint = readFocusedPrintedAt([printedLine6,printedLine7]);
           const focusedAddress = readFocusedAddress([addressLine6,addressLine7],null);
           focusedClosureMetadata = {
             agencyCode:agencyOnly.agencyCode??read7.agencyCode??read6.agencyCode??undefined,
             subagentCode:focusedSubagent??undefined,
-            machineCode:machineOnly??read7.machineCode??read6.machineCode??undefined,
+            machineCode:focusedMachine??undefined,
             address:focusedAddress??undefined,
             terminalId:focusedTerminal??undefined,
             printedAt:focusedPrint??undefined,
@@ -693,6 +836,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             "Agencia (recorte): "+agencyCropText.trim(),
             "Subagente (recorte): "+subagentCropText.trim(),
             "Máquina (recorte): "+machineCropText.trim(),
+            "Subagente (pasadas numéricas): "+subagentDigits7.trim()+" / "+subagentDigits8.trim(),
+            "Máquina (pasadas numéricas): "+machineDigits7.trim()+" / "+machineDigits8.trim(),
+            "Final de período: "+periodTail7.trim()+" / "+periodTail8.trim()+" / "+periodTail13.trim(),
             "Dirección: "+addressLine6.trim(),
             "Máquina real (dígitos): "+terminalDigits7.trim()+" / "+terminalDigits6.trim(),
             "Impresión: "+printedLine6.trim()+" / "+printedLine7.trim(),
@@ -737,10 +883,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         ]));
         const validPeriod = (value: string | null | undefined) =>
           value && /^\d{7}$/.test(value.replace(/\s+/g, "")) ? value.replace(/\s+/g, "") : null;
-        const labelledPeriod = validPeriod(extractTicketPeriodNumber(recognizedText)) ??
-          validPeriod(recoveredPeriodNumber) ??
-          validPeriod(parsed.receiptData.periodNumber) ??
-          validPeriod(focusedClosureMetadata.periodNumber);
+        const labelledPeriod = validPeriod(focusedClosureMetadata.periodNumber) ??
+          validPeriod(recoveredPeriodNumber);
         const closureReceipt = {
           ...parsed.receiptData,
           agencyCode: focusedClosureMetadata.agencyCode ?? parsed.receiptData.agencyCode,
@@ -874,7 +1018,19 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
           <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => setMode("photo")}>Foto (automático)</button>
-          <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => setMode("manual")}>Carga manual</button>
+          <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
+            setMode("manual");
+            if (dailyMode && !receiptData) {
+              const template = createManualClosureTemplate(games);
+              setReceiptData(template);
+              setReceiptReviewed(false);
+              setGameListExpanded(true);
+              setAmounts(mapTicketClosureAmounts(template, periodGames));
+              setTicketNumbers("");
+              setNotice("Plantilla FIN DE JORNADA lista para cargar manualmente los valores impresos del cupón.");
+              setError("");
+            }
+          }}>Carga manual</button>
         </div>
         {mode === "photo" && (
           <div className={"ticket-progress-panel" + (busy ? " is-reading" : progressPercent >= 100 ? " is-complete" : fileName ? " has-file" : "")} role="status" aria-live="polite">

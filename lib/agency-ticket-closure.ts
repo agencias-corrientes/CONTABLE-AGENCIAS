@@ -145,7 +145,7 @@ function readCodeAfterLabel(lines: string[], labelPattern: RegExp, skipPattern?:
  */
 export function normalizePrintedPeriodGlyphs(raw: string): string | null {
   const token = raw.toUpperCase().replace(/[^0-9A-Z|!]/g, "");
-  if (token.length < 6 || token.length > 7) return null;
+  if (token.length < 3 || token.length > 7) return null;
   const hasOcrLetters = /[A-Z|!]/.test(token);
   const digits = [...token].map((char, index) => {
     if (/[OQBDGCEA]/.test(char)) return "0";
@@ -154,7 +154,7 @@ export function normalizePrintedPeriodGlyphs(raw: string): string | null {
     if (char === "8" && index === 0 && hasOcrLetters) return "0";
     return /^[0-9]$/.test(char) ? char : "";
   }).join("");
-  if (!/^\d{6,7}$/.test(digits)) return null;
+  if (!/^\d{3,7}$/.test(digits)) return null;
   return digits.padStart(7, "0");
 }
 

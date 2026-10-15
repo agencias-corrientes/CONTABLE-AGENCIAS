@@ -45,13 +45,13 @@ export function TicketClosureReceipt({data,compact=false,editable=false,onChange
   else update({...data,[section]:value} as TicketClosureData);
  };
  const time=(key:"printedAt"|"openedAt"|"closedAt",value:string)=>update({...data,[key]:dtParse(value)});
- const visiblePeriodNumber = (data.periodNumber && /^\d{7}$/.test(data.periodNumber.replace(/\s+/g, "")) ? data.periodNumber.replace(/\s+/g, "") : null) || extractTicketPeriodNumber(data.rawText) || "";
+ const visiblePeriodNumber = (data.periodNumber && /^\d{7}$/.test(data.periodNumber.replace(/\s+/g, "")) ? data.periodNumber.replace(/\s+/g, "") : null) || "";
  const sales=[data.quiniela.valids.amount,data.quinielaAlToque.valids.amount,...data.otherGames.map(g=>g.amount)];
  const salesOk=data.generalTotal.amount!==null&&sales.every(v=>v!==null)?Math.round(sales.reduce<number>((s,v)=>s+(v??0),0)*100)===Math.round(data.generalTotal.amount*100):false;
  const prizes=[data.quiniela.prizesPaid.amount,data.quinielaAlToque.prizesPaid.amount,data.otherGamesPrizes.amount];
  const prizesOk=data.totalPrizes.amount!==null&&prizes.every(v=>v!==null)?Math.round(prizes.reduce<number>((s,v)=>s+(v??0),0)*100)===Math.round(data.totalPrizes.amount*100):false;
  return <section className={"ticket-closure-receipt"+(compact?" is-compact":"")+(editable?" is-editable":"")} aria-label="Detalle completo del ticket de fin de jornada">
-  <header className="ticket-closure-title"><span>{editable?"DATOS EDITABLES LEÍDOS DE LA FOTO":"COMPROBANTE OFICIAL · LECTURA AUTOMÁTICA"}</span><h3>{data.header||"FIN DE JORNADA"}</h3>{editable&&<p>Editá cualquier cantidad o importe. Solo los renglones Válidos se suman a las ventas; premios y totales quedan separados.</p>}</header>
+  <header className="ticket-closure-title"><span>{editable?(data.rawText?"DATOS EDITABLES LEÍDOS DE LA FOTO":"CARGA MANUAL FIN DE JORNADA"):"COMPROBANTE OFICIAL · LECTURA AUTOMÁTICA"}</span><h3>{data.header||"FIN DE JORNADA"}</h3>{editable&&<p>Editá cualquier cantidad o importe. Solo los renglones Válidos se suman a las ventas; premios y totales quedan separados.</p>}</header>
   <div className="ticket-closure-identifiers">
    <div className="ticket-receipt-code-row">
     <TextField label="AG" value={data.agencyCode} editable={editable} onChange={v=>update({...data,agencyCode:v||null})}/>
