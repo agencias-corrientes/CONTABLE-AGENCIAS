@@ -241,14 +241,17 @@ type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
 >>;
 
 const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
-  codes:       {left:0.041,right:0.934,top:0.259,bottom:0.289,scale:3,contrast:1.8},
-  agencyCode:  {left:0.087,right:0.366,top:0.266,bottom:0.290,scale:5,contrast:2.0},
-  subagentCode:{left:0.490,right:0.656,top:0.266,bottom:0.288,scale:3,contrast:1.4},
-  machineCode: {left:0.772,right:0.880,top:0.266,bottom:0.290,scale:5,contrast:2.0},
-  address:     {left:0.041,right:0.502,top:0.288,bottom:0.311,scale:3,contrast:1.8},
-  terminalId:  {left:0.393,right:0.592,top:0.307,bottom:0.329,scale:3,contrast:2.0},
-  printedAt:   {left:0.041,right:0.951,top:0.322,bottom:0.349,scale:3,contrast:1.8},
-  periodNumber:{left:0.032,right:0.999,top:0.869,bottom:0.919,scale:5,contrast:2.2},
+  // El renglón AG / SUBAG / MAQ se divide en zonas físicas independientes.
+  // Las zonas incluyen el valor y parte de su etiqueta, pero no el valor vecino.
+  codes:       {left:0.035,right:0.950,top:0.258,bottom:0.294,scale:4,contrast:1.7},
+  agencyCode:  {left:0.050,right:0.315,top:0.263,bottom:0.293,scale:6,contrast:2.0},
+  subagentCode:{left:0.365,right:0.645,top:0.263,bottom:0.293,scale:6,contrast:2.0},
+  machineCode: {left:0.665,right:0.910,top:0.263,bottom:0.293,scale:6,contrast:2.0},
+  address:     {left:0.035,right:0.590,top:0.289,bottom:0.318,scale:4,contrast:1.9},
+  terminalId:  {left:0.320,right:0.690,top:0.303,bottom:0.335,scale:5,contrast:2.0},
+  printedAt:   {left:0.035,right:0.960,top:0.319,bottom:0.354,scale:4,contrast:1.8},
+  // Período es una única línea al pie del comprobante; evitar capturar ABIERTO/CERRADO.
+  periodNumber:{left:0.045,right:0.780,top:0.882,bottom:0.911,scale:7,contrast:2.0},
 };
 
 function longestBrightRun(scores:number[],threshold:number,from:number,to:number) {
@@ -656,15 +659,18 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
           const read7 = readFocusedCodes(codesLine7,agencyDigits,machineDigits);
           const read6 = readFocusedCodes(codesLine6,agencyDigits,machineDigits);
-          const focusedSubagent = [read7.subagentCode,read6.subagentCode].filter((value): value is string => Boolean(value)).sort((a,b)=>b.length-a.length)[0] ?? null;
+          const agencyOnly = readFocusedCodes(await worker.recognize(crops.agencyCode).then(r=>r.data.text??""),"","");
+          const subagentOnly = readFocusedCodes(await worker.recognize(crops.subagentCode).then(r=>r.data.text??""),"","");
+          const machineOnly = readFocusedCodes(await worker.recognize(crops.machineCode).then(r=>r.data.text??""),"","");
+          const focusedSubagent = subagentOnly.subagentCode ?? [read7.subagentCode,read6.subagentCode].filter((value): value is string => Boolean(value)).sort((a,b)=>b.length-a.length)[0] ?? null;
           const focusedPeriod = readFocusedPeriodNumber([periodDigits7,periodDigits8,periodDigits13]);
           const focusedTerminal = readFocusedDigitValue([terminalDigits7,terminalDigits6],4);
           const focusedPrint = readFocusedPrintedAt([printedLine6,printedLine7]);
           const focusedAddress = readFocusedAddress([addressLine6,addressLine7],null);
           focusedClosureMetadata = {
-            agencyCode:read7.agencyCode??read6.agencyCode??undefined,
+            agencyCode:agencyOnly.agencyCode??read7.agencyCode??read6.agencyCode??undefined,
             subagentCode:focusedSubagent??undefined,
-            machineCode:read7.machineCode??read6.machineCode??undefined,
+            machineCode:machineOnly.machineCode??read7.machineCode??read6.machineCode??undefined,
             address:focusedAddress??undefined,
             terminalId:focusedTerminal??undefined,
             printedAt:focusedPrint??undefined,
