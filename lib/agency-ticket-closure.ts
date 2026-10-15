@@ -104,10 +104,12 @@ function parseDateTime(rawLine: string | null) {
 }
 
 function readShortCode(value: string): string | null {
-  const match = value.match(/[0-9OQIL|!](?:[\s.-]*[0-9OQIL|!]){0,7}/);
-  if (!match) return null;
-  const digits = match[0].replace(/[OQ]/g, "0").replace(/[IL|!]/g, "1").replace(/\D/g, "");
-  return /^\d{1,8}$/.test(digits) ? digits : null;
+  // No corregir letras parecidas a números: eso inventa códigos no verificables.
+  // Solo aceptar dígitos explícitos del OCR.
+  const match = value.match(/(?:^|\\D)(\\d(?:[\\s.-]*\\d){0,7})(?=\\D|$)/);
+  if (!match?.[1]) return null;
+  const digits = match[1].replace(/\\D/g, "");
+  return /^\\d{1,8}$/.test(digits) ? digits : null;
 }
 
 function readNumberAfterLabel(value: string, labelPattern: RegExp): string | null {
@@ -144,45 +146,18 @@ function readCodeAfterLabel(lines: string[], labelPattern: RegExp, skipPattern?:
  * Devuelve texto para conservar ceros iniciales; no confundirlo con la fecha.
  */
 export function extractTicketPeriodNumber(text: string): string | null {
-  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  const normalizedLines = lines.map(normalizeTicketText);
-  // El período solo se lee junto a su rótulo. No buscar números en el resto del cupón:
-  // eso provocaba que agencia, fechas, importes u otros códigos terminaran como período.
-  const periodLabelPattern = /P\s*E\s*R\s*[I1L]\s*[O0Q]?\s*D\s*[O0Q]/i;
-  const normalizeDigits = (value: string) =>
-    value.replace(/[OQ]/g, "0").replace(/[IL|!]/g, "1").replace(/[^0-9]/g, "");
-
-  const candidateFrom = (value: string): string | null => {
-    let fragment = normalizeTicketText(value)
-      .replace(/\b(?:NRO|NUM(?:ERO)?|NO|N[º°.]|N|#)\b/gi, " ")
-      .replace(/\b\d{1,2}\s+DE[L]?\s+\d{1,2}\s+DE[L]?\s+\d{2,4}\b/gi, " ")
-      .replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g, " ")
-      .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, " ");
-    // Solo dígitos y separadores de impresión; jamás incorporar palabras o renglones vecinos.
-    const match = fragment.match(/(?:^|[^A-Z])([0-9OQIL|!]+(?:[ .:_-]+[0-9OQIL|!]+){0,8})(?=$|[^A-Z])/i);
-    if (!match?.[1]) return null;
-    const digits = normalizeDigits(match[1]);
-    return /^\d{4,10}$/.test(digits) ? digits : null;
-  };
-
-  for (let i = 0; i < normalizedLines.length; i += 1) {
-    const line = normalizedLines[i] ?? "";
-    const label = periodLabelPattern.exec(line);
-    if (!label || label.index === undefined) continue;
-    const suffix = line.slice(label.index + label[0].length).replace(/^\s*(?:NRO|N[º°.]|NUMERO|NO)?\s*/i, "");
-    const direct = candidateFrom(suffix);
-    if (direct) return direct;
-
-    // Si el OCR separó el número en renglones, aceptar solo renglones vecinos compuestos
-    // exclusivamente por dígitos/separadores; nunca atravesar texto de otro campo.
-    let pieces = "";
-    for (let j = i + 1; j < Math.min(normalizedLines.length, i + 4); j += 1) {
-      const next = normalizedLines[j] ?? "";
-      if (!next || !/^[0-9OQIL|! .:_-]+$/.test(next)) break;
-      pieces += " " + next;
-      const digits = normalizeDigits(pieces);
-      if (/^\d{4,10}$/.test(digits)) return digits;
-    }
+  // Aceptar el período únicamente si el número aparece explícitamente junto al rótulo.
+  // No unir renglones ni convertir letras en dígitos: eso puede inventar otro código.
+  const lines = text.split(/\\r?\\n/).map((line) => line.trim()).filter(Boolean);
+  const label = /\\bPER[IÍ1]ODO\\b\\s*(?:(?:NRO|NUM(?:ERO)?|N[º°.]?|NO|#)\\s*[:.#º°-]?\\s*)?/i;
+  for (const rawLine of lines) {
+    const normalized = normalizeTicketText(rawLine);
+    const match = label.exec(normalized);
+    if (!match || match.index === undefined) continue;
+    const suffix = normalized.slice(match.index + match[0].length).trim();
+    // Si el OCR mezcla otros caracteres o campos, dejar vacío para revisión.
+    const token = suffix.match(/^(\\d{1,10})$/)?.[1] ?? null;
+    if (token) return token;
   }
   return null;
 }
