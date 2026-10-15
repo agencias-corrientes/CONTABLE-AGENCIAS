@@ -241,17 +241,14 @@ type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
 >>;
 
 const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
-  // El renglón AG / SUBAG / MAQ se divide en zonas físicas independientes.
-  // Las zonas incluyen el valor y parte de su etiqueta, pero no el valor vecino.
-  codes:       {left:0.035,right:0.950,top:0.258,bottom:0.294,scale:4,contrast:1.7},
-  agencyCode:  {left:0.050,right:0.315,top:0.263,bottom:0.293,scale:6,contrast:2.0},
-  subagentCode:{left:0.365,right:0.645,top:0.263,bottom:0.293,scale:6,contrast:2.0},
-  machineCode: {left:0.665,right:0.910,top:0.263,bottom:0.293,scale:6,contrast:2.0},
-  address:     {left:0.035,right:0.590,top:0.289,bottom:0.318,scale:4,contrast:1.9},
-  terminalId:  {left:0.320,right:0.690,top:0.303,bottom:0.335,scale:5,contrast:2.0},
-  printedAt:   {left:0.035,right:0.960,top:0.319,bottom:0.354,scale:4,contrast:1.8},
-  // Período es una única línea al pie del comprobante; evitar capturar ABIERTO/CERRADO.
-  periodNumber:{left:0.045,right:0.780,top:0.882,bottom:0.911,scale:7,contrast:2.0},
+  codes:       {left:0.030,right:0.955,top:0.263,bottom:0.292,scale:5,contrast:1.8},
+  agencyCode:  {left:0.030,right:0.365,top:0.263,bottom:0.292,scale:6,contrast:1.8},
+  subagentCode:{left:0.350,right:0.675,top:0.263,bottom:0.292,scale:6,contrast:1.8},
+  machineCode: {left:0.640,right:0.920,top:0.263,bottom:0.292,scale:6,contrast:1.8},
+  address:     {left:0.040,right:0.555,top:0.285,bottom:0.307,scale:5,contrast:1.8},
+  terminalId:  {left:0.040,right:0.610,top:0.307,bottom:0.324,scale:6,contrast:1.9},
+  printedAt:   {left:0.035,right:0.965,top:0.324,bottom:0.347,scale:5,contrast:1.8},
+  periodNumber:{left:0.045,right:0.790,top:0.888,bottom:0.911,scale:7,contrast:1.8},
 };
 
 function longestBrightRun(scores:number[],threshold:number,from:number,to:number) {
@@ -359,11 +356,11 @@ async function makeFocusedReceiptCrops(file:File) {
 
 function ocrDigitSequence(value:string,mapBoxedZero=false):string {
   let text=normalize(value).toUpperCase().replace(/\s+/g,"").replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
-  if(mapBoxedZero)text=text.replace(/[BD]/g,"0").replace(/Z/g,"2");
+  if(mapBoxedZero)text=text.replace(/[BDGCEA]/g,"0").replace(/Z/g,"2");
   return text.replace(/\D/g,"");
 }
 function numericSequenceInSegment(value:string):string {
-  const groups=value.toUpperCase().match(/[0-9OQILZBD](?:[\s.:_-]*[0-9OQILZBD]){0,7}/g)??[];
+  const groups=value.toUpperCase().match(/[0-9OQILZBDGCEA](?:[\s.:_-]*[0-9OQILZBDGCEA]){0,7}/g)??[];
   return groups.map((s)=>ocrDigitSequence(s,true)).filter((s)=>s.length>0&&s.length<=8).sort((a,b)=>b.length-a.length)[0]??"";
 }
 function labelledNumberSegment(line:string,startLabels:RegExp[],stopLabels:RegExp[]):string {
@@ -378,7 +375,7 @@ function labelledNumberSegment(line:string,startLabels:RegExp[],stopLabels:RegEx
 function readFocusedCodes(codesText:string,agencyDigitsText:string,machineDigitsText:string) {
   const agencyLabels=[/\bAGENCIA\s*[:.]/i,/\bAG\s*[:.]/i,/\bAB\s*[:.]/i,/\bA[BG86]\s*[:.]/i];
   const subagentLabels=[/\bSUBAG(?:ENTE)?\s*[:.]/i,/\bSUBA?G\s*[:.]/i,/\bSUA\s*[:.]/i,/\bSIEAG\s*[:.]/i,/\bSILAG\s*[:.]/i,/\bS[UI1]B?A?G\s*[:.]/i,/\bS[UI1]E?A?G\s*[:.]/i];
-  const machineLabels=[/\bMAQUINA\s*[:.]/i,/\bMAQ\s*[:.]/i,/\bM0+\s*[:.]/i,/\bMAO\s*[:.]/i,/\bM[A4]Q\s*[:.]/i];
+  const machineLabels=[/\bMAQUINA\s*[:.]/i,/\bMAQ\s*[:.]/i,/\bM0+\s*[:.]/i,/\bMAO\s*[:.]/i,/\bM[A4]Q\s*[:.]/i,/\bH[A4][VD]\s*[:.]/i,/\bN[A4]D\s*[:.]/i];
   let agency=numericSequenceInSegment(labelledNumberSegment(codesText,agencyLabels,[...subagentLabels,...machineLabels]));
   const subagent=numericSequenceInSegment(labelledNumberSegment(codesText,subagentLabels,machineLabels));
   let machine=numericSequenceInSegment(labelledNumberSegment(codesText,machineLabels,[]));
@@ -409,11 +406,30 @@ function readFocusedPrintedAt(values:string[]):TicketClosureData["printedAt"]|nu
   }
   return null;
 }
+function normalizePrintedPeriodGlyphs(raw:string):string|null {
+  const token=raw.toUpperCase().replace(/[^0-9A-Z|!]/g,"");
+  if(token.length<6||token.length>7)return null;
+  const hasOcrLetters=/[A-Z|!]/.test(token);
+  const digits=[...token].map((char,index)=>{
+    if(/[OQBDGCEA]/.test(char))return "0";
+    if(/[IL|!]/.test(char))return "1";
+    if(char==="Z")return "2";
+    if(char==="8"&&index===0&&hasOcrLetters)return "0";
+    return /^[0-9]$/.test(char)?char:"";
+  }).join("");
+  return /^\d{6,7}$/.test(digits)?digits.padStart(7,"0"):null;
+}
 function readFocusedPeriodNumber(values:string[]):string|null {
-  const candidates=values.map((value)=>ocrDigitSequence(value)).filter((value)=>/^\d{7}$/.test(value));
+  const candidates:string[]=[];
+  for(const raw of values){
+    const labelled=extractTicketPeriodNumber(raw);
+    if(labelled)candidates.push(labelled);
+    const tokens=raw.toUpperCase().match(/(?<![0-9A-Z|!])[0-9OQIL|!BDGCEAZ]{6,7}(?![0-9A-Z|!)/g)??[];
+    for(const token of tokens){const candidate=normalizePrintedPeriodGlyphs(token);if(candidate)candidates.push(candidate);}
+  }
   if(!candidates.length)return null;
   const counts=new Map<string,number>();for(const candidate of candidates)counts.set(candidate,(counts.get(candidate)??0)+1);
-  return candidates.sort((a,b)=>(b.length+(counts.get(b)??0)*.2)-(a.length+(counts.get(a)??0)*.2))[0]??null;
+  return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0))[0]??null;
 }
 function readFocusedDigitValue(values:string[],minimumLength:number):string|null {
   const candidates=values.map((value)=>ocrDigitSequence(value)).filter((value)=>value.length>=minimumLength&&value.length<=10);
@@ -609,7 +625,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           setProgressPercent(72);
           const crops = await makeFocusedReceiptCrops(file);
           const setOcrMode = async (mode:number, whitelist?:string) => {
-            await worker.setParameters({tessedit_pageseg_mode:mode,...(whitelist?{tessedit_char_whitelist:whitelist}:{})} as any);
+            await worker.setParameters({tessedit_pageseg_mode:mode,tessedit_char_whitelist:whitelist ?? ""} as any);
           };
 
           // Leer cada franja por separado evita que los datos identificatorios se pierdan
@@ -644,16 +660,17 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
           const read7 = readFocusedCodes(codesLine7,agencyDigits,machineDigits);
           const read6 = readFocusedCodes(codesLine6,agencyDigits,machineDigits);
+          // Restablecer el modo de texto después de las lecturas numéricas del período.
+          await setOcrMode(6);
           const agencyCropText = await worker.recognize(crops.agencyCode).then(r=>r.data.text??"");
           const subagentCropText = await worker.recognize(crops.subagentCode).then(r=>r.data.text??"");
           const machineCropText = await worker.recognize(crops.machineCode).then(r=>r.data.text??"");
           const agencyCropDigits = readFocusedDigitValue([agencyCropText],3);
-          const subagentCropDigits = readFocusedDigitValue([subagentCropText],2);
-          const machineCropDigits = readFocusedDigitValue([machineCropText],1);
           const agencyOnly = {agencyCode:agencyCropDigits&&agencyCropDigits.length<=4?agencyCropDigits.padStart(4,"0"):null};
-          const subagentOnly = {subagentCode:subagentCropDigits&&subagentCropDigits.length<=4?subagentCropDigits:null};
-          const machineOnly = {machineCode:machineCropDigits&&machineCropDigits.length<=2?machineCropDigits.padStart(2,"0"):null};
-          const focusedSubagent = subagentOnly.subagentCode ?? [read7.subagentCode,read6.subagentCode].filter((value): value is string => Boolean(value)).sort((a,b)=>b.length-a.length)[0] ?? null;
+          // No desnudar a dígitos el campo SUBAG: 1BZ puede representar el impreso 102.
+          const subagentOnly = readFocusedCodes(subagentCropText,"","").subagentCode;
+          const machineOnly = readFocusedCodes(machineCropText,"","").machineCode;
+          const focusedSubagent = subagentOnly ?? read7.subagentCode ?? read6.subagentCode ?? null;
           const focusedPeriod = readFocusedPeriodNumber([periodDigits7,periodDigits8,periodDigits13]);
           const focusedTerminal = readFocusedDigitValue([terminalDigits7,terminalDigits6],4);
           const focusedPrint = readFocusedPrintedAt([printedLine6,printedLine7]);

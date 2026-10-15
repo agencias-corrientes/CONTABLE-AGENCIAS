@@ -143,50 +143,56 @@ function readCodeAfterLabel(lines: string[], labelPattern: RegExp, skipPattern?:
  * incluso cuando el OCR separa el rótulo o los dígitos en varias líneas.
  * Devuelve texto para conservar ceros iniciales; no confundirlo con la fecha.
  */
+export function normalizePrintedPeriodGlyphs(raw: string): string | null {
+  const token = raw.toUpperCase().replace(/[^0-9A-Z|!]/g, "");
+  if (token.length < 6 || token.length > 7) return null;
+  const hasOcrLetters = /[A-Z|!]/.test(token);
+  const digits = [...token].map((char, index) => {
+    if (/[OQBDGCEA]/.test(char)) return "0";
+    if (/[IL|!]/.test(char)) return "1";
+    if (char === "Z") return "2";
+    if (char === "8" && index === 0 && hasOcrLetters) return "0";
+    return /^[0-9]$/.test(char) ? char : "";
+  }).join("");
+  if (!/^\d{6,7}$/.test(digits)) return null;
+  return digits.padStart(7, "0");
+}
+
+function periodGlyphCandidates(fragment: string): string[] {
+  const cleaned = fragment
+    .replace(/^\s*(?:(?:NRO|NUM(?:ERO)?|NO|N[º°.]?|#)\s*[:.#º°-]?\s*)+/i, " ")
+    .replace(/\b(?:NRO|NUM(?:ERO)?|NO|N[º°.]?|#)\b/gi, " ")
+    .replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g, " ")
+    .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, " ");
+  const pattern = /(?<![0-9A-Z|!])([0-9OQIL|!BDGCEAZ](?:[\s.:_-]*[0-9OQIL|!BDGCEAZ]){5,6})(?![0-9A-Z|!])/gi;
+  return [...cleaned.matchAll(pattern)]
+    .map((match) => normalizePrintedPeriodGlyphs(match[1] ?? ""))
+    .filter((value): value is string => Boolean(value));
+}
+
 export function extractTicketPeriodNumber(text: string): string | null {
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const normalizedLines = lines.map(normalizeTicketText);
-  // El período solo se lee junto a su rótulo. No buscar números en el resto del cupón:
-  // eso provocaba que agencia, fechas, importes u otros códigos terminaran como período.
-  const periodLabelPattern = /P\s*E\s*R\s*[I1L]\s*[O0Q]?\s*D\s*[O0Q]/i;
-  const normalizeDigits = (value: string) =>
-    value.replace(/[OQ]/g, "0").replace(/[IL|!]/g, "1").replace(/[^0-9]/g, "");
+  const periodLabelPattern = /P\s*E?\s*R\s*[I1LY]\s*[O0Q8G]?\s*D\s*[O0Q8G]?/i;
 
-  const candidateFrom = (value: string): string | null => {
-    let fragment = normalizeTicketText(value)
-      .replace(/\b(?:NRO|NUM(?:ERO)?|NO|N[º°.]|N|#)\b/gi, " ")
-      .replace(/\b\d{1,2}\s+DE[L]?\s+\d{1,2}\s+DE[L]?\s+\d{2,4}\b/gi, " ")
-      .replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g, " ")
-      .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, " ");
-    // Solo dígitos y separadores de impresión; jamás incorporar palabras o renglones vecinos.
-    const match = fragment.match(/(?:^|[^A-Z])([0-9OQIL|!]+(?:[ .:_-]+[0-9OQIL|!]+){0,8})(?=$|[^A-Z])/i);
-    if (!match?.[1]) return null;
-    const digits = normalizeDigits(match[1]);
-    return /^\d{7}$/.test(digits) ? digits : null;
-  };
-
-  for (let i = 0; i < normalizedLines.length; i += 1) {
-    const line = normalizedLines[i] ?? "";
+  for (let index = 0; index < normalizedLines.length; index += 1) {
+    const line = normalizedLines[index] ?? "";
     const label = periodLabelPattern.exec(line);
     if (!label || label.index === undefined) continue;
-    const suffix = line.slice(label.index + label[0].length).replace(/^\s*(?:NRO|N[º°.]|NUMERO|NO)?\s*/i, "");
-    const direct = candidateFrom(suffix);
+    const suffix = line.slice(label.index + label[0].length);
+    const direct = periodGlyphCandidates(suffix)[0];
     if (direct) return direct;
-
-    // Si el OCR separó el número en renglones, aceptar solo renglones vecinos compuestos
-    // exclusivamente por dígitos/separadores; nunca atravesar texto de otro campo.
-    let pieces = "";
-    for (let j = i + 1; j < Math.min(normalizedLines.length, i + 4); j += 1) {
-      const next = normalizedLines[j] ?? "";
-      if (!next || !/^[0-9OQIL|! .:_-]+$/.test(next)) break;
-      pieces += " " + next;
-      const digits = normalizeDigits(pieces);
-      if (/^\d{7}$/.test(digits)) return digits;
+    let context = "";
+    for (let next = index + 1; next < Math.min(normalizedLines.length, index + 4); next += 1) {
+      const following = normalizedLines[next] ?? "";
+      if (!following || !/^[0-9OQIL|!BDGCEAZ .:_-]+$/i.test(following)) break;
+      context += " " + following;
+      const candidate = periodGlyphCandidates(context)[0];
+      if (candidate) return candidate;
     }
   }
   return null;
 }
-
 export function parseTicketClosure(text: string): TicketClosureData | null {
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   if (!lines.length) return null;
