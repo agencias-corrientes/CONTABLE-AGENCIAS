@@ -285,7 +285,7 @@ function structuredQr(payload: string) {
   }
 }
 
-type ReceiptFocusRegion = "codes" | "agencyCode" | "subagentCode" | "machineCode" | "address" | "terminalId" | "printedAt" | "periodNumber" | "periodLabelled" | "periodLabelledTight" | "periodTail";
+type ReceiptFocusRegion = "codes" | "agencyCode" | "subagentCode" | "machineCode" | "machineDigit0" | "machineDigit1" | "address" | "terminalId" | "printedAt" | "periodNumber" | "periodLabelled" | "periodLabelledTight" | "periodTail" | "periodGlyph1" | "periodGlyph2" | "periodGlyph3" | "periodGlyph4" | "periodGlyph5" | "periodGlyph6" | "periodGlyph7";
 type ReceiptFocusSpec = { left:number; right:number; top:number; bottom:number; scale:number; contrast:number };
 type ReceiptPaperBounds = { left:number; top:number; width:number; height:number };
 type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
@@ -297,20 +297,27 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   agencyCode:  {left:0.140,right:0.365,top:0.263,bottom:0.292,scale:6,contrast:1.8},
   // Solo el valor impreso: el rótulo SUBAG no puede transformarse en cifras.
   subagentCode:{left:0.490,right:0.665,top:0.263,bottom:0.292,scale:9,contrast:1.7},
-  // Solo los dígitos de MAQ:01, a la derecha del rótulo.
-  machineCode: {left:0.735,right:0.885,top:0.263,bottom:0.292,scale:8,contrast:1.7},
+  // MAQ: lectura de los dos glifos individuales; sin incluir los puntos del rótulo.
+  machineCode: {left:0.775,right:0.879,top:0.263,bottom:0.292,scale:8,contrast:1.5},
+  machineDigit0:{left:0.778,right:0.827,top:0.263,bottom:0.292,scale:10,contrast:1.4},
+  machineDigit1:{left:0.828,right:0.875,top:0.263,bottom:0.292,scale:10,contrast:1.4},
   address:     {left:0.040,right:0.555,top:0.285,bottom:0.307,scale:5,contrast:1.8},
   // La máquina real está en su propia línea; no incluir la dirección que termina en 410.
   terminalId:  {left:0.362,right:0.534,top:0.3075,bottom:0.3295,scale:6,contrast:1.6},
   printedAt:   {left:0.035,right:0.965,top:0.324,bottom:0.347,scale:5,contrast:1.8},
-  // Período N.º: aislar los siete dígitos, sin las letras "Periodo nro".
-  periodNumber:{left:0.375,right:0.800,top:0.884,bottom:0.916,scale:10,contrast:1.9},
-  // Leer etiqueta y número juntos; el recorte numérico solo pierde los ceros térmicos.
-  periodLabelled:{left:0.022,right:0.830,top:0.880,bottom:0.914,scale:3,contrast:1.0},
-  // Recorte estrecho del renglón «Periodo nro», sin los renglones vecinos.
-  periodLabelledTight:{left:0.022,right:0.830,top:0.886,bottom:0.910,scale:3,contrast:1.0},
-  // Lectura independiente de las dos últimas cifras; se usa para validar el número completo.
-  periodTail:  {left:0.625,right:0.805,top:0.884,bottom:0.916,scale:11,contrast:2.0},
+  // Recortes estrechos: excluir el renglón ABIERTO que está justo debajo del período.
+  periodNumber:{left:0.375,right:0.800,top:0.885,bottom:0.909,scale:10,contrast:1.5},
+  periodLabelled:{left:0.022,right:0.830,top:0.885,bottom:0.909,scale:3,contrast:1.0},
+  periodLabelledTight:{left:0.022,right:0.830,top:0.887,bottom:0.908,scale:3,contrast:1.0},
+  periodTail:  {left:0.625,right:0.805,top:0.885,bottom:0.909,scale:11,contrast:1.5},
+  // El número del cupón tiene siete casilleros de ancho fijo; se leen glifo por glifo.
+  periodGlyph1:{left:0.375,right:0.414,top:0.885,bottom:0.909,scale:10,contrast:1.4},
+  periodGlyph2:{left:0.425,right:0.463,top:0.885,bottom:0.909,scale:10,contrast:1.4},
+  periodGlyph3:{left:0.473,right:0.513,top:0.885,bottom:0.909,scale:10,contrast:1.4},
+  periodGlyph4:{left:0.523,right:0.561,top:0.885,bottom:0.909,scale:10,contrast:1.4},
+  periodGlyph5:{left:0.571,right:0.610,top:0.885,bottom:0.909,scale:10,contrast:1.4},
+  periodGlyph6:{left:0.622,right:0.659,top:0.885,bottom:0.909,scale:10,contrast:1.4},
+  periodGlyph7:{left:0.670,right:0.707,top:0.885,bottom:0.909,scale:10,contrast:1.4},
 };
 
 function longestBrightRun(scores:number[],threshold:number,from:number,to:number) {
@@ -379,7 +386,7 @@ function makeReceiptFocusCrop(bitmap:ImageBitmap,bounds:ReceiptPaperBounds,regio
   }
   // En los números del período, el papel térmico borroso convierte los ceros en bloques.
   // Un enfoque suave recupera los bordes sin binarizar ni borrar los trazos finos.
-  if(region==="periodNumber"||region==="agencyCode"||region==="subagentCode"||region==="machineCode"){
+  if(region==="periodNumber"||region.startsWith("periodGlyph")||region==="machineDigit0"||region==="machineDigit1"||region==="agencyCode"||region==="subagentCode"||region==="machineCode"){
     const original=new Uint8ClampedArray(data);
     const width=canvas.width,height=canvas.height;
     for(let y=1;y<height-1;y+=1){
@@ -425,6 +432,8 @@ async function makeFocusedReceiptCrops(file:File) {
       agencyCode:makeReceiptFocusCrop(bitmap,bounds,"agencyCode"),
       subagentCode:makeReceiptFocusCrop(bitmap,bounds,"subagentCode"),
       machineCode:makeReceiptFocusCrop(bitmap,bounds,"machineCode"),
+      machineDigit0:makeReceiptFocusCrop(bitmap,bounds,"machineDigit0"),
+      machineDigit1:makeReceiptFocusCrop(bitmap,bounds,"machineDigit1"),
       address:makeReceiptFocusCrop(bitmap,bounds,"address"),
       terminalId:makeReceiptFocusCrop(bitmap,bounds,"terminalId"),
       printedAt:makeReceiptFocusCrop(bitmap,bounds,"printedAt"),
@@ -432,6 +441,15 @@ async function makeFocusedReceiptCrops(file:File) {
       periodLabelled:makeReceiptFocusCrop(bitmap,bounds,"periodLabelled"),
       periodLabelledTight:makeReceiptFocusCrop(bitmap,bounds,"periodLabelledTight"),
       periodTail:makeReceiptFocusCrop(bitmap,bounds,"periodTail"),
+      periodGlyphs:[
+        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph1"),
+        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph2"),
+        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph3"),
+        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph4"),
+        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph5"),
+        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph6"),
+        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph7"),
+      ],
     };
     return {
       ...crops,
@@ -562,6 +580,57 @@ function readLabelledPeriodNumber(values:string[],confirmedTail:string|null=null
   if(!ranked[0]||ranked[0][1]<2||(ranked[1]&&ranked[1][1]===ranked[0][1]))return null;
   return ranked[0][0];
 }
+function looksLikeZeroGlyph(canvas: HTMLCanvasElement): boolean {
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return false;
+  const { width, height, data } = context.getImageData(0, 0, canvas.width, canvas.height);
+  const xMargin = Math.max(1, Math.floor(width * 0.05));
+  const yStart = Math.floor(height * 0.10);
+  const yEnd = Math.ceil(height * 0.90);
+  const edgeWidth = Math.max(2, Math.floor(width * 0.30));
+  const centerStart = Math.floor(width * 0.40);
+  const centerEnd = Math.ceil(width * 0.60);
+  let leftDark = 0, rightDark = 0, centerDark = 0, rowCount = 0, bothEdgeRows = 0;
+  for (let y = yStart; y < yEnd; y += 1) {
+    let leftRow = 0, rightRow = 0, centerRow = 0;
+    for (let x = xMargin; x < Math.min(width, xMargin + edgeWidth); x += 1) {
+      const i = (y * width + x) * 4;
+      if (0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]! < 180) leftRow += 1;
+    }
+    for (let x = Math.max(0, width - xMargin - edgeWidth); x < width - xMargin; x += 1) {
+      const i = (y * width + x) * 4;
+      if (0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]! < 180) rightRow += 1;
+    }
+    for (let x = centerStart; x < centerEnd; x += 1) {
+      const i = (y * width + x) * 4;
+      if (0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]! < 180) centerRow += 1;
+    }
+    const leftFraction = leftRow / edgeWidth;
+    const rightFraction = rightRow / edgeWidth;
+    const centerFraction = centerRow / Math.max(1, centerEnd - centerStart);
+    leftDark += leftFraction; rightDark += rightFraction; centerDark += centerFraction; rowCount += 1;
+    if (leftFraction > 0.16 && rightFraction > 0.16) bothEdgeRows += 1;
+  }
+  if (!rowCount) return false;
+  const leftMean = leftDark / rowCount;
+  const rightMean = rightDark / rowCount;
+  const centerMean = centerDark / rowCount;
+  const closedSideRows = bothEdgeRows / rowCount;
+  return leftMean > 0.19 && rightMean > 0.19 && closedSideRows > 0.38 &&
+    centerMean < Math.min(leftMean, rightMean) * 0.72;
+}
+
+function readSingleDigitGlyph(raw: string): string | null {
+  const token = raw.toUpperCase().replace(/[^0-9OQIL|!Z]/g, "");
+  if (token.length !== 1) return null;
+  const char = token[0]!;
+  if (/^[0-9]$/.test(char)) return char;
+  if (/[OQ]/.test(char)) return "0";
+  if (/[IL|!]/.test(char)) return "1";
+  if (char === "Z") return "2";
+  return null;
+}
+
 function readFocusedPeriodNumber(labelledValues:string[],digitValues:string[],confirmedTail:string|null):string|null {
   const periodLabel=/P\s*E?\s*R\s*[I1LYN]?\s*[O0Q8GHN]?\s*D/i;
   const labelWasRead=labelledValues.some((value)=>periodLabel.test(value.toUpperCase()));
@@ -880,15 +949,28 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const subagentCrop175 = (await worker.recognize(crops.subagentCodeThreshold175)).data.text ?? "";
           const focusedAgency = readFocusedAgencyCode([agencyCropRaw7,agencyCrop160,agencyCrop175,agencyCrop185,agencyCrop195])
             ?? codeRead7.agencyCode ?? codeRead6.agencyCode;
+          const validSubagentCode = (value:string|null|undefined) => value && /^\d{3}$/.test(value) ? value : null;
           const subagentFrom140 = readFocusedDigitValue([subagentCrop140],3,3);
-          const labelledSubagent = codeRead6.subagentCode && codeRead6.subagentCode === codeRead7.subagentCode
-            ? codeRead6.subagentCode
-            : null;
-          const oneLabelledSubagent = codeRead6.subagentCode ?? codeRead7.subagentCode;
-          const focusedSubagent = labelledSubagent ??
-            (oneLabelledSubagent && subagentFrom140 === oneLabelledSubagent ? oneLabelledSubagent : null) ??
-            (!oneLabelledSubagent ? readFocusedSubagentCode([subagentCropRaw7,subagentCrop140,subagentCrop160,subagentCrop170,subagentCrop175]) : null);
-          const focusedMachine = codeReadThreshold170.machineCode ?? codeRead7.machineCode ?? codeRead6.machineCode;
+          const subagentFrom160 = readFocusedDigitValue([subagentCrop160],3,3);
+          const labelled6 = validSubagentCode(codeRead6.subagentCode);
+          const labelled7 = validSubagentCode(codeRead7.subagentCode);
+          const labelledSubagent = labelled6 && labelled6 === labelled7 ? labelled6 : null;
+          const oneLabelledSubagent = labelled6 ?? labelled7;
+          const cropConsensusSubagent = readFocusedSubagentCode([subagentCropRaw7,subagentCrop140,subagentCrop160,subagentCrop170,subagentCrop175]);
+          const focusedSubagent = cropConsensusSubagent ??
+            (subagentFrom140 && subagentFrom140 === subagentFrom160 ? subagentFrom140 : null) ??
+            labelledSubagent ??
+            (oneLabelledSubagent && oneLabelledSubagent === subagentFrom140 ? oneLabelledSubagent : null);
+
+          await setOcrMode(10,digitWhitelist);
+          const machineTensIsZero = looksLikeZeroGlyph(crops.machineDigit0);
+          const machineTensRaw = machineTensIsZero ? "" : (await worker.recognize(crops.machineDigit0)).data.text ?? "";
+          const machineUnitsRaw = (await worker.recognize(crops.machineDigit1)).data.text ?? "";
+          const machineTens = machineTensIsZero ? "0" : readSingleDigitGlyph(machineTensRaw);
+          const machineUnits = readSingleDigitGlyph(machineUnitsRaw);
+          const isolatedMachine = machineTens && machineUnits ? machineTens + machineUnits : null;
+          const focusedMachine = isolatedMachine ?? readFocusedMachineCode([machineCropRaw7,machineCrop140,machineCrop160,machineCrop175,machineCrop185]) ??
+            codeReadThreshold170.machineCode ?? codeRead7.machineCode ?? codeRead6.machineCode;
 
           await setOcrMode(6);
           const addressLine = (await worker.recognize(crops.address)).data.text ?? "";
@@ -911,11 +993,40 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const periodTail140 = (await worker.recognize(crops.periodTailThreshold140)).data.text ?? "";
           const periodTail175 = (await worker.recognize(crops.periodTailThreshold175)).data.text ?? "";
           const focusedPeriodTail = readPeriodTail([periodTail140,periodTail175]);
-          const focusedPeriod = readFocusedPeriodNumber(
+          const periodLabelPattern = /P\s*E?\s*R\s*[I1LYN]?\s*[O0Q8GHN]?\s*D/i;
+          const periodLabelConfirmed = [recognizedText,periodLineWide160,periodLineTight160,periodLineWide170]
+            .some((value)=>periodLabelPattern.test(value.toUpperCase()));
+          const periodGlyphRaw: string[] = [];
+          const periodGlyphDigits: string[] = [];
+          await setOcrMode(10,digitWhitelist);
+          for (const glyph of crops.periodGlyphs) {
+            if (looksLikeZeroGlyph(glyph)) {
+              periodGlyphRaw.push("[cero por forma]");
+              periodGlyphDigits.push("0");
+              continue;
+            }
+            const firstRead = (await worker.recognize(glyph)).data.text ?? "";
+            let digit = readSingleDigitGlyph(firstRead);
+            let rawRead = firstRead;
+            if (!digit) {
+              await setOcrMode(13,digitWhitelist);
+              rawRead = (await worker.recognize(glyph)).data.text ?? "";
+              digit = readSingleDigitGlyph(rawRead);
+              await setOcrMode(10,digitWhitelist);
+            }
+            periodGlyphRaw.push(rawRead.trim());
+            periodGlyphDigits.push(digit ?? "");
+          }
+          const periodFromIndividualGlyphs = periodLabelConfirmed && periodGlyphDigits.length === 7 &&
+            periodGlyphDigits.every((value)=>/^\d$/.test(value))
+            ? periodGlyphDigits.join("")
+            : null;
+          const rejectedWholeNumberCandidate = readFocusedPeriodNumber(
             [periodLineWide160,periodLineTight160,periodLineWide170],
             [periodDigitsRaw,periodDigits140,periodDigits160,periodDigits170,periodDigits175],
             focusedPeriodTail
           );
+          const focusedPeriod = periodFromIndividualGlyphs;
           const focusedTerminal = readFocusedDigitValue([terminalLine],4,6);
           const focusedPrint = readFocusedPrintedAt([printedLine]);
           const focusedAddress = readFocusedAddress([addressLine],null);
@@ -945,6 +1056,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             "Período rotulado 160 ancho: " + periodLineWide160.trim(),
             "Período rotulado 160 ajustado: " + periodLineTight160.trim(),
             "Período rotulado 170: " + periodLineWide170.trim(),
+            "Período por glifo: " + periodGlyphDigits.join("") + " (OCR: " + periodGlyphRaw.join("|") + ")",
+            "Candidato OCR completo descartado: " + (rejectedWholeNumberCandidate ?? "sin lectura segura"),
           ].join("\n");
         }
       } finally {
