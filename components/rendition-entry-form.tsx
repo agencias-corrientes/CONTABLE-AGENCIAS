@@ -285,7 +285,7 @@ function structuredQr(payload: string) {
   }
 }
 
-type ReceiptFocusRegion = "codes" | "agencyCode" | "subagentCode" | "machineCode" | "address" | "terminalId" | "printedAt" | "periodNumber" | "periodLabelled" | "periodTail";
+type ReceiptFocusRegion = "codes" | "agencyCode" | "subagentCode" | "machineCode" | "address" | "terminalId" | "printedAt" | "periodNumber" | "periodLabelled" | "periodLabelledTight" | "periodTail";
 type ReceiptFocusSpec = { left:number; right:number; top:number; bottom:number; scale:number; contrast:number };
 type ReceiptPaperBounds = { left:number; top:number; width:number; height:number };
 type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
@@ -307,6 +307,8 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   periodNumber:{left:0.375,right:0.800,top:0.884,bottom:0.916,scale:10,contrast:1.9},
   // Leer etiqueta y número juntos; el recorte numérico solo pierde los ceros térmicos.
   periodLabelled:{left:0.022,right:0.830,top:0.878,bottom:0.922,scale:3,contrast:1.0},
+  // Recorte estrecho del renglón «Periodo nro», sin los renglones vecinos.
+  periodLabelledTight:{left:0.022,right:0.830,top:0.887,bottom:0.910,scale:3,contrast:1.0},
   // Lectura independiente de las dos últimas cifras; se usa para validar el número completo.
   periodTail:  {left:0.625,right:0.805,top:0.884,bottom:0.916,scale:11,contrast:2.0},
 };
@@ -428,6 +430,7 @@ async function makeFocusedReceiptCrops(file:File) {
       printedAt:makeReceiptFocusCrop(bitmap,bounds,"printedAt"),
       periodNumber:makeReceiptFocusCrop(bitmap,bounds,"periodNumber"),
       periodLabelled:makeReceiptFocusCrop(bitmap,bounds,"periodLabelled"),
+      periodLabelledTight:makeReceiptFocusCrop(bitmap,bounds,"periodLabelledTight"),
       periodTail:makeReceiptFocusCrop(bitmap,bounds,"periodTail"),
     };
     return {
@@ -435,9 +438,13 @@ async function makeFocusedReceiptCrops(file:File) {
       codesThreshold140:makeThresholdOcrCrop(crops.codes,140),
       codesThreshold175:makeThresholdOcrCrop(crops.codes,175),
       periodLabelledThreshold140:makeThresholdOcrCrop(crops.periodLabelled,140),
+      periodLabelledThreshold160:makeThresholdOcrCrop(crops.periodLabelled,160),
       periodLabelledThreshold170:makeThresholdOcrCrop(crops.periodLabelled,170),
       periodLabelledThreshold175:makeThresholdOcrCrop(crops.periodLabelled,175),
+      periodLabelledTightThreshold160:makeThresholdOcrCrop(crops.periodLabelledTight,160),
       subagentCodeThreshold140:makeThresholdOcrCrop(crops.subagentCode,140),
+      subagentCodeThreshold160:makeThresholdOcrCrop(crops.subagentCode,160),
+      subagentCodeThreshold170:makeThresholdOcrCrop(crops.subagentCode,170),
       subagentCodeThreshold175:makeThresholdOcrCrop(crops.subagentCode,175),
       periodNumberThreshold140:makeThresholdOcrCrop(crops.periodNumber,140),
       periodNumberThreshold175:makeThresholdOcrCrop(crops.periodNumber,175),
@@ -516,16 +523,18 @@ function readLabelledPeriodNumber(values:string[]):string|null {
   const candidates:string[]=[];
   for(const raw of values){
     const text=raw.toUpperCase().replace(/\s+/g," ").trim();
-    // Solo buscar el número en el recorte que contiene el rótulo y su valor.
-    const labelPattern=/P\s*E?\s*R\s*[I1LY]\s*[O0Q8GH]?\s*D\s*[O0Q8GHY]?/i;
+    // El rótulo suele salir como «Per iodo», «Pern do» o «Per iodo.» en la térmica.
+    // Solo se inspeccionan recortes dedicados a esta línea del ticket.
+    const labelPattern=/P\s*E?\s*R\s*[I1LYN]?\s*[O0Q8GHN]?\s*D\s*[O0Q8GHY]?/i;
     const label=labelPattern.exec(text);
     if(!label||label.index===undefined)continue;
     let suffix=text.slice(label.index+label[0].length);
     suffix=suffix.replace(/^\s*[\s:._\-).#º°]*(?:NRO|GRO|RNO|RO|NO|N[º°.]?)\s*[\s:._\-).#º°]*/i," ");
-    const tokens=suffix.match(/[0-9OQIL|!BDGCEAZH8]{7}/g)??[];
+    // En el cupón enviado, el OCR devuelve «BOBB2O» o «ABOBeZO» para 0000020.
+    const tokens=suffix.match(/[0-9OQIL|!BDGCEAZH8]{6,7}/g)??[];
     for(const token of tokens){
-      const digits=periodDigits(token);
-      if(digits.length!==7||digits==="0000000")continue;
+      const digits=normalizePrintedPeriodGlyphs(token);
+      if(!digits||digits==="0000000")continue;
       candidates.push(digits);
       break;
     }
@@ -533,10 +542,10 @@ function readLabelledPeriodNumber(values:string[]):string|null {
   const counts=new Map<string,number>();
   for(const candidate of candidates)counts.set(candidate,(counts.get(candidate)??0)+1);
   const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
+  // Debe haber dos lecturas coincidentes; si no, el campo queda vacío en vez de inventarse.
   if(!ranked[0]||ranked[0][1]<2||(ranked[1]&&ranked[1][1]===ranked[0][1]))return null;
   return ranked[0][0];
 }
-
 function readFocusedPeriodNumber(labelledValues:string[]):string|null {
   // No usar nunca secuencias aisladas del recorte numérico: así se generaban valores
   // falsos como 0100011. El período debe aparecer después del rótulo impreso.
@@ -582,10 +591,10 @@ function readFocusedSubagentFromLabelledRows(values:string[]):string|null {
 function readFocusedSubagentCode(values:string[]):string|null {
   const candidates:string[]=[];
   for(const raw of values){
-    // Esta región contiene el valor SUBAG; aceptar solo lecturas de tres dígitos.
-    const token=raw.toUpperCase().replace(/[^0-9OQIL|!]/g,"");
+    // La región contiene solo SUBAG 102; Z puede ser una lectura OCR del dígito 2.
+    const token=raw.toUpperCase().replace(/[^0-9OQIL|!Z]/g,"");
     if(token.length!==3)continue;
-    const normalized=token.replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
+    const normalized=token.replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1").replace(/Z/g,"2");
     if(/^\d{3}$/.test(normalized))candidates.push(normalized);
   }
   const counts=new Map<string,number>();
@@ -833,12 +842,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const codeRead7 = readFocusedCodes(codesLine7,"","");
           // Leer SUBAG en su propio recorte, separado de AG y MAQ para evitar que el OCR
           // concatene los tres campos (por ejemplo, convirtiendo SUBAG 102 + MAQ 01 en 16972).
-          await setOcrMode(7);
-          const subagentCrop7 = (await worker.recognize(crops.subagentCode)).data.text ?? "";
-          await setOcrMode(6);
-          const subagentCrop6 = (await worker.recognize(crops.subagentCodeThreshold140)).data.text ?? "";
-          const focusedSubagent = readFocusedSubagentCode([subagentCrop7,subagentCrop6]) ??
-            readFocusedSubagentFromLabelledRows([codesLine6,codesLine7]);
+          await setOcrMode(8);
+          const subagentCrop160 = (await worker.recognize(crops.subagentCodeThreshold160)).data.text ?? "";
+          const subagentCrop170 = (await worker.recognize(crops.subagentCodeThreshold170)).data.text ?? "";
+          const subagentCrop175 = (await worker.recognize(crops.subagentCodeThreshold175)).data.text ?? "";
+          const focusedSubagent = readFocusedSubagentCode([subagentCrop160,subagentCrop170,subagentCrop175]);
           const focusedMachine = readFocusedMachineCode([], [codesLine6,codesLine7]);
 
           await setOcrMode(6);
@@ -846,12 +854,14 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const printedLine = (await worker.recognize(crops.printedAt)).data.text ?? "";
           const terminalLine = (await worker.recognize(crops.terminalId)).data.text ?? "";
 
-          // El período solo se lee en el recorte que contiene su rótulo y el valor.
-          // Dos variantes de contraste, sin OCR de toda la foto repetido.
-          const periodLine140 = (await worker.recognize(crops.periodLabelledThreshold140)).data.text ?? "";
-          await setOcrMode(7);
-          const periodLine170 = (await worker.recognize(crops.periodLabelledThreshold170)).data.text ?? "";
-          const focusedPeriod = readFocusedPeriodNumber([periodLine170,periodLine140]);
+          // Tres lecturas, todas sobre el renglón «Periodo nro», no sobre la página completa.
+          // Dos recortes usan umbral 160 y PSM 8; el tercero verifica el trazo a umbral 170.
+          await setOcrMode(8);
+          const periodLineWide160 = (await worker.recognize(crops.periodLabelledThreshold160)).data.text ?? "";
+          const periodLineTight160 = (await worker.recognize(crops.periodLabelledTightThreshold160)).data.text ?? "";
+          await setOcrMode(6);
+          const periodLineWide170 = (await worker.recognize(crops.periodLabelledThreshold170)).data.text ?? "";
+          const focusedPeriod = readFocusedPeriodNumber([periodLineWide160,periodLineTight160,periodLineWide170]);
           const focusedTerminal = readFocusedDigitValue([terminalLine],4,6);
           const focusedPrint = readFocusedPrintedAt([printedLine]);
           const focusedAddress = readFocusedAddress([addressLine],null);
