@@ -617,7 +617,7 @@ function looksLikeZeroGlyph(canvas: HTMLCanvasElement): boolean {
   const centerMean = centerDark / rowCount;
   const closedSideRows = bothEdgeRows / rowCount;
   return leftMean > 0.19 && rightMean > 0.19 && closedSideRows > 0.38 &&
-    centerMean < Math.min(leftMean, rightMean) * 0.72;
+    centerMean < Math.min(leftMean, rightMean) * 0.84;
 }
 
 function readSingleDigitGlyph(raw: string): string | null {
