@@ -594,12 +594,13 @@ function readFocusedSubagentCode(values:string[]):string|null {
   if(!ranked[0]||ranked[0][1]<2||(ranked[1]&&ranked[1][1]===ranked[0][1]))return null;
   return ranked[0][0];
 }
-function readFocusedMachineCode(values:string[],labelledValues:string[]):string|null {
+function readFocusedMachineCode(_values:string[],labelledValues:string[]):string|null {
+  // Máquina solo se toma de una lectura que conserve el rótulo MAQ; nunca cortar
+  // los primeros dígitos de la máquina real o de otro código para rellenar este campo.
   const labelled=labelledValues
     .map((value)=>readFocusedCodes(value,"","").machineCode)
     .filter((value):value is string=>Boolean(value&&/^\d{1,2}$/.test(value)));
-  const direct=values.map((value)=>readFocusedDigitValue([value],1,2)).filter((value):value is string=>Boolean(value));
-  const candidates=[...labelled,...direct];
+  const candidates=labelled;
   if(!candidates.length)return null;
   const counts=new Map<string,number>();for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
   const best=candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0)||a.length-b.length)[0]??null;
@@ -892,9 +893,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const machineCropText = await worker.recognize(crops.machineCode).then(r=>r.data.text??"");
           const agencyCropDigits = readFocusedDigitValue([agencyCropText],3,4);
           const agencyOnly = {agencyCode:agencyCropDigits?agencyCropDigits.padStart(4,"0"):null};
+          // No inferir SUBAG desde recortes que solo contienen dígitos: esos recortes
+          // pueden capturar la máquina real o el período. Solo aceptar el valor tras la etiqueta SUBAG.
           const focusedSubagent =
-            readFocusedSubagentFromLabelledRows([codesLine7,codesLine6,codesThreshold140,codesThreshold175]) ??
-            readFocusedSubagentCode([subagentDigits7,subagentDigits8,subagentDigits13,subagentCropText,subagentThreshold140,subagentThreshold175,subagentThreshold175Digits13]);
+            readFocusedSubagentFromLabelledRows([codesLine7,codesLine6,codesThreshold140,codesThreshold175]);
           const focusedMachine = readFocusedMachineCode([machineDigits7,machineDigits8,machineCropText],[codesLine7,codesLine6]);
           await setOcrMode(7,"0123456789OQILBDGCEAZ8");
           const periodTail7 = (await worker.recognize(crops.periodTail)).data.text ?? "";
