@@ -811,16 +811,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
         // La pasada general sigue siendo la fuente de importes. Se conserva el segundo
         // intento anterior solo como alternativa de texto general.
-        if (!extractTicketPeriodNumber(recognizedText)) {
-          try {
-            const enhancedImage = await makeEnhancedTicketImage(file);
-            const enhancedResult = await worker.recognize(enhancedImage);
-            recoveredPeriodNumber = extractTicketPeriodNumber(enhancedResult.data.text ?? "") ?? "";
-          } catch {
-            // La lectura focalizada no depende de este segundo intento general.
-          }
-        }
-
         const closureCandidate = Boolean(parseTicketClosure(recognizedText)) ||
           /\bFIN\s+DE\s+(?:JOR|TOR)NADA\b/i.test(normalize(recognizedText)) ||
           /\bTOTALES?\s+EN\s+T[J7I1]\b/i.test(normalize(recognizedText));
@@ -832,120 +822,51 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             await worker.setParameters({tessedit_pageseg_mode:mode,tessedit_char_whitelist:whitelist ?? ""} as any);
           };
 
-          // Leer cada franja por separado evita que los datos identificatorios se pierdan
-          // en el OCR de la hoja completa.
-          await setOcrMode(7);
-          const codesLine7 = (await worker.recognize(crops.codes)).data.text ?? "";
-          const addressLine7 = (await worker.recognize(crops.address)).data.text ?? "";
-          const printedLine7 = (await worker.recognize(crops.printedAt)).data.text ?? "";
+          // Lectura enfocada reducida: dos lecturas de la franja de identificadores
+          // para confirmar SUBAG/MAQ, y una por cada campo independiente. Evita decenas
+          // de pasadas sobre variantes del mismo recorte.
           await setOcrMode(6);
           const codesLine6 = (await worker.recognize(crops.codes)).data.text ?? "";
-          const addressLine6 = (await worker.recognize(crops.address)).data.text ?? "";
-          const printedLine6 = (await worker.recognize(crops.printedAt)).data.text ?? "";
-          await setOcrMode(8);
-          const subagentLine8 = (await worker.recognize(crops.subagentCode)).data.text ?? "";
           await setOcrMode(7);
-          const codesThreshold140 = (await worker.recognize(crops.codesThreshold140)).data.text ?? "";
-          const codesThreshold175 = (await worker.recognize(crops.codesThreshold175)).data.text ?? "";
-          await setOcrMode(8);
-          const periodLabelledThreshold140 = (await worker.recognize(crops.periodLabelledThreshold140)).data.text ?? "";
+          const codesLine7 = (await worker.recognize(crops.codes)).data.text ?? "";
+          const codeRead6 = readFocusedCodes(codesLine6,"","");
+          const codeRead7 = readFocusedCodes(codesLine7,"","");
+          const focusedSubagent = readFocusedSubagentFromLabelledRows([codesLine6,codesLine7]);
+          const focusedMachine = readFocusedMachineCode([], [codesLine6,codesLine7]);
+
+          await setOcrMode(6);
+          const addressLine = (await worker.recognize(crops.address)).data.text ?? "";
+          const printedLine = (await worker.recognize(crops.printedAt)).data.text ?? "";
+          const terminalLine = (await worker.recognize(crops.terminalId)).data.text ?? "";
+
+          // El período solo se lee en el recorte que contiene su rótulo y el valor.
+          // Dos variantes de contraste, sin OCR de toda la foto repetido.
+          const periodLine140 = (await worker.recognize(crops.periodLabelledThreshold140)).data.text ?? "";
           await setOcrMode(7);
-          const periodLabelledThreshold170 = (await worker.recognize(crops.periodLabelledThreshold170)).data.text ?? "";
-          await setOcrMode(8);
-          const periodLabelledThreshold175 = (await worker.recognize(crops.periodLabelledThreshold175)).data.text ?? "";
-
-
-          // Los ceros iniciales de AG y MAQ suelen desaparecer en el reconocimiento completo.
-          await setOcrMode(7,"0123456789OQIL");
-          const agencyDigits = (await worker.recognize(crops.agencyCode)).data.text ?? "";
-          const machineDigits = (await worker.recognize(crops.machineCode)).data.text ?? "";
-          const terminalDigits7 = (await worker.recognize(crops.terminalId)).data.text ?? "";
-          await setOcrMode(6,"0123456789OQIL");
-          const terminalDigits6 = (await worker.recognize(crops.terminalId)).data.text ?? "";
-
-          // El período se lee en su propio renglón con dos segmentaciones distintas:
-          // así se reconstruyen los ceros impresos que la lectura general confunde con letras.
-          await setOcrMode(7,"0123456789OQIL");
-          const periodDigits7 = (await worker.recognize(crops.periodNumber)).data.text ?? "";
-          await setOcrMode(8,"0123456789OQIL");
-          const periodDigits8 = (await worker.recognize(crops.periodNumber)).data.text ?? "";
-          await setOcrMode(13,"0123456789OQIL");
-          const periodDigits13 = (await worker.recognize(crops.periodNumber)).data.text ?? "";
-
-          const read7 = readFocusedCodes(codesLine7,agencyDigits,machineDigits);
-          const read6 = readFocusedCodes(codesLine6,agencyDigits,machineDigits);
-          // Restablecer el modo de texto después de las lecturas numéricas del período.
-          await setOcrMode(6);
-          const agencyCropText = await worker.recognize(crops.agencyCode).then(r=>r.data.text??"");
-          await setOcrMode(7,"0123456789OQILBDGCEAZ8");
-          const subagentDigits7 = (await worker.recognize(crops.subagentCode)).data.text ?? "";
-          const subagentThreshold140 = (await worker.recognize(crops.subagentCodeThreshold140)).data.text ?? "";
-          const subagentThreshold175 = (await worker.recognize(crops.subagentCodeThreshold175)).data.text ?? "";
-          const machineDigits7 = (await worker.recognize(crops.machineCode)).data.text ?? "";
-          await setOcrMode(8,"0123456789OQILBDGCEAZ8");
-          const subagentDigits8 = (await worker.recognize(crops.subagentCode)).data.text ?? "";
-          const machineDigits8 = (await worker.recognize(crops.machineCode)).data.text ?? "";
-          await setOcrMode(13,"0123456789OQILBDGCEAZ8");
-          const subagentDigits13 = (await worker.recognize(crops.subagentCode)).data.text ?? "";
-          const subagentThreshold175Digits13 = (await worker.recognize(crops.subagentCodeThreshold175)).data.text ?? "";
-          await setOcrMode(6);
-          const subagentCropText = await worker.recognize(crops.subagentCode).then(r=>r.data.text??"");
-          const machineCropText = await worker.recognize(crops.machineCode).then(r=>r.data.text??"");
-          const agencyCropDigits = readFocusedDigitValue([agencyCropText],3,4);
-          const agencyOnly = {agencyCode:agencyCropDigits?agencyCropDigits.padStart(4,"0"):null};
-          // No inferir SUBAG desde recortes que solo contienen dígitos: esos recortes
-          // pueden capturar la máquina real o el período. Solo aceptar el valor tras la etiqueta SUBAG.
-          const focusedSubagent =
-            readFocusedSubagentFromLabelledRows([codesLine7,codesLine6,codesThreshold140,codesThreshold175]);
-          const focusedMachine = readFocusedMachineCode([machineDigits7,machineDigits8,machineCropText],[codesLine7,codesLine6]);
-          await setOcrMode(7,"0123456789OQILBDGCEAZ8");
-          const periodTail7 = (await worker.recognize(crops.periodTail)).data.text ?? "";
-          const periodTailThreshold140 = (await worker.recognize(crops.periodTailThreshold140)).data.text ?? "";
-          const periodDigitsThreshold140 = (await worker.recognize(crops.periodNumberThreshold140)).data.text ?? "";
-          await setOcrMode(8,"0123456789OQILBDGCEAZ8");
-          const periodTail8 = (await worker.recognize(crops.periodTail)).data.text ?? "";
-          const periodTailThreshold175 = (await worker.recognize(crops.periodTailThreshold175)).data.text ?? "";
-          const periodDigitsThreshold175 = (await worker.recognize(crops.periodNumberThreshold175)).data.text ?? "";
-          await setOcrMode(13,"0123456789OQILBDGCEAZ8");
-          const periodTail13 = (await worker.recognize(crops.periodTail)).data.text ?? "";
-          const focusedPeriod = readFocusedPeriodNumber([
-            periodLabelledThreshold170,
-            periodLabelledThreshold140,
-            periodLabelledThreshold175
-          ]);
-          const focusedTerminal = readFocusedDigitValue([terminalDigits7,terminalDigits6],4,6);
-          const focusedPrint = readFocusedPrintedAt([printedLine6,printedLine7]);
-          const focusedAddress = readFocusedAddress([addressLine6,addressLine7],null);
+          const periodLine170 = (await worker.recognize(crops.periodLabelledThreshold170)).data.text ?? "";
+          const focusedPeriod = readFocusedPeriodNumber([periodLine170,periodLine140]);
+          const focusedTerminal = readFocusedDigitValue([terminalLine],4,6);
+          const focusedPrint = readFocusedPrintedAt([printedLine]);
+          const focusedAddress = readFocusedAddress([addressLine],null);
           focusedClosureMetadata = {
-            agencyCode:agencyOnly.agencyCode??read7.agencyCode??read6.agencyCode??undefined,
-            subagentCode:focusedSubagent??undefined,
-            machineCode:focusedMachine??undefined,
-            address:focusedAddress??undefined,
-            terminalId:focusedTerminal??undefined,
-            printedAt:focusedPrint??undefined,
-            periodNumber:focusedPeriod??undefined,
+            agencyCode: codeRead7.agencyCode ?? codeRead6.agencyCode ?? undefined,
+            subagentCode: focusedSubagent ?? undefined,
+            machineCode: focusedMachine ?? codeRead7.machineCode ?? codeRead6.machineCode ?? undefined,
+            address: focusedAddress ?? undefined,
+            terminalId: focusedTerminal ?? undefined,
+            printedAt: focusedPrint ?? undefined,
+            periodNumber: focusedPeriod ?? undefined,
           };
-          recoveredPeriodNumber=focusedPeriod??recoveredPeriodNumber;
-          focusedOcrDebugText=[
+          recoveredPeriodNumber = focusedPeriod ?? "";
+          focusedOcrDebugText = [
             "[LECTURA FOCALIZADA FIN DE JORNADA]",
-            "Códigos (PSM 7): "+codesLine7.trim(),
-            "Códigos (PSM 6): "+codesLine6.trim(),
-            "Subagente (PSM 8): "+subagentLine8.trim(),
-            "Agencia (recorte): "+agencyCropText.trim(),
-            "Subagente (recorte): "+subagentCropText.trim(),
-            "Máquina (recorte): "+machineCropText.trim(),
-            "Subagente (pasadas numéricas): "+subagentDigits7.trim()+" / "+subagentDigits8.trim()+" / "+subagentDigits13.trim()+" / "+subagentThreshold140.trim()+" / "+subagentThreshold175.trim()+" / "+subagentThreshold175Digits13.trim(),
-            "Códigos (umbral 140): "+codesThreshold140.trim(),
-            "Códigos (umbral 175): "+codesThreshold175.trim(),
-            "Período con etiqueta (umbral 140): "+periodLabelledThreshold140.trim(),
-            "Período con etiqueta (umbral 170): "+periodLabelledThreshold170.trim(),
-            "Período con etiqueta (umbral 175): "+periodLabelledThreshold175.trim(),
-            "Máquina (pasadas numéricas): "+machineDigits7.trim()+" / "+machineDigits8.trim(),
-            "Final de período: "+periodTail7.trim()+" / "+periodTail8.trim()+" / "+periodTail13.trim()+" / "+periodTailThreshold140.trim()+" / "+periodTailThreshold175.trim(),
-            "Dirección: "+addressLine6.trim(),
-            "Máquina real (dígitos): "+terminalDigits7.trim()+" / "+terminalDigits6.trim(),
-            "Impresión: "+printedLine6.trim()+" / "+printedLine7.trim(),
-            "Período N.º (dígitos): "+periodDigits7.trim()+" / "+periodDigits8.trim()+" / "+periodDigits13.trim()+" / "+periodDigitsThreshold140.trim()+" / "+periodDigitsThreshold175.trim(),
+            "Identificadores (PSM 6): " + codesLine6.trim(),
+            "Identificadores (PSM 7): " + codesLine7.trim(),
+            "Dirección: " + addressLine.trim(),
+            "Máquina real: " + terminalLine.trim(),
+            "Impresión: " + printedLine.trim(),
+            "Período etiquetado (contraste 140): " + periodLine140.trim(),
+            "Período etiquetado (PSM 7): " + periodLine170.trim(),
           ].join("\n");
         }
       } finally {
