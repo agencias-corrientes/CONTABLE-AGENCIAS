@@ -513,26 +513,28 @@ function normalizePrintedPeriodGlyphs(raw:string):string|null {
   return /^\d{6,7}$/.test(digits)?digits.padStart(7,"0"):null;
 }
 function readLabelledPeriodNumber(values:string[]):string|null {
+  const candidates:string[]=[];
   for(const raw of values){
     const text=raw.toUpperCase().replace(/\s+/g," ").trim();
-    // Admite "PERIODO", "PER IODO", "PER10D0" y puntuación térmica tras el rótulo.
+    // Solo buscar el número en el recorte que contiene el rótulo y su valor.
     const labelPattern=/P\s*E?\s*R\s*[I1LY]\s*[O0Q8GH]?\s*D\s*[O0Q8GHY]?/i;
     const label=labelPattern.exec(text);
     if(!label||label.index===undefined)continue;
     let suffix=text.slice(label.index+label[0].length);
     suffix=suffix.replace(/^\s*[\s:._\-).#º°]*(?:NRO|GRO|RNO|RO|NO|N[º°.]?)\s*[\s:._\-).#º°]*/i," ");
-    const tokens=suffix.match(/[0-9OQIL|!BDGCEAZH8]{6,8}/g)??[];
+    const tokens=suffix.match(/[0-9OQIL|!BDGCEAZH8]{7}/g)??[];
     for(const token of tokens){
       const digits=periodDigits(token);
-      if(digits.length<6||digits.length>7)continue;
-      const normalized=digits.padStart(7,"0");
-      if(normalized==="0000000")continue;
-      // El número asociado al rótulo es la fuente principal; el recorte del final puede
-      // confundir el cero de "20" con un 1 y no debe sustituir el período.
-      return normalized;
+      if(digits.length!==7||digits==="0000000")continue;
+      candidates.push(digits);
+      break;
     }
   }
-  return null;
+  const counts=new Map<string,number>();
+  for(const candidate of candidates)counts.set(candidate,(counts.get(candidate)??0)+1);
+  const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
+  if(!ranked[0]||ranked[0][1]<2||(ranked[1]&&ranked[1][1]===ranked[0][1]))return null;
+  return ranked[0][0];
 }
 
 function readFocusedPeriodNumber(labelledValues:string[]):string|null {
@@ -907,8 +909,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const focusedPeriod = readFocusedPeriodNumber([
             periodLabelledThreshold170,
             periodLabelledThreshold140,
-            periodLabelledThreshold175,
-            recognizedText
+            periodLabelledThreshold175
           ]);
           const focusedTerminal = readFocusedDigitValue([terminalDigits7,terminalDigits6],4,6);
           const focusedPrint = readFocusedPrintedAt([printedLine6,printedLine7]);
@@ -984,10 +985,14 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         const validPeriod = (value: string | null | undefined) =>
           value && /^\d{7}$/.test(value.replace(/\s+/g, "")) ? value.replace(/\s+/g, "") : null;
         const labelledPeriod = validPeriod(focusedClosureMetadata.periodNumber);
+        const validSubagent = (value: string | null | undefined) => {
+          const digits = String(value ?? "").replace(/\D/g, "");
+          return /^\d{3}$/.test(digits) ? digits : null;
+        };
         const closureReceipt = {
           ...parsed.receiptData,
           agencyCode: focusedClosureMetadata.agencyCode ?? parsed.receiptData.agencyCode,
-          subagentCode: focusedClosureMetadata.subagentCode ?? parsed.receiptData.subagentCode,
+          subagentCode: validSubagent(focusedClosureMetadata.subagentCode) ?? validSubagent(parsed.receiptData.subagentCode),
           machineCode: focusedClosureMetadata.machineCode ?? parsed.receiptData.machineCode,
           address: focusedClosureMetadata.address ?? parsed.receiptData.address,
           terminalId: focusedClosureMetadata.terminalId ?? parsed.receiptData.terminalId,
