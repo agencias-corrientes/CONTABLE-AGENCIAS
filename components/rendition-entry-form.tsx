@@ -986,7 +986,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         ]));
         const validPeriod = (value: string | null | undefined) =>
           value && /^\d{7}$/.test(value.replace(/\s+/g, "")) ? value.replace(/\s+/g, "") : null;
-        const labelledPeriod = validPeriod(focusedClosureMetadata.periodNumber);
+        // Período: aceptar únicamente una lectura de 7 dígitos ligada al rótulo impreso.
+        // No usar el período del parser general, que puede confundirlo con otra cifra del ticket.
+        const labelledPeriod =
+          validPeriod(focusedClosureMetadata.periodNumber) ??
+          validPeriod(extractTicketPeriodNumber(recognizedText)) ??
+          validPeriod(extractTicketPeriodNumber(recoveredPeriodNumber));
         const validSubagent = (value: string | null | undefined) => {
           const digits = String(value ?? "").replace(/\D/g, "");
           return /^\d{3}$/.test(digits) ? digits : null;
@@ -994,7 +999,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         const closureReceipt = {
           ...parsed.receiptData,
           agencyCode: focusedClosureMetadata.agencyCode ?? parsed.receiptData.agencyCode,
-          subagentCode: validSubagent(focusedClosureMetadata.subagentCode) ?? validSubagent(parsed.receiptData.subagentCode),
+          // No rescatar SUBAG desde el OCR general: solo vale la franja identificada.
+          subagentCode: validSubagent(focusedClosureMetadata.subagentCode),
           machineCode: focusedClosureMetadata.machineCode ?? parsed.receiptData.machineCode,
           address: focusedClosureMetadata.address ?? parsed.receiptData.address,
           terminalId: focusedClosureMetadata.terminalId ?? parsed.receiptData.terminalId,
