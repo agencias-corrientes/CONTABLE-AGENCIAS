@@ -882,8 +882,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             "Dirección: " + addressLine.trim(),
             "Máquina real: " + terminalLine.trim(),
             "Impresión: " + printedLine.trim(),
-            "Período etiquetado (contraste 140): " + periodLine140.trim(),
-            "Período etiquetado (PSM 7): " + periodLine170.trim(),
+            "SUBAG recortes 160/170/175: " + [subagentCrop160,subagentCrop170,subagentCrop175].map((v)=>v.trim()).join(" / "),
+            "Período rotulado 160 ancho: " + periodLineWide160.trim(),
+            "Período rotulado 160 ajustado: " + periodLineTight160.trim(),
+            "Período rotulado 170: " + periodLineWide170.trim(),
           ].join("\n");
         }
       } finally {
