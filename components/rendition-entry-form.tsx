@@ -297,12 +297,12 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   agencyCode:  {left:0.140,right:0.365,top:0.263,bottom:0.292,scale:6,contrast:1.8},
   // Recorte calibrado sobre el renglón impreso SUBAG:102. El valor está entre x≈0.53 y 0.61
   // del ancho del papel; terminar antes de MAQ evita capturar sus dígitos por error.
-  subagentCode:{left:0.520,right:0.610,top:0.263,bottom:0.292,scale:10,contrast:1.6},
+  subagentCode:{left:0.512,right:0.656,top:0.263,bottom:0.292,scale:6,contrast:1.6},
   // Un recorte por glifo, centrado respectivamente en 1, 0 y 2. Antes los recortes
   // segundo y tercero se solapaban con el glifo vecino y llegaban hasta la etiqueta MAQ.
-  subagentDigit1:{left:0.526,right:0.551,top:0.266,bottom:0.290,scale:10,contrast:1.6},
-  subagentDigit0:{left:0.560,right:0.585,top:0.266,bottom:0.290,scale:10,contrast:1.6},
-  subagentDigit2:{left:0.586,right:0.611,top:0.266,bottom:0.290,scale:10,contrast:1.6},
+  subagentDigit1:{left:0.522,right:0.556,top:0.263,bottom:0.292,scale:10,contrast:1.6},
+  subagentDigit0:{left:0.568,right:0.602,top:0.263,bottom:0.292,scale:10,contrast:1.6},
+  subagentDigit2:{left:0.613,right:0.651,top:0.263,bottom:0.292,scale:10,contrast:1.6},
   // MAQ: lectura de los dos glifos individuales; sin incluir los puntos del rótulo.
   machineCode: {left:0.775,right:0.879,top:0.263,bottom:0.292,scale:8,contrast:1.5},
   machineDigit0:{left:0.778,right:0.827,top:0.263,bottom:0.292,scale:10,contrast:1.4},
@@ -589,7 +589,7 @@ function readLabelledPeriodNumber(values:string[],confirmedTail:string|null=null
   if(!ranked[0]||ranked[0][1]<2||(ranked[1]&&ranked[1][1]===ranked[0][1]))return null;
   return ranked[0][0];
 }
-function looksLikeZeroGlyph(canvas: HTMLCanvasElement): boolean {
+function looksLikeZeroGlyph(canvas: HTMLCanvasElement, luminanceThreshold = 180): boolean {
   const context = canvas.getContext("2d", { willReadFrequently: true });
   if (!context) return false;
   const { width, height, data } = context.getImageData(0, 0, canvas.width, canvas.height);
@@ -604,15 +604,15 @@ function looksLikeZeroGlyph(canvas: HTMLCanvasElement): boolean {
     let leftRow = 0, rightRow = 0, centerRow = 0;
     for (let x = xMargin; x < Math.min(width, xMargin + edgeWidth); x += 1) {
       const i = (y * width + x) * 4;
-      if (0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]! < 180) leftRow += 1;
+      if (0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]! < luminanceThreshold) leftRow += 1;
     }
     for (let x = Math.max(0, width - xMargin - edgeWidth); x < width - xMargin; x += 1) {
       const i = (y * width + x) * 4;
-      if (0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]! < 180) rightRow += 1;
+      if (0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]! < luminanceThreshold) rightRow += 1;
     }
     for (let x = centerStart; x < centerEnd; x += 1) {
       const i = (y * width + x) * 4;
-      if (0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]! < 180) centerRow += 1;
+      if (0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]! < luminanceThreshold) centerRow += 1;
     }
     const leftFraction = leftRow / edgeWidth;
     const rightFraction = rightRow / edgeWidth;
@@ -978,7 +978,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const subagentGlyph0Raw = (await worker.recognize(crops.subagentDigit0)).data.text ?? "";
           const subagentGlyph2Raw = (await worker.recognize(crops.subagentDigit2)).data.text ?? "";
           const subagentGlyph1 = readSingleDigitGlyph(subagentGlyph1Raw);
-          const subagentGlyph0 = readSingleDigitGlyph(subagentGlyph0Raw);
+          const subagentGlyph0 = looksLikeZeroGlyph(crops.subagentDigit0,140) ? "0" : readSingleDigitGlyph(subagentGlyph0Raw);
           const subagentGlyph2 = readSingleDigitGlyph(subagentGlyph2Raw);
           const subagentFromIndividualGlyphs = subagentGlyph1 && subagentGlyph0 && subagentGlyph2
             ? subagentGlyph1 + subagentGlyph0 + subagentGlyph2
@@ -1033,7 +1033,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const periodGlyphDigits: string[] = [];
           await setOcrMode(10,digitWhitelist);
           for (const glyph of crops.periodGlyphs) {
-            if (looksLikeZeroGlyph(glyph)) {
+            if (looksLikeZeroGlyph(glyph,140)) {
               periodGlyphRaw.push("[cero por forma]");
               periodGlyphDigits.push("0");
               continue;
