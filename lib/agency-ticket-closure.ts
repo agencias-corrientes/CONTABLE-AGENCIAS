@@ -164,7 +164,7 @@ function periodGlyphCandidates(fragment: string): string[] {
     .replace(/\b(?:NRO|NUM(?:ERO)?|NO|N[º°.]?|#)\b/gi, " ")
     .replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g, " ")
     .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, " ");
-  const pattern = /(?<![0-9A-Z|!])([0-9OQIL|!BDGCEAZH](?:[\s.:_-]*[0-9OQIL|!BDGCEAZH]){5,6})(?![0-9A-Z|!])/gi;
+  const pattern = /(?<![0-9A-Z|!])([0-9OQIL|!BDGCEAZH8](?:[\\s.:_-]*[0-9OQIL|!BDGCEAZH8]){3,6})(?![0-9A-Z|!])/gi;
   return [...cleaned.matchAll(pattern)]
     .map((match) => normalizePrintedPeriodGlyphs(match[1] ?? ""))
     .filter((value): value is string => Boolean(value));

@@ -294,11 +294,11 @@ type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
 
 const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   codes:       {left:0.030,right:0.955,top:0.263,bottom:0.292,scale:5,contrast:1.8},
-  agencyCode:  {left:0.030,right:0.365,top:0.263,bottom:0.292,scale:6,contrast:1.8},
+  agencyCode:  {left:0.140,right:0.365,top:0.263,bottom:0.292,scale:6,contrast:1.8},
   // Solo el valor impreso: el rótulo SUBAG no puede transformarse en cifras.
-  subagentCode:{left:0.510,right:0.690,top:0.263,bottom:0.292,scale:9,contrast:1.7},
+  subagentCode:{left:0.490,right:0.665,top:0.263,bottom:0.292,scale:9,contrast:1.7},
   // Solo los dígitos de MAQ:01, a la derecha del rótulo.
-  machineCode: {left:0.745,right:0.865,top:0.263,bottom:0.292,scale:8,contrast:1.7},
+  machineCode: {left:0.735,right:0.885,top:0.263,bottom:0.292,scale:8,contrast:1.7},
   address:     {left:0.040,right:0.555,top:0.285,bottom:0.307,scale:5,contrast:1.8},
   // La máquina real está en su propia línea; no incluir la dirección que termina en 410.
   terminalId:  {left:0.362,right:0.534,top:0.3075,bottom:0.3295,scale:6,contrast:1.6},
@@ -306,9 +306,9 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   // Período N.º: aislar los siete dígitos, sin las letras "Periodo nro".
   periodNumber:{left:0.375,right:0.800,top:0.884,bottom:0.916,scale:10,contrast:1.9},
   // Leer etiqueta y número juntos; el recorte numérico solo pierde los ceros térmicos.
-  periodLabelled:{left:0.022,right:0.830,top:0.878,bottom:0.922,scale:3,contrast:1.0},
+  periodLabelled:{left:0.022,right:0.830,top:0.880,bottom:0.914,scale:3,contrast:1.0},
   // Recorte estrecho del renglón «Periodo nro», sin los renglones vecinos.
-  periodLabelledTight:{left:0.022,right:0.830,top:0.887,bottom:0.910,scale:3,contrast:1.0},
+  periodLabelledTight:{left:0.022,right:0.830,top:0.886,bottom:0.910,scale:3,contrast:1.0},
   // Lectura independiente de las dos últimas cifras; se usa para validar el número completo.
   periodTail:  {left:0.625,right:0.805,top:0.884,bottom:0.916,scale:11,contrast:2.0},
 };
@@ -437,6 +437,14 @@ async function makeFocusedReceiptCrops(file:File) {
       ...crops,
       codesThreshold140:makeThresholdOcrCrop(crops.codes,140),
       codesThreshold175:makeThresholdOcrCrop(crops.codes,175),
+      agencyCodeThreshold160:makeThresholdOcrCrop(crops.agencyCode,160),
+      agencyCodeThreshold175:makeThresholdOcrCrop(crops.agencyCode,175),
+      agencyCodeThreshold185:makeThresholdOcrCrop(crops.agencyCode,185),
+      agencyCodeThreshold195:makeThresholdOcrCrop(crops.agencyCode,195),
+      machineCodeThreshold140:makeThresholdOcrCrop(crops.machineCode,140),
+      machineCodeThreshold160:makeThresholdOcrCrop(crops.machineCode,160),
+      machineCodeThreshold175:makeThresholdOcrCrop(crops.machineCode,175),
+      machineCodeThreshold185:makeThresholdOcrCrop(crops.machineCode,185),
       periodLabelledThreshold140:makeThresholdOcrCrop(crops.periodLabelled,140),
       periodLabelledThreshold160:makeThresholdOcrCrop(crops.periodLabelled,160),
       periodLabelledThreshold170:makeThresholdOcrCrop(crops.periodLabelled,170),
@@ -519,19 +527,17 @@ function normalizePrintedPeriodGlyphs(raw:string):string|null {
   }).join("");
   return /^\d{6,7}$/.test(digits)?digits.padStart(7,"0"):null;
 }
-function readLabelledPeriodNumber(values:string[]):string|null {
+function readLabelledPeriodNumber(values:string[],confirmedTail:string|null=null):string|null {
   const candidates:string[]=[];
   for(const raw of values){
     const text=raw.toUpperCase().replace(/\s+/g," ").trim();
-    // El rótulo suele salir como «Per iodo», «Pern do» o «Per iodo.» en la térmica.
-    // Solo se inspeccionan recortes dedicados a esta línea del ticket.
     const labelPattern=/P\s*E?\s*R\s*[I1LYN]?\s*[O0Q8GHN]?\s*D\s*[O0Q8GHY]?/i;
     const label=labelPattern.exec(text);
     if(!label||label.index===undefined)continue;
     let suffix=text.slice(label.index+label[0].length);
     suffix=suffix.replace(/^\s*[\s:._\-).#º°]*(?:NRO|GRO|RNO|RO|NO|N[º°.]?)\s*[\s:._\-).#º°]*/i," ");
-    // En el cupón enviado, el OCR devuelve «BOBB2O» o «ABOBeZO» para 0000020.
-    const tokens=suffix.match(/[0-9OQIL|!BDGCEAZH8]{6,7}/g)??[];
+    // Reconocer los dígitos aunque estén separados por espacios o puntos en la lectura térmica.
+    const tokens=suffix.match(/[0-9OQIL|!BDGCEAZH8](?:[\s.:_-]*[0-9OQIL|!BDGCEAZH8]){3,6}/g)??[];
     for(const token of tokens){
       const digits=normalizePrintedPeriodGlyphs(token);
       if(!digits||digits==="0000000")continue;
@@ -540,16 +546,21 @@ function readLabelledPeriodNumber(values:string[]):string|null {
     }
   }
   const counts=new Map<string,number>();
-  for(const candidate of candidates)counts.set(candidate,(counts.get(candidate)??0)+1);
+  for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
   const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
-  // Debe haber dos lecturas coincidentes; si no, el campo queda vacío en vez de inventarse.
+  if(confirmedTail){
+    const matches=ranked.filter(([value])=>value.endsWith(confirmedTail));
+    if(matches.length){
+      const best=matches[0]!;
+      if(matches.length===1||best[1]>(matches[1]?.[1]??0))return best[0];
+    }
+  }
   if(!ranked[0]||ranked[0][1]<2||(ranked[1]&&ranked[1][1]===ranked[0][1]))return null;
   return ranked[0][0];
 }
-function readFocusedPeriodNumber(labelledValues:string[]):string|null {
-  // No usar nunca secuencias aisladas del recorte numérico: así se generaban valores
-  // falsos como 0100011. El período debe aparecer después del rótulo impreso.
-  return readLabelledPeriodNumber(labelledValues);
+function readFocusedPeriodNumber(labelledValues:string[],confirmedTail:string|null=null):string|null {
+  // Sólo aceptar un número asociado al rótulo Período; la cola confirma sus últimas dos cifras.
+  return readLabelledPeriodNumber(labelledValues,confirmedTail);
 }
 
 function readFocusedDigitValue(values:string[],minimumLength:number,maximumLength=10):string|null {
@@ -561,11 +572,33 @@ function readFocusedDigitValue(values:string[],minimumLength:number,maximumLengt
   return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0)||b.length-a.length)[0]??null;
 }
 
+function readFocusedAgencyCode(values:string[]):string|null {
+  const rawCandidates:string[]=[];
+  for(const raw of values){
+    const tokens=raw.toUpperCase().match(/[0-9OQIL|!BDGCEAZH]{3,4}/g)??[];
+    for(const token of tokens){
+      let digits=ocrDigitSequence(token,true);
+      if(digits.length===3)digits=digits.padStart(4,"0");
+      if(/^\d{4}$/.test(digits))rawCandidates.push(digits);
+    }
+  }
+  if(!rawCandidates.length)return null;
+  const hasLeadingZero=new Set(rawCandidates.filter(v=>v.startsWith("0")).map(v=>v.slice(1)));
+  const candidates=rawCandidates.map(v=>v.startsWith("1")&&hasLeadingZero.has(v.slice(1))?"0"+v.slice(1):v);
+  const counts=new Map<string,number>();
+  for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
+  const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
+  if(ranked.length>1&&ranked[0]![1]===ranked[1]![1]){
+    return ranked.find(([value])=>value.startsWith("0"))?.[0]??null;
+  }
+  return ranked[0]?.[0]??null;
+}
+
 function readFocusedSubagentFromLabelledRows(values:string[]):string|null {
   const candidates:string[]=[];
   const decode=(token:string)=>{
-    const digits=token.toUpperCase().replace(/[^0-9OQIL|!]/g,"")
-      .replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
+    const digits=token.toUpperCase().replace(/[^0-9OQIL|!BDGCEAZH]/g,"")
+      .replace(/[OQBDGCEAH]/g,"0").replace(/[IL|!]/g,"1").replace(/Z/g,"2");
     return /^\d{3}$/.test(digits)?digits:null;
   };
   // El OCR térmico puede convertir SUBAG en SIBAG o CHUBAG.
@@ -591,66 +624,70 @@ function readFocusedSubagentFromLabelledRows(values:string[]):string|null {
 function readFocusedSubagentCode(values:string[]):string|null {
   const candidates:string[]=[];
   for(const raw of values){
-    // La región contiene solo SUBAG 102; Z puede ser una lectura OCR del dígito 2.
-    const token=raw.toUpperCase().replace(/[^0-9OQIL|!Z]/g,"");
+    // El recorte contiene solo SUBAG. Ignorar lecturas de cuatro o más cifras para evitar
+    // que ruido en el borde convierta el código 102 en 16972.
+    const token=raw.toUpperCase().replace(/[^0-9OQIL|!BDGCEAZH]/g,"");
     if(token.length!==3)continue;
-    const normalized=token.replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1").replace(/Z/g,"2");
+    const normalized=token.replace(/[OQBDGCEAH]/g,"0").replace(/[IL|!]/g,"1").replace(/Z/g,"2");
     if(/^\d{3}$/.test(normalized))candidates.push(normalized);
   }
   const counts=new Map<string,number>();
   for(const candidate of candidates)counts.set(candidate,(counts.get(candidate)??0)+1);
   const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
-  if(!ranked[0]||ranked[0][1]<2||(ranked[1]&&ranked[1][1]===ranked[0][1]))return null;
-  return ranked[0][0];
+  if(ranked[0]&&ranked[0][1]>=2&&(!ranked[1]||ranked[1][1]<ranked[0][1]))return ranked[0][0];
+  const first=values[0]?.toUpperCase().replace(/[^0-9OQIL|!BDGCEAZH]/g,"")??"";
+  if(first.length===3){
+    const decoded=first.replace(/[OQBDGCEAH]/g,"0").replace(/[IL|!]/g,"1").replace(/Z/g,"2");
+    if(/^\d{3}$/.test(decoded))return decoded;
+  }
+  return null;
 }
-function readFocusedMachineCode(_values:string[],labelledValues:string[]):string|null {
-  // Máquina solo se toma de una lectura que conserve el rótulo MAQ; nunca cortar
-  // los primeros dígitos de la máquina real o de otro código para rellenar este campo.
-  const labelled=labelledValues
-    .map((value)=>readFocusedCodes(value,"","").machineCode)
+function readFocusedMachineCode(digitValues:string[],labelledValues:string[]):string|null {
+  // El recorte exclusivo de MAQ va primero. Si la térmica hace desaparecer el cero y
+  // Tesseract devuelve "1", se conserva el código impreso de dos posiciones como 01.
+  const direct:string[]=[];
+  for(const raw of digitValues){
+    const token=raw.toUpperCase().replace(/[^0-9OQIL|!BDGCEAZH]/g,"");
+    if(token.length<1||token.length>2)continue;
+    const digits=token.replace(/[OQBDGCEAH]/g,"0").replace(/[IL|!]/g,"1").replace(/Z/g,"2");
+    if(/^\d{1,2}$/.test(digits))direct.push(digits.padStart(2,"0"));
+  }
+  if(direct.length){
+    const counts=new Map<string,number>();
+    for(const value of direct)counts.set(value,(counts.get(value)??0)+1);
+    const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
+    if(ranked[0]&&(!ranked[1]||ranked[0][1]>ranked[1][1]))return ranked[0][0];
+    const twoDigit=direct.find(value=>value.length===2);
+    if(twoDigit)return twoDigit;
+  }
+  const labelled=labelledValues.map(value=>readFocusedCodes(value,"","").machineCode)
     .filter((value):value is string=>Boolean(value&&/^\d{1,2}$/.test(value)));
-  const candidates=labelled;
-  if(!candidates.length)return null;
-  const counts=new Map<string,number>();for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
-  const best=candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0)||a.length-b.length)[0]??null;
-  return best ? best.padStart(2,"0") : null;
+  const counts=new Map<string,number>();
+  for(const value of labelled)counts.set(value.padStart(2,"0"),(counts.get(value.padStart(2,"0"))??0)+1);
+  const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
+  return ranked[0]&&(!ranked[1]||ranked[0][1]>ranked[1][1])?ranked[0][0]:null;
 }
-
 function periodDigits(raw:string):string {
   return raw.toUpperCase().replace(/[^0-9OQIL|!BDGCEAZH]/g,"")
     .replace(/[OQBDGCEAH]/g,"0").replace(/[IL|!]/g,"1").replace(/Z/g,"2");
 }
 
 function readPeriodTail(values:string[]):string|null {
-  // Los dos primeros valores son los recortes en alto contraste de los dos últimos dígitos.
-  const exact:string[]=[];
-  for(const raw of values.slice(0,2)){
-    const tokens=raw.match(/[0-9]{2}/g)??[];
-    for(const token of tokens)if(token!=="00")exact.push(token);
-  }
-  if(exact.length){
-    const counts=new Map<string,number>();for(const value of exact)counts.set(value,(counts.get(value)??0)+1);
-    const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
-    if(ranked.length===1||(ranked[0]?.[1]??0)>(ranked[1]?.[1]??0))return ranked[0]?.[0]??null;
-  }
   const candidates:string[]=[];
   for(const raw of values){
-    const tokens=raw.toUpperCase().match(/[0-9OQIL|!BDGCEAZ]{2,8}/g)??[];
+    const tokens=raw.toUpperCase().match(/[0-9OQIL|!BDGCEAZH]{2,}/g)??[];
     for(const token of tokens){
-      const digits=periodDigits(token);
-      if(digits.length>=2){
-        const tail=digits.slice(-2);
-        if(tail!=="00")candidates.push(tail);
-      }
+      const digits=token.replace(/[OQBDGCEAH]/g,"0").replace(/[IL|!]/g,"1").replace(/Z/g,"2").replace(/\D/g,"");
+      if(digits.length>=2)candidates.push(digits.slice(-2));
     }
   }
-  if(!candidates.length)return null;
-  const counts=new Map<string,number>();for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
+  const counts=new Map<string,number>();
+  for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
   const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
-  if(ranked.length>1&&(ranked[0]?.[1]??0)===(ranked[1]?.[1]??0))return null;
-  return ranked[0]?.[0]??null;
+  if(!ranked[0])return null;
+  if(ranked[1]&&ranked[0][1]===ranked[1][1])return null;
+  return ranked[0][0];
 }
-
 export function RenditionEntryForm({ agentId, games, today, periods, allPeriods, defaultPeriod, initialRendition, dailyMode = false, dailyCloseAllowed = true }: { agentId: string; games: Game[]; today: string; periods: OfficialDrawPeriod[]; allPeriods?: OfficialDrawPeriod[]; defaultPeriod?: string; initialRendition?: InitialRendition; dailyMode?: boolean; dailyCloseAllowed?: boolean }) {
   const [mode, setMode] = useState<"photo" | "manual">(initialRendition?.captureMethod === "manual" ? "manual" : "photo");
   const [date, setDate] = useState(initialRendition?.renditionDate ?? today);
@@ -840,14 +877,33 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const codesLine7 = (await worker.recognize(crops.codes)).data.text ?? "";
           const codeRead6 = readFocusedCodes(codesLine6,"","");
           const codeRead7 = readFocusedCodes(codesLine7,"","");
-          // Leer SUBAG en su propio recorte, separado de AG y MAQ para evitar que el OCR
-          // concatene los tres campos (por ejemplo, convirtiendo SUBAG 102 + MAQ 01 en 16972).
-          await setOcrMode(8);
+          // Leer AG, SUBAG y MAQ en recortes independientes. Antes se generaban los recortes
+          // de AG/MAQ pero sus resultados no se utilizaban para rellenar esos campos.
+          const digitWhitelist = "0123456789OQILBDGCEA";
+          await setOcrMode(7,digitWhitelist);
+          const agencyCropRaw7 = (await worker.recognize(crops.agencyCode)).data.text ?? "";
+          const subagentCropRaw7 = (await worker.recognize(crops.subagentCode)).data.text ?? "";
+          const machineCropRaw7 = (await worker.recognize(crops.machineCode)).data.text ?? "";
+          await setOcrMode(8,digitWhitelist);
+          const agencyCrop160 = (await worker.recognize(crops.agencyCodeThreshold160)).data.text ?? "";
+          const agencyCrop175 = (await worker.recognize(crops.agencyCodeThreshold175)).data.text ?? "";
+          const agencyCrop185 = (await worker.recognize(crops.agencyCodeThreshold185)).data.text ?? "";
+          const agencyCrop195 = (await worker.recognize(crops.agencyCodeThreshold195)).data.text ?? "";
+          const machineCrop140 = (await worker.recognize(crops.machineCodeThreshold140)).data.text ?? "";
+          const machineCrop160 = (await worker.recognize(crops.machineCodeThreshold160)).data.text ?? "";
+          const machineCrop175 = (await worker.recognize(crops.machineCodeThreshold175)).data.text ?? "";
+          const machineCrop185 = (await worker.recognize(crops.machineCodeThreshold185)).data.text ?? "";
           const subagentCrop160 = (await worker.recognize(crops.subagentCodeThreshold160)).data.text ?? "";
           const subagentCrop170 = (await worker.recognize(crops.subagentCodeThreshold170)).data.text ?? "";
           const subagentCrop175 = (await worker.recognize(crops.subagentCodeThreshold175)).data.text ?? "";
-          const focusedSubagent = readFocusedSubagentCode([subagentCrop160,subagentCrop170,subagentCrop175]);
-          const focusedMachine = readFocusedMachineCode([], [codesLine6,codesLine7]);
+          const focusedAgency = readFocusedAgencyCode([agencyCropRaw7,agencyCrop160,agencyCrop175,agencyCrop185,agencyCrop195])
+            ?? codeRead7.agencyCode ?? codeRead6.agencyCode;
+          const rowSubagent = readFocusedSubagentFromLabelledRows([codesLine6,codesLine7]);
+          const focusedSubagent = rowSubagent ?? readFocusedSubagentCode([subagentCropRaw7,subagentCrop160,subagentCrop170,subagentCrop175]);
+          const focusedMachine = readFocusedMachineCode(
+            [machineCropRaw7,machineCrop140,machineCrop160,machineCrop175,machineCrop185],
+            [codesLine6,codesLine7]
+          );
 
           await setOcrMode(6);
           const addressLine = (await worker.recognize(crops.address)).data.text ?? "";
@@ -861,14 +917,21 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const periodLineTight160 = (await worker.recognize(crops.periodLabelledTightThreshold160)).data.text ?? "";
           await setOcrMode(6);
           const periodLineWide170 = (await worker.recognize(crops.periodLabelledThreshold170)).data.text ?? "";
-          const focusedPeriod = readFocusedPeriodNumber([periodLineWide160,periodLineTight160,periodLineWide170]);
+          await setOcrMode(6,"0123456789OQILBDGCEAZH");
+          const periodTail140 = (await worker.recognize(crops.periodTailThreshold140)).data.text ?? "";
+          const periodTail175 = (await worker.recognize(crops.periodTailThreshold175)).data.text ?? "";
+          const focusedPeriodTail = readPeriodTail([periodTail140,periodTail175]);
+          const focusedPeriod = readFocusedPeriodNumber(
+            [periodLineWide160,periodLineTight160,periodLineWide170],
+            focusedPeriodTail
+          );
           const focusedTerminal = readFocusedDigitValue([terminalLine],4,6);
           const focusedPrint = readFocusedPrintedAt([printedLine]);
           const focusedAddress = readFocusedAddress([addressLine],null);
           focusedClosureMetadata = {
-            agencyCode: codeRead7.agencyCode ?? codeRead6.agencyCode ?? undefined,
+            agencyCode: focusedAgency ?? undefined,
             subagentCode: focusedSubagent ?? undefined,
-            machineCode: focusedMachine ?? codeRead7.machineCode ?? codeRead6.machineCode ?? undefined,
+            machineCode: focusedMachine ?? undefined,
             address: focusedAddress ?? undefined,
             terminalId: focusedTerminal ?? undefined,
             printedAt: focusedPrint ?? undefined,
@@ -882,7 +945,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             "Dirección: " + addressLine.trim(),
             "Máquina real: " + terminalLine.trim(),
             "Impresión: " + printedLine.trim(),
-            "SUBAG recortes 160/170/175: " + [subagentCrop160,subagentCrop170,subagentCrop175].map((v)=>v.trim()).join(" / "),
+            "AG recortes: " + [agencyCropRaw7,agencyCrop160,agencyCrop175,agencyCrop185,agencyCrop195].map((v)=>v.trim()).join(" / "),
+            "SUBAG recortes: " + [subagentCropRaw7,subagentCrop160,subagentCrop170,subagentCrop175].map((v)=>v.trim()).join(" / "),
+            "MAQ recortes: " + [machineCropRaw7,machineCrop140,machineCrop160,machineCrop175,machineCrop185].map((v)=>v.trim()).join(" / "),
+            "Cola de período: " + [periodTail140,periodTail175].map((v)=>v.trim()).join(" / "),
             "Período rotulado 160 ancho: " + periodLineWide160.trim(),
             "Período rotulado 160 ajustado: " + periodLineTight160.trim(),
             "Período rotulado 170: " + periodLineWide170.trim(),
