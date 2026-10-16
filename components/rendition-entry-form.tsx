@@ -295,12 +295,14 @@ type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
 const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   codes:       {left:0.030,right:0.955,top:0.263,bottom:0.292,scale:5,contrast:1.8},
   agencyCode:  {left:0.140,right:0.365,top:0.263,bottom:0.292,scale:6,contrast:1.8},
-  // Solo el valor impreso: el rótulo SUBAG no puede transformarse en cifras.
-  subagentCode:{left:0.515,right:0.660,top:0.263,bottom:0.292,scale:10,contrast:1.6},
-  // SUBAG tiene tres dígitos; aislarlos evita perder el cero cuadrado y el borde derecho del último glifo.
-  subagentDigit1:{left:0.515,right:0.557,top:0.266,bottom:0.290,scale:10,contrast:1.6},
-  subagentDigit0:{left:0.553,right:0.600,top:0.266,bottom:0.290,scale:10,contrast:1.6},
-  subagentDigit2:{left:0.600,right:0.650,top:0.266,bottom:0.290,scale:10,contrast:1.6},
+  // Recorte calibrado sobre el renglón impreso SUBAG:102. El valor está entre x≈0.53 y 0.61
+  // del ancho del papel; terminar antes de MAQ evita capturar sus dígitos por error.
+  subagentCode:{left:0.520,right:0.610,top:0.263,bottom:0.292,scale:10,contrast:1.6},
+  // Un recorte por glifo, centrado respectivamente en 1, 0 y 2. Antes los recortes
+  // segundo y tercero se solapaban con el glifo vecino y llegaban hasta la etiqueta MAQ.
+  subagentDigit1:{left:0.526,right:0.551,top:0.266,bottom:0.290,scale:10,contrast:1.6},
+  subagentDigit0:{left:0.560,right:0.585,top:0.266,bottom:0.290,scale:10,contrast:1.6},
+  subagentDigit2:{left:0.586,right:0.611,top:0.266,bottom:0.290,scale:10,contrast:1.6},
   // MAQ: lectura de los dos glifos individuales; sin incluir los puntos del rótulo.
   machineCode: {left:0.775,right:0.879,top:0.263,bottom:0.292,scale:8,contrast:1.5},
   machineDigit0:{left:0.778,right:0.827,top:0.263,bottom:0.292,scale:10,contrast:1.4},
