@@ -296,7 +296,7 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   codes:       {left:0.030,right:0.955,top:0.263,bottom:0.292,scale:5,contrast:1.8},
   agencyCode:  {left:0.030,right:0.365,top:0.263,bottom:0.292,scale:6,contrast:1.8},
   // Solo el valor impreso: el rótulo SUBAG no puede transformarse en cifras.
-  subagentCode:{left:0.520,right:0.655,top:0.263,bottom:0.292,scale:8,contrast:1.7},
+  subagentCode:{left:0.510,right:0.690,top:0.263,bottom:0.292,scale:9,contrast:1.7},
   // Solo los dígitos de MAQ:01, a la derecha del rótulo.
   machineCode: {left:0.745,right:0.865,top:0.263,bottom:0.292,scale:8,contrast:1.7},
   address:     {left:0.040,right:0.555,top:0.285,bottom:0.307,scale:5,contrast:1.8},
@@ -304,9 +304,9 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   terminalId:  {left:0.362,right:0.534,top:0.3075,bottom:0.3295,scale:6,contrast:1.6},
   printedAt:   {left:0.035,right:0.965,top:0.324,bottom:0.347,scale:5,contrast:1.8},
   // Período N.º: aislar los siete dígitos, sin las letras "Periodo nro".
-  periodNumber:{left:0.320,right:0.740,top:0.888,bottom:0.912,scale:9,contrast:1.9},
+  periodNumber:{left:0.375,right:0.800,top:0.884,bottom:0.916,scale:10,contrast:1.9},
   // Lectura independiente de las dos últimas cifras; se usa para validar el número completo.
-  periodTail:  {left:0.620,right:0.730,top:0.888,bottom:0.912,scale:10,contrast:2.0},
+  periodTail:  {left:0.625,right:0.805,top:0.884,bottom:0.916,scale:11,contrast:2.0},
 };
 
 function longestBrightRun(scores:number[],threshold:number,from:number,to:number) {
@@ -395,11 +395,28 @@ function makeReceiptFocusCrop(bitmap:ImageBitmap,bounds:ReceiptPaperBounds,regio
   context.putImageData(image,0,0);return canvas;
 }
 
+function makeThresholdOcrCrop(source:HTMLCanvasElement,threshold:number):HTMLCanvasElement {
+  const canvas=document.createElement("canvas");
+  canvas.width=source.width;canvas.height=source.height;
+  const context=canvas.getContext("2d",{willReadFrequently:true});
+  if(!context)throw new Error("No se pudo preparar la variante de OCR.");
+  context.drawImage(source,0,0);
+  const image=context.getImageData(0,0,canvas.width,canvas.height);
+  const pixels=image.data;
+  for(let i=0;i<pixels.length;i+=4){
+    const gray=.299*pixels[i]!+.587*pixels[i+1]!+.114*pixels[i+2]!;
+    const value=gray<threshold?0:255;
+    pixels[i]=value;pixels[i+1]=value;pixels[i+2]=value;pixels[i+3]=255;
+  }
+  context.putImageData(image,0,0);
+  return canvas;
+}
+
 async function makeFocusedReceiptCrops(file:File) {
   const bitmap=await createImageBitmap(file);
   try {
     const bounds=detectReceiptPaperBounds(bitmap);
-    return {
+    const crops={
       codes:makeReceiptFocusCrop(bitmap,bounds,"codes"),
       agencyCode:makeReceiptFocusCrop(bitmap,bounds,"agencyCode"),
       subagentCode:makeReceiptFocusCrop(bitmap,bounds,"subagentCode"),
@@ -409,6 +426,15 @@ async function makeFocusedReceiptCrops(file:File) {
       printedAt:makeReceiptFocusCrop(bitmap,bounds,"printedAt"),
       periodNumber:makeReceiptFocusCrop(bitmap,bounds,"periodNumber"),
       periodTail:makeReceiptFocusCrop(bitmap,bounds,"periodTail"),
+    };
+    return {
+      ...crops,
+      subagentCodeThreshold140:makeThresholdOcrCrop(crops.subagentCode,140),
+      subagentCodeThreshold175:makeThresholdOcrCrop(crops.subagentCode,175),
+      periodNumberThreshold140:makeThresholdOcrCrop(crops.periodNumber,140),
+      periodNumberThreshold175:makeThresholdOcrCrop(crops.periodNumber,175),
+      periodTailThreshold140:makeThresholdOcrCrop(crops.periodTail,140),
+      periodTailThreshold175:makeThresholdOcrCrop(crops.periodTail,175),
     };
   } finally { bitmap.close(); }
 }
@@ -790,6 +816,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const agencyCropText = await worker.recognize(crops.agencyCode).then(r=>r.data.text??"");
           await setOcrMode(7,"0123456789OQILBDGCEAZ8");
           const subagentDigits7 = (await worker.recognize(crops.subagentCode)).data.text ?? "";
+          const subagentThreshold140 = (await worker.recognize(crops.subagentCodeThreshold140)).data.text ?? "";
+          const subagentThreshold175 = (await worker.recognize(crops.subagentCodeThreshold175)).data.text ?? "";
           const machineDigits7 = (await worker.recognize(crops.machineCode)).data.text ?? "";
           await setOcrMode(8,"0123456789OQILBDGCEAZ8");
           const subagentDigits8 = (await worker.recognize(crops.subagentCode)).data.text ?? "";
@@ -799,17 +827,21 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const machineCropText = await worker.recognize(crops.machineCode).then(r=>r.data.text??"");
           const agencyCropDigits = readFocusedDigitValue([agencyCropText],3,4);
           const agencyOnly = {agencyCode:agencyCropDigits?agencyCropDigits.padStart(4,"0"):null};
-          const focusedSubagent = readFocusedSubagentCode([subagentDigits7,subagentDigits8,subagentCropText]);
+          const focusedSubagent = readFocusedSubagentCode([subagentDigits7,subagentDigits8,subagentCropText,subagentThreshold140,subagentThreshold175]);
           const focusedMachine = readFocusedMachineCode([machineDigits7,machineDigits8,machineCropText],[codesLine7,codesLine6]);
           await setOcrMode(7,"0123456789OQILBDGCEAZ8");
           const periodTail7 = (await worker.recognize(crops.periodTail)).data.text ?? "";
+          const periodTailThreshold140 = (await worker.recognize(crops.periodTailThreshold140)).data.text ?? "";
+          const periodDigitsThreshold140 = (await worker.recognize(crops.periodNumberThreshold140)).data.text ?? "";
           await setOcrMode(8,"0123456789OQILBDGCEAZ8");
           const periodTail8 = (await worker.recognize(crops.periodTail)).data.text ?? "";
+          const periodTailThreshold175 = (await worker.recognize(crops.periodTailThreshold175)).data.text ?? "";
+          const periodDigitsThreshold175 = (await worker.recognize(crops.periodNumberThreshold175)).data.text ?? "";
           await setOcrMode(13,"0123456789OQILBDGCEAZ8");
           const periodTail13 = (await worker.recognize(crops.periodTail)).data.text ?? "";
           const focusedPeriod = readFocusedPeriodNumber(
-            [periodDigits7,periodDigits8,periodDigits13],
-            [periodTail7,periodTail8,periodTail13]
+            [periodDigits7,periodDigits8,periodDigits13,periodDigitsThreshold140,periodDigitsThreshold175],
+            [periodTail7,periodTail8,periodTail13,periodTailThreshold140,periodTailThreshold175]
           );
           const focusedTerminal = readFocusedDigitValue([terminalDigits7,terminalDigits6],4,6);
           const focusedPrint = readFocusedPrintedAt([printedLine6,printedLine7]);
@@ -832,13 +864,13 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             "Agencia (recorte): "+agencyCropText.trim(),
             "Subagente (recorte): "+subagentCropText.trim(),
             "Máquina (recorte): "+machineCropText.trim(),
-            "Subagente (pasadas numéricas): "+subagentDigits7.trim()+" / "+subagentDigits8.trim(),
+            "Subagente (pasadas numéricas): "+subagentDigits7.trim()+" / "+subagentDigits8.trim()+" / "+subagentThreshold140.trim()+" / "+subagentThreshold175.trim(),
             "Máquina (pasadas numéricas): "+machineDigits7.trim()+" / "+machineDigits8.trim(),
-            "Final de período: "+periodTail7.trim()+" / "+periodTail8.trim()+" / "+periodTail13.trim(),
+            "Final de período: "+periodTail7.trim()+" / "+periodTail8.trim()+" / "+periodTail13.trim()+" / "+periodTailThreshold140.trim()+" / "+periodTailThreshold175.trim(),
             "Dirección: "+addressLine6.trim(),
             "Máquina real (dígitos): "+terminalDigits7.trim()+" / "+terminalDigits6.trim(),
             "Impresión: "+printedLine6.trim()+" / "+printedLine7.trim(),
-            "Período N.º (dígitos): "+periodDigits7.trim()+" / "+periodDigits8.trim()+" / "+periodDigits13.trim(),
+            "Período N.º (dígitos): "+periodDigits7.trim()+" / "+periodDigits8.trim()+" / "+periodDigits13.trim()+" / "+periodDigitsThreshold140.trim()+" / "+periodDigitsThreshold175.trim(),
           ].join("\n");
         }
       } finally {
@@ -1044,6 +1076,24 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         )}
       </div>
 
+      {mode === "manual" && !receiptData && (
+        <section className="manual-closure-template-panel" aria-label="Carga manual de FIN DE JORNADA">
+          <div>
+            <strong>Cargar un FIN DE JORNADA sin foto</strong>
+            <p>Abre el formato del cupón para ingresar los datos identificatorios, períodos, cantidades e importes en sus renglones correspondientes.</p>
+          </div>
+          <button type="button" className="button ghost" onClick={() => {
+            const template = createManualClosureTemplate(games.filter((game) => game.enabled !== false));
+            setReceiptData(template);
+            setAmounts(mapTicketClosureAmounts(template, periodGames));
+            setTicketNumbers("");
+            setReceiptReviewed(false);
+            setGameListExpanded(true);
+            setNotice("Plantilla manual de FIN DE JORNADA abierta. Completá cada valor del cupón antes de confirmar.");
+          }}>Usar formato FIN DE JORNADA</button>
+        </section>
+      )}
+
       {mode === "photo" && (
         <div className="ticket-capture-panel">
           <div className="ticket-photo-picker">
@@ -1173,9 +1223,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                 setReceiptData({ ...next, userConfirmedReview: false });
                 setReceiptReviewed(false);
                 setAmounts(mapTicketClosureAmounts(next, periodGames));
-                // Si se corrige manualmente el Período N.º, reflejarlo en el
-                // identificador que se guarda como número de ticket/cupón.
-                setTicketNumbers(String(next.periodNumber ?? "").trim());
+                // El período del cupón no se copia al campo de número de ticket/cupón.
               }} />
               {periodGames.map((game) => <input key={game.id} type="hidden" name={"game_" + game.id} value={amounts[game.id] ?? "0"} />)}
               <div className="ticket-closure-accept-actions">
