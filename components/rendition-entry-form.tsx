@@ -684,21 +684,21 @@ function readFocusedAgencyCode(values:string[]):string|null {
 }
 
 function readSubagentCandidate(raw:string):string|null {
-  const upper=raw.toUpperCase();
-  // If Tesseract included its label, discard the label first and decode only what follows it.
-  const labelled=upper.match(/(?:SUBAG(?:ENTE)?|SUBA?G|S[UI1]B?A?G)\\s*[:.]?\\s*(.*)$/);
-  const value=labelled?.[1] ?? upper;
-  // Exactly three glyphs, with boundaries: reject 4/5 digit fragments such as 1972 or 16972.
-  const matches=[...value.matchAll(/(?:^|[^A-Z0-9])([0-9OQIL|!](?:[ \\t.:_-]*[0-9OQIL|!]){2})(?=$|[^A-Z0-9])/g)];
-  for(const match of matches){
-    const digits=(match[1]??"").replace(/[ \\t.:_-]/g,"").replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
-    if(/^\\d{3}$/.test(digits))return digits;
+  const upper=raw.toUpperCase().trim();
+  // Los recortes SUBAG son solo el valor impreso; quitar el rótulo si el OCR lo devuelve.
+  const labelled=upper.match(/(?:SUBAG(?:ENTE)?|SUBA?G|S[UI1]B?A?G)\s*[:.]?\s*(.*)$/);
+  const value=(labelled?.[1] ?? upper).trim();
+  // El campo contiene tres dígitos. No permitir que 4/5 cifras de una línea vecina pasen.
+  const candidates=[...value.matchAll(/(?:^|[^A-Z0-9])([0-9OQIL|!](?:[\s.:_-]*[0-9OQIL|!]){2})(?=$|[^A-Z0-9])/g)];
+  for(const match of candidates){
+    const digits=(match[1]??"").replace(/[\s.:_-]/g,"").replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
+    if(/^\d{3}$/.test(digits))return digits;
   }
-  // OCR may deliver only the digits with no punctuation or spaces.
-  const compact=value.trim();
+  // Algunas pasadas devuelven únicamente el valor, sin etiqueta ni separadores.
+  const compact=value.replace(/\s+/g,"");
   if(/^[0-9OQIL|!]{3}$/.test(compact)){
     const digits=compact.replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
-    return /^\\d{3}$/.test(digits)?digits:null;
+    return /^\d{3}$/.test(digits)?digits:null;
   }
   return null;
 }
@@ -1038,7 +1038,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             [periodDigitsRaw,periodDigits140,periodDigits160,periodDigits170,periodDigits175],
             focusedPeriodTail
           );
-          const focusedPeriod = periodFromIndividualGlyphs;
+          const focusedPeriod = rejectedWholeNumberCandidate ??
+            (periodFromIndividualGlyphs && focusedPeriodTail &&
+              periodFromIndividualGlyphs.endsWith(focusedPeriodTail)
+              ? periodFromIndividualGlyphs
+              : null);
           const focusedTerminal = readFocusedDigitValue([terminalLine],4,6);
           const focusedPrint = readFocusedPrintedAt([printedLine]);
           const focusedAddress = readFocusedAddress([addressLine],null);
@@ -1069,7 +1073,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             "Período rotulado 160 ajustado: " + periodLineTight160.trim(),
             "Período rotulado 170: " + periodLineWide170.trim(),
             "Período por glifo: " + periodGlyphDigits.join("") + " (OCR: " + periodGlyphRaw.join("|") + ")",
-            "Candidato OCR completo descartado: " + (rejectedWholeNumberCandidate ?? "sin lectura segura"),
+            "Período validado con rótulo y terminación: " + (rejectedWholeNumberCandidate ?? "sin lectura segura"),
           ].join("\n");
         }
       } finally {
