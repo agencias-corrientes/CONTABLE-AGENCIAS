@@ -148,7 +148,7 @@ export function normalizePrintedPeriodGlyphs(raw: string): string | null {
   if (token.length < 3 || token.length > 7) return null;
   const hasOcrLetters = /[A-Z|!]/.test(token);
   const digits = [...token].map((char, index) => {
-    if (/[OQBDGCEA]/.test(char)) return "0";
+    if (/[OQBDGCEAH]/.test(char)) return "0";
     if (/[IL|!]/.test(char)) return "1";
     if (char === "Z") return "2";
     if (char === "8" && index === 0 && hasOcrLetters) return "0";
@@ -164,7 +164,7 @@ function periodGlyphCandidates(fragment: string): string[] {
     .replace(/\b(?:NRO|NUM(?:ERO)?|NO|N[º°.]?|#)\b/gi, " ")
     .replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g, " ")
     .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, " ");
-  const pattern = /(?<![0-9A-Z|!])([0-9OQIL|!BDGCEAZ](?:[\s.:_-]*[0-9OQIL|!BDGCEAZ]){5,6})(?![0-9A-Z|!])/gi;
+  const pattern = /(?<![0-9A-Z|!])([0-9OQIL|!BDGCEAZH](?:[\s.:_-]*[0-9OQIL|!BDGCEAZH]){5,6})(?![0-9A-Z|!])/gi;
   return [...cleaned.matchAll(pattern)]
     .map((match) => normalizePrintedPeriodGlyphs(match[1] ?? ""))
     .filter((value): value is string => Boolean(value));
@@ -185,7 +185,7 @@ export function extractTicketPeriodNumber(text: string): string | null {
     let context = "";
     for (let next = index + 1; next < Math.min(normalizedLines.length, index + 4); next += 1) {
       const following = normalizedLines[next] ?? "";
-      if (!following || !/^[0-9OQIL|!BDGCEAZ .:_-]+$/i.test(following)) break;
+      if (!following || !/^[0-9OQIL|!BDGCEAZH .:_-]+$/i.test(following)) break;
       context += " " + following;
       const candidate = periodGlyphCandidates(context)[0];
       if (candidate) return candidate;
