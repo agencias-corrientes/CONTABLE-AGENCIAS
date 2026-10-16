@@ -285,7 +285,7 @@ function structuredQr(payload: string) {
   }
 }
 
-type ReceiptFocusRegion = "codes" | "agencyCode" | "subagentCode" | "machineCode" | "machineDigit0" | "machineDigit1" | "address" | "terminalId" | "printedAt" | "periodNumber" | "periodLabelled" | "periodLabelledTight" | "periodTail" | "periodGlyph1" | "periodGlyph2" | "periodGlyph3" | "periodGlyph4" | "periodGlyph5" | "periodGlyph6" | "periodGlyph7";
+type ReceiptFocusRegion = "codes" | "agencyCode" | "subagentCode" | "subagentDigit1" | "subagentDigit0" | "subagentDigit2" | "machineCode" | "machineDigit0" | "machineDigit1" | "address" | "terminalId" | "printedAt" | "periodNumber" | "periodLabelled" | "periodLabelledTight" | "periodTail" | "periodGlyph1" | "periodGlyph2" | "periodGlyph3" | "periodGlyph4" | "periodGlyph5" | "periodGlyph6" | "periodGlyph7";
 type ReceiptFocusSpec = { left:number; right:number; top:number; bottom:number; scale:number; contrast:number };
 type ReceiptPaperBounds = { left:number; top:number; width:number; height:number };
 type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
@@ -296,7 +296,11 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   codes:       {left:0.030,right:0.955,top:0.263,bottom:0.292,scale:5,contrast:1.8},
   agencyCode:  {left:0.140,right:0.365,top:0.263,bottom:0.292,scale:6,contrast:1.8},
   // Solo el valor impreso: el rótulo SUBAG no puede transformarse en cifras.
-  subagentCode:{left:0.520,right:0.635,top:0.263,bottom:0.292,scale:10,contrast:1.6},
+  subagentCode:{left:0.515,right:0.660,top:0.263,bottom:0.292,scale:10,contrast:1.6},
+  // SUBAG tiene tres dígitos; aislarlos evita perder el cero cuadrado y el borde derecho del último glifo.
+  subagentDigit1:{left:0.515,right:0.557,top:0.266,bottom:0.290,scale:10,contrast:1.6},
+  subagentDigit0:{left:0.553,right:0.600,top:0.266,bottom:0.290,scale:10,contrast:1.6},
+  subagentDigit2:{left:0.600,right:0.650,top:0.266,bottom:0.290,scale:10,contrast:1.6},
   // MAQ: lectura de los dos glifos individuales; sin incluir los puntos del rótulo.
   machineCode: {left:0.775,right:0.879,top:0.263,bottom:0.292,scale:8,contrast:1.5},
   machineDigit0:{left:0.778,right:0.827,top:0.263,bottom:0.292,scale:10,contrast:1.4},
@@ -431,6 +435,9 @@ async function makeFocusedReceiptCrops(file:File) {
       codes:makeReceiptFocusCrop(bitmap,bounds,"codes"),
       agencyCode:makeReceiptFocusCrop(bitmap,bounds,"agencyCode"),
       subagentCode:makeReceiptFocusCrop(bitmap,bounds,"subagentCode"),
+      subagentDigit1:makeReceiptFocusCrop(bitmap,bounds,"subagentDigit1"),
+      subagentDigit0:makeReceiptFocusCrop(bitmap,bounds,"subagentDigit0"),
+      subagentDigit2:makeReceiptFocusCrop(bitmap,bounds,"subagentDigit2"),
       machineCode:makeReceiptFocusCrop(bitmap,bounds,"machineCode"),
       machineDigit0:makeReceiptFocusCrop(bitmap,bounds,"machineDigit0"),
       machineDigit1:makeReceiptFocusCrop(bitmap,bounds,"machineDigit1"),
@@ -963,6 +970,17 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const subagentCrop160 = (await worker.recognize(crops.subagentCodeThreshold160)).data.text ?? "";
           const subagentCrop170 = (await worker.recognize(crops.subagentCodeThreshold170)).data.text ?? "";
           const subagentCrop175 = (await worker.recognize(crops.subagentCodeThreshold175)).data.text ?? "";
+          // PSM 13 distingue el cero cuadrado en el centro de SUBAG:102; PSM 10 lo confundía con 1.
+          await setOcrMode(13,"0123456789OQIL");
+          const subagentGlyph1Raw = (await worker.recognize(crops.subagentDigit1)).data.text ?? "";
+          const subagentGlyph0Raw = (await worker.recognize(crops.subagentDigit0)).data.text ?? "";
+          const subagentGlyph2Raw = (await worker.recognize(crops.subagentDigit2)).data.text ?? "";
+          const subagentGlyph1 = readSingleDigitGlyph(subagentGlyph1Raw);
+          const subagentGlyph0 = readSingleDigitGlyph(subagentGlyph0Raw);
+          const subagentGlyph2 = readSingleDigitGlyph(subagentGlyph2Raw);
+          const subagentFromIndividualGlyphs = subagentGlyph1 && subagentGlyph0 && subagentGlyph2
+            ? subagentGlyph1 + subagentGlyph0 + subagentGlyph2
+            : null;
           await setOcrMode(8,digitWhitelist);
           const focusedAgency = readFocusedAgencyCode([agencyCropRaw7,agencyCrop160,agencyCrop175,agencyCrop185,agencyCrop195])
             ?? codeRead7.agencyCode ?? codeRead6.agencyCode;
@@ -971,7 +989,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const subagentFrom160 = readSubagentCandidate(subagentCrop160);
           const cropConsensusSubagent = readFocusedSubagentCode([subagentCropRaw7,subagentCrop140,subagentCrop160,subagentCrop170,subagentCrop175]);
           // Para SUBAG solo aceptar consenso de la franja independiente, nunca cifras del renglón completo.
-          const focusedSubagent = cropConsensusSubagent ??
+          const focusedSubagent = subagentFromIndividualGlyphs ??
+            cropConsensusSubagent ??
             (subagentFrom140 && subagentFrom140 === subagentFrom160 ? subagentFrom140 : null);
 
           await setOcrMode(10,digitWhitelist);
@@ -1005,9 +1024,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const periodTail140 = (await worker.recognize(crops.periodTailThreshold140)).data.text ?? "";
           const periodTail175 = (await worker.recognize(crops.periodTailThreshold175)).data.text ?? "";
           const focusedPeriodTail = readPeriodTail([periodTail140,periodTail175]);
-          const periodLabelPattern = /P\s*E?\s*R\s*[I1LYN]?\s*[O0Q8GHN]?\s*D/i;
-          const periodLabelConfirmed = [recognizedText,periodLineWide160,periodLineTight160,periodLineWide170]
-            .some((value)=>periodLabelPattern.test(value.toUpperCase()));
+          // El cierre ya se reconoció como FIN DE JORNADA y este recorte está en la fila fija
+          // "Periodo nro"; el OCR puede deformar las letras del rótulo.
+          const periodLabelConfirmed = closureCandidate;
           const periodGlyphRaw: string[] = [];
           const periodGlyphDigits: string[] = [];
           await setOcrMode(10,digitWhitelist);
@@ -1038,11 +1057,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             [periodDigitsRaw,periodDigits140,periodDigits160,periodDigits170,periodDigits175],
             focusedPeriodTail
           );
-          const focusedPeriod = rejectedWholeNumberCandidate ??
-            (periodFromIndividualGlyphs && focusedPeriodTail &&
-              periodFromIndividualGlyphs.endsWith(focusedPeriodTail)
-              ? periodFromIndividualGlyphs
-              : null);
+          // Los siete glifos alineados con sus casilleros son la fuente de verdad.
+          // La lectura de la línea completa confundía los ceros cuadrados y daba 0100011.
+          const focusedPeriod = periodFromIndividualGlyphs;
           const focusedTerminal = readFocusedDigitValue([terminalLine],4,6);
           const focusedPrint = readFocusedPrintedAt([printedLine]);
           const focusedAddress = readFocusedAddress([addressLine],null);
@@ -1064,6 +1081,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             "Máquina real: " + terminalLine.trim(),
             "Impresión: " + printedLine.trim(),
             "AG recortes: " + [agencyCropRaw7,agencyCrop160,agencyCrop175,agencyCrop185,agencyCrop195].map((v)=>v.trim()).join(" / "),
+            "SUBAG glifos: " + [subagentGlyph1Raw,subagentGlyph0Raw,subagentGlyph2Raw].map((v)=>v.trim()).join(" | ") + " => " + (subagentFromIndividualGlyphs ?? "sin lectura segura"),
             "SUBAG recortes: " + [subagentCropRaw7,subagentCrop160,subagentCrop170,subagentCrop175].map((v)=>v.trim()).join(" / "),
             "MAQ recortes: " + [machineCropRaw7,machineCrop140,machineCrop160,machineCrop175,machineCrop185].map((v)=>v.trim()).join(" / "),
             "Renglón de códigos 170: " + codesLineThreshold170.trim(),
@@ -1073,7 +1091,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             "Período rotulado 160 ajustado: " + periodLineTight160.trim(),
             "Período rotulado 170: " + periodLineWide170.trim(),
             "Período por glifo: " + periodGlyphDigits.join("") + " (OCR: " + periodGlyphRaw.join("|") + ")",
-            "Período validado con rótulo y terminación: " + (rejectedWholeNumberCandidate ?? "sin lectura segura"),
+            "Período final por siete glifos: " + (focusedPeriod ?? "sin lectura segura") + "; OCR de línea descartado: " + (rejectedWholeNumberCandidate ?? "sin lectura segura"),
           ].join("\n");
         }
       } finally {
