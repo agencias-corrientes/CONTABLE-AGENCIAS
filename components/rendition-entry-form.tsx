@@ -436,6 +436,7 @@ async function makeFocusedReceiptCrops(file:File) {
     return {
       ...crops,
       codesThreshold140:makeThresholdOcrCrop(crops.codes,140),
+      codesThreshold170:makeThresholdOcrCrop(crops.codes,170),
       codesThreshold175:makeThresholdOcrCrop(crops.codes,175),
       agencyCodeThreshold160:makeThresholdOcrCrop(crops.agencyCode,160),
       agencyCodeThreshold175:makeThresholdOcrCrop(crops.agencyCode,175),
@@ -455,6 +456,8 @@ async function makeFocusedReceiptCrops(file:File) {
       subagentCodeThreshold170:makeThresholdOcrCrop(crops.subagentCode,170),
       subagentCodeThreshold175:makeThresholdOcrCrop(crops.subagentCode,175),
       periodNumberThreshold140:makeThresholdOcrCrop(crops.periodNumber,140),
+      periodNumberThreshold160:makeThresholdOcrCrop(crops.periodNumber,160),
+      periodNumberThreshold170:makeThresholdOcrCrop(crops.periodNumber,170),
       periodNumberThreshold175:makeThresholdOcrCrop(crops.periodNumber,175),
       periodTailThreshold140:makeThresholdOcrCrop(crops.periodTail,140),
       periodTailThreshold175:makeThresholdOcrCrop(crops.periodTail,175),
@@ -483,7 +486,7 @@ function labelledNumberSegment(line:string,startLabels:RegExp[],stopLabels:RegEx
 function readFocusedCodes(codesText:string,agencyDigitsText:string,machineDigitsText:string) {
   const agencyLabels=[/\bAGENCIA\s*[:.]/i,/\bAG\s*[:.]/i,/\bAB\s*[:.]/i,/\bA[BG86]\s*[:.]/i];
   const subagentLabels=[/\bSUBAG(?:ENTE)?\s*[:.]/i,/\bSUBA?G\s*[:.]/i,/\bSUA\s*[:.]/i,/\bSIEAG\s*[:.]/i,/\bSILAG\s*[:.]/i,/\bS[UI1]B?A?G\s*[:.]/i,/\bS[UI1]E?A?G\s*[:.]/i];
-  const machineLabels=[/\bMAQUINA\s*[:.]/i,/\bMAQ\s*[:.]/i,/\bM0+\s*[:.]/i,/\bMAO\s*[:.]/i,/\bM[A4]Q\s*[:.]/i,/\bH[A4][VD]\s*[:.]/i,/\bN[A4]D\s*[:.]/i];
+  const machineLabels=[/\bMAQUINA\s*[:.]/i,/\bMAQ\s*[:.]/i,/\bM0+\s*[:.]/i,/\bMAO\s*[:.]/i,/\bM[A4][QOD0]\s*[:.]/i,/\bH[A4][VD]\s*[:.]/i,/\bN[A4]D\s*[:.]/i];
   let agency=numericSequenceInSegment(labelledNumberSegment(codesText,agencyLabels,[...subagentLabels,...machineLabels]));
   const subagent=numericSequenceInSegment(labelledNumberSegment(codesText,subagentLabels,machineLabels));
   let machine=numericSequenceInSegment(labelledNumberSegment(codesText,machineLabels,[]));
@@ -516,16 +519,17 @@ function readFocusedPrintedAt(values:string[]):TicketClosureData["printedAt"]|nu
 }
 function normalizePrintedPeriodGlyphs(raw:string):string|null {
   const token=raw.toUpperCase().replace(/[^0-9A-Z|!]/g,"");
-  if(token.length<6||token.length>7)return null;
+  if(token.length<3||token.length>7)return null;
   const hasOcrLetters=/[A-Z|!]/.test(token);
   const digits=[...token].map((char,index)=>{
-    if(/[OQBDGCEA]/.test(char))return "0";
+    if(/[OQBDGCEAH]/.test(char))return "0";
     if(/[IL|!]/.test(char))return "1";
     if(char==="Z")return "2";
     if(char==="8"&&index===0&&hasOcrLetters)return "0";
     return /^[0-9]$/.test(char)?char:"";
   }).join("");
-  return /^\d{6,7}$/.test(digits)?digits.padStart(7,"0"):null;
+  if(!/^\d{3,7}$/.test(digits))return null;
+  return digits.padStart(7,"0");
 }
 function readLabelledPeriodNumber(values:string[],confirmedTail:string|null=null):string|null {
   const candidates:string[]=[];
@@ -558,11 +562,27 @@ function readLabelledPeriodNumber(values:string[],confirmedTail:string|null=null
   if(!ranked[0]||ranked[0][1]<2||(ranked[1]&&ranked[1][1]===ranked[0][1]))return null;
   return ranked[0][0];
 }
-function readFocusedPeriodNumber(labelledValues:string[],confirmedTail:string|null=null):string|null {
-  // Sólo aceptar un número asociado al rótulo Período; la cola confirma sus últimas dos cifras.
-  return readLabelledPeriodNumber(labelledValues,confirmedTail);
-}
+function readFocusedPeriodNumber(labelledValues:string[],digitValues:string[],confirmedTail:string|null):string|null {
+  const periodLabel=/P\s*E?\s*R\s*[I1LYN]?\s*[O0Q8GHN]?\s*D/i;
+  const labelWasRead=labelledValues.some((value)=>periodLabel.test(value.toUpperCase()));
+  if(!labelWasRead||!confirmedTail||!/^\d{2}$/.test(confirmedTail))return null;
 
+  const candidates:string[]=[];
+  for(const raw of digitValues){
+    const tokens=raw.toUpperCase().match(/[0-9OQIL|!BDGCEAZH8]{3,7}/g)??[];
+    for(const token of tokens){
+      const normalized=normalizePrintedPeriodGlyphs(token);
+      if(!normalized||normalized==="0000000"||!normalized.endsWith(confirmedTail))continue;
+      candidates.push(normalized);
+    }
+  }
+  const counts=new Map<string,number>();
+  for(const candidate of candidates)counts.set(candidate,(counts.get(candidate)??0)+1);
+  const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
+  // If threshold variants disagree, leave the field empty instead of showing a number from elsewhere.
+  if(ranked[0]&&(!ranked[1]||ranked[0][1]>ranked[1][1]))return ranked[0][0];
+  return null;
+}
 function readFocusedDigitValue(values:string[],minimumLength:number,maximumLength=10):string|null {
   const candidates=values
     .map((value)=>ocrDigitSequence(value,true))
@@ -831,8 +851,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const codesLine6 = (await worker.recognize(crops.codes)).data.text ?? "";
           await setOcrMode(7);
           const codesLine7 = (await worker.recognize(crops.codes)).data.text ?? "";
+          const codesLineThreshold170 = (await worker.recognize(crops.codesThreshold170)).data.text ?? "";
           const codeRead6 = readFocusedCodes(codesLine6,"","");
           const codeRead7 = readFocusedCodes(codesLine7,"","");
+          const codeReadThreshold170 = readFocusedCodes(codesLineThreshold170,"","");
           // Leer AG, SUBAG y MAQ en recortes independientes. Antes se generaban los recortes
           // de AG/MAQ pero sus resultados no se utilizaban para rellenar esos campos.
           const digitWhitelist = "0123456789OQILBDGCEA";
@@ -858,10 +880,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const subagentCrop175 = (await worker.recognize(crops.subagentCodeThreshold175)).data.text ?? "";
           const focusedAgency = readFocusedAgencyCode([agencyCropRaw7,agencyCrop160,agencyCrop175,agencyCrop185,agencyCrop195])
             ?? codeRead7.agencyCode ?? codeRead6.agencyCode;
-          const focusedSubagent = readFocusedSubagentCode([subagentCropRaw7,subagentCrop140,subagentCrop160,subagentCrop170,subagentCrop175]);
-          const focusedMachine = readFocusedMachineCode(
-            [machineCropRaw7,machineCrop140,machineCrop160,machineCrop175,machineCrop185]
-          );
+          const subagentFrom140 = readFocusedDigitValue([subagentCrop140],3,3);
+          const labelledSubagent = codeRead6.subagentCode && codeRead6.subagentCode === codeRead7.subagentCode
+            ? codeRead6.subagentCode
+            : null;
+          const oneLabelledSubagent = codeRead6.subagentCode ?? codeRead7.subagentCode;
+          const focusedSubagent = labelledSubagent ??
+            (oneLabelledSubagent && subagentFrom140 === oneLabelledSubagent ? oneLabelledSubagent : null) ??
+            (!oneLabelledSubagent ? readFocusedSubagentCode([subagentCropRaw7,subagentCrop140,subagentCrop160,subagentCrop170,subagentCrop175]) : null);
+          const focusedMachine = codeReadThreshold170.machineCode ?? codeRead7.machineCode ?? codeRead6.machineCode;
 
           await setOcrMode(6);
           const addressLine = (await worker.recognize(crops.address)).data.text ?? "";
@@ -876,11 +903,17 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           await setOcrMode(6);
           const periodLineWide170 = (await worker.recognize(crops.periodLabelledThreshold170)).data.text ?? "";
           await setOcrMode(8,"0123456789OQILBDGCEAZH");
+          const periodDigitsRaw = (await worker.recognize(crops.periodNumber)).data.text ?? "";
+          const periodDigits140 = (await worker.recognize(crops.periodNumberThreshold140)).data.text ?? "";
+          const periodDigits160 = (await worker.recognize(crops.periodNumberThreshold160)).data.text ?? "";
+          const periodDigits170 = (await worker.recognize(crops.periodNumberThreshold170)).data.text ?? "";
+          const periodDigits175 = (await worker.recognize(crops.periodNumberThreshold175)).data.text ?? "";
           const periodTail140 = (await worker.recognize(crops.periodTailThreshold140)).data.text ?? "";
           const periodTail175 = (await worker.recognize(crops.periodTailThreshold175)).data.text ?? "";
           const focusedPeriodTail = readPeriodTail([periodTail140,periodTail175]);
           const focusedPeriod = readFocusedPeriodNumber(
             [periodLineWide160,periodLineTight160,periodLineWide170],
+            [periodDigitsRaw,periodDigits140,periodDigits160,periodDigits170,periodDigits175],
             focusedPeriodTail
           );
           const focusedTerminal = readFocusedDigitValue([terminalLine],4,6);
@@ -906,7 +939,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             "AG recortes: " + [agencyCropRaw7,agencyCrop160,agencyCrop175,agencyCrop185,agencyCrop195].map((v)=>v.trim()).join(" / "),
             "SUBAG recortes: " + [subagentCropRaw7,subagentCrop160,subagentCrop170,subagentCrop175].map((v)=>v.trim()).join(" / "),
             "MAQ recortes: " + [machineCropRaw7,machineCrop140,machineCrop160,machineCrop175,machineCrop185].map((v)=>v.trim()).join(" / "),
+            "Renglón de códigos 170: " + codesLineThreshold170.trim(),
             "Cola de período: " + [periodTail140,periodTail175].map((v)=>v.trim()).join(" / "),
+            "Período solo dígitos: " + [periodDigitsRaw,periodDigits140,periodDigits160,periodDigits170,periodDigits175].map((v)=>v.trim()).join(" / "),
             "Período rotulado 160 ancho: " + periodLineWide160.trim(),
             "Período rotulado 160 ajustado: " + periodLineTight160.trim(),
             "Período rotulado 170: " + periodLineWide170.trim(),
@@ -964,9 +999,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           agencyCode: focusedClosureMetadata.agencyCode ?? parsed.receiptData.agencyCode,
           // No rescatar SUBAG desde el OCR general: solo vale la franja identificada.
           subagentCode: validSubagent(focusedClosureMetadata.subagentCode),
-          machineCode: focusedClosureMetadata.machineCode ?? parsed.receiptData.machineCode,
+          machineCode: focusedClosureMetadata.machineCode,
           address: focusedClosureMetadata.address ?? parsed.receiptData.address,
-          terminalId: focusedClosureMetadata.terminalId ?? parsed.receiptData.terminalId,
+          terminalId: focusedClosureMetadata.terminalId,
           printedAt: focusedClosureMetadata.printedAt ?? parsed.receiptData.printedAt,
           periodNumber: labelledPeriod,
           commissionRates,
@@ -1095,14 +1130,21 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => setMode("photo")}>Foto (automático)</button>
           <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
             setMode("manual");
-            if (dailyMode && !receiptData) {
+            if (!receiptData && !initialRendition) {
               const template = createManualClosureTemplate(games);
               setReceiptData(template);
               setReceiptReviewed(false);
               setGameListExpanded(true);
               setAmounts(mapTicketClosureAmounts(template, periodGames));
               setTicketNumbers("");
-              setNotice("Plantilla FIN DE JORNADA lista para cargar manualmente los valores impresos del cupón.");
+              setQrPayload("");
+              setFileName("");
+              setPhotoPreviewUrl("");
+              setOcrText("");
+              setDetectedPeriodMismatch(dailyMode ? "" : "__DAILY_CLOSURE__");
+              setNotice(dailyMode
+                ? "Plantilla FIN DE JORNADA lista para cargar manualmente los valores impresos del cupón."
+                : "Plantilla lista. Para confirmar un FIN DE JORNADA completo, configurá modalidad Rendición diaria / cierre diario.");
               setError("");
             }
           }}>Carga manual</button>
@@ -1277,11 +1319,21 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               <div className="ticket-closure-accept-actions">
                 <p>El ticket ya está cargado. Revisá los porcentajes y usá una sola vez el botón principal <strong>Confirmar y guardar rendición</strong> para continuar.</p>
                 <button type="button" className="button ghost" onClick={() => {
-                  setReceiptData(null);
+                  setMode("manual");
+                  const template = createManualClosureTemplate(games);
+                  setReceiptData(template);
                   setReceiptReviewed(false);
-                  setAmounts({});
-                  setGameListExpanded(false);
-                  setNotice("Se quitó la lectura. Podés cargar manualmente.");
+                  setAmounts(mapTicketClosureAmounts(template, periodGames));
+                  setTicketNumbers("");
+                  setQrPayload("");
+                  setFileName("");
+                  setPhotoPreviewUrl("");
+                  setOcrText("");
+                  setGameListExpanded(true);
+                  setDetectedPeriodMismatch(dailyMode ? "" : "__DAILY_CLOSURE__");
+                  setNotice(dailyMode
+                    ? "Plantilla FIN DE JORNADA lista para carga manual."
+                    : "Plantilla lista. Configurá modalidad Rendición diaria / cierre diario antes de guardar.");
                 }}>Quitar ticket y cargar manualmente</button>
               </div>
             </>
