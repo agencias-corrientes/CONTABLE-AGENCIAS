@@ -831,7 +831,14 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const codesLine7 = (await worker.recognize(crops.codes)).data.text ?? "";
           const codeRead6 = readFocusedCodes(codesLine6,"","");
           const codeRead7 = readFocusedCodes(codesLine7,"","");
-          const focusedSubagent = readFocusedSubagentFromLabelledRows([codesLine6,codesLine7]);
+          // Leer SUBAG en su propio recorte, separado de AG y MAQ para evitar que el OCR
+          // concatene los tres campos (por ejemplo, convirtiendo SUBAG 102 + MAQ 01 en 16972).
+          await setOcrMode(7);
+          const subagentCrop7 = (await worker.recognize(crops.subagentCode)).data.text ?? "";
+          await setOcrMode(6);
+          const subagentCrop6 = (await worker.recognize(crops.subagentCodeThreshold140)).data.text ?? "";
+          const focusedSubagent = readFocusedSubagentCode([subagentCrop7,subagentCrop6]) ??
+            readFocusedSubagentFromLabelledRows([codesLine6,codesLine7]);
           const focusedMachine = readFocusedMachineCode([], [codesLine6,codesLine7]);
 
           await setOcrMode(6);
@@ -909,10 +916,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           value && /^\d{7}$/.test(value.replace(/\s+/g, "")) ? value.replace(/\s+/g, "") : null;
         // Período: aceptar únicamente una lectura de 7 dígitos ligada al rótulo impreso.
         // No usar el período del parser general, que puede confundirlo con otra cifra del ticket.
-        const labelledPeriod =
-          validPeriod(focusedClosureMetadata.periodNumber) ??
-          validPeriod(extractTicketPeriodNumber(recognizedText)) ??
-          validPeriod(extractTicketPeriodNumber(recoveredPeriodNumber));
+        // No recurrir al OCR general si las dos lecturas del recorte rotulado no coinciden:
+        // es preferible dejar Período vacío a mostrar un código inventado de otra zona.
+        const labelledPeriod = validPeriod(focusedClosureMetadata.periodNumber);
         const validSubagent = (value: string | null | undefined) => {
           const digits = String(value ?? "").replace(/\D/g, "");
           return /^\d{3}$/.test(digits) ? digits : null;
