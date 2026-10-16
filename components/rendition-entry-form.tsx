@@ -451,7 +451,6 @@ async function makeFocusedReceiptCrops(file:File) {
       periodLabelledThreshold175:makeThresholdOcrCrop(crops.periodLabelled,175),
       periodLabelledTightThreshold160:makeThresholdOcrCrop(crops.periodLabelledTight,160),
       subagentCodeThreshold140:makeThresholdOcrCrop(crops.subagentCode,140),
-      subagentCodeThreshold140:makeThresholdOcrCrop(crops.subagentCode,140),
       subagentCodeThreshold160:makeThresholdOcrCrop(crops.subagentCode,160),
       subagentCodeThreshold170:makeThresholdOcrCrop(crops.subagentCode,170),
       subagentCodeThreshold175:makeThresholdOcrCrop(crops.subagentCode,175),
