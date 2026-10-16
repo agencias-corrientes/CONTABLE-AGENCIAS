@@ -296,7 +296,7 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   codes:       {left:0.030,right:0.955,top:0.263,bottom:0.292,scale:5,contrast:1.8},
   agencyCode:  {left:0.140,right:0.365,top:0.263,bottom:0.292,scale:6,contrast:1.8},
   // Solo el valor impreso: el rótulo SUBAG no puede transformarse en cifras.
-  subagentCode:{left:0.490,right:0.665,top:0.263,bottom:0.292,scale:9,contrast:1.7},
+  subagentCode:{left:0.520,right:0.635,top:0.263,bottom:0.292,scale:10,contrast:1.6},
   // MAQ: lectura de los dos glifos individuales; sin incluir los puntos del rótulo.
   machineCode: {left:0.775,right:0.879,top:0.263,bottom:0.292,scale:8,contrast:1.5},
   machineDigit0:{left:0.778,right:0.827,top:0.263,bottom:0.292,scale:10,contrast:1.4},
@@ -683,14 +683,27 @@ function readFocusedAgencyCode(values:string[]):string|null {
   return ranked[0]?.[0]??null;
 }
 
-function readFocusedSubagentCode(values:string[]):string|null {
-  const candidates:string[]=[];
-  for(const raw of values){
-    const token=raw.toUpperCase().replace(/[^0-9OQIL|!BDGCEAZH]/g,"");
-    if(token.length!==3)continue;
-    const decoded=token.replace(/[OQBDGCEAH]/g,"0").replace(/[IL|!]/g,"1").replace(/Z/g,"2");
-    if(/^\d{3}$/.test(decoded))candidates.push(decoded);
+function readSubagentCandidate(raw:string):string|null {
+  const upper=raw.toUpperCase();
+  // If Tesseract included its label, discard the label first and decode only what follows it.
+  const labelled=upper.match(/(?:SUBAG(?:ENTE)?|SUBA?G|S[UI1]B?A?G)\\s*[:.]?\\s*(.*)$/);
+  const value=labelled?.[1] ?? upper;
+  // Exactly three glyphs, with boundaries: reject 4/5 digit fragments such as 1972 or 16972.
+  const matches=[...value.matchAll(/(?:^|[^A-Z0-9])([0-9OQIL|!](?:[ \\t.:_-]*[0-9OQIL|!]){2})(?=$|[^A-Z0-9])/g)];
+  for(const match of matches){
+    const digits=(match[1]??"").replace(/[ \\t.:_-]/g,"").replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
+    if(/^\\d{3}$/.test(digits))return digits;
   }
+  // OCR may deliver only the digits with no punctuation or spaces.
+  const compact=value.trim();
+  if(/^[0-9OQIL|!]{3}$/.test(compact)){
+    const digits=compact.replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
+    return /^\\d{3}$/.test(digits)?digits:null;
+  }
+  return null;
+}
+function readFocusedSubagentCode(values:string[]):string|null {
+  const candidates=values.map(readSubagentCandidate).filter((value):value is string=>Boolean(value));
   const counts=new Map<string,number>();
   for(const candidate of candidates)counts.set(candidate,(counts.get(candidate)??0)+1);
   const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
@@ -929,7 +942,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const digitWhitelist = "0123456789OQILBDGCEA";
           await setOcrMode(7,digitWhitelist);
           const agencyCropRaw7 = (await worker.recognize(crops.agencyCode)).data.text ?? "";
+          await setOcrMode(7,"0123456789OQIL");
           const subagentCropRaw7 = (await worker.recognize(crops.subagentCode)).data.text ?? "";
+          await setOcrMode(7,digitWhitelist);
           const machineCropRaw7 = (await worker.recognize(crops.machineCode)).data.text ?? "";
           // PSM 7 acierta "01" en el recorte MAQ de esta foto; PSM 8 lo confunde con letras.
           const machineCrop140 = (await worker.recognize(crops.machineCodeThreshold140)).data.text ?? "";
@@ -942,25 +957,22 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const agencyCrop175 = (await worker.recognize(crops.agencyCodeThreshold175)).data.text ?? "";
           const agencyCrop185 = (await worker.recognize(crops.agencyCodeThreshold185)).data.text ?? "";
           const agencyCrop195 = (await worker.recognize(crops.agencyCodeThreshold195)).data.text ?? "";
-          // En esta foto, los umbrales 140 y 160 concuerdan en SUBAG:102.
+          // Las cuatro variantes de SUBAG se leen con whitelist numérica: el campo es solo 3 dígitos.
+          await setOcrMode(8,"0123456789OQIL");
           const subagentCrop140 = (await worker.recognize(crops.subagentCodeThreshold140)).data.text ?? "";
           const subagentCrop160 = (await worker.recognize(crops.subagentCodeThreshold160)).data.text ?? "";
           const subagentCrop170 = (await worker.recognize(crops.subagentCodeThreshold170)).data.text ?? "";
           const subagentCrop175 = (await worker.recognize(crops.subagentCodeThreshold175)).data.text ?? "";
+          await setOcrMode(8,digitWhitelist);
           const focusedAgency = readFocusedAgencyCode([agencyCropRaw7,agencyCrop160,agencyCrop175,agencyCrop185,agencyCrop195])
             ?? codeRead7.agencyCode ?? codeRead6.agencyCode;
           const validSubagentCode = (value:string|null|undefined) => value && /^\d{3}$/.test(value) ? value : null;
-          const subagentFrom140 = readFocusedDigitValue([subagentCrop140],3,3);
-          const subagentFrom160 = readFocusedDigitValue([subagentCrop160],3,3);
-          const labelled6 = validSubagentCode(codeRead6.subagentCode);
-          const labelled7 = validSubagentCode(codeRead7.subagentCode);
-          const labelledSubagent = labelled6 && labelled6 === labelled7 ? labelled6 : null;
-          const oneLabelledSubagent = labelled6 ?? labelled7;
+          const subagentFrom140 = readSubagentCandidate(subagentCrop140);
+          const subagentFrom160 = readSubagentCandidate(subagentCrop160);
           const cropConsensusSubagent = readFocusedSubagentCode([subagentCropRaw7,subagentCrop140,subagentCrop160,subagentCrop170,subagentCrop175]);
+          // Para SUBAG solo aceptar consenso de la franja independiente, nunca cifras del renglón completo.
           const focusedSubagent = cropConsensusSubagent ??
-            (subagentFrom140 && subagentFrom140 === subagentFrom160 ? subagentFrom140 : null) ??
-            labelledSubagent ??
-            (oneLabelledSubagent && oneLabelledSubagent === subagentFrom140 ? oneLabelledSubagent : null);
+            (subagentFrom140 && subagentFrom140 === subagentFrom160 ? subagentFrom140 : null);
 
           await setOcrMode(10,digitWhitelist);
           const machineTensIsZero = looksLikeZeroGlyph(crops.machineDigit0);
