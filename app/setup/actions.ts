@@ -15,10 +15,10 @@ export async function bootstrapOrganization(formData: FormData) {
   const legalName = String(formData.get("legal_name") ?? "").trim();
   const taxId = String(formData.get("tax_id") ?? "").trim();
 
-  if (!/^\\d{3}$/.test(agencyCode)) redirect("/setup?error=agencia-invalida");
+  if (!/^\d{3}$/.test(agencyCode)) redirect("/setup?error=agencia-invalida");
   if (displayName.length > 70) redirect("/setup?error=agencia-invalida");
   const namedCode = displayName.match(/agencia[^0-9]*([0-9]{3,6})/i)?.[1]
-    ?? (/^\\d{3,6}$/.test(displayName) ? displayName : "");
+    ?? (/^\d{3,6}$/.test(displayName) ? displayName : "");
   if (namedCode && namedCode !== agencyCode) redirect("/setup?error=agencia-codigo-discordante");
 
   // Store a standard agency number prefix in the name as a second readable guard.
