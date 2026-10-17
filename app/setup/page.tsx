@@ -27,13 +27,16 @@ export default async function SetupPage({ searchParams }: { searchParams?: Promi
         <div className="brand-mark small">AC</div>
         <p className="eyebrow">PRIMERA CONFIGURACIÓN</p>
         <h1>Configurar tu agencia</h1>
-        {params.error === "agencia-duplicada" && <p className="message error-message" role="alert">Ese número de agencia ya está registrado por otro titular. No se creó una segunda agencia. Verificá el número oficial o contactá Administración Central.</p>}
+        {params.error === "agencia-duplicada" && <p className="message error-message" role="alert">Ese número oficial de agencia ya está registrado por otro titular. No se creó una segunda agencia. Verificá el número o contactá Administración Central.</p>}
+        {params.error === "agencia-invalida" && <p className="message error-message" role="alert">Ingresá el número oficial de agencia con exactamente 3 dígitos.</p>}
+        {params.error === "agencia-codigo-discordante" && <p className="message error-message" role="alert">El nombre ingresado contiene un número distinto al número oficial. Corregí ambos datos antes de crear la agencia.</p>}
         <p className="muted">
           Este paso crea una agencia independiente para tu cuenta, carga el catálogo oficial de juegos
           y prepara Caja y los ajustes operativos básicos. No se crean subagentes ni rendiciones de prueba.
         </p>
         <form action={bootstrapOrganization} className="form-stack">
-          <label>Nombre de la agencia<input name="name" required maxLength={120} placeholder="Agencia N.º 251" /></label>
+          <label>Número oficial de agencia<input name="agency_code" type="text" inputMode="numeric" minLength={3} maxLength={3} pattern="[0-9]{3}" placeholder="251" required /></label>
+          <label>Nombre o referencia (opcional)<input name="name" maxLength={70} placeholder="Corrientes Centro" /></label>
           <label>Razón social (opcional)<input name="legal_name" maxLength={160} placeholder="Razón social" /></label>
           <label>CUIT / identificación fiscal (opcional)<input name="tax_id" maxLength={32} placeholder="CUIT" /></label>
           <button className="button primary full">Crear agencia y comenzar</button>
