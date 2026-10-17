@@ -1344,6 +1344,7 @@ export type Database = {
       }
       organizations: {
         Row: {
+          agency_code: string | null
           created_at: string
           created_by: string
           currency_code: string
@@ -1355,6 +1356,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          agency_code?: string | null
           created_at?: string
           created_by?: string
           currency_code?: string
@@ -1366,6 +1368,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          agency_code?: string | null
           created_at?: string
           created_by?: string
           currency_code?: string
