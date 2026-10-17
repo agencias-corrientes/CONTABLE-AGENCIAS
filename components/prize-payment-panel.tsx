@@ -79,7 +79,9 @@ export function PrizePaymentPanel({
   async function handlePhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    setCaptureMode("photo");
+    // Keep QR mode mounted when a QR image is scanned so the decoded payload
+    // remains part of the form submission; photo mode remains selected otherwise.
+    if (captureMode !== "qr") setCaptureMode("photo");
     setScanMessage("");
     if (!file.type.startsWith("image/")) {
       setScanMessage("Elegí una imagen del cupón.");
