@@ -36,9 +36,29 @@ export default function RegisterOwnerPage() {
     });
     if (error) {
       const detail = error.message.toLowerCase();
-      setMessage(detail.includes("redirect") || detail.includes("allow list")
-        ? "Supabase rechazó la URL de confirmación de este Preview. Hay que autorizar esta URL en Authentication → URL Configuration del proyecto Preview."
-        : "No se pudo crear la cuenta. Revisá el correo, la conexión y los requisitos de contraseña.");
+      const status = (error as { status?: number }).status;
+      const code = (error as { code?: string }).code?.toLowerCase() ?? "";
+      if (
+        /already registered|user already exists|already been registered|email.*already exists/.test(detail) ||
+        ["user_already_exists", "email_exists"].includes(code)
+      ) {
+        setAccountExists(true);
+        setMessage("Ese correo ya tiene una cuenta. No hace falta crear otra: ingresá como titular o recuperá la contraseña si no la recordás.");
+      } else if (detail.includes("redirect") || detail.includes("allow list")) {
+        setMessage("Supabase rechazó la URL de confirmación de este Preview. Hay que autorizar esta URL en Authentication → URL Configuration del proyecto Preview.");
+      } else if (status === 429 || detail.includes("rate limit") || detail.includes("too many requests")) {
+        setMessage("Se alcanzó el límite de intentos de registro. No vuelvas a enviar el formulario repetidamente; esperá y probá una sola vez más tarde.");
+      } else if (detail.includes("signup is disabled") || detail.includes("signups not allowed") || detail.includes("sign up is disabled")) {
+        setMessage("El servicio de autenticación tiene deshabilitada la creación de cuentas. Hay que revisar la configuración de registros del proyecto Preview.");
+      } else if (detail.includes("invalid email") || detail.includes("email address is invalid")) {
+        setMessage("El correo no tiene un formato válido. Revisalo y volvé a intentarlo.");
+      } else if (detail.includes("password") && (detail.includes("weak") || detail.includes("short") || detail.includes("characters") || detail.includes("length"))) {
+        setMessage("La contraseña no cumple los requisitos del servicio. Usá una contraseña más segura de al menos 8 caracteres.");
+      } else if (detail.includes("database error saving new user")) {
+        setMessage("El servicio de autenticación no pudo guardar la cuenta. No repitas el alta varias veces; hay que revisar el error interno antes de volver a intentarlo.");
+      } else {
+        setMessage("No se pudo crear la cuenta por un error de autenticación" + (code || status ? " (código: " + (code || status) + ")" : "") + ". Verificá el correo y la conexión; si persiste, compartí este mensaje.");
+      }
       setLoading(false);
       return;
     }
@@ -79,7 +99,7 @@ export default function RegisterOwnerPage() {
             {message && (
               <div className="message error-message" role="alert">
                 {message}
-                {accountExists && <> <Link href="/login?perfil=administrador">Ingresar como administrador</Link>.</>}
+                {accountExists && <> <Link href="/login?perfil=administrador">Ingresar como titular</Link> o <Link href="/recuperar-clave">recuperar la contraseña</Link>.</>}
               </div>
             )}
             <button className="button primary full" disabled={loading}>{loading ? "Creando cuenta..." : "Crear cuenta y continuar"}</button>
