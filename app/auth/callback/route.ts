@@ -39,9 +39,11 @@ export async function GET(request: NextRequest) {
     confirmed = false;
   }
 
-  // Never trust a URL supplied by the email query string for the post-confirmation
-  // destination. A successful verification always opens our own success page.
-  return NextResponse.redirect(
-    new URL(confirmed ? "/registro/confirmado" : "/registro/confirmacion-error", url.origin),
-  );
+  // Only allow the password-recovery route as an alternate destination.
+  // Never redirect to arbitrary paths supplied through an email URL.
+  const requestedNext = url.searchParams.get("next");
+  const destination = confirmed
+    ? requestedNext === "/cambiar-clave" ? "/cambiar-clave" : "/registro/confirmado"
+    : "/registro/confirmacion-error";
+  return NextResponse.redirect(new URL(destination, url.origin));
 }
