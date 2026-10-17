@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
   const code = url.searchParams.get("code");
   const tokenHash = url.searchParams.get("token_hash");
   const rawType = url.searchParams.get("type");
+  const requestedNext = url.searchParams.get("next");
+  const isPasswordRecovery = requestedNext === "/cambiar-clave";
   let confirmed = false;
 
   try {
@@ -41,9 +43,9 @@ export async function GET(request: NextRequest) {
 
   // Only allow the password-recovery route as an alternate destination.
   // Never redirect to arbitrary paths supplied through an email URL.
-  const requestedNext = url.searchParams.get("next");
   const destination = confirmed
-    ? requestedNext === "/cambiar-clave" ? "/cambiar-clave" : "/registro/confirmado"
-    : "/registro/confirmacion-error";
+    ? isPasswordRecovery ? "/cambiar-clave" : "/registro/confirmado"
+    : isPasswordRecovery ? "/cambiar-clave?enlace=invalid" : "/registro/confirmacion-error";
+
   return NextResponse.redirect(new URL(destination, url.origin));
 }
