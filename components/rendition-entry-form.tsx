@@ -295,14 +295,14 @@ type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
 const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   codes:       {left:0.030,right:0.955,top:0.263,bottom:0.292,scale:5,contrast:1.8},
   agencyCode:  {left:0.140,right:0.365,top:0.263,bottom:0.292,scale:6,contrast:1.8},
-  // Recorte calibrado sobre el renglón impreso SUBAG:102. El valor está entre x≈0.53 y 0.61
-  // del ancho del papel; terminar antes de MAQ evita capturar sus dígitos por error.
-  subagentCode:{left:0.512,right:0.656,top:0.263,bottom:0.292,scale:6,contrast:1.6},
-  // Un recorte por glifo, centrado respectivamente en 1, 0 y 2. Antes los recortes
-  // segundo y tercero se solapaban con el glifo vecino y llegaban hasta la etiqueta MAQ.
-  subagentDigit1:{left:0.522,right:0.556,top:0.263,bottom:0.292,scale:10,contrast:1.6},
-  subagentDigit0:{left:0.568,right:0.602,top:0.263,bottom:0.292,scale:10,contrast:1.6},
-  subagentDigit2:{left:0.613,right:0.651,top:0.263,bottom:0.292,scale:10,contrast:1.6},
+  // Calibración sobre la foto real: SUBAG:102 ocupa x≈0.568–0.686 del ancho del papel.
+  // El recorte general encierra los tres dígitos, sin invadir AG ni MAQ.
+  subagentCode:{left:0.553,right:0.698,top:0.263,bottom:0.292,scale:7,contrast:1.6},
+  // Cada glifo tiene su propia zona, alineada con sus bordes observados en el comprobante.
+  // Así el 1 no se lee desde el final de la etiqueta y el 2 no se mezcla con el cero vecino.
+  subagentDigit1:{left:0.568,right:0.606,top:0.263,bottom:0.292,scale:10,contrast:1.6},
+  subagentDigit0:{left:0.611,right:0.651,top:0.263,bottom:0.292,scale:10,contrast:1.6},
+  subagentDigit2:{left:0.653,right:0.695,top:0.263,bottom:0.292,scale:10,contrast:1.6},
   // MAQ: lectura de los dos glifos individuales; sin incluir los puntos del rótulo.
   machineCode: {left:0.775,right:0.879,top:0.263,bottom:0.292,scale:8,contrast:1.5},
   machineDigit0:{left:0.778,right:0.827,top:0.263,bottom:0.292,scale:10,contrast:1.4},
@@ -993,9 +993,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const subagentFrom160 = readSubagentCandidate(subagentCrop160);
           const cropConsensusSubagent = readFocusedSubagentCode([subagentCropRaw7,subagentCrop140,subagentCrop160,subagentCrop170,subagentCrop175]);
           // Para SUBAG solo aceptar consenso de la franja independiente, nunca cifras del renglón completo.
-          const focusedSubagent = subagentFromIndividualGlyphs ??
-            cropConsensusSubagent ??
-            (subagentFrom140 && subagentFrom140 === subagentFrom160 ? subagentFrom140 : null);
+          const focusedSubagent = validSubagentCode(subagentFromIndividualGlyphs) ??
+            validSubagentCode(cropConsensusSubagent) ??
+            (subagentFrom140 && subagentFrom140 === subagentFrom160 ? validSubagentCode(subagentFrom140) : null);
 
           await setOcrMode(10,digitWhitelist);
           const machineTensIsZero = looksLikeZeroGlyph(crops.machineDigit0);
