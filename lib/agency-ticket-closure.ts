@@ -267,7 +267,7 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   const totalOtherGames = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, totalOtherMatcher);
   const otherGamesPrizes = metricInRange(lines, totalOtherIndex >= 0 ? totalOtherIndex + 1 : (otherIndex >= 0 ? otherIndex : 0), otherEnd, /PREMIOS?\s+P[A-Z]{2,3}/);
   const totalPrizes = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /PREMIOS?\s+P[A-Z]{2,3}/, true);
-  const generalTotal = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /TOTAL\s+GENERAL/);
+  let generalTotal = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /TOTAL\s+GENERAL/);
   const cobros = digitalIndex >= 0 ? metricInRange(lines, digitalIndex, lines.length, /^COBROS?\b/) : emptyMetric();
   const devoluciones = digitalIndex >= 0 ? metricInRange(lines, digitalIndex, lines.length, /^DEVOLUCIONES?\b/) : emptyMetric();
 
@@ -319,8 +319,27 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   const downloadLine = lines.find((line) => /DESCARGA?\s+CONFIRMADA/i.test(normalizeTicketText(line))) ?? null;
 
   const salesAmounts = [qValid.amount, toqueValid.amount, ...otherGames.map((game) => game.amount)];
-  const salesTotalsMatch = salesAmounts.every((value) => value !== null) && generalTotal.amount !== null
-    ? cents(salesAmounts.reduce<number>((sum, value) => sum + (value ?? 0), 0)) === cents(generalTotal.amount)
+  const detectedSalesTotal = salesAmounts.every((value) => value !== null)
+    ? salesAmounts.reduce<number>((sum, value) => sum + (value ?? 0), 0)
+    : null;
+
+  // OCR térmico puede leer "389340,00" como "38934.000". El parser interpreta
+  // ese punto como separador de miles y produce 38.934.000 aunque las líneas de venta
+  // leídas por separado suman 389.340,00. Si difiere exactamente por una potencia
+  // de diez, corregimos solo el importe de TOTAL GENERAL a partir de la suma independiente.
+  if (detectedSalesTotal !== null && detectedSalesTotal > 0 && generalTotal.amount !== null) {
+    const parsedTotalCents = cents(generalTotal.amount);
+    const salesTotalCents = cents(detectedSalesTotal);
+    const scaleFactors = [0.1, 0.01, 0.001, 0.0001, 10, 100, 1000, 10000];
+    const decimalScaleMismatch = parsedTotalCents !== salesTotalCents &&
+      scaleFactors.some((factor) => cents(generalTotal.amount! * factor) === salesTotalCents);
+    if (decimalScaleMismatch) {
+      generalTotal = { ...generalTotal, amount: detectedSalesTotal };
+    }
+  }
+
+  const salesTotalsMatch = detectedSalesTotal !== null && generalTotal.amount !== null
+    ? cents(detectedSalesTotal) === cents(generalTotal.amount)
     : null;
   const prizeAmounts = [qPrizes.amount, toquePrizes.amount, otherGamesPrizes.amount];
   const prizeTotalsMatch = prizeAmounts.every((value) => value !== null) && totalPrizes.amount !== null
