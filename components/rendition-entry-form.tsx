@@ -164,8 +164,9 @@ function closureAmountReadScore(data: TicketClosureData | null): number {
     data.digital.devoluciones.amount,
   ];
   return metrics.filter((value) => value !== null).length
-    + (data.consistency.salesTotalsMatch === true ? 3 : 0)
-    + (data.consistency.prizeTotalsMatch === true ? 2 : 0);
+    // A candidate that reconciles the receipt should beat a blurry read with more raw tokens.
+    + (data.consistency.salesTotalsMatch === true ? 8 : data.consistency.salesTotalsMatch === false ? -8 : 0)
+    + (data.consistency.prizeTotalsMatch === true ? 5 : data.consistency.prizeTotalsMatch === false ? -5 : 0);
 }
 
 function focusedClosingTextScore(value: string): number {
@@ -213,7 +214,11 @@ function focusedClosureMetric(
   return null;
 }
 
-function mergeFocusedClosureAmounts(base: TicketClosureData, rawFocusedText: string): TicketClosureData {
+function mergeFocusedClosureAmounts(
+  base: TicketClosureData,
+  rawFocusedText: string,
+  preferFocused = false,
+): TicketClosureData {
   const lines = rawFocusedText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   if (!lines.length) return base;
   const normalized = lines.map(normalize);
@@ -229,10 +234,13 @@ function mergeFocusedClosureAmounts(base: TicketClosureData, rawFocusedText: str
   const totalOtherIndex = firstIndex(/TOTAL\s+(?:(?:O|0)\.?\s*)?JUEGOS|TOTAL\s+OTROS\s+JUEGOS/, otherIndex >= 0 ? otherIndex + 1 : 0);
   const otherStart = otherIndex >= 0 ? otherIndex + 1 : 0;
   const otherEnd = totalOtherIndex > otherStart ? totalOtherIndex : digitalIndex;
-  const fill = (current: TicketReceiptMetric, found: {count:number|null;amount:number}|null): TicketReceiptMetric =>
-    current.amount !== null && current.amount > 0 || !found
+  const fill = (current: TicketReceiptMetric, found: {count:number|null;amount:number}|null): TicketReceiptMetric => {
+    if (!found) return current;
+    if (preferFocused) return { count: found.count ?? current.count, amount: found.amount };
+    return current.amount !== null && current.amount > 0
       ? current
       : { count: current.count ?? found.count, amount: found.amount };
+  };
   const qValid = focusedClosureMetric(lines, /\bVALIDOS?\b/, 0, qEnd);
   const qCancelled = focusedClosureMetric(lines, /ANULADOS?\s*(?:ESP|ESPECIALES?)/, 0, qEnd);
   const qPrizes = focusedClosureMetric(lines, /PREMIOS?\s+P[A-Z]{2,3}/, 0, qEnd);
@@ -262,28 +270,63 @@ function mergeFocusedClosureAmounts(base: TicketClosureData, rawFocusedText: str
   const generalTotal = focusedClosureMetric(lines, /TOTAL\s+GENE?RA[L1I]?/, 0, lines.length);
   const cobros = focusedClosureMetric(lines, /^COBROS?\b/, digitalIndex, lines.length);
   const devoluciones = focusedClosureMetric(lines, /^DEVOLUCIONES?\b/, digitalIndex, lines.length);
+  const nextQuiniela = {
+    ...base.quiniela,
+    valids: fill(base.quiniela.valids, qValid),
+    cancelledSpecial: fill(base.quiniela.cancelledSpecial, qCancelled),
+    prizesPaid: fill(base.quiniela.prizesPaid, qPrizes),
+  };
+  const nextQuinielaAlToque = {
+    ...base.quinielaAlToque,
+    valids: fill(base.quinielaAlToque.valids, toqueValid),
+    prizesPaid: fill(base.quinielaAlToque.prizesPaid, toquePrizes),
+  };
+  const nextOtherGames = base.otherGames.map((game) => {
+    const definition = gamePatterns.find((item) => item.name === game.name);
+    if (!definition) return game;
+    const found = focusedClosureMetric(lines, definition.pattern, otherStart, otherEnd);
+    if (!found) return game;
+    if (!preferFocused && game.amount !== null && game.amount > 0) return game;
+    return { ...game, count: found.count ?? game.count, amount: found.amount };
+  });
+  const nextTotalOther = fill(base.totalOtherGames, totalOther);
+  const nextOtherPrizes = fill(base.otherGamesPrizes, otherPrizes);
+  const nextTotalPrizes = fill(base.totalPrizes, totalPrizes);
+  const nextGeneralTotal = fill(base.generalTotal, generalTotal);
+  const nextDigital = {
+    cobros: fill(base.digital.cobros, cobros),
+    devoluciones: fill(base.digital.devoluciones, devoluciones),
+  };
+
+  // Recompute consistency after each focused read; the original parser flags otherwise go stale.
+  const salesAmounts = [
+    nextQuiniela.valids.amount,
+    nextQuinielaAlToque.valids.amount,
+    ...nextOtherGames.map((game) => game.amount),
+  ];
+  const salesTotalsMatch = salesAmounts.every((value) => value !== null) && nextGeneralTotal.amount !== null
+    ? Math.round(salesAmounts.reduce<number>((sum, value) => sum + (value ?? 0), 0) * 100) === Math.round(nextGeneralTotal.amount * 100)
+    : null;
+  const prizeAmounts = [
+    nextQuiniela.prizesPaid.amount,
+    nextQuinielaAlToque.prizesPaid.amount,
+    nextOtherPrizes.amount,
+  ];
+  const prizeTotalsMatch = prizeAmounts.every((value) => value !== null) && nextTotalPrizes.amount !== null
+    ? Math.round(prizeAmounts.reduce<number>((sum, value) => sum + (value ?? 0), 0) * 100) === Math.round(nextTotalPrizes.amount * 100)
+    : null;
+
   return {
     ...base,
-    quiniela: {
-      ...base.quiniela,
-      valids: fill(base.quiniela.valids, qValid),
-      cancelledSpecial: fill(base.quiniela.cancelledSpecial, qCancelled),
-      prizesPaid: fill(base.quiniela.prizesPaid, qPrizes),
-    },
-    quinielaAlToque: {
-      ...base.quinielaAlToque,
-      valids: fill(base.quinielaAlToque.valids, toqueValid),
-      prizesPaid: fill(base.quinielaAlToque.prizesPaid, toquePrizes),
-    },
-    otherGames,
-    totalOtherGames: fill(base.totalOtherGames, totalOther),
-    otherGamesPrizes: fill(base.otherGamesPrizes, otherPrizes),
-    totalPrizes: fill(base.totalPrizes, totalPrizes),
-    generalTotal: fill(base.generalTotal, generalTotal),
-    digital: {
-      cobros: fill(base.digital.cobros, cobros),
-      devoluciones: fill(base.digital.devoluciones, devoluciones),
-    },
+    quiniela: nextQuiniela,
+    quinielaAlToque: nextQuinielaAlToque,
+    otherGames: nextOtherGames,
+    totalOtherGames: nextTotalOther,
+    otherGamesPrizes: nextOtherPrizes,
+    totalPrizes: nextTotalPrizes,
+    generalTotal: nextGeneralTotal,
+    digital: nextDigital,
+    consistency: { salesTotalsMatch, prizeTotalsMatch },
   };
 }
 
@@ -1334,13 +1377,20 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         }
       }
       if (parsed.receiptData && focusedClosingAmountsCandidates.length) {
-        // Do not discard the other OCR passes: one may read the Quiniela row while another
-        // resolves the final totals. Apply the best-scoring pass first, then fill still-missing
-        // receipt metrics from the remaining independent reads.
+        // Try each OCR pass against the same parsed ticket, allowing a clearer focused read
+        // to replace an incorrect full-page amount. Keep the candidate only when coverage and
+        // the receipt's own sales/prize totals improve.
+        let bestReceipt = parsed.receiptData;
+        let bestScore = closureAmountReadScore(bestReceipt);
         for (const candidateText of focusedClosingAmountsCandidates) {
-          parsed.receiptData = mergeFocusedClosureAmounts(parsed.receiptData, candidateText);
+          const candidateReceipt = mergeFocusedClosureAmounts(parsed.receiptData, candidateText, true);
+          const candidateScore = closureAmountReadScore(candidateReceipt);
+          if (candidateScore > bestScore) {
+            bestReceipt = candidateReceipt;
+            bestScore = candidateScore;
+          }
         }
-        // Also keep the generic parsed map synchronized for any non-closure fallback path.
+        parsed.receiptData = bestReceipt;
         parsed.amountMap = mapTicketClosureAmounts(parsed.receiptData, activeGames);
       }
       const detectedPeriod = parsed.period || qrPeriodCandidate;
