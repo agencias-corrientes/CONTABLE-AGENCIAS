@@ -31,7 +31,25 @@ export default function RecoverAccountPage() {
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
 
     if (error) {
-      setMessage("No se pudo solicitar el cambio de contraseña. Revisá el correo e intentá nuevamente.");
+      const details = error.message.toLowerCase();
+      const status = (error as { status?: number }).status;
+      console.error("[auth-recovery] request failed", {
+        status,
+        code: (error as { code?: string }).code,
+        message: error.message,
+      });
+
+      if (status === 429 || details.includes("rate limit") || details.includes("too many requests")) {
+        setMessage(
+          "Se alcanzó el límite de envíos de correo de recuperación de Supabase. El servicio de correo integrado permite actualmente hasta 2 correos por hora. Revisá Recibidos y Spam: una solicitud anterior pudo haberse enviado. Esperá a que se restablezca el límite antes de volver a pedir el enlace."
+        );
+      } else if (details.includes("redirect") && (details.includes("allow") || details.includes("url"))) {
+        setMessage(
+          "Supabase rechazó la dirección de retorno del enlace. No sigas intentando: la dirección de recuperación debe autorizarse en la configuración de autenticación."
+        );
+      } else {
+        setMessage("No se pudo solicitar el cambio de contraseña. Motivo informado por el servicio: " + error.message);
+      }
       setLoading(false);
       return;
     }
