@@ -5,5 +5,5 @@ export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
 export default function AppleIcon() {
-  return new ImageResponse(<BrandAppIcon />, { ...size });
+  return new ImageResponse(<BrandAppIcon scale={180 / 512} />, { ...size });
 }
