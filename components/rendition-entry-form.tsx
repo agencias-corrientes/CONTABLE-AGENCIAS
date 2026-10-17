@@ -1006,7 +1006,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const focusedClosingAmounts = closingAmountsCandidates
             .sort((a, b) => focusedClosingTextScore(b) - focusedClosingTextScore(a))[0] ?? "";
           if (focusedClosingAmounts.trim()) {
-            recognizedText = [recognizedText, "[LECTURA FOCALIZADA DE IMPORTES FINALES]", focusedClosingAmounts.trim()].join("\\n\\n");
+            recognizedText = [recognizedText, "[LECTURA FOCALIZADA DE IMPORTES FINALES]", focusedClosingAmounts.trim()].join("\n\n");
           }
 
           // Lectura enfocada reducida: dos lecturas de la franja de identificadores
