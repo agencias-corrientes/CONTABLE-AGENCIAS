@@ -130,7 +130,7 @@ export async function createAgencyAgent(formData: FormData) {
   if (owningAgencyError || !owningAgency) redirect("/agencias?error=agencia-no-configurada");
   const registeredAgencyCode = String(owningAgency.agency_code ?? "").trim()
     || String(owningAgency.name ?? "").match(/agencia[^0-9]*([0-9]{3})/i)?.[1]
-    || (/^\\d{3}$/.test(String(owningAgency.name ?? "").trim()) ? String(owningAgency.name).trim() : "");
+    || (/^\d{3}$/.test(String(owningAgency.name ?? "").trim()) ? String(owningAgency.name).trim() : "");
   if (!registeredAgencyCode) redirect("/agencias?error=agencia-no-configurada");
   if (code.split("-")[0] !== registeredAgencyCode) {
     redirect("/agencias?error=agencia-ajena&codigo=" + encodeURIComponent(code));
@@ -237,7 +237,7 @@ export async function createAgencyRendition(formData: FormData) {
       if (agencyLookupError) redirect("/pagos?error=ticket-identificacion-no-verificada&agent=" + encodeURIComponent(agentId));
       const registeredAgencyCode = String(owningAgency?.agency_code ?? "").trim()
         || String(owningAgency?.name ?? "").match(/agencia[^0-9]*([0-9]{3})/i)?.[1]
-        || (/^\\d{3}$/.test(String(owningAgency?.name ?? "").trim()) ? String(owningAgency?.name).trim() : "");
+        || (/^\d{3}$/.test(String(owningAgency?.name ?? "").trim()) ? String(owningAgency?.name).trim() : "");
       if (registeredAgencyCode && ticketAgencyCode !== registeredAgencyCode) {
         redirect("/pagos?error=ticket-agencia-ajena&agent=" + encodeURIComponent(agentId));
       }
@@ -743,7 +743,7 @@ export async function setAgencyDrawRenditionStatus(formData: FormData) {
   const status = String(formData.get("status") ?? "").trim();
 
   if (!permissions.can_create_renditions) redirect("/pagos?error=sin-permiso-rendicion&agent=" + encodeURIComponent(agentId));
-  if (!agentId || !/^\\d{4}-\\d{2}-\\d{2}$/.test(operationalDate) || !drawPeriod || !["complete", "incomplete"].includes(status)) {
+  if (!agentId || !/^\d{4}-\d{2}-\d{2}$/.test(operationalDate) || !drawPeriod || !["complete", "incomplete"].includes(status)) {
     redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
   }
 
