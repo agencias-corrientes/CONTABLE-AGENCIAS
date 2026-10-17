@@ -3,8 +3,22 @@ import { getCurrentContext } from "@/lib/accounting";
 import { bootstrapOrganization } from "./actions";
 
 export default async function SetupPage() {
-  const { member } = await getCurrentContext();
+  const { supabase, member } = await getCurrentContext();
   if (member) redirect("/pagos");
+
+  const rpcClient = supabase as any;
+  const { data: initialStatus, error: statusError } = await rpcClient.rpc("get_platform_access_status");
+  if (statusError) throw new Error("No se pudo comprobar la autorización central para crear la agencia.");
+  let status = typeof initialStatus === "string" ? initialStatus : "not_requested";
+
+  if (status === "not_requested") {
+    const { data: requestedStatus, error: requestError } = await rpcClient.rpc("submit_platform_access_request");
+    if (requestError) throw new Error("No se pudo registrar la solicitud de acceso.");
+    status = typeof requestedStatus === "string" ? requestedStatus : "pending";
+  }
+
+  if (["rejected", "suspended", "revoked"].includes(status)) redirect("/acceso-bloqueado");
+  if (status !== "approved") redirect("/acceso-pendiente");
 
   return (
     <main className="auth-page">
