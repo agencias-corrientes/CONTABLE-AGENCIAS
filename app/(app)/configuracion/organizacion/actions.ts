@@ -25,7 +25,7 @@ async function getAgencyOwnerContext() {
 
   const { data: organization, error: organizationError } = await supabase
     .from("organizations")
-    .select("id,name")
+    .select("id,name,agency_code")
     .eq("id", member.organization_id)
     .maybeSingle();
   if (organizationError || !organization) redirect("/configuracion/organizacion?error=agencia-no-encontrada");
@@ -34,20 +34,30 @@ async function getAgencyOwnerContext() {
     supabase,
     organizationId: String(organization.id),
     organizationName: String(organization.name),
+    agencyCode: String(organization.agency_code ?? ""),
     claims: authData.claims,
   };
 }
 
 export async function updateAgencyProfile(formData: FormData) {
-  const { supabase, organizationId } = await getAgencyOwnerContext();
-  const name = String(formData.get("name") ?? "").trim();
+  const { supabase, organizationId, agencyCode: currentAgencyCode } = await getAgencyOwnerContext();
+  let name = String(formData.get("name") ?? "").trim();
+  const agencyCode = String(formData.get("agency_code") ?? "").trim();
   const legalName = String(formData.get("legal_name") ?? "").trim();
   const taxId = String(formData.get("tax_id") ?? "").trim();
   const currencyCode = String(formData.get("currency_code") ?? "").trim().toUpperCase();
 
-  if (!name || name.length > 120 || legalName.length > 180 || taxId.length > 40 ||
+  if (!/^\\d{3}$/.test(agencyCode) || legalName.length > 180 || taxId.length > 40 ||
       !/^[A-Z]{3}$/.test(currencyCode)) {
     redirect("/configuracion/organizacion?error=datos-invalidos");
+  }
+  // If an older agency name was only its number (e.g. "000"), changing the number
+  // should not leave that stale number as the new display name.
+  if (/^\\d{3}$/.test(name) && name !== agencyCode) name = "Agencia N.º " + agencyCode;
+  const namedCode = name.match(/agencia[^0-9]*([0-9]{3,6})/i)?.[1]
+    ?? (/^\\d{3,6}$/.test(name) ? name : "");
+  if (namedCode && namedCode !== agencyCode) {
+    redirect("/configuracion/organizacion?error=agencia-codigo-discordante");
   }
 
   const { error } = await (supabase as any).rpc("update_agency_profile", {
@@ -57,10 +67,14 @@ export async function updateAgencyProfile(formData: FormData) {
     p_tax_id: taxId || null,
     p_currency_code: currencyCode,
     p_timezone: AGENCY_TIME_ZONE,
+    p_agency_code: agencyCode,
   });
 
   if (error) {
+    const details = String(error.message ?? "") + " " + String(error.details ?? "");
     if (error.code === "42501") redirect("/configuracion/organizacion?error=solo-titular");
+    if (error.code === "23505" || details.includes("organizations_agency_code_uq") || details.includes("organizations_agency_number_uq")) redirect("/configuracion/organizacion?error=agencia-duplicada");
+    if (/número oficial|número distinto|agency_code_format/i.test(details)) redirect("/configuracion/organizacion?error=datos-invalidos");
     redirect("/configuracion/organizacion?error=datos-no-guardados");
   }
 
