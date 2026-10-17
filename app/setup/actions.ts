@@ -23,7 +23,9 @@ export async function bootstrapOrganization(formData: FormData) {
   });
 
   if (error) {
-    if (/already belongs|ya está asociada|already associated/i.test(error.message)) redirect("/pagos");
+    const details = (error.message + " " + (error.details ?? "")).toLowerCase();
+    if (details.includes("organizations_agency_number_uq")) redirect("/setup?error=agencia-duplicada");
+    if (/already belongs|ya está asociada|already associated/i.test(details)) redirect("/pagos");
     throw new Error("No se pudo configurar la agencia. Revisá los datos e intentá nuevamente.");
   }
   if (!data) throw new Error("No se pudo crear la agencia.");
