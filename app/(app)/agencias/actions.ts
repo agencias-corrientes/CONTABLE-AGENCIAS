@@ -184,6 +184,24 @@ export async function createAgencyRendition(formData: FormData) {
   const { data: agentPolicyRow, error: policyLookupError } = await supabase.from("agency_agents")
     .select("code,rendition_policy,rendition_periods").eq("id", agentId).eq("organization_id", organizationId).maybeSingle();
   if (policyLookupError || !agentPolicyRow) redirect("/pagos?error=agente-no-encontrado");
+  const { data: agencyIdentity, error: agencyIdentityError } = await supabase
+    .from("organizations")
+    .select("agency_code,name")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (agencyIdentityError || !agencyIdentity) {
+    redirect("/pagos?error=agencia-identidad-no-configurada&agent=" + encodeURIComponent(agentId));
+  }
+  const registeredAgencyCode = String(agencyIdentity.agency_code ?? "").trim()
+    || String(agencyIdentity.name ?? "").match(/agencia[^0-9]*([0-9]{3})/i)?.[1]
+    || (/^[0-9]{3}$/.test(String(agencyIdentity.name ?? "").trim()) ? String(agencyIdentity.name).trim() : "");
+  if (!registeredAgencyCode) {
+    redirect("/pagos?error=agencia-identidad-no-configurada&agent=" + encodeURIComponent(agentId));
+  }
+  const selectedAgentCode = String(agentPolicyRow.code ?? "").trim();
+  if (selectedAgentCode.split("-")[0] !== registeredAgencyCode) {
+    redirect("/pagos?error=agente-codigo-ajeno&agent=" + encodeURIComponent(agentId));
+  }
   const renditionPolicy = String(agentPolicyRow.rendition_policy ?? "daily");
   const selectedRenditionPeriods = Array.isArray(agentPolicyRow.rendition_periods) ? agentPolicyRow.rendition_periods.map(String) : [];
   const submittedDate = String(formData.get("rendition_date") ?? "").trim();
@@ -225,40 +243,25 @@ export async function createAgencyRendition(formData: FormData) {
   }
   if (identityTicket) {
     const ticketAgencyCode = String(identityTicket.agencyCode ?? "").replace(/\D/g, "");
-    const selectedAgentCode = String(agentPolicyRow.code ?? "").trim();
     const expectedParts = selectedAgentCode.split("-");
     const ticketSubagentCode = String(identityTicket.subagentCode ?? "").replace(/\D/g, "");
-    if (ticketAgencyCode) {
-      const { data: owningAgency, error: agencyLookupError } = await supabase
-        .from("organizations")
-        .select("name,agency_code")
-        .eq("id", organizationId)
-        .maybeSingle();
-      if (agencyLookupError) redirect("/pagos?error=ticket-identificacion-no-verificada&agent=" + encodeURIComponent(agentId));
-      const registeredAgencyCode = String(owningAgency?.agency_code ?? "").trim()
-        || String(owningAgency?.name ?? "").match(/agencia[^0-9]*([0-9]{3})/i)?.[1]
-        || (/^\d{3}$/.test(String(owningAgency?.name ?? "").trim()) ? String(owningAgency?.name).trim() : "");
-      if (registeredAgencyCode && ticketAgencyCode !== registeredAgencyCode) {
-        redirect("/pagos?error=ticket-agencia-ajena&agent=" + encodeURIComponent(agentId));
-      }
-      if (expectedParts.length >= 3 && ticketSubagentCode) {
-        const fullExpected = expectedParts.join("").replace(/\D/g, "");
-        const matchesFullExpected = ticketSubagentCode.length >= 7 && ticketSubagentCode === fullExpected;
-        const matchesSubagentPart = ticketSubagentCode.length <= 3 && ticketSubagentCode === expectedParts[1];
-        if (!matchesFullExpected && !matchesSubagentPart) {
-          redirect("/pagos?error=ticket-subagente-ajeno&agent=" + encodeURIComponent(agentId));
-        }
-      }
-    } else if (expectedParts.length >= 3 && ticketSubagentCode) {
+    if (!ticketAgencyCode || !ticketSubagentCode) {
+      redirect("/pagos?error=ticket-identificacion-no-verificada&agent=" + encodeURIComponent(agentId));
+    }
+    if (ticketAgencyCode !== registeredAgencyCode) {
+      redirect("/pagos?error=ticket-agencia-ajena&agent=" + encodeURIComponent(agentId));
+    }
+    if (expectedParts.length >= 3) {
       const fullExpected = expectedParts.join("").replace(/\D/g, "");
+      const localExpected = expectedParts[1] + expectedParts[2];
       const matchesFullExpected = ticketSubagentCode.length >= 7 && ticketSubagentCode === fullExpected;
-      const matchesSubagentPart = ticketSubagentCode.length <= 3 && ticketSubagentCode === expectedParts[1];
-      if (!matchesFullExpected && !matchesSubagentPart) {
+      const matchesLocalNumber = ticketSubagentCode === localExpected;
+      const matchesSubagentPart = ticketSubagentCode === expectedParts[1];
+      if (!matchesFullExpected && !matchesLocalNumber && !matchesSubagentPart) {
         redirect("/pagos?error=ticket-subagente-ajeno&agent=" + encodeURIComponent(agentId));
       }
     }
-  }
-  const confirmedOfficialClosure = isConfirmedOfficialClosureTicket(formData);
+    const confirmedOfficialClosure = isConfirmedOfficialClosureTicket(formData);
   const reportedAmountRaw = String(formData.get("reported_amount") ?? "").trim();
   const [{ data: agentCommissionRows, error: agentCommissionError }, { data: defaultCommissionRows, error: defaultCommissionError }] = await Promise.all([
     supabase.from("agency_agent_game_commissions").select("game_type_id,commission_percent").eq("organization_id", organizationId).eq("agent_id", agentId).in("game_type_id", submittedGameIds),
