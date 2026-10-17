@@ -186,7 +186,7 @@ function focusedClosureMetric(
   start = 0,
   end = lines.length,
 ): { count: number | null; amount: number } | null {
-  const stopRow = /^(?:QUINIELA|OTROS\s+JUE|MEDIOS\s+DIG|TOTAL|PREMIOS?|ANULADOS?|V[AÁ]LIDOS?|LOTO|QUINI|MUINI|BRINCO|TELEKINO|POZO|LOTER[IÍ]A|AL\s+TOQUE)\b/i;
+  const stopRow = /^(?:QUINIELA|OTROS\s+JUE|MEDIOS\s+DIG|TOTAL|PREMIOS?|ANULADOS?|V[AÁ]LIDOS?|LOTO|QUINI|MUINI|BRINCO|TELEKINO|POZO|LOTER[IÍ]A|AL\s+TOQUE|PER[I1]ODO|AGENCIA|SUBAG|MAQ(?:UINA)?|DOMICILIO|DIRECCION)\b/i;
   for (let i = Math.max(0, start); i < Math.min(lines.length, end); i += 1) {
     const normalizedLine = normalize(lines[i] ?? "");
     if (!matcher.test(normalizedLine)) continue;
@@ -457,7 +457,7 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   periodTail:  {left:0.625,right:0.805,top:0.885,bottom:0.909,scale:11,contrast:1.5},
   // Leer aparte la zona de totales inferior: el OCR de página completa suele omitir los importes
   // pequeños del cierre aunque reconozca bien el resto del comprobante.
-  closingAmounts:{left:0.025,right:0.975,top:0.405,bottom:0.885,scale:5,contrast:1.8},
+  closingAmounts:{left:0.025,right:0.975,top:0.365,bottom:0.975,scale:5,contrast:1.8},
   // El número del cupón tiene siete casilleros de ancho fijo; se leen glifo por glifo.
   periodGlyph1:{left:0.375,right:0.414,top:0.885,bottom:0.909,scale:10,contrast:1.4},
   periodGlyph2:{left:0.425,right:0.463,top:0.885,bottom:0.909,scale:10,contrast:1.4},
@@ -1065,6 +1065,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let focusedClosureMetadata: FocusedClosureMetadata = {};
       let focusedOcrDebugText = "";
       let focusedClosingAmountsText = "";
+      let focusedClosingAmountsCandidates: string[] = [];
       try {
         const result = await worker.recognize(file);
         recognizedText = result.data.text ?? "";
@@ -1111,8 +1112,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             closingAmounts160,
             closingAmounts175,
           ].filter((value) => value.trim().length >= 12);
-          focusedClosingAmountsText = closingAmountsCandidates
-            .sort((a, b) => focusedClosingTextScore(b) - focusedClosingTextScore(a))[0] ?? "";
+          focusedClosingAmountsCandidates = closingAmountsCandidates
+            .sort((a, b) => focusedClosingTextScore(b) - focusedClosingTextScore(a));
+          focusedClosingAmountsText = focusedClosingAmountsCandidates[0] ?? "";
           if (focusedClosingAmountsText.trim()) {
             recognizedText = [recognizedText, "[LECTURA FOCALIZADA DE IMPORTES FINALES]", focusedClosingAmountsText.trim()].join("\n\n");
           }
@@ -1287,10 +1289,14 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       setOcrText([recognizedText, focusedOcrDebugText].filter(Boolean).join("\n\n"));
       const activeGames = games.filter((game) => game.enabled !== false);
       const parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber);
-      if (parsed.receiptData && focusedClosingAmountsText) {
-        parsed.receiptData = mergeFocusedClosureAmounts(parsed.receiptData, focusedClosingAmountsText);
-        // The original amountMap was built before the focused OCR values were merged.
-        // Rebuild it from the merged receipt so sales/commission/net totals use the corrected values.
+      if (parsed.receiptData && focusedClosingAmountsCandidates.length) {
+        // Do not discard the other OCR passes: one may read the Quiniela row while another
+        // resolves the final totals. Apply the best-scoring pass first, then fill still-missing
+        // receipt metrics from the remaining independent reads.
+        for (const candidateText of focusedClosingAmountsCandidates) {
+          parsed.receiptData = mergeFocusedClosureAmounts(parsed.receiptData, candidateText);
+        }
+        // Also keep the generic parsed map synchronized for any non-closure fallback path.
         parsed.amountMap = mapTicketClosureAmounts(parsed.receiptData, activeGames);
       }
       const detectedPeriod = parsed.period || qrPeriodCandidate;
