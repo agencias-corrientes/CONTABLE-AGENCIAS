@@ -37,7 +37,7 @@ export function BrandAppIcon({ scale = 1 }: BrandAppIconProps) {
           height: "43%",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "space-evenly",
+          justifyContent: "space-around",
           padding: "7%",
           boxSizing: "border-box",
           borderRadius: 12 * scale,
