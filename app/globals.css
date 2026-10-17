@@ -433,3 +433,32 @@ html,body{background:var(--bg);color:var(--text)}
 
 .ticket-closure-receipt.is-editable .ticket-receipt-code-row,.ticket-closure-receipt.is-editable .ticket-receipt-detail-row{gap:10px;align-items:start}.ticket-closure-receipt.is-editable .ticket-meta-field{min-width:0}.ticket-closure-receipt.is-editable .ticket-meta-field span{white-space:nowrap}.ticket-closure-receipt.is-editable .ticket-meta-field input{box-sizing:border-box;max-width:100%}
 .manual-closure-template-panel{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:10px 0;padding:12px 14px;border:1px dashed var(--line);border-radius:10px;background:#fffdf6}.manual-closure-template-panel>div{flex:1 1 250px;min-width:0}.manual-closure-template-panel strong{font-size:13px}.manual-closure-template-panel p{margin:4px 0 0;color:var(--muted);font-size:12px;line-height:1.35}.manual-closure-template-panel>.button{flex:0 0 auto}@media(max-width:720px){.manual-closure-template-panel>.button{width:100%}}
+
+/* Administración central: gestión segura de administradores, agencias y cuentas. */
+.auth-card.platform-admin-page{width:min(1100px,100%);max-height:none}
+.platform-admin-page h2{margin:0 0 8px;font-size:22px}
+.platform-admin-page h3{margin:0 0 6px;font-size:19px}
+.platform-admin-page .platform-access-section{display:grid;gap:12px;margin-top:30px;padding-top:22px;border-top:1px solid var(--line)}
+.platform-admin-page .platform-access-section>p{margin:0}
+.platform-admin-page .platform-inline-form{display:grid;grid-template-columns:minmax(240px,1fr) auto;gap:10px;align-items:end}
+.platform-admin-page .platform-inline-form label{display:grid;gap:6px;font-size:13px;font-weight:700}
+.platform-admin-page .platform-admin-list,.platform-admin-page .platform-user-list{display:grid;gap:12px}
+.platform-admin-page .platform-management-card{display:grid;gap:14px;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.platform-admin-page .platform-management-identity{min-width:0;overflow-wrap:anywhere}
+.platform-admin-page .platform-management-identity strong{font-size:15px}
+.platform-admin-page .platform-management-identity p{margin:6px 0 0}
+.platform-admin-page .platform-danger-form{display:grid;grid-template-columns:minmax(200px,1fr) auto;gap:10px;align-items:end}
+.platform-admin-page .platform-danger-form label{display:grid;gap:6px;font-size:12px;font-weight:700}
+.platform-admin-page .platform-details{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fffdf8}
+.platform-admin-page .platform-details summary{font-weight:800;cursor:pointer;color:var(--primary)}
+.platform-admin-page .platform-details>p{margin:12px 0}
+.platform-admin-page .platform-details .form-stack{margin-top:14px}
+.platform-admin-page .danger-details{border-color:#d7a3a3}
+.platform-admin-page .button.secondary{background:var(--surface2);color:var(--text)}
+.platform-admin-page .button.danger{background:#9b2c2c;color:#fff}
+.platform-admin-page .button.danger:hover{background:#7f2424}
+@media(max-width:700px){
+ .auth-card.platform-admin-page{padding:22px}
+ .platform-admin-page .platform-inline-form,.platform-admin-page .platform-danger-form{grid-template-columns:1fr}
+ .platform-admin-page .platform-inline-form .button,.platform-admin-page .platform-danger-form .button{width:100%}
+}
