@@ -20,13 +20,11 @@ export function AppShell({
   organizationName,
   userEmail,
   userRole,
-  isPlatformAdmin = false,
 }: {
   children: React.ReactNode;
   organizationName: string;
   userEmail: string;
   userRole: string;
-  isPlatformAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -39,13 +37,7 @@ export function AppShell({
   }, [pathname]);
   const isOwner = userRole === "owner";
   const baseNav = nav.filter(([slug]) => isOwner || !["juegos", "equipo", "configuracion"].includes(slug));
-  // The database remains the security boundary; this fallback only keeps the link visible
-  // for the seeded central-admin identity if an RSC refresh omits the RPC boolean.
-  const showPlatformAdminLink = isPlatformAdmin ||
-    userEmail.trim().toLowerCase() === "aguarapaintball@gmail.com";
-  const visibleNav = showPlatformAdminLink
-    ? [["plataforma/accesos", "Administración Central", "AC"] as const, ...baseNav]
-    : baseNav;
+  const visibleNav = baseNav;
 
   async function signOut() {
     const supabase = createClient();
@@ -68,7 +60,7 @@ export function AppShell({
         </div>
         <nav className="nav-list">
           {visibleNav.map(([slug, label]) => {
-            const href = slug === "plataforma/accesos" ? "/plataforma/accesos" : `/${slug}`;
+            const href = `/${slug}`;
             return (
               <Link
                 key={slug}
@@ -78,8 +70,7 @@ export function AppShell({
                   router.push("/pagos");
                   router.refresh();
                 } : undefined}
-                className={(pathname.startsWith(href) ? "nav-item active" : "nav-item") +
-                  (slug === "plataforma/accesos" ? " platform-admin-nav-item" : "")}
+                className={pathname.startsWith(href) ? "nav-item active" : "nav-item"}
               >
                 {label}
               </Link>
@@ -108,19 +99,6 @@ export function AppShell({
         .sidebar .nav-list .nav-item.active { background: #ffffff !important; background-image: linear-gradient(180deg,#ffffff 0%,#fffdf7 100%) !important; color: #64283a !important; border: 1px solid #dfcda0 !important; border-bottom: 3px solid #b79a45 !important; outline: none !important; box-shadow: inset 4px 0 #d1b35a, 0 4px 0 rgba(48,12,23,.18), 0 7px 14px rgba(30,10,16,.16) !important; font-weight: 850; transform: translateY(-1px); }
         .sidebar .nav-list .nav-item.active .nav-icon { background: linear-gradient(180deg,#fff7d9,#f4edcf); border-color: #e2d3a8; color: #64283a; box-shadow: inset 0 1px 1px rgba(90,60,20,.08); }
         .sidebar .nav-list .nav-item.active:hover { background: #fff !important; color: #64283a !important; }
-        .sidebar .nav-list .nav-item.platform-admin-nav-item {
-          background: linear-gradient(180deg,#fff0a8 0%,#f2d35d 58%,#dfb632 100%);
-          color: #512034; border-color: #fff1b5; border-bottom-color: #8a6517;
-          font-weight: 950; box-shadow: 0 3px 0 rgba(48,12,23,.22), 0 6px 12px rgba(35,8,16,.14);
-        }
-        .sidebar .nav-list .nav-item.platform-admin-nav-item:hover:not(.active) {
-          background: linear-gradient(180deg,#fff5c9 0%,#f6dd78 100%);
-          color: #512034; border-color: #fff8dd;
-        }
-        .sidebar .nav-list .nav-item.platform-admin-nav-item.active {
-          background: #fff !important; color: #512034 !important;
-          border-color: #dfcda0 !important; border-bottom-color: #b79a45 !important;
-        }
         .sidebar .user-role-pill { font-size: 11px; font-weight: 800; letter-spacing: .025em; }
         .sidebar .user-line { font-size: 11px; line-height: 1.4; }
         .sidebar .sidebar-footer .button { min-height: 40px; border-color: rgba(255,255,255,.3); font-size: 12px; font-weight: 750; }
