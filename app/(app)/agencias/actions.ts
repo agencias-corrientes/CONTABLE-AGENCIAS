@@ -406,7 +406,7 @@ export async function createAgencyRendition(formData: FormData) {
       p_rendition_id: renditionId,
       p_payment_date: todayInAgencyTimeZone(),
       p_amount: paymentAmount,
-      p_cash_account_id: cashAccountId,
+      p_cash_account_id: cashAccountId as string,
       p_reference: String(formData.get("reference") ?? "").trim() || undefined,
       p_notes: dailyStatus === "incomplete" ? "Pago parcial al registrar rendición incompleta" : "Cobro al confirmar rendición diaria",
     });
