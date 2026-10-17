@@ -71,7 +71,7 @@ export default function UpdatePasswordPage() {
         {status === "checking" && <p className="muted">Verificando el enlace de recuperación…</p>}
         {status === "invalid" && (
           <div className="form-stack">
-            <p className="message error-message">El enlace no es válido, venció o ya fue utilizado. Solicitá uno nuevo desde la recuperación de contraseña.</p>
+            <p className="message error-message">Este enlace no pudo validarse en este navegador; puede haber vencido o ya haberse utilizado. Volvé a solicitar uno nuevo y abrilo una sola vez en el mismo navegador y dispositivo desde donde pediste el correo de recuperación. No hace falta crear otra cuenta.</p>
             <Link className="button primary full" href="/recuperar-clave">Solicitar otro enlace</Link>
           </div>
         )}
