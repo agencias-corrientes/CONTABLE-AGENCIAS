@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./agency-ops.css";
 
-const siteUrl = "https://contable-agencias.vercel.app";
+const productionSiteUrl = "https://contable-agencias.vercel.app";
+const previewHost = process.env.VERCEL_URL;
+const siteUrl =
+  process.env.VERCEL_ENV === "preview" && previewHost
+    ? `https://${previewHost}`
+    : productionSiteUrl;
 const siteTitle = "Agencias Corrientes";
 const siteDescription =
   "Gestión diaria de agencias de quiniela, rendiciones y cobranzas.";
