@@ -107,6 +107,7 @@ function LoginForm() {
       </label>
       {message && <div className="message error-message" role="alert">{message}</div>}
       <button className="button primary full" disabled={loading}>{loading ? "Ingresando..." : "Ingresar"}</button>
+      <p className="muted small-text"><Link href="/recuperar">Olvidé mi contraseña</Link></p>
     </form>
   );
 }

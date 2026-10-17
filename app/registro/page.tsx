@@ -84,7 +84,7 @@ export default function RegisterOwnerPage() {
             {message && (
               <div className="message error-message" role="alert">
                 {message}
-                {accountExists && <> <Link href="/login?perfil=administrador">Ingresar como administrador</Link>.</>}
+                {accountExists && <span> <Link href="/login?perfil=administrador">Ingresar como administrador</Link> · <Link href="/recuperar">Recuperar contraseña</Link>.</span>}
               </div>
             )}
             <button className="button primary full" disabled={loading}>{loading ? "Creando cuenta..." : "Crear cuenta y continuar"}</button>

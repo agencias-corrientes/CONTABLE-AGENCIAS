@@ -39,9 +39,12 @@ export async function GET(request: NextRequest) {
     confirmed = false;
   }
 
-  // Never trust a URL supplied by the email query string for the post-confirmation
-  // destination. A successful verification always opens our own success page.
-  return NextResponse.redirect(
-    new URL(confirmed ? "/registro/confirmado" : "/registro/confirmacion-error", url.origin),
-  );
+  // Recovery links have one fixed internal destination. Never redirect to a user-supplied URL.
+  const recoveryFlow = url.searchParams.get("flow") === "recovery" || rawType === "recovery";
+  const destination = !confirmed
+    ? "/registro/confirmacion-error"
+    : recoveryFlow
+      ? "/recuperar/nueva"
+      : "/registro/confirmado";
+  return NextResponse.redirect(new URL(destination, url.origin));
 }
