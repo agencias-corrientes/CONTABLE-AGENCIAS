@@ -26,7 +26,7 @@ export default async function HomePage() {
             <p className="eyebrow">ACCESO EXCLUSIVO · ADMINISTRADOR MAESTRO</p>
             <h1>Administración Central</h1>
             <p className="lead">Administrá solicitudes de alta, autorización de agencias y estado de las cuentas sin entrar al panel operativo de un agenciero.</p>
-            <div className="landing-actions">
+            <div className="landing-actions landing-central-actions">
               <Link className="button primary full" href="/plataforma/accesos">Administración Central</Link>
               {member?.organization_id && <Link className="button ghost full" href="/pagos">Ingresar a mi agencia</Link>}
             </div>
