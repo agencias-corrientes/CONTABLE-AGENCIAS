@@ -8,6 +8,7 @@ import { RenditionScrollHelper } from "@/components/rendition-scroll-helper";
 import { RenditionDeadlineAlert } from "@/components/rendition-deadline-alert";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
 import { TicketClosureReceipt } from "@/components/ticket-closure-receipt";
+import { PrizePaymentPanel } from "@/components/prize-payment-panel";
 import { receiveAgencyRendition, voidAgencyRendition, setAgencyDrawRenditionStatus, setAgencyDailyRenditionStatus, sendAgencyBackupManually } from "../agencias/actions";
 
 type GameAmount = {
@@ -35,6 +36,20 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const canEditRenditions = Boolean(permissions?.can_edit_renditions);
   const canDeleteRenditions = Boolean(permissions?.can_delete_renditions);
   const canRegisterPayments = Boolean(permissions?.can_register_payments);
+  const { data: recentPrizePaymentRows } = await supabase
+    .from("agency_prize_payments")
+    .select("id,coupon_number,game_name,prize_amount,payment_date,capture_method")
+    .eq("organization_id", activeOrganization.id)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  const recentPrizePayments = (recentPrizePaymentRows ?? []).map((row: any) => ({
+    id: String(row.id),
+    coupon_number: String(row.coupon_number),
+    game_name: row.game_name ? String(row.game_name) : null,
+    prize_amount: Number(row.prize_amount),
+    payment_date: String(row.payment_date),
+    capture_method: String(row.capture_method),
+  }));
 
   const [{ data: operationalSettings }, { data: agents }, { data: gameTypes }, { data: agentCommissions }, { data: commissionDefaults }] = await Promise.all([
     supabase.from("agency_operational_settings").select("rendition_cutoff_time").eq("organization_id", activeOrganization.id).maybeSingle(),
@@ -476,6 +491,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       <RenditionScrollHelper />
       {params.ticket === "guardado" && <p className="message success-message">Se guardó el detalle completo del ticket de fin de jornada junto con la rendición.</p>}
       {params.ticket === "error" && <p className="message error-message">La rendición financiera ya se guardó, pero el detalle OCR del ticket no pudo adjuntarse. No vuelvas a registrar la rendición para corregir esto; abrí el registro existente.</p>}
+      {params.resultado === "premio-pagado" && <p className="message success-message" role="status">Premio registrado y salida de Caja contabilizada. El cupón quedó marcado como pagado y no puede volver a descontarse.</p>}
       {!selectedAgentId ? (
         <>
           <div className="topbar rendition-page-topbar">
@@ -510,7 +526,16 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "edicion-fallida": "No se pudo corregir la rendición. No se guardaron los cambios.",
         "anulacion-no-confirmada": "Marcá la confirmación para anular la rendición.",
         "anulacion-fallida": "No se pudo anular la rendición. El historial permanece sin cambios.",
-        "rendicion-fallida": "No se pudo registrar la rendición.",
+        "rendicion-fallida": "No se pudo registrar la rendición. La operación fue rechazada por la base de datos; no vuelvas a crear registros duplicados. Revisá la información del ticket e intentá una vez más.",
+        "ticket-agencia-ajena": "El ticket indica otro número de agencia. No se aceptó para evitar mezclar rendiciones entre titulares. Verificá el número de agencia y volvé a leer el comprobante.",
+        "ticket-subagente-ajeno": "El subagente o ambulante impreso en el ticket no coincide con el operador seleccionado. No se guardó la rendición.",
+        "ticket-identificacion-no-verificada": "No se pudo verificar la agencia del ticket en la base de datos. No se guardó; revisá el número del comprobante.",
+        "premio-duplicado": "Ese cupón ya tiene un premio pagado registrado en esta agencia. No se descontó de Caja una segunda vez.",
+        "premio-cupon-invalido": "Ingresá un número de cupón válido.",
+        "premio-importe-invalido": "Ingresá un importe de premio mayor que cero.",
+        "premio-foto-invalida": "La foto del cupón debe ser JPG, PNG o WebP y no superar 5 MB.",
+        "premio-foto-fallida": "No se pudo guardar la foto del cupón. No se registró el pago de premio.",
+        "premio-registro-fallido": "No se pudo registrar el pago de premio. No se descontó de Caja; revisá los datos antes de volver a intentarlo.",
         "sorteo-ya-rendido": "Este operador ya tiene una rendición activa para ese sorteo. No se creó un duplicado.",
         "juegos-periodo-invalido": "Uno o más juegos no corresponden al turno seleccionado. No se guardó la rendición.",
         "fecha-sorteo-invalida": "La fecha de la rendición debe coincidir con la jornada operativa. No se guardó el registro.",
@@ -532,6 +557,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "backup-destinatario": "No hay un correo de respaldo configurado para la agencia. Abrí Personal y permisos y guardá el correo del titular.",
         "backup-no-enviado": "El backup sigue guardado, pero el proveedor rechazó el envío. Revisá el correo configurado y la configuración de Resend."
       } as Record<string,string>)[params.error] ?? "La operación no se pudo completar. Verificá permisos y datos."}</p>}
+          <PrizePaymentPanel canRegisterPayments={canRegisterPayments} currencyCode={activeOrganization.currency_code} returnAgentId={selectedAgentId} recentPayments={recentPrizePayments} />
           <div className="stats-grid compact rendition-stats">
             <div className="stat-card"><span>Rendido hoy</span><strong>{money(todayRendido, activeOrganization.currency_code)}</strong><small>{todayRows.length} registros</small></div>
             <div className="stat-card"><span>Cobrado hoy</span><strong>{money(todayCobrado, activeOrganization.currency_code)}</strong><small>cobros registrados</small></div>
@@ -681,7 +707,16 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "edicion-fallida": "No se pudo corregir la rendición. No se guardaron los cambios.",
         "anulacion-no-confirmada": "Marcá la confirmación para anular la rendición.",
         "anulacion-fallida": "No se pudo anular la rendición. El historial permanece sin cambios.",
-        "rendicion-fallida": "No se pudo registrar la rendición.",
+        "rendicion-fallida": "No se pudo registrar la rendición. La operación fue rechazada por la base de datos; no vuelvas a crear registros duplicados. Revisá la información del ticket e intentá una vez más.",
+        "ticket-agencia-ajena": "El ticket indica otro número de agencia. No se aceptó para evitar mezclar rendiciones entre titulares. Verificá el número de agencia y volvé a leer el comprobante.",
+        "ticket-subagente-ajeno": "El subagente o ambulante impreso en el ticket no coincide con el operador seleccionado. No se guardó la rendición.",
+        "ticket-identificacion-no-verificada": "No se pudo verificar la agencia del ticket en la base de datos. No se guardó; revisá el número del comprobante.",
+        "premio-duplicado": "Ese cupón ya tiene un premio pagado registrado en esta agencia. No se descontó de Caja una segunda vez.",
+        "premio-cupon-invalido": "Ingresá un número de cupón válido.",
+        "premio-importe-invalido": "Ingresá un importe de premio mayor que cero.",
+        "premio-foto-invalida": "La foto del cupón debe ser JPG, PNG o WebP y no superar 5 MB.",
+        "premio-foto-fallida": "No se pudo guardar la foto del cupón. No se registró el pago de premio.",
+        "premio-registro-fallido": "No se pudo registrar el pago de premio. No se descontó de Caja; revisá los datos antes de volver a intentarlo.",
         "sorteo-ya-rendido": "Este operador ya tiene una rendición activa para ese sorteo. No se creó un duplicado.",
         "juegos-periodo-invalido": "Uno o más juegos no corresponden al turno seleccionado. No se guardó la rendición.",
         "fecha-sorteo-invalida": "La fecha de la rendición debe coincidir con la jornada operativa. No se guardó el registro.",
@@ -703,6 +738,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "backup-destinatario": "No hay un correo de respaldo configurado para la agencia. Abrí Personal y permisos y guardá el correo del titular.",
         "backup-no-enviado": "El backup sigue guardado, pero el proveedor rechazó el envío. Revisá el correo configurado y la configuración de Resend."
       } as Record<string,string>)[params.error] ?? "La operación no se pudo completar. Verificá permisos y datos."}</p>}
+          <PrizePaymentPanel canRegisterPayments={canRegisterPayments} currencyCode={activeOrganization.currency_code} returnAgentId={selectedAgentId} recentPayments={recentPrizePayments} />
           {selectedAgent ? (
             <AgentAccordion agent={selectedAgent} />
           ) : (
