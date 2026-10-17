@@ -26,7 +26,17 @@ export default function RegisterOwnerPage() {
     }
     setLoading(true);
     const supabase = createClient();
-    const emailRedirectTo = new URL("/auth/callback?next=%2Fsetup", window.location.origin).toString();
+    const currentHost = window.location.hostname.toLowerCase();
+    const isProjectDeployment = currentHost.endsWith("-agencias-corrientes-project.vercel.app");
+    const isCanonicalProduction = currentHost === "contable-agencias.vercel.app";
+    // Use the stable Preview branch alias instead of a one-deployment hostname.
+    // Production signups stay on the canonical production domain so they never
+    // exchange a confirmation code against a different Supabase project.
+    const confirmationOrigin =
+      isProjectDeployment && !isCanonicalProduction
+        ? "https://contable-agencias-git-previe-6d6939-agencias-corrientes-project.vercel.app"
+        : window.location.origin;
+    const emailRedirectTo = new URL("/auth/callback", confirmationOrigin).toString();
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,

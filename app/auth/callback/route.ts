@@ -1,21 +1,47 @@
 import { NextResponse, type NextRequest } from "next/server";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 
-function safeNextPath(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/pagos";
-  return value;
-}
+const supportedOtpTypes: EmailOtpType[] = [
+  "signup",
+  "email",
+  "invite",
+  "magiclink",
+  "recovery",
+  "email_change",
+];
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = safeNextPath(url.searchParams.get("next"));
+  const tokenHash = url.searchParams.get("token_hash");
+  const rawType = url.searchParams.get("type");
+  let confirmed = false;
 
-  if (code) {
+  try {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(new URL(next, url.origin));
+
+    if (code) {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      confirmed = !error;
+    } else if (
+      tokenHash &&
+      rawType &&
+      supportedOtpTypes.includes(rawType as EmailOtpType)
+    ) {
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: rawType as EmailOtpType,
+      });
+      confirmed = !error;
+    }
+  } catch {
+    confirmed = false;
   }
 
-  return NextResponse.redirect(new URL("/login?error=confirmacion", url.origin));
+  // Never trust a URL supplied by the email query string for the post-confirmation
+  // destination. A successful verification always opens our own success page.
+  return NextResponse.redirect(
+    new URL(confirmed ? "/registro/confirmado" : "/registro/confirmacion-error", url.origin),
+  );
 }
