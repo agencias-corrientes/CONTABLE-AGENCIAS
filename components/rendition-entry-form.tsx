@@ -256,13 +256,6 @@ function mergeFocusedClosureAmounts(
     {name:"Quiniela Poceada",pattern:/^QUINIELA\s+POC/},
     {name:"Telekino",pattern:/^TELEK/},
   ];
-  const otherGames = base.otherGames.map((game) => {
-    const definition = gamePatterns.find((item) => item.name === game.name);
-    if (!definition) return game;
-    const found = focusedClosureMetric(lines, definition.pattern, otherStart, otherEnd);
-    if (!found || (game.amount !== null && game.amount > 0)) return game;
-    return { ...game, count: game.count ?? found.count, amount: found.amount };
-  });
   const totalOther = focusedClosureMetric(lines, /TOTAL\s+(?:(?:O|0)\.?\s*)?JUEGOS|TOTAL\s+OTROS\s+JUEGOS/, otherIndex >= 0 ? otherIndex : 0, digitalIndex);
   const otherPrizes = focusedClosureMetric(lines, /PREMIOS?\s+P[A-Z]{2,3}/, totalOtherIndex >= 0 ? totalOtherIndex + 1 : otherStart, digitalIndex);
   const totalPrizes = focusedClosureMetric(lines, /(?:TOTAL\s+(?:DE\s+)?PREMIOS?|PREMIOS?\s+PAGADOS?\s+TOTAL)/, 0, digitalIndex);
