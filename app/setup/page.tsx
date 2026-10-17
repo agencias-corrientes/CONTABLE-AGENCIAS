@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { getCurrentContext } from "@/lib/accounting";
 import { bootstrapOrganization } from "./actions";
 
-export default async function SetupPage() {
+export default async function SetupPage({ searchParams }: { searchParams?: Promise<{ error?: string }> }) {
+  const params = searchParams ? await searchParams : {};
   const { supabase, member } = await getCurrentContext();
   if (member) redirect("/pagos");
 
@@ -26,6 +27,7 @@ export default async function SetupPage() {
         <div className="brand-mark small">AC</div>
         <p className="eyebrow">PRIMERA CONFIGURACIÓN</p>
         <h1>Configurar tu agencia</h1>
+        {params.error === "agencia-duplicada" && <p className="message error-message" role="alert">Ese número de agencia ya está registrado por otro titular. No se creó una segunda agencia. Verificá el número oficial o contactá Administración Central.</p>}
         <p className="muted">
           Este paso crea una agencia independiente para tu cuenta, carga el catálogo oficial de juegos
           y prepara Caja y los ajustes operativos básicos. No se crean subagentes ni rendiciones de prueba.
