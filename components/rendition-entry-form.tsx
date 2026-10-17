@@ -147,6 +147,38 @@ function aliasesFor(game: Game) {
   return [name];
 }
 
+function closureAmountReadScore(data: TicketClosureData | null): number {
+  if (!data) return -1;
+  const metrics = [
+    data.quiniela.valids.amount,
+    data.quiniela.cancelledSpecial.amount,
+    data.quiniela.prizesPaid.amount,
+    data.quinielaAlToque.valids.amount,
+    data.quinielaAlToque.prizesPaid.amount,
+    ...data.otherGames.map((game) => game.amount),
+    data.totalOtherGames.amount,
+    data.otherGamesPrizes.amount,
+    data.totalPrizes.amount,
+    data.generalTotal.amount,
+    data.digital.cobros.amount,
+    data.digital.devoluciones.amount,
+  ];
+  return metrics.filter((value) => value !== null).length
+    + (data.consistency.salesTotalsMatch === true ? 3 : 0)
+    + (data.consistency.prizeTotalsMatch === true ? 2 : 0);
+}
+
+function focusedClosingTextScore(value: string): number {
+  const text = normalize(value);
+  const labels = [
+    /VALIDOS?/, /ANULADOS?/, /PREMIOS?/, /TOTAL/, /QUINIELA/, /LOTO/, /QUINI/, /BRINCO/, /TELEKINO/,
+    /VENTAS?\s+BRUTAS?/, /COMISION(?:ES)?/, /EFECTIVO\s+A\s+RENDIR/,
+  ];
+  const labelScore = labels.reduce((score, pattern) => score + (pattern.test(text) ? 1 : 0), 0);
+  const monetaryTokens = value.match(/(?:\$\s*)?\d[\d.,]*[.,]\d{2}\b/g) ?? [];
+  return labelScore + monetaryTokens.length * 2;
+}
+
 function parseTicketText(text: string, games: Game[], recoveredPeriodNumber = "") {
   const receiptData = parseTicketClosure(text);
   if (receiptData) {
@@ -285,7 +317,7 @@ function structuredQr(payload: string) {
   }
 }
 
-type ReceiptFocusRegion = "codes" | "agencyCode" | "subagentCode" | "subagentDigit1" | "subagentDigit0" | "subagentDigit2" | "machineCode" | "machineDigit0" | "machineDigit1" | "address" | "terminalId" | "printedAt" | "periodNumber" | "periodLabelled" | "periodLabelledTight" | "periodTail" | "periodGlyph1" | "periodGlyph2" | "periodGlyph3" | "periodGlyph4" | "periodGlyph5" | "periodGlyph6" | "periodGlyph7";
+type ReceiptFocusRegion = "codes" | "agencyCode" | "subagentCode" | "subagentDigit1" | "subagentDigit0" | "subagentDigit2" | "machineCode" | "machineDigit0" | "machineDigit1" | "address" | "terminalId" | "printedAt" | "periodNumber" | "periodLabelled" | "periodLabelledTight" | "periodTail" | "closingAmounts" | "periodGlyph1" | "periodGlyph2" | "periodGlyph3" | "periodGlyph4" | "periodGlyph5" | "periodGlyph6" | "periodGlyph7";
 type ReceiptFocusSpec = { left:number; right:number; top:number; bottom:number; scale:number; contrast:number };
 type ReceiptPaperBounds = { left:number; top:number; width:number; height:number };
 type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
@@ -316,6 +348,9 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   periodLabelled:{left:0.022,right:0.830,top:0.885,bottom:0.909,scale:3,contrast:1.0},
   periodLabelledTight:{left:0.022,right:0.830,top:0.887,bottom:0.908,scale:3,contrast:1.0},
   periodTail:  {left:0.625,right:0.805,top:0.885,bottom:0.909,scale:11,contrast:1.5},
+  // Leer aparte la zona de totales inferior: el OCR de página completa suele omitir los importes
+  // pequeños del cierre aunque reconozca bien el resto del comprobante.
+  closingAmounts:{left:0.025,right:0.975,top:0.565,bottom:0.885,scale:5,contrast:1.8},
   // El número del cupón tiene siete casilleros de ancho fijo; se leen glifo por glifo.
   periodGlyph1:{left:0.375,right:0.414,top:0.885,bottom:0.909,scale:10,contrast:1.4},
   periodGlyph2:{left:0.425,right:0.463,top:0.885,bottom:0.909,scale:10,contrast:1.4},
@@ -450,6 +485,7 @@ async function makeFocusedReceiptCrops(file:File) {
       periodLabelled:makeReceiptFocusCrop(bitmap,bounds,"periodLabelled"),
       periodLabelledTight:makeReceiptFocusCrop(bitmap,bounds,"periodLabelledTight"),
       periodTail:makeReceiptFocusCrop(bitmap,bounds,"periodTail"),
+      closingAmounts:makeReceiptFocusCrop(bitmap,bounds,"closingAmounts"),
       periodGlyphs:[
         makeReceiptFocusCrop(bitmap,bounds,"periodGlyph1"),
         makeReceiptFocusCrop(bitmap,bounds,"periodGlyph2"),
@@ -488,6 +524,9 @@ async function makeFocusedReceiptCrops(file:File) {
       periodNumberThreshold175:makeThresholdOcrCrop(crops.periodNumber,175),
       periodTailThreshold140:makeThresholdOcrCrop(crops.periodTail,140),
       periodTailThreshold175:makeThresholdOcrCrop(crops.periodTail,175),
+      closingAmountsThreshold140:makeThresholdOcrCrop(crops.closingAmounts,140),
+      closingAmountsThreshold160:makeThresholdOcrCrop(crops.closingAmounts,160),
+      closingAmountsThreshold175:makeThresholdOcrCrop(crops.closingAmounts,175),
     };
   } finally { bitmap.close(); }
 }
@@ -922,11 +961,22 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         const result = await worker.recognize(file);
         recognizedText = result.data.text ?? "";
 
-        // La pasada general sigue siendo la fuente de importes. Se conserva el segundo
-        // intento anterior solo como alternativa de texto general.
-        const closureCandidate = Boolean(parseTicketClosure(recognizedText)) ||
+        const initialClosureCandidate = Boolean(parseTicketClosure(recognizedText)) ||
           /\bFIN\s+DE\s+(?:JOR|TOR)NADA\b/i.test(normalize(recognizedText)) ||
           /\bTOTALES?\s+EN\s+T[J7I1]\b/i.test(normalize(recognizedText));
+        if (initialClosureCandidate) {
+          // El OCR original lee bien el cuerpo, pero en fotos de tickets térmicos puede perder
+          // los importes pequeños del pie. Releer la imagen completa ampliada y elegir la pasada
+          // que recupera más cantidades válidas, comprobando también las sumas.
+          const enhancedTicketImage = await makeEnhancedTicketImage(file);
+          await worker.setParameters({ tessedit_pageseg_mode: 6, tessedit_char_whitelist: "" } as any);
+          const enhancedTicketText = (await worker.recognize(enhancedTicketImage)).data.text ?? "";
+          if (closureAmountReadScore(parseTicketClosure(enhancedTicketText)) > closureAmountReadScore(parseTicketClosure(recognizedText))) {
+            recognizedText = enhancedTicketText;
+          }
+        }
+
+        const closureCandidate = Boolean(parseTicketClosure(recognizedText)) || initialClosureCandidate;
         if (closureCandidate) {
           setProgress("Leyendo los datos impresos del FIN DE JORNADA…");
           setProgressPercent(72);
@@ -934,6 +984,30 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const setOcrMode = async (mode:number, whitelist?:string) => {
             await worker.setParameters({tessedit_pageseg_mode:mode,tessedit_char_whitelist:whitelist ?? ""} as any);
           };
+
+          // Segunda lectura dedicada al tramo inferior de importes. Se comparan varios modos
+          // de segmentación y umbrales; solo se agrega la versión con mejor lectura al parser,
+          // para no duplicar a ciegas todos los valores del comprobante.
+          await setOcrMode(6);
+          const closingAmountsPsm6 = (await worker.recognize(crops.closingAmounts)).data.text ?? "";
+          await setOcrMode(11);
+          const closingAmountsPsm11 = (await worker.recognize(crops.closingAmounts)).data.text ?? "";
+          await setOcrMode(6);
+          const closingAmounts140 = (await worker.recognize(crops.closingAmountsThreshold140)).data.text ?? "";
+          const closingAmounts160 = (await worker.recognize(crops.closingAmountsThreshold160)).data.text ?? "";
+          const closingAmounts175 = (await worker.recognize(crops.closingAmountsThreshold175)).data.text ?? "";
+          const closingAmountsCandidates = [
+            closingAmountsPsm6,
+            closingAmountsPsm11,
+            closingAmounts140,
+            closingAmounts160,
+            closingAmounts175,
+          ].filter((value) => value.trim().length >= 12);
+          const focusedClosingAmounts = closingAmountsCandidates
+            .sort((a, b) => focusedClosingTextScore(b) - focusedClosingTextScore(a))[0] ?? "";
+          if (focusedClosingAmounts.trim()) {
+            recognizedText = [recognizedText, "[LECTURA FOCALIZADA DE IMPORTES FINALES]", focusedClosingAmounts.trim()].join("\\n\\n");
+          }
 
           // Lectura enfocada reducida: dos lecturas de la franja de identificadores
           // para confirmar SUBAG/MAQ, y una por cada campo independiente. Evita decenas
@@ -1079,6 +1153,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             "[LECTURA FOCALIZADA FIN DE JORNADA]",
             "Identificadores (PSM 6): " + codesLine6.trim(),
             "Identificadores (PSM 7): " + codesLine7.trim(),
+            "Importes finales candidatos: " + [closingAmountsPsm6, closingAmountsPsm11, closingAmounts140, closingAmounts160, closingAmounts175].map((v) => v.trim()).join(" / "),
+            "Importes finales elegidos: " + (focusedClosingAmounts.trim() || "sin lectura segura"),
             "Dirección: " + addressLine.trim(),
             "Máquina real: " + terminalLine.trim(),
             "Impresión: " + printedLine.trim(),
