@@ -30,14 +30,8 @@ export default function OpenGraphImage() {
             borderRight: "12px solid #f5cf4d",
           }}
         >
-          <div
-            style={{
-              width: "284px",
-              height: "284px",
-              display: "flex",
-            }}
-          >
-            <BrandAppIcon />
+          <div style={{ width: "284px", height: "284px", display: "flex" }}>
+            <BrandAppIcon scale={284 / 512} />
           </div>
           <div
             style={{
