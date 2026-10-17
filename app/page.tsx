@@ -47,7 +47,7 @@ export default async function HomePage() {
         <p className="lead">Gestión diaria de subagentes y ambulantes, con una agencia independiente para cada titular.</p>
         <div className="landing-role-grid">
           <Link className="landing-role-choice landing-role-admin" href="/login?perfil=administrador">
-            <span className="landing-role-copy"><strong>Administrador</strong><small>Ingresar como titular de una agencia ya configurada</small></span>
+            <span className="landing-role-copy"><strong>Agenciero</strong><small>Ingresar como titular de una agencia ya configurada</small></span>
             <span className="landing-role-enter">Ingresar →</span>
           </Link>
           <Link className="landing-role-choice landing-role-employee" href="/login?perfil=empleado">
