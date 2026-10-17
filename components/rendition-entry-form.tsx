@@ -41,7 +41,7 @@ function extractTicketNumber(text: string): string {
 }
 
 function createManualClosureTemplate(games: Game[]): TicketClosureData {
-  const metric = () => ({ count: 0, amount: 0 });
+  const metric = () => ({ count: null as number | null, amount: null as number | null });
   const time = () => ({ date: null, time: null, raw: null });
   return {
     type: "loteria-corrientes-end-of-day-v1",
@@ -64,14 +64,14 @@ function createManualClosureTemplate(games: Game[]): TicketClosureData {
     quiniela: { valids: metric(), cancelledSpecial: metric(), prizesPaid: metric() },
     quinielaAlToque: { valids: metric(), prizesPaid: metric() },
     otherGames: [
-      { name: "Loto Plus", count: 0, amount: 0 },
-      { name: "Quini 6", count: 0, amount: 0 },
-      { name: "Pozo Quiniela", count: 0, amount: 0 },
-      { name: "Brinco", count: 0, amount: 0 },
-      { name: "Loto 5 Plus", count: 0, amount: 0 },
-      { name: "Lotería Online", count: 0, amount: 0 },
-      { name: "Quiniela Poceada", count: 0, amount: 0 },
-      { name: "Telekino", count: 0, amount: 0 },
+      { name: "Loto Plus", count: null, amount: null },
+      { name: "Quini 6", count: null, amount: null },
+      { name: "Pozo Quiniela", count: null, amount: null },
+      { name: "Brinco", count: null, amount: null },
+      { name: "Loto 5 Plus", count: null, amount: null },
+      { name: "Lotería Online", count: null, amount: null },
+      { name: "Quiniela Poceada", count: null, amount: null },
+      { name: "Telekino", count: null, amount: null },
     ],
     totalOtherGames: metric(),
     otherGamesPrizes: metric(),
@@ -770,6 +770,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [reference, setReference] = useState(initialRendition?.reference ?? "");
   const [notes, setNotes] = useState(initialRendition?.notes ?? "");
   const [receiptData, setReceiptData] = useState<TicketClosureData | null>(initialRendition?.receiptData ?? null);
+  const closureGames = useMemo(() => games.filter((game) => game.enabled !== false), [games]);
+  const financialGames = receiptData ? closureGames : periodGames;
   const [gameListExpanded, setGameListExpanded] = useState(false);
   const [receiptReviewed, setReceiptReviewed] = useState(Boolean(initialRendition?.receiptData?.userConfirmedReview));
   const [ocrText, setOcrText] = useState("");
@@ -792,14 +794,14 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     Object.values(amounts).reduce((sum, value) => sum + (Number(value) > 0 ? Number(value) : 0), 0),
     [amounts]
   );
-  const commissionTotal = useMemo(() => periodGames.reduce((sum, game) => {
+  const commissionTotal = useMemo(() => financialGames.reduce((sum, game) => {
     const amount = Number(amounts[game.id] ?? 0), rate = game.commissionPercent;
     if (!Number.isFinite(amount) || amount <= 0 || rate == null || !Number.isFinite(Number(rate))) return sum;
     return sum + Math.round((amount * Number(rate) / 100 + Number.EPSILON) * 100) / 100;
-  }, 0), [amounts, periodGames]);
+  }, 0), [amounts, financialGames]);
   const netToRemit = Math.max(0, Math.round((total - commissionTotal + Number.EPSILON) * 100) / 100);
   const effectiveCommissionPercent = total > 0 ? commissionTotal / total * 100 : 0;
-  const hasUnconfiguredCommission = periodGames.some((game) => Number(amounts[game.id] ?? 0) > 0 && (game.commissionPercent == null || !Number.isFinite(Number(game.commissionPercent))));
+  const hasUnconfiguredCommission = financialGames.some((game) => Number(amounts[game.id] ?? 0) > 0 && (game.commissionPercent == null || !Number.isFinite(Number(game.commissionPercent))));
   // The OCR can misread the printed "Cerrado" / "Descarga confirmada" footer.
   // A structurally recognized closure ticket that the operator reviewed is sufficient.
   const receiptHasConfirmedClosure = Boolean(receiptData?.type === "loteria-corrientes-end-of-day-v1");
@@ -1128,7 +1130,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         Object.entries(parsed.amountMap).filter(([gameId]) => gamesForDetectedPeriod.some((game) => game.id === gameId))
       );
       if (parsed.receiptData) {
-        const commissionRates = Object.fromEntries(periodGames.map((game) => [
+        const commissionRates = Object.fromEntries(closureGames.map((game) => [
           normalize(game.name),
           game.commissionPercent == null || !Number.isFinite(Number(game.commissionPercent)) ? null : Number(game.commissionPercent),
         ]));
@@ -1160,7 +1162,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         setReceiptData(closureReceipt);
         setGameListExpanded(true);
         setReceiptReviewed(false);
-        setAmounts(mapTicketClosureAmounts(closureReceipt, periodGames));
+        setAmounts(mapTicketClosureAmounts(closureReceipt, closureGames));
         if (!dailyMode) {
           setDetectedPeriodMismatch("__DAILY_CLOSURE__");
           setNotice("Este comprobante es un FIN DE JORNADA completo. Para registrarlo, configurá este operador con modalidad Rendición diaria / cierre diario; no corresponde a un único sorteo.");
@@ -1284,7 +1286,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               setReceiptData(template);
               setReceiptReviewed(false);
               setGameListExpanded(true);
-              setAmounts(mapTicketClosureAmounts(template, periodGames));
+              setAmounts(mapTicketClosureAmounts(template, closureGames));
               setTicketNumbers("");
               setQrPayload("");
               setFileName("");
@@ -1461,10 +1463,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               <TicketClosureReceipt data={receiptData} editable onChange={(next) => {
                 setReceiptData({ ...next, userConfirmedReview: false });
                 setReceiptReviewed(false);
-                setAmounts(mapTicketClosureAmounts(next, periodGames));
+                setAmounts(mapTicketClosureAmounts(next, closureGames));
                 // El período del cupón no se copia al campo de número de ticket/cupón.
               }} />
-              {periodGames.map((game) => <input key={game.id} type="hidden" name={"game_" + game.id} value={amounts[game.id] ?? "0"} />)}
+              {closureGames.map((game) => <input key={game.id} type="hidden" name={"game_" + game.id} value={amounts[game.id] ?? "0"} />)}
               <div className="ticket-closure-accept-actions">
                 <p>El ticket ya está cargado. Revisá los porcentajes y usá una sola vez el botón principal <strong>Confirmar y guardar rendición</strong> para continuar.</p>
                 <button type="button" className="button ghost" onClick={() => {
@@ -1495,7 +1497,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           )
         ) : (
           <>
-            {periodGames.map((game) => <input key={game.id} type="hidden" name={"game_" + game.id} value={amounts[game.id] ?? ""} />)}
+            {(receiptData ? closureGames : periodGames).map((game) => <input key={game.id} type="hidden" name={"game_" + game.id} value={amounts[game.id] ?? ""} />)}
             <div className="game-rendition-collapsed" role="status">
               <span className="game-rendition-collapsed-mark" aria-hidden="true">{receiptData ? "✓" : "…"}</span>
               <div>
