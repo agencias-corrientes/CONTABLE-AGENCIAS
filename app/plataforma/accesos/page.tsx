@@ -189,14 +189,14 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
         <h1>Control de acceso a agencias</h1>
         <p className="muted">Este es el panel central. Las solicitudes nuevas aparecen arriba; las agencias y cuentas que ya existían se administran en el listado de abajo. Suspender o revocar bloquea el acceso, pero no elimina rendiciones ni movimientos guardados.</p>
 
-        <div className="button-row platform-access-summary">
-          <span className="user-role-pill">Solicitudes pendientes: {requests.length}</span>
-          <span className="user-role-pill">Agencias registradas: {agencies.length}</span>
-          <span className="user-role-pill">Cuentas de acceso: {users.length}</span>
+        <div className="platform-access-summary platform-access-summary-grid" aria-label="Resumen del acceso">
+          <div className="button ghost platform-summary-button"><span>Solicitudes pendientes</span><strong>{requests.length}</strong></div>
+          <div className="button ghost platform-summary-button"><span>Agencias registradas</span><strong>{agencies.length}</strong></div>
+          <div className="button ghost platform-summary-button"><span>Cuentas de acceso</span><strong>{users.length}</strong></div>
         </div>
-        <div className="button-row">
-          <Link className="button ghost" href="/">Volver a Administración Central</Link>
-          {currentMember?.organization_id && <Link className="button primary" href="/pagos">Ingresar a mi agencia</Link>}
+        <div className="platform-access-navigation">
+          <Link className="button ghost platform-summary-button" href="/">Volver a Administración Central</Link>
+          {currentMember?.organization_id && <Link className="button ghost platform-summary-button" href="/pagos">Ingresar a mi agencia</Link>}
         </div>
         <p className="muted small-text">Estás viendo la base de datos aislada de Preview. Las agencias que solo existan en Producción no se muestran ni se modifican desde este panel.</p>
         {agencies.length === 1 && agencies[0]?.members.every((member) => member.is_platform_admin) && (
