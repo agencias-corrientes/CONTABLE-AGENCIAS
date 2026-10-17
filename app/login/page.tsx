@@ -140,6 +140,10 @@ function LoginForm() {
       </label>
       {message && <div className="message error-message" role="alert">{message}</div>}
       <button className="button primary full" disabled={loading}>{loading ? "Ingresando..." : "Ingresar"}</button>
+      {searchParams.get("recuperada") === "1" && (
+        <p className="message success-message">Contraseña actualizada. Ya podés ingresar con la nueva contraseña.</p>
+      )}
+      <p className="muted small-text"><Link href="/recuperar-clave">¿Olvidaste tu contraseña?</Link></p>
     </form>
   );
 }
