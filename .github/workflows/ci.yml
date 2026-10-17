@@ -6,6 +6,7 @@ on:
       - main
       - foundation/**
       - feature/**
+      - preview/**
   pull_request:
     branches:
       - main
