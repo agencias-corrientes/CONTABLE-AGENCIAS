@@ -11,8 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     display_override: ["standalone", "minimal-ui"],
-    background_color: "#f8f5ef",
-    theme_color: "#6b283b",
+    background_color: "#f7f0e4",
+    theme_color: "#70243a",
     orientation: "portrait",
     icons: [
       {
@@ -26,12 +26,6 @@ export default function manifest(): MetadataRoute.Manifest {
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
-      },
-      {
-        src: "/logo-agencias-quiniela.svg",
-        sizes: "any",
-        type: "image/svg+xml",
-        purpose: "any",
       },
     ],
   };
