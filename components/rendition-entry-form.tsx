@@ -1114,7 +1114,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         Object.entries(parsed.amountMap).filter(([gameId]) => gamesForDetectedPeriod.some((game) => game.id === gameId))
       );
       if (parsed.receiptData) {
-        const commissionRates = Object.fromEntries(closureGames.map((game) => [
+        const commissionRates = Object.fromEntries(activeGames.map((game) => [
           normalize(game.name),
           game.commissionPercent == null || !Number.isFinite(Number(game.commissionPercent)) ? null : Number(game.commissionPercent),
         ]));
@@ -1146,7 +1146,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         setReceiptData(closureReceipt);
         setGameListExpanded(true);
         setReceiptReviewed(false);
-        setAmounts(mapTicketClosureAmounts(closureReceipt, closureGames));
+        setAmounts(mapTicketClosureAmounts(closureReceipt, activeGames));
         if (!dailyMode) {
           setDetectedPeriodMismatch("__DAILY_CLOSURE__");
           setNotice("Este comprobante es un FIN DE JORNADA completo. Para registrarlo, configurá este operador con modalidad Rendición diaria / cierre diario; no corresponde a un único sorteo.");
