@@ -179,6 +179,109 @@ function focusedClosingTextScore(value: string): number {
   return labelScore + monetaryTokens.length * 2;
 }
 
+
+function focusedClosureMetric(
+  lines: string[],
+  matcher: RegExp,
+  start = 0,
+  end = lines.length,
+): { count: number | null; amount: number } | null {
+  const stopRow = /^(?:QUINIELA|OTROS\\s+JUE|MEDIOS\\s+DIG|TOTAL|PREMIOS?|ANULADOS?|V[AÁ]LIDOS?|LOTO|QUINI|MUINI|BRINCO|TELEKINO|POZO|LOTER[IÍ]A|AL\\s+TOQUE)\\b/i;
+  for (let i = Math.max(0, start); i < Math.min(lines.length, end); i += 1) {
+    const normalizedLine = normalize(lines[i] ?? "");
+    if (!matcher.test(normalizedLine)) continue;
+    const candidates = [lines[i] ?? ""];
+    for (let j = i + 1; j < Math.min(end, i + 3); j += 1) {
+      const next = (lines[j] ?? "").trim();
+      const normalizedNext = normalize(next);
+      if (stopRow.test(normalizedNext) && !/^[\\d\\s.,$]+$/.test(next)) break;
+      candidates.push(next);
+      if (amountsFromLine(next).length) break;
+    }
+    for (const candidate of candidates) {
+      const values = amountsFromLine(candidate);
+      const amount = values.at(-1);
+      if (amount === undefined || !Number.isFinite(amount) || amount < 0) continue;
+      const count = values.length > 1 ? Math.max(0, Math.trunc(values[values.length - 2] ?? 0)) : null;
+      return { count, amount };
+    }
+  }
+  return null;
+}
+
+function mergeFocusedClosureAmounts(base: TicketClosureData, rawFocusedText: string): TicketClosureData {
+  const lines = rawFocusedText.split(/\\r?\\n/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return base;
+  const normalized = lines.map(normalize);
+  const firstIndex = (matcher: RegExp, fallback: number) => {
+    const index = normalized.findIndex((line) => matcher.test(line));
+    return index >= 0 ? index : fallback;
+  };
+  const toqueIndex = firstIndex(/AL\\s+TOQUE/, -1);
+  const otherIndex = firstIndex(/OTROS\\s+JUE/, -1);
+  const digitalIndex = firstIndex(/MEDIOS\\s+DIGITALES|NEDIOS\\s+DIGITALES/, lines.length);
+  const qEnd = toqueIndex >= 0 ? toqueIndex : otherIndex >= 0 ? otherIndex : lines.length;
+  const toqueEnd = otherIndex >= 0 ? otherIndex : digitalIndex;
+  const totalOtherIndex = firstIndex(/TOTAL\\s+(?:(?:O|0)\\.?\\s*)?JUEGOS|TOTAL\\s+OTROS\\s+JUEGOS/, otherIndex >= 0 ? otherIndex + 1 : 0);
+  const otherStart = otherIndex >= 0 ? otherIndex + 1 : 0;
+  const otherEnd = totalOtherIndex > otherStart ? totalOtherIndex : digitalIndex;
+  const fill = (current: TicketReceiptMetric, found: {count:number|null;amount:number}|null): TicketReceiptMetric =>
+    current.amount !== null && current.amount > 0 || !found
+      ? current
+      : { count: current.count ?? found.count, amount: found.amount };
+  const qValid = focusedClosureMetric(lines, /\\bVALIDOS?\\b/, 0, qEnd);
+  const qCancelled = focusedClosureMetric(lines, /ANULADOS?\\s*(?:ESP|ESPECIALES?)/, 0, qEnd);
+  const qPrizes = focusedClosureMetric(lines, /PREMIOS?\\s+P[A-Z]{2,3}/, 0, qEnd);
+  const toqueValid = focusedClosureMetric(lines, /\\bVALIDOS?\\b/, toqueIndex >= 0 ? toqueIndex : 0, toqueEnd);
+  const toquePrizes = focusedClosureMetric(lines, /PREMIOS?\\s+P[A-Z]{2,3}/, toqueIndex >= 0 ? toqueIndex : 0, toqueEnd);
+  const gamePatterns: Array<{name:string;pattern:RegExp}> = [
+    {name:"Loto Plus",pattern:/^(?:L?OTO)\\s+PLUS(?!\\s+EXTRA)(?!\\s+5)/},
+    {name:"Quini 6",pattern:/^(?:QUINI|MUINI|HUI[I1]NI)[\\s-]*6\\b/},
+    {name:"Pozo Quiniela",pattern:/^(?:POZO\\s+QUINIELA|0?2?0\\s+FUINIEL|POZO\\s+FUINIEL)/},
+    {name:"Brinco",pattern:/^(?:BRINCO|BR\\s+INTO)/},
+    {name:"Loto 5 Plus",pattern:/^(?:L?OTO)\\s+5\\s+PLUS/},
+    {name:"Lotería Online",pattern:/^(?:LOTERIA|L?ATERIA)\\s+ONLINE/},
+    {name:"Quiniela Poceada",pattern:/^QUINIELA\\s+POC/},
+    {name:"Telekino",pattern:/^TELEK/},
+  ];
+  const otherGames = base.otherGames.map((game) => {
+    const definition = gamePatterns.find((item) => item.name === game.name);
+    if (!definition) return game;
+    const found = focusedClosureMetric(lines, definition.pattern, otherStart, otherEnd);
+    if (!found || (game.amount !== null && game.amount > 0)) return game;
+    return { ...game, count: game.count ?? found.count, amount: found.amount };
+  });
+  const totalOther = focusedClosureMetric(lines, /TOTAL\\s+(?:(?:O|0)\\.?\\s*)?JUEGOS|TOTAL\\s+OTROS\\s+JUEGOS/, otherIndex >= 0 ? otherIndex : 0, digitalIndex);
+  const otherPrizes = focusedClosureMetric(lines, /PREMIOS?\\s+P[A-Z]{2,3}/, totalOtherIndex >= 0 ? totalOtherIndex + 1 : otherStart, digitalIndex);
+  const totalPrizes = focusedClosureMetric(lines, /(?:TOTAL\\s+(?:DE\\s+)?PREMIOS?|PREMIOS?\\s+PAGADOS?\\s+TOTAL)/, 0, digitalIndex);
+  const generalTotal = focusedClosureMetric(lines, /TOTAL\\s+GENE?RA[L1I]?/, otherStart, digitalIndex);
+  const cobros = focusedClosureMetric(lines, /^COBROS?\\b/, digitalIndex, lines.length);
+  const devoluciones = focusedClosureMetric(lines, /^DEVOLUCIONES?\\b/, digitalIndex, lines.length);
+  return {
+    ...base,
+    quiniela: {
+      ...base.quiniela,
+      valids: fill(base.quiniela.valids, qValid),
+      cancelledSpecial: fill(base.quiniela.cancelledSpecial, qCancelled),
+      prizesPaid: fill(base.quiniela.prizesPaid, qPrizes),
+    },
+    quinielaAlToque: {
+      ...base.quinielaAlToque,
+      valids: fill(base.quinielaAlToque.valids, toqueValid),
+      prizesPaid: fill(base.quinielaAlToque.prizesPaid, toquePrizes),
+    },
+    otherGames,
+    totalOtherGames: fill(base.totalOtherGames, totalOther),
+    otherGamesPrizes: fill(base.otherGamesPrizes, otherPrizes),
+    totalPrizes: fill(base.totalPrizes, totalPrizes),
+    generalTotal: fill(base.generalTotal, generalTotal),
+    digital: {
+      cobros: fill(base.digital.cobros, cobros),
+      devoluciones: fill(base.digital.devoluciones, devoluciones),
+    },
+  };
+}
+
 function parseTicketText(text: string, games: Game[], recoveredPeriodNumber = "") {
   const receiptData = parseTicketClosure(text);
   if (receiptData) {
@@ -957,6 +1060,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let recoveredPeriodNumber = "";
       let focusedClosureMetadata: FocusedClosureMetadata = {};
       let focusedOcrDebugText = "";
+      let focusedClosingAmountsText = "";
       try {
         const result = await worker.recognize(file);
         recognizedText = result.data.text ?? "";
@@ -1003,10 +1107,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             closingAmounts160,
             closingAmounts175,
           ].filter((value) => value.trim().length >= 12);
-          const focusedClosingAmounts = closingAmountsCandidates
+          focusedClosingAmountsText = closingAmountsCandidates
             .sort((a, b) => focusedClosingTextScore(b) - focusedClosingTextScore(a))[0] ?? "";
-          if (focusedClosingAmounts.trim()) {
-            recognizedText = [recognizedText, "[LECTURA FOCALIZADA DE IMPORTES FINALES]", focusedClosingAmounts.trim()].join("\n\n");
+          if (focusedClosingAmountsText.trim()) {
+            recognizedText = [recognizedText, "[LECTURA FOCALIZADA DE IMPORTES FINALES]", focusedClosingAmountsText.trim()].join("\n\n");
           }
 
           // Lectura enfocada reducida: dos lecturas de la franja de identificadores
@@ -1154,7 +1258,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             "Identificadores (PSM 6): " + codesLine6.trim(),
             "Identificadores (PSM 7): " + codesLine7.trim(),
             "Importes finales candidatos: " + [closingAmountsPsm6, closingAmountsPsm11, closingAmounts140, closingAmounts160, closingAmounts175].map((v) => v.trim()).join(" / "),
-            "Importes finales elegidos: " + (focusedClosingAmounts.trim() || "sin lectura segura"),
+            "Importes finales elegidos: " + (focusedClosingAmountsText.trim() || "sin lectura segura"),
             "Dirección: " + addressLine.trim(),
             "Máquina real: " + terminalLine.trim(),
             "Impresión: " + printedLine.trim(),
@@ -1179,6 +1283,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       setOcrText([recognizedText, focusedOcrDebugText].filter(Boolean).join("\n\n"));
       const activeGames = games.filter((game) => game.enabled !== false);
       const parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber);
+      if (parsed.receiptData && focusedClosingAmountsText) {
+        parsed.receiptData = mergeFocusedClosureAmounts(parsed.receiptData, focusedClosingAmountsText);
+      }
       const detectedPeriod = parsed.period || qrPeriodCandidate;
       let autoDetectedPeriodChanged = false;
       let detectedPeriodDefinition: OfficialDrawPeriod | null = null;
