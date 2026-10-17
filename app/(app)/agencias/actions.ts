@@ -122,6 +122,20 @@ export async function createAgencyAgent(formData: FormData) {
   if (!fullName) redirect("/agencias?error=nombre-obligatorio&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
   const kind = kindValue as "subagent" | "ambulant";
 
+  const { data: owningAgency, error: owningAgencyError } = await supabase
+    .from("organizations")
+    .select("agency_code,name")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (owningAgencyError || !owningAgency) redirect("/agencias?error=agencia-no-configurada");
+  const registeredAgencyCode = String(owningAgency.agency_code ?? "").trim()
+    || String(owningAgency.name ?? "").match(/agencia[^0-9]*([0-9]{3})/i)?.[1]
+    || (/^\\d{3}$/.test(String(owningAgency.name ?? "").trim()) ? String(owningAgency.name).trim() : "");
+  if (!registeredAgencyCode) redirect("/agencias?error=agencia-no-configurada");
+  if (code.split("-")[0] !== registeredAgencyCode) {
+    redirect("/agencias?error=agencia-ajena&codigo=" + encodeURIComponent(code));
+  }
+
   // Friendly pre-check; the unique database index is the concurrency-safe final guard.
   const { data: duplicate, error: duplicateError } = await supabase
     .from("agency_agents")
@@ -217,11 +231,13 @@ export async function createAgencyRendition(formData: FormData) {
     if (ticketAgencyCode) {
       const { data: owningAgency, error: agencyLookupError } = await supabase
         .from("organizations")
-        .select("name")
+        .select("name,agency_code")
         .eq("id", organizationId)
         .maybeSingle();
       if (agencyLookupError) redirect("/pagos?error=ticket-identificacion-no-verificada&agent=" + encodeURIComponent(agentId));
-      const registeredAgencyCode = String(owningAgency?.name ?? "").match(/agencia[^0-9]*([0-9]{3,6})/i)?.[1] ?? "";
+      const registeredAgencyCode = String(owningAgency?.agency_code ?? "").trim()
+        || String(owningAgency?.name ?? "").match(/agencia[^0-9]*([0-9]{3})/i)?.[1]
+        || (/^\\d{3}$/.test(String(owningAgency?.name ?? "").trim()) ? String(owningAgency?.name).trim() : "");
       if (registeredAgencyCode && ticketAgencyCode !== registeredAgencyCode) {
         redirect("/pagos?error=ticket-agencia-ajena&agent=" + encodeURIComponent(agentId));
       }
