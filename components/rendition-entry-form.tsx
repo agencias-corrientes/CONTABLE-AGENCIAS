@@ -147,6 +147,149 @@ function aliasesFor(game: Game) {
   return [name];
 }
 
+function focusedClosureMetric(
+  lines: string[],
+  matcher: RegExp,
+  start = 0,
+  end = lines.length,
+): { count: number | null; amount: number } | null {
+  const stopRow = /^(?:QUINIELA|OTROS\s+JUE|MEDIOS\s+DIG|TOTAL|PREMIOS?|ANULADOS?|V[AÁ]LIDOS?|LOTO|QUINI|MUINI|BRINCO|TELEKINO|POZO|LOTER[IÍ]A|AL\s+TOQUE|PER[I1]ODO|AGENCIA|SUBAG|MAQ(?:UINA)?|DOMICILIO|DIRECCION)\b/i;
+  for (let i = Math.max(0, start); i < Math.min(lines.length, end); i += 1) {
+    const normalizedLine = normalize(lines[i] ?? "");
+    if (!matcher.test(normalizedLine)) continue;
+    const candidates = [lines[i] ?? ""];
+    for (let j = i + 1; j < Math.min(end, i + 3); j += 1) {
+      const next = (lines[j] ?? "").trim();
+      const normalizedNext = normalize(next);
+      if (stopRow.test(normalizedNext) && !/^[\d\s.,$]+$/.test(next)) break;
+      candidates.push(next);
+      if (amountsFromLine(next).length) break;
+    }
+    for (let candidateIndex = 0; candidateIndex < candidates.length; candidateIndex += 1) {
+      const candidate = candidates[candidateIndex] ?? "";
+      // Quitar el rótulo antes de buscar números: en "Quini 6" y "Loto 5 Plus",
+      // ese dígito identifica el juego y nunca debe leerse como importe.
+      const numericText = candidateIndex === 0 ? candidate.replace(matcher, " ").trim() : candidate;
+      const values = amountsFromLine(numericText);
+      const amount = values.at(-1);
+      if (amount === undefined || !Number.isFinite(amount) || amount < 0) continue;
+      const count = values.length > 1 ? Math.max(0, Math.trunc(values[values.length - 2] ?? 0)) : null;
+      return { count, amount };
+    }
+  }
+  return null;
+}
+
+function mergeFocusedClosureAmounts(
+  base: TicketClosureData,
+  rawFocusedText: string,
+  preferFocused = false,
+): TicketClosureData {
+  const lines = rawFocusedText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return base;
+  const normalized = lines.map(normalize);
+  const firstIndex = (matcher: RegExp, fallback: number) => {
+    const index = normalized.findIndex((line) => matcher.test(line));
+    return index >= 0 ? index : fallback;
+  };
+  const toqueIndex = firstIndex(/AL\s+TOQUE/, -1);
+  const otherIndex = firstIndex(/OTROS\s+JUE/, -1);
+  const digitalIndex = firstIndex(/MEDIOS\s+DIGITALES|NEDIOS\s+DIGITALES/, lines.length);
+  const qEnd = toqueIndex >= 0 ? toqueIndex : otherIndex >= 0 ? otherIndex : lines.length;
+  const toqueEnd = otherIndex >= 0 ? otherIndex : digitalIndex;
+  const totalOtherIndex = firstIndex(/TOTAL\s+(?:(?:O|0)\.?\s*)?JUEGOS|TOTAL\s+OTROS\s+JUEGOS/, otherIndex >= 0 ? otherIndex + 1 : 0);
+  const otherStart = otherIndex >= 0 ? otherIndex + 1 : 0;
+  const otherEnd = totalOtherIndex > otherStart ? totalOtherIndex : digitalIndex;
+  const fill = (current: TicketReceiptMetric, found: {count:number|null;amount:number}|null): TicketReceiptMetric => {
+    if (!found) return current;
+    if (preferFocused) return { count: found.count ?? current.count, amount: found.amount };
+    return current.amount !== null && current.amount > 0
+      ? current
+      : { count: current.count ?? found.count, amount: found.amount };
+  };
+  const qValid = focusedClosureMetric(lines, /\bVALIDOS?\b/, 0, qEnd);
+  const qCancelled = focusedClosureMetric(lines, /ANULADOS?\s*(?:ESP|ESPECIALES?)/, 0, qEnd);
+  const qPrizes = focusedClosureMetric(lines, /PREMIOS?\s+P[A-Z]{2,3}/, 0, qEnd);
+  const toqueValid = focusedClosureMetric(lines, /\bVALIDOS?\b/, toqueIndex >= 0 ? toqueIndex : 0, toqueEnd);
+  const toquePrizes = focusedClosureMetric(lines, /PREMIOS?\s+P[A-Z]{2,3}/, toqueIndex >= 0 ? toqueIndex : 0, toqueEnd);
+  const gamePatterns: Array<{name:string;pattern:RegExp}> = [
+    {name:"Loto Plus",pattern:/^(?:L?OTO)\s+PLUS(?!\s+EXTRA)(?!\s+5)/},
+    {name:"Quini 6",pattern:/^(?:QUINI|MUINI|HUI[I1]NI)[\s-]*6\b/},
+    {name:"Pozo Quiniela",pattern:/^(?:POZO\s+QUINIELA|0?2?0\s+FUINIEL|POZO\s+FUINIEL)/},
+    {name:"Brinco",pattern:/^(?:BRINCO|BR\s+INTO)/},
+    {name:"Loto 5 Plus",pattern:/^(?:L?OTO)\s+5\s+PLUS/},
+    {name:"Lotería Online",pattern:/^(?:LOTERIA|L?ATERIA)\s+ONLINE/},
+    {name:"Quiniela Poceada",pattern:/^QUINIELA\s+POC/},
+    {name:"Telekino",pattern:/^TELEK/},
+  ];
+  const totalOther = focusedClosureMetric(lines, /TOTAL\s+(?:(?:O|0)\.?\s*)?JUEGOS|TOTAL\s+OTROS\s+JUEGOS/, otherIndex >= 0 ? otherIndex : 0, digitalIndex);
+  const otherPrizes = focusedClosureMetric(lines, /PREMIOS?\s+P[A-Z]{2,3}/, totalOtherIndex >= 0 ? totalOtherIndex + 1 : otherStart, digitalIndex);
+  const totalPrizes = focusedClosureMetric(lines, /(?:TOTAL\s+(?:DE\s+)?PREMIOS?|PREMIOS?\s+PAGADOS?\s+TOTAL)/, 0, digitalIndex);
+  // "Total general" puede quedar al pie, después de "Medios digitales".
+  const generalTotal = focusedClosureMetric(lines, /TOTAL\s+GENE?RA[L1I]?/, 0, lines.length);
+  const cobros = focusedClosureMetric(lines, /^COBROS?\b/, digitalIndex, lines.length);
+  const devoluciones = focusedClosureMetric(lines, /^DEVOLUCIONES?\b/, digitalIndex, lines.length);
+  const nextQuiniela = {
+    ...base.quiniela,
+    valids: fill(base.quiniela.valids, qValid),
+    cancelledSpecial: fill(base.quiniela.cancelledSpecial, qCancelled),
+    prizesPaid: fill(base.quiniela.prizesPaid, qPrizes),
+  };
+  const nextQuinielaAlToque = {
+    ...base.quinielaAlToque,
+    valids: fill(base.quinielaAlToque.valids, toqueValid),
+    prizesPaid: fill(base.quinielaAlToque.prizesPaid, toquePrizes),
+  };
+  const nextOtherGames = base.otherGames.map((game) => {
+    const definition = gamePatterns.find((item) => item.name === game.name);
+    if (!definition) return game;
+    const found = focusedClosureMetric(lines, definition.pattern, otherStart, otherEnd);
+    if (!found) return game;
+    if (!preferFocused && game.amount !== null && game.amount > 0) return game;
+    return { ...game, count: found.count ?? game.count, amount: found.amount };
+  });
+  const nextTotalOther = fill(base.totalOtherGames, totalOther);
+  const nextOtherPrizes = fill(base.otherGamesPrizes, otherPrizes);
+  const nextTotalPrizes = fill(base.totalPrizes, totalPrizes);
+  const nextGeneralTotal = fill(base.generalTotal, generalTotal);
+  const nextDigital = {
+    cobros: fill(base.digital.cobros, cobros),
+    devoluciones: fill(base.digital.devoluciones, devoluciones),
+  };
+
+  // Recompute consistency after each focused read; the original parser flags otherwise go stale.
+  const salesAmounts = [
+    nextQuiniela.valids.amount,
+    nextQuinielaAlToque.valids.amount,
+    ...nextOtherGames.map((game) => game.amount),
+  ];
+  const salesTotalsMatch = salesAmounts.every((value) => value !== null) && nextGeneralTotal.amount !== null
+    ? Math.round(salesAmounts.reduce<number>((sum, value) => sum + (value ?? 0), 0) * 100) === Math.round(nextGeneralTotal.amount * 100)
+    : null;
+  const prizeAmounts = [
+    nextQuiniela.prizesPaid.amount,
+    nextQuinielaAlToque.prizesPaid.amount,
+    nextOtherPrizes.amount,
+  ];
+  const prizeTotalsMatch = prizeAmounts.every((value) => value !== null) && nextTotalPrizes.amount !== null
+    ? Math.round(prizeAmounts.reduce<number>((sum, value) => sum + (value ?? 0), 0) * 100) === Math.round(nextTotalPrizes.amount * 100)
+    : null;
+
+  return {
+    ...base,
+    quiniela: nextQuiniela,
+    quinielaAlToque: nextQuinielaAlToque,
+    otherGames: nextOtherGames,
+    totalOtherGames: nextTotalOther,
+    otherGamesPrizes: nextOtherPrizes,
+    totalPrizes: nextTotalPrizes,
+    generalTotal: nextGeneralTotal,
+    digital: nextDigital,
+    consistency: { salesTotalsMatch, prizeTotalsMatch },
+  };
+}
+
+
 function parseTicketText(
   text: string,
   games: Game[],
@@ -449,6 +592,7 @@ async function makeFocusedReceiptCrops(file:File) {
   try {
     const bounds=detectReceiptPaperBounds(bitmap);
     const crops={
+      closingAmounts:makeReceiptFocusCrop(bitmap,bounds,"closingAmounts"),
       codes:makeReceiptFocusCrop(bitmap,bounds,"codes"),
       agencyCode:makeReceiptFocusCrop(bitmap,bounds,"agencyCode"),
       subagentCode:makeReceiptFocusCrop(bitmap,bounds,"subagentCode"),
@@ -904,6 +1048,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let recoveredPeriodNumber = "";
       let focusedClosureMetadata: FocusedClosureMetadata = {};
       let focusedOcrDebugText = "";
+      let focusedClosingAmountsText = "";
       try {
         const result = await worker.recognize(file);
         recognizedText = result.data.text ?? "";
@@ -920,6 +1065,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const setOcrMode = async (mode:number, whitelist?:string) => {
             await worker.setParameters({tessedit_pageseg_mode:mode,tessedit_char_whitelist:whitelist ?? ""} as any);
           };
+
+          // Una sola pasada ampliada del bloque de importes finales; no releer la página ni generar cinco variantes.
+          await setOcrMode(6);
+          focusedClosingAmountsText = (await worker.recognize(crops.closingAmounts)).data.text ?? "";
 
           // Lectura enfocada reducida: dos lecturas de la franja de identificadores
           // para confirmar SUBAG/MAQ, y una por cada campo independiente. Evita decenas
@@ -1089,6 +1238,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       setOcrText([recognizedText, focusedOcrDebugText].filter(Boolean).join("\n\n"));
       const activeGames = games.filter((game) => game.enabled !== false);
       const parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber);
+      if (parsed.receiptData && focusedClosingAmountsText.trim()) {
+        parsed.receiptData = mergeFocusedClosureAmounts(parsed.receiptData, focusedClosingAmountsText);
+        parsed.amountMap = mapTicketClosureAmounts(parsed.receiptData, activeGames);
+      }
       const detectedPeriod = parsed.period || qrPeriodCandidate;
       let autoDetectedPeriodChanged = false;
       let detectedPeriodDefinition: OfficialDrawPeriod | null = null;
