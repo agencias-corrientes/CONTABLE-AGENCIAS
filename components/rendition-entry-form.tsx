@@ -147,182 +147,6 @@ function aliasesFor(game: Game) {
   return [name];
 }
 
-function closureAmountReadScore(data: TicketClosureData | null): number {
-  if (!data) return -1;
-  const metrics = [
-    data.quiniela.valids.amount,
-    data.quiniela.cancelledSpecial.amount,
-    data.quiniela.prizesPaid.amount,
-    data.quinielaAlToque.valids.amount,
-    data.quinielaAlToque.prizesPaid.amount,
-    ...data.otherGames.map((game) => game.amount),
-    data.totalOtherGames.amount,
-    data.otherGamesPrizes.amount,
-    data.totalPrizes.amount,
-    data.generalTotal.amount,
-    data.digital.cobros.amount,
-    data.digital.devoluciones.amount,
-  ];
-  return metrics.filter((value) => value !== null).length
-    // A candidate that reconciles the receipt should beat a blurry read with more raw tokens.
-    + (data.consistency.salesTotalsMatch === true ? 8 : data.consistency.salesTotalsMatch === false ? -8 : 0)
-    + (data.consistency.prizeTotalsMatch === true ? 5 : data.consistency.prizeTotalsMatch === false ? -5 : 0);
-}
-
-function focusedClosingTextScore(value: string): number {
-  const text = normalize(value);
-  const labels = [
-    /VALIDOS?/, /ANULADOS?/, /PREMIOS?/, /TOTAL/, /QUINIELA/, /LOTO/, /QUINI/, /BRINCO/, /TELEKINO/,
-    /VENTAS?\s+BRUTAS?/, /COMISION(?:ES)?/, /EFECTIVO\s+A\s+RENDIR/,
-  ];
-  const labelScore = labels.reduce((score, pattern) => score + (pattern.test(text) ? 1 : 0), 0);
-  const monetaryTokens = value.match(/(?:\$\s*)?\d[\d.,]*[.,]\d{2}\b/g) ?? [];
-  return labelScore + monetaryTokens.length * 2;
-}
-
-
-function focusedClosureMetric(
-  lines: string[],
-  matcher: RegExp,
-  start = 0,
-  end = lines.length,
-): { count: number | null; amount: number } | null {
-  const stopRow = /^(?:QUINIELA|OTROS\s+JUE|MEDIOS\s+DIG|TOTAL|PREMIOS?|ANULADOS?|V[AÁ]LIDOS?|LOTO|QUINI|MUINI|BRINCO|TELEKINO|POZO|LOTER[IÍ]A|AL\s+TOQUE|PER[I1]ODO|AGENCIA|SUBAG|MAQ(?:UINA)?|DOMICILIO|DIRECCION)\b/i;
-  for (let i = Math.max(0, start); i < Math.min(lines.length, end); i += 1) {
-    const normalizedLine = normalize(lines[i] ?? "");
-    if (!matcher.test(normalizedLine)) continue;
-    const candidates = [lines[i] ?? ""];
-    for (let j = i + 1; j < Math.min(end, i + 3); j += 1) {
-      const next = (lines[j] ?? "").trim();
-      const normalizedNext = normalize(next);
-      if (stopRow.test(normalizedNext) && !/^[\d\s.,$]+$/.test(next)) break;
-      candidates.push(next);
-      if (amountsFromLine(next).length) break;
-    }
-    for (let candidateIndex = 0; candidateIndex < candidates.length; candidateIndex += 1) {
-      const candidate = candidates[candidateIndex] ?? "";
-      // Quitar el rótulo antes de buscar números: en "Quini 6" y "Loto 5 Plus",
-      // ese dígito identifica el juego y nunca debe leerse como importe.
-      const numericText = candidateIndex === 0 ? candidate.replace(matcher, " ").trim() : candidate;
-      const values = amountsFromLine(numericText);
-      const amount = values.at(-1);
-      if (amount === undefined || !Number.isFinite(amount) || amount < 0) continue;
-      const count = values.length > 1 ? Math.max(0, Math.trunc(values[values.length - 2] ?? 0)) : null;
-      return { count, amount };
-    }
-  }
-  return null;
-}
-
-function mergeFocusedClosureAmounts(
-  base: TicketClosureData,
-  rawFocusedText: string,
-  preferFocused = false,
-): TicketClosureData {
-  const lines = rawFocusedText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  if (!lines.length) return base;
-  const normalized = lines.map(normalize);
-  const firstIndex = (matcher: RegExp, fallback: number) => {
-    const index = normalized.findIndex((line) => matcher.test(line));
-    return index >= 0 ? index : fallback;
-  };
-  const toqueIndex = firstIndex(/AL\s+TOQUE/, -1);
-  const otherIndex = firstIndex(/OTROS\s+JUE/, -1);
-  const digitalIndex = firstIndex(/MEDIOS\s+DIGITALES|NEDIOS\s+DIGITALES/, lines.length);
-  const qEnd = toqueIndex >= 0 ? toqueIndex : otherIndex >= 0 ? otherIndex : lines.length;
-  const toqueEnd = otherIndex >= 0 ? otherIndex : digitalIndex;
-  const totalOtherIndex = firstIndex(/TOTAL\s+(?:(?:O|0)\.?\s*)?JUEGOS|TOTAL\s+OTROS\s+JUEGOS/, otherIndex >= 0 ? otherIndex + 1 : 0);
-  const otherStart = otherIndex >= 0 ? otherIndex + 1 : 0;
-  const otherEnd = totalOtherIndex > otherStart ? totalOtherIndex : digitalIndex;
-  const fill = (current: TicketReceiptMetric, found: {count:number|null;amount:number}|null): TicketReceiptMetric => {
-    if (!found) return current;
-    if (preferFocused) return { count: found.count ?? current.count, amount: found.amount };
-    return current.amount !== null && current.amount > 0
-      ? current
-      : { count: current.count ?? found.count, amount: found.amount };
-  };
-  const qValid = focusedClosureMetric(lines, /\bVALIDOS?\b/, 0, qEnd);
-  const qCancelled = focusedClosureMetric(lines, /ANULADOS?\s*(?:ESP|ESPECIALES?)/, 0, qEnd);
-  const qPrizes = focusedClosureMetric(lines, /PREMIOS?\s+P[A-Z]{2,3}/, 0, qEnd);
-  const toqueValid = focusedClosureMetric(lines, /\bVALIDOS?\b/, toqueIndex >= 0 ? toqueIndex : 0, toqueEnd);
-  const toquePrizes = focusedClosureMetric(lines, /PREMIOS?\s+P[A-Z]{2,3}/, toqueIndex >= 0 ? toqueIndex : 0, toqueEnd);
-  const gamePatterns: Array<{name:string;pattern:RegExp}> = [
-    {name:"Loto Plus",pattern:/^(?:L?OTO)\s+PLUS(?!\s+EXTRA)(?!\s+5)/},
-    {name:"Quini 6",pattern:/^(?:QUINI|MUINI|HUI[I1]NI)[\s-]*6\b/},
-    {name:"Pozo Quiniela",pattern:/^(?:POZO\s+QUINIELA|0?2?0\s+FUINIEL|POZO\s+FUINIEL)/},
-    {name:"Brinco",pattern:/^(?:BRINCO|BR\s+INTO)/},
-    {name:"Loto 5 Plus",pattern:/^(?:L?OTO)\s+5\s+PLUS/},
-    {name:"Lotería Online",pattern:/^(?:LOTERIA|L?ATERIA)\s+ONLINE/},
-    {name:"Quiniela Poceada",pattern:/^QUINIELA\s+POC/},
-    {name:"Telekino",pattern:/^TELEK/},
-  ];
-  const totalOther = focusedClosureMetric(lines, /TOTAL\s+(?:(?:O|0)\.?\s*)?JUEGOS|TOTAL\s+OTROS\s+JUEGOS/, otherIndex >= 0 ? otherIndex : 0, digitalIndex);
-  const otherPrizes = focusedClosureMetric(lines, /PREMIOS?\s+P[A-Z]{2,3}/, totalOtherIndex >= 0 ? totalOtherIndex + 1 : otherStart, digitalIndex);
-  const totalPrizes = focusedClosureMetric(lines, /(?:TOTAL\s+(?:DE\s+)?PREMIOS?|PREMIOS?\s+PAGADOS?\s+TOTAL)/, 0, digitalIndex);
-  // "Total general" puede quedar al pie, después de "Medios digitales".
-  const generalTotal = focusedClosureMetric(lines, /TOTAL\s+GENE?RA[L1I]?/, 0, lines.length);
-  const cobros = focusedClosureMetric(lines, /^COBROS?\b/, digitalIndex, lines.length);
-  const devoluciones = focusedClosureMetric(lines, /^DEVOLUCIONES?\b/, digitalIndex, lines.length);
-  const nextQuiniela = {
-    ...base.quiniela,
-    valids: fill(base.quiniela.valids, qValid),
-    cancelledSpecial: fill(base.quiniela.cancelledSpecial, qCancelled),
-    prizesPaid: fill(base.quiniela.prizesPaid, qPrizes),
-  };
-  const nextQuinielaAlToque = {
-    ...base.quinielaAlToque,
-    valids: fill(base.quinielaAlToque.valids, toqueValid),
-    prizesPaid: fill(base.quinielaAlToque.prizesPaid, toquePrizes),
-  };
-  const nextOtherGames = base.otherGames.map((game) => {
-    const definition = gamePatterns.find((item) => item.name === game.name);
-    if (!definition) return game;
-    const found = focusedClosureMetric(lines, definition.pattern, otherStart, otherEnd);
-    if (!found) return game;
-    if (!preferFocused && game.amount !== null && game.amount > 0) return game;
-    return { ...game, count: found.count ?? game.count, amount: found.amount };
-  });
-  const nextTotalOther = fill(base.totalOtherGames, totalOther);
-  const nextOtherPrizes = fill(base.otherGamesPrizes, otherPrizes);
-  const nextTotalPrizes = fill(base.totalPrizes, totalPrizes);
-  const nextGeneralTotal = fill(base.generalTotal, generalTotal);
-  const nextDigital = {
-    cobros: fill(base.digital.cobros, cobros),
-    devoluciones: fill(base.digital.devoluciones, devoluciones),
-  };
-
-  // Recompute consistency after each focused read; the original parser flags otherwise go stale.
-  const salesAmounts = [
-    nextQuiniela.valids.amount,
-    nextQuinielaAlToque.valids.amount,
-    ...nextOtherGames.map((game) => game.amount),
-  ];
-  const salesTotalsMatch = salesAmounts.every((value) => value !== null) && nextGeneralTotal.amount !== null
-    ? Math.round(salesAmounts.reduce<number>((sum, value) => sum + (value ?? 0), 0) * 100) === Math.round(nextGeneralTotal.amount * 100)
-    : null;
-  const prizeAmounts = [
-    nextQuiniela.prizesPaid.amount,
-    nextQuinielaAlToque.prizesPaid.amount,
-    nextOtherPrizes.amount,
-  ];
-  const prizeTotalsMatch = prizeAmounts.every((value) => value !== null) && nextTotalPrizes.amount !== null
-    ? Math.round(prizeAmounts.reduce<number>((sum, value) => sum + (value ?? 0), 0) * 100) === Math.round(nextTotalPrizes.amount * 100)
-    : null;
-
-  return {
-    ...base,
-    quiniela: nextQuiniela,
-    quinielaAlToque: nextQuinielaAlToque,
-    otherGames: nextOtherGames,
-    totalOtherGames: nextTotalOther,
-    otherGamesPrizes: nextOtherPrizes,
-    totalPrizes: nextTotalPrizes,
-    generalTotal: nextGeneralTotal,
-    digital: nextDigital,
-    consistency: { salesTotalsMatch, prizeTotalsMatch },
-  };
-}
-
 function parseTicketText(
   text: string,
   games: Game[],
@@ -641,7 +465,6 @@ async function makeFocusedReceiptCrops(file:File) {
       periodLabelled:makeReceiptFocusCrop(bitmap,bounds,"periodLabelled"),
       periodLabelledTight:makeReceiptFocusCrop(bitmap,bounds,"periodLabelledTight"),
       periodTail:makeReceiptFocusCrop(bitmap,bounds,"periodTail"),
-      closingAmounts:makeReceiptFocusCrop(bitmap,bounds,"closingAmounts"),
       periodGlyphs:[
         makeReceiptFocusCrop(bitmap,bounds,"periodGlyph1"),
         makeReceiptFocusCrop(bitmap,bounds,"periodGlyph2"),
@@ -680,9 +503,6 @@ async function makeFocusedReceiptCrops(file:File) {
       periodNumberThreshold175:makeThresholdOcrCrop(crops.periodNumber,175),
       periodTailThreshold140:makeThresholdOcrCrop(crops.periodTail,140),
       periodTailThreshold175:makeThresholdOcrCrop(crops.periodTail,175),
-      closingAmountsThreshold140:makeThresholdOcrCrop(crops.closingAmounts,140),
-      closingAmountsThreshold160:makeThresholdOcrCrop(crops.closingAmounts,160),
-      closingAmountsThreshold175:makeThresholdOcrCrop(crops.closingAmounts,175),
     };
   } finally { bitmap.close(); }
 }
@@ -1033,35 +853,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     }
   }, [amounts, busy, confirmationOpen, dailyStatusChoice, date, defaultPeriod, drawNumber, fileName, initialRendition, notes, period, periodManuallySelected, periods, photoPreviewUrl, qrPayload, reference, ticketNumbers, today]);
 
-  async function makeEnhancedTicketImage(file: File): Promise<HTMLCanvasElement> {
-    const bitmap = await createImageBitmap(file);
-    const longestSide = Math.max(bitmap.width, bitmap.height);
-    const scale = Math.max(1, Math.min(2, 3000 / longestSide));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) {
-      bitmap.close();
-      throw new Error("No se pudo preparar la imagen para mejorar la lectura.");
-    }
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close();
-
-    // Grises + contraste moderado: ayuda con papel térmico pálido sin umbralizar
-    // los números finos ni destruir los puntos y separadores del comprobante.
-    const image = context.getImageData(0, 0, canvas.width, canvas.height);
-    const pixels = image.data;
-    for (let i = 0; i < pixels.length; i += 4) {
-      const gray = 0.299 * pixels[i]! + 0.587 * pixels[i + 1]! + 0.114 * pixels[i + 2]!;
-      const contrasted = Math.max(0, Math.min(255, (gray - 128) * 1.55 + 128));
-      pixels[i] = contrasted;
-      pixels[i + 1] = contrasted;
-      pixels[i + 2] = contrasted;
-    }
-    context.putImageData(image, 0, 0);
-    return canvas;
-  }
 
   async function processTicket(file: File) {
     setBusy(true);
@@ -1113,48 +904,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let recoveredPeriodNumber = "";
       let focusedClosureMetadata: FocusedClosureMetadata = {};
       let focusedOcrDebugText = "";
-      let focusedClosingAmountsText = "";
-      let focusedClosingAmountsCandidates: string[] = [];
       try {
         const result = await worker.recognize(file);
         recognizedText = result.data.text ?? "";
 
-        const normalizedInitialText = normalize(recognizedText);
-        const closureEvidencePatterns = [
-          /FIN\s+DE\s+(?:JOR|TOR)NADA/,
-          /TOTALES?\s+EN\s+T[J7I1]/,
-          /TOTAL\s+GENE?RA[L1I]?/,
-          /OTROS\s+JUE/,
-          /MEDIOS\s+DIGITALES/,
-          /PER[I1]ODO/,
-          /CERRAD[O0]?/,
-          /AB[I1L]ERTO\s+E[L1I]/,
-          /SUBAG(?:ENTE)?/,
-          /MAQ(?:UINA)?\s+REAL|MAQ\s+REAL/,
-          /PREM[I1]OS?\s+P[A-Z]{2,3}/,
-          /VENTAS?\s+BRUTAS?/,
-          /EFECTIVO\s+(?:NETO\s+)?A\s+RENDIR/,
-          /COMISI[O0]N(?:ES)?/,
-        ];
-        const closureEvidenceCount = closureEvidencePatterns.filter((pattern) => pattern.test(normalizedInitialText)).length;
-        const initialClosureCandidate = Boolean(parseTicketClosure(recognizedText)) ||
-          /FIN\s+DE\s+(?:JOR|TOR)NADA/.test(normalizedInitialText) ||
-          /TOTALES?\s+EN\s+T[J7I1]/.test(normalizedInitialText) ||
-          (closureEvidenceCount >= 3 &&
-            /TOTAL\s+GENE?RA[L1I]?|OTROS\s+JUE|MEDIOS\s+DIGITALES|PER[I1]ODO|CERRAD[O0]?|EFECTIVO\s+(?:NETO\s+)?A\s+RENDIR/.test(normalizedInitialText));
-        if (initialClosureCandidate) {
-          // El OCR original lee bien el cuerpo, pero en fotos de tickets térmicos puede perder
-          // los importes pequeños del pie. Releer la imagen completa ampliada y elegir la pasada
-          // que recupera más cantidades válidas, comprobando también las sumas.
-          const enhancedTicketImage = await makeEnhancedTicketImage(file);
-          await worker.setParameters({ tessedit_pageseg_mode: 6, tessedit_char_whitelist: "" } as any);
-          const enhancedTicketText = (await worker.recognize(enhancedTicketImage)).data.text ?? "";
-          if (closureAmountReadScore(parseTicketClosure(enhancedTicketText)) > closureAmountReadScore(parseTicketClosure(recognizedText))) {
-            recognizedText = enhancedTicketText;
-          }
-        }
-
-        const closureCandidate = Boolean(parseTicketClosure(recognizedText)) || initialClosureCandidate;
+        // La pasada general sigue siendo la fuente de importes. Se conserva el segundo
+        // intento anterior solo como alternativa de texto general.
+        const closureCandidate = Boolean(parseTicketClosure(recognizedText)) ||
+          /\bFIN\s+DE\s+(?:JOR|TOR)NADA\b/i.test(normalize(recognizedText)) ||
+          /\bTOTALES?\s+EN\s+T[J7I1]\b/i.test(normalize(recognizedText));
         if (closureCandidate) {
           setProgress("Leyendo los datos impresos del FIN DE JORNADA…");
           setProgressPercent(72);
@@ -1162,31 +920,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const setOcrMode = async (mode:number, whitelist?:string) => {
             await worker.setParameters({tessedit_pageseg_mode:mode,tessedit_char_whitelist:whitelist ?? ""} as any);
           };
-
-          // Segunda lectura dedicada al tramo inferior de importes. Se comparan varios modos
-          // de segmentación y umbrales; solo se agrega la versión con mejor lectura al parser,
-          // para no duplicar a ciegas todos los valores del comprobante.
-          await setOcrMode(6);
-          const closingAmountsPsm6 = (await worker.recognize(crops.closingAmounts)).data.text ?? "";
-          await setOcrMode(11);
-          const closingAmountsPsm11 = (await worker.recognize(crops.closingAmounts)).data.text ?? "";
-          await setOcrMode(6);
-          const closingAmounts140 = (await worker.recognize(crops.closingAmountsThreshold140)).data.text ?? "";
-          const closingAmounts160 = (await worker.recognize(crops.closingAmountsThreshold160)).data.text ?? "";
-          const closingAmounts175 = (await worker.recognize(crops.closingAmountsThreshold175)).data.text ?? "";
-          const closingAmountsCandidates = [
-            closingAmountsPsm6,
-            closingAmountsPsm11,
-            closingAmounts140,
-            closingAmounts160,
-            closingAmounts175,
-          ].filter((value) => value.trim().length >= 12);
-          focusedClosingAmountsCandidates = closingAmountsCandidates
-            .sort((a, b) => focusedClosingTextScore(b) - focusedClosingTextScore(a));
-          focusedClosingAmountsText = focusedClosingAmountsCandidates[0] ?? "";
-          if (focusedClosingAmountsText.trim()) {
-            recognizedText = [recognizedText, "[LECTURA FOCALIZADA DE IMPORTES FINALES]", focusedClosingAmountsText.trim()].join("\n\n");
-          }
 
           // Lectura enfocada reducida: dos lecturas de la franja de identificadores
           // para confirmar SUBAG/MAQ, y una por cada campo independiente. Evita decenas
@@ -1244,9 +977,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const subagentFrom160 = readSubagentCandidate(subagentCrop160);
           const cropConsensusSubagent = readFocusedSubagentCode([subagentCropRaw7,subagentCrop140,subagentCrop160,subagentCrop170,subagentCrop175]);
           // Para SUBAG solo aceptar consenso de la franja independiente, nunca cifras del renglón completo.
-          const focusedSubagent = subagentFromIndividualGlyphs ??
-            cropConsensusSubagent ??
-            (subagentFrom140 && subagentFrom140 === subagentFrom160 ? subagentFrom140 : null);
+          const focusedSubagent = validSubagentCode(subagentFromIndividualGlyphs) ??
+            validSubagentCode(cropConsensusSubagent) ??
+            (subagentFrom140 && subagentFrom140 === subagentFrom160 ? validSubagentCode(subagentFrom140) : null);
 
           await setOcrMode(10,digitWhitelist);
           const machineTensIsZero = looksLikeZeroGlyph(crops.machineDigit0);
@@ -1332,8 +1065,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             "[LECTURA FOCALIZADA FIN DE JORNADA]",
             "Identificadores (PSM 6): " + codesLine6.trim(),
             "Identificadores (PSM 7): " + codesLine7.trim(),
-            "Importes finales candidatos: " + [closingAmountsPsm6, closingAmountsPsm11, closingAmounts140, closingAmounts160, closingAmounts175].map((v) => v.trim()).join(" / "),
-            "Importes finales elegidos: " + (focusedClosingAmountsText.trim() || "sin lectura segura"),
             "Dirección: " + addressLine.trim(),
             "Máquina real: " + terminalLine.trim(),
             "Impresión: " + printedLine.trim(),
@@ -1358,34 +1089,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       setOcrText([recognizedText, focusedOcrDebugText].filter(Boolean).join("\n\n"));
       const activeGames = games.filter((game) => game.enabled !== false);
       const parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber);
-      if (!parsed.receiptData && focusedClosingAmountsCandidates.length) {
-        // If the full-page read misses a closure marker, retry recognition with each independent
-        // focused pass rather than abandoning all structured receipt data.
-        for (const candidateText of focusedClosingAmountsCandidates) {
-          const recoveredReceipt = parseTicketClosure([recognizedText, candidateText].join("\n\n"));
-          if (recoveredReceipt) {
-            parsed.receiptData = recoveredReceipt;
-            break;
-          }
-        }
-      }
-      if (parsed.receiptData && focusedClosingAmountsCandidates.length) {
-        // Try each OCR pass against the same parsed ticket, allowing a clearer focused read
-        // to replace an incorrect full-page amount. Keep the candidate only when coverage and
-        // the receipt's own sales/prize totals improve.
-        let bestReceipt = parsed.receiptData;
-        let bestScore = closureAmountReadScore(bestReceipt);
-        for (const candidateText of focusedClosingAmountsCandidates) {
-          const candidateReceipt = mergeFocusedClosureAmounts(parsed.receiptData, candidateText, true);
-          const candidateScore = closureAmountReadScore(candidateReceipt);
-          if (candidateScore > bestScore) {
-            bestReceipt = candidateReceipt;
-            bestScore = candidateScore;
-          }
-        }
-        parsed.receiptData = bestReceipt;
-        parsed.amountMap = mapTicketClosureAmounts(parsed.receiptData, activeGames);
-      }
       const detectedPeriod = parsed.period || qrPeriodCandidate;
       let autoDetectedPeriodChanged = false;
       let detectedPeriodDefinition: OfficialDrawPeriod | null = null;
@@ -1411,7 +1114,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         Object.entries(parsed.amountMap).filter(([gameId]) => gamesForDetectedPeriod.some((game) => game.id === gameId))
       );
       if (parsed.receiptData) {
-        const commissionRates = Object.fromEntries(periodGames.map((game) => [
+        const commissionRates = Object.fromEntries(closureGames.map((game) => [
           normalize(game.name),
           game.commissionPercent == null || !Number.isFinite(Number(game.commissionPercent)) ? null : Number(game.commissionPercent),
         ]));
@@ -1443,7 +1146,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         setReceiptData(closureReceipt);
         setGameListExpanded(true);
         setReceiptReviewed(false);
-        setAmounts(mapTicketClosureAmounts(closureReceipt, periodGames));
+        setAmounts(mapTicketClosureAmounts(closureReceipt, closureGames));
         if (!dailyMode) {
           setDetectedPeriodMismatch("__DAILY_CLOSURE__");
           setNotice("Este comprobante es un FIN DE JORNADA completo. Para registrarlo, configurá este operador con modalidad Rendición diaria / cierre diario; no corresponde a un único sorteo.");
