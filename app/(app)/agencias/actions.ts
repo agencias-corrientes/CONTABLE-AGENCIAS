@@ -210,10 +210,10 @@ export async function createAgencyRendition(formData: FormData) {
     }
   }
   if (identityTicket) {
-    const ticketAgencyCode = String(identityTicket.agencyCode ?? "").replace(/\\D/g, "");
+    const ticketAgencyCode = String(identityTicket.agencyCode ?? "").replace(/\D/g, "");
     const selectedAgentCode = String(agentPolicyRow.code ?? "").trim();
     const expectedParts = selectedAgentCode.split("-");
-    const ticketSubagentCode = String(identityTicket.subagentCode ?? "").replace(/\\D/g, "");
+    const ticketSubagentCode = String(identityTicket.subagentCode ?? "").replace(/\D/g, "");
     if (ticketAgencyCode) {
       const { data: owningAgency, error: agencyLookupError } = await supabase
         .from("organizations")
@@ -226,7 +226,7 @@ export async function createAgencyRendition(formData: FormData) {
         redirect("/pagos?error=ticket-agencia-ajena&agent=" + encodeURIComponent(agentId));
       }
       if (expectedParts.length >= 3 && ticketSubagentCode) {
-        const fullExpected = expectedParts.join("").replace(/\\D/g, "");
+        const fullExpected = expectedParts.join("").replace(/\D/g, "");
         const matchesFullExpected = ticketSubagentCode.length >= 7 && ticketSubagentCode === fullExpected;
         const matchesSubagentPart = ticketSubagentCode.length <= 3 && ticketSubagentCode === expectedParts[1];
         if (!matchesFullExpected && !matchesSubagentPart) {
@@ -234,7 +234,7 @@ export async function createAgencyRendition(formData: FormData) {
         }
       }
     } else if (expectedParts.length >= 3 && ticketSubagentCode) {
-      const fullExpected = expectedParts.join("").replace(/\\D/g, "");
+      const fullExpected = expectedParts.join("").replace(/\D/g, "");
       const matchesFullExpected = ticketSubagentCode.length >= 7 && ticketSubagentCode === fullExpected;
       const matchesSubagentPart = ticketSubagentCode.length <= 3 && ticketSubagentCode === expectedParts[1];
       if (!matchesFullExpected && !matchesSubagentPart) {
@@ -857,11 +857,11 @@ export async function createAgencyPrizePayment(formData: FormData) {
   const rawAmount = String(formData.get("prize_amount") ?? "").trim();
   let amountText = rawAmount.replace(/[^0-9,.-]/g, "");
   if (amountText.includes(".") && amountText.includes(",")) {
-    amountText = amountText.replace(/\\./g, "").replace(",", ".");
+    amountText = amountText.replace(/\./g, "").replace(",", ".");
   } else if (amountText.includes(",")) {
     const decimals = amountText.length - amountText.lastIndexOf(",") - 1;
     amountText = decimals > 0 && decimals <= 2
-      ? amountText.replace(/\\./g, "").replace(",", ".")
+      ? amountText.replace(/\./g, "").replace(",", ".")
       : amountText.replace(/,/g, "");
   } else if (amountText.includes(".")) {
     const chunks = amountText.split(".");
