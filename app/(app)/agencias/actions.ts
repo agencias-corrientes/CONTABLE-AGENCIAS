@@ -261,7 +261,10 @@ export async function createAgencyRendition(formData: FormData) {
         redirect("/pagos?error=ticket-subagente-ajeno&agent=" + encodeURIComponent(agentId));
       }
     }
-    const confirmedOfficialClosure = isConfirmedOfficialClosureTicket(formData);
+  }
+  // Only ticket identity checks are conditional; saving the rendition must run for
+  // both official ticket closures and manual entries.
+  const confirmedOfficialClosure = isConfirmedOfficialClosureTicket(formData);
   const reportedAmountRaw = String(formData.get("reported_amount") ?? "").trim();
   const [{ data: agentCommissionRows, error: agentCommissionError }, { data: defaultCommissionRows, error: defaultCommissionError }] = await Promise.all([
     supabase.from("agency_agent_game_commissions").select("game_type_id,commission_percent").eq("organization_id", organizationId).eq("agent_id", agentId).in("game_type_id", submittedGameIds),
