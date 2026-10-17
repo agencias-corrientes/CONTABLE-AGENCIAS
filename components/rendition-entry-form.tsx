@@ -1289,6 +1289,17 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       setOcrText([recognizedText, focusedOcrDebugText].filter(Boolean).join("\n\n"));
       const activeGames = games.filter((game) => game.enabled !== false);
       const parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber);
+      if (!parsed.receiptData && focusedClosingAmountsCandidates.length) {
+        // If the full-page read misses a closure marker, retry recognition with each independent
+        // focused pass rather than abandoning all structured receipt data.
+        for (const candidateText of focusedClosingAmountsCandidates) {
+          const recoveredReceipt = parseTicketClosure([recognizedText, candidateText].join("\n\n"));
+          if (recoveredReceipt) {
+            parsed.receiptData = recoveredReceipt;
+            break;
+          }
+        }
+      }
       if (parsed.receiptData && focusedClosingAmountsCandidates.length) {
         // Do not discard the other OCR passes: one may read the Quiniela row while another
         // resolves the final totals. Apply the best-scoring pass first, then fill still-missing
