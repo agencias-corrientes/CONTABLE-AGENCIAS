@@ -149,6 +149,9 @@ export async function createAgencyAgent(formData: FormData) {
   });
   if (error) {
     const normalized = error.message.toLowerCase();
+    if (normalized.includes("agency_agents_global_code_uq")) {
+      redirect("/agencias?error=duplicado-global&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
+    }
     if (error.code === "23505" || normalized.includes("ya está cargado") || normalized.includes("duplicate key")) {
       redirect("/agencias?error=duplicado&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
     }
@@ -165,7 +168,7 @@ export async function createAgencyRendition(formData: FormData) {
   const agentId = String(formData.get("agent_id") ?? "").trim();
   if (!agentId) redirect("/pagos?error=agente-no-encontrado");
   const { data: agentPolicyRow, error: policyLookupError } = await supabase.from("agency_agents")
-    .select("rendition_policy,rendition_periods").eq("id", agentId).eq("organization_id", organizationId).maybeSingle();
+    .select("code,rendition_policy,rendition_periods").eq("id", agentId).eq("organization_id", organizationId).maybeSingle();
   if (policyLookupError || !agentPolicyRow) redirect("/pagos?error=agente-no-encontrado");
   const renditionPolicy = String(agentPolicyRow.rendition_policy ?? "daily");
   const selectedRenditionPeriods = Array.isArray(agentPolicyRow.rendition_periods) ? agentPolicyRow.rendition_periods.map(String) : [];
@@ -196,6 +199,49 @@ export async function createAgencyRendition(formData: FormData) {
   const dailyStatus = String(formData.get("draw_status") ?? "").trim();
   const drawPeriod = String(formData.get("draw_period") ?? "").trim();
   const dailyStatusNotes = String(formData.get("daily_status_notes") ?? "").trim();
+  const ticketReceiptRaw = String(formData.get("ticket_receipt_data") ?? "").trim();
+  let identityTicket: any = null;
+  if (ticketReceiptRaw && ticketReceiptRaw.length <= 20000) {
+    try {
+      const parsedTicket = JSON.parse(ticketReceiptRaw);
+      if (parsedTicket?.type === "loteria-corrientes-end-of-day-v1") identityTicket = parsedTicket;
+    } catch {
+      identityTicket = null;
+    }
+  }
+  if (identityTicket) {
+    const ticketAgencyCode = String(identityTicket.agencyCode ?? "").replace(/\\D/g, "");
+    const selectedAgentCode = String(agentPolicyRow.code ?? "").trim();
+    const expectedParts = selectedAgentCode.split("-");
+    const ticketSubagentCode = String(identityTicket.subagentCode ?? "").replace(/\\D/g, "");
+    if (ticketAgencyCode) {
+      const { data: owningAgency, error: agencyLookupError } = await supabase
+        .from("organizations")
+        .select("name")
+        .eq("id", organizationId)
+        .maybeSingle();
+      if (agencyLookupError) redirect("/pagos?error=ticket-identificacion-no-verificada&agent=" + encodeURIComponent(agentId));
+      const registeredAgencyCode = String(owningAgency?.name ?? "").match(/agencia[^0-9]*([0-9]{3,6})/i)?.[1] ?? "";
+      if (registeredAgencyCode && ticketAgencyCode !== registeredAgencyCode) {
+        redirect("/pagos?error=ticket-agencia-ajena&agent=" + encodeURIComponent(agentId));
+      }
+      if (expectedParts.length >= 3 && ticketSubagentCode) {
+        const fullExpected = expectedParts.join("").replace(/\\D/g, "");
+        const matchesFullExpected = ticketSubagentCode.length >= 7 && ticketSubagentCode === fullExpected;
+        const matchesSubagentPart = ticketSubagentCode.length <= 3 && ticketSubagentCode === expectedParts[1];
+        if (!matchesFullExpected && !matchesSubagentPart) {
+          redirect("/pagos?error=ticket-subagente-ajeno&agent=" + encodeURIComponent(agentId));
+        }
+      }
+    } else if (expectedParts.length >= 3 && ticketSubagentCode) {
+      const fullExpected = expectedParts.join("").replace(/\\D/g, "");
+      const matchesFullExpected = ticketSubagentCode.length >= 7 && ticketSubagentCode === fullExpected;
+      const matchesSubagentPart = ticketSubagentCode.length <= 3 && ticketSubagentCode === expectedParts[1];
+      if (!matchesFullExpected && !matchesSubagentPart) {
+        redirect("/pagos?error=ticket-subagente-ajeno&agent=" + encodeURIComponent(agentId));
+      }
+    }
+  }
   const confirmedOfficialClosure = isConfirmedOfficialClosureTicket(formData);
   const reportedAmountRaw = String(formData.get("reported_amount") ?? "").trim();
   const [{ data: agentCommissionRows, error: agentCommissionError }, { data: defaultCommissionRows, error: defaultCommissionError }] = await Promise.all([
@@ -795,3 +841,117 @@ export async function voidAgencyRendition(formData: FormData) {
   revalidatePath("/dashboard");
   redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=rendicion-anulada&backup=" + backupStatus);
 }
+
+export async function createAgencyPrizePayment(formData: FormData) {
+  const { supabase, organizationId, permissions } = await getOrg();
+  const returnAgentRaw = String(formData.get("return_agent_id") ?? "").trim();
+  const returnAgentId = /^[-0-9a-f]{0,36}$/i.test(returnAgentRaw) ? returnAgentRaw : "";
+  const returnSuffix = returnAgentId ? "&agent=" + encodeURIComponent(returnAgentId) : "";
+  const fail = (code: string): never => redirect("/pagos?error=" + encodeURIComponent(code) + returnSuffix);
+
+  if (!permissions.can_register_payments) fail("sin-permiso-cobro");
+  const couponNumber = String(formData.get("coupon_number") ?? "").trim();
+  const normalizedCoupon = couponNumber.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!couponNumber || couponNumber.length > 128 || !normalizedCoupon) fail("premio-cupon-invalido");
+
+  const rawAmount = String(formData.get("prize_amount") ?? "").trim();
+  let amountText = rawAmount.replace(/[^0-9,.-]/g, "");
+  if (amountText.includes(".") && amountText.includes(",")) {
+    amountText = amountText.replace(/\\./g, "").replace(",", ".");
+  } else if (amountText.includes(",")) {
+    const decimals = amountText.length - amountText.lastIndexOf(",") - 1;
+    amountText = decimals > 0 && decimals <= 2
+      ? amountText.replace(/\\./g, "").replace(",", ".")
+      : amountText.replace(/,/g, "");
+  } else if (amountText.includes(".")) {
+    const chunks = amountText.split(".");
+    if ((chunks[chunks.length - 1] ?? "").length === 3) amountText = chunks.join("");
+  }
+  const amount = Number(amountText);
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 999999999999.99) fail("premio-importe-invalido");
+
+  const selectedMethod = String(formData.get("capture_method") ?? "manual");
+  const qrPayload = String(formData.get("qr_payload") ?? "").trim();
+  const captureMethod = selectedMethod === "qr" || qrPayload ? "qr" : selectedMethod === "photo" ? "photo" : "manual";
+  const gameName = String(formData.get("game_name") ?? "").trim().slice(0, 120);
+  const notes = String(formData.get("notes") ?? "").trim().slice(0, 1000);
+  const photoValue = formData.get("prize_photo");
+  let photoPath: string | undefined;
+
+  if (photoValue instanceof File && photoValue.size > 0) {
+    if (photoValue.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(photoValue.type)) {
+      fail("premio-foto-invalida");
+    }
+    const extension = photoValue.type === "image/png" ? "png" : photoValue.type === "image/webp" ? "webp" : "jpg";
+    photoPath = organizationId + "/prizes/" + crypto.randomUUID() + "." + extension;
+    const { error: photoError } = await supabase.storage
+      .from("agency-rendition-tickets")
+      .upload(photoPath, photoValue, { contentType: photoValue.type, upsert: false, cacheControl: "3600" });
+    if (photoError) {
+      console.error("[premio] photo upload failed", { code: photoError.name, message: photoError.message });
+      fail("premio-foto-fallida");
+    }
+  }
+
+  const { data: cashAccount, error: cashError } = await supabase
+    .from("cash_accounts")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("is_active", true)
+    .eq("name", "Caja")
+    .maybeSingle();
+
+  let cashAccountId = cashAccount?.id ?? null;
+  if (cashError) {
+    if (photoPath) await supabase.storage.from("agency-rendition-tickets").remove([photoPath]);
+    fail("caja-no-configurada");
+  }
+  if (!cashAccountId) {
+    const { data: fallbackCash, error: fallbackError } = await supabase
+      .from("cash_accounts")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("is_active", true)
+      .eq("name", "Caja principal")
+      .maybeSingle();
+    if (fallbackError) {
+      if (photoPath) await supabase.storage.from("agency-rendition-tickets").remove([photoPath]);
+      fail("caja-no-configurada");
+    }
+    cashAccountId = fallbackCash?.id ?? null;
+  }
+  if (!cashAccountId) {
+    if (photoPath) await supabase.storage.from("agency-rendition-tickets").remove([photoPath]);
+    fail("caja-no-configurada");
+  }
+
+  const { error } = await supabase.rpc("register_agency_prize_payment", {
+    p_organization_id: organizationId,
+    p_cash_account_id: cashAccountId,
+    p_coupon_number: couponNumber,
+    p_prize_amount: Math.round(amount * 100) / 100,
+    p_payment_date: todayInAgencyTimeZone(),
+    p_capture_method: captureMethod,
+    p_game_name: gameName || undefined,
+    p_qr_payload: qrPayload || undefined,
+    p_photo_path: photoPath,
+    p_notes: notes || undefined,
+  });
+
+  if (error) {
+    if (photoPath) await supabase.storage.from("agency-rendition-tickets").remove([photoPath]);
+    const normalized = error.message.toLowerCase();
+    if (error.code === "23505" || normalized.includes("ya tiene un premio pagado") || normalized.includes("agency_prize_payments_org_coupon_uq")) {
+      fail("premio-duplicado");
+    }
+    if (normalized.includes("permiso") || error.code === "42501") fail("sin-permiso-cobro");
+    console.error("[premio] register failed", { code: error.code, message: error.message, details: error.details });
+    fail("premio-registro-fallido");
+  }
+
+  revalidatePath("/pagos");
+  revalidatePath("/dashboard");
+  revalidatePath("/movimientos");
+  redirect("/pagos?resultado=premio-pagado" + (returnAgentId ? "&agent=" + encodeURIComponent(returnAgentId) : ""));
+}
+
