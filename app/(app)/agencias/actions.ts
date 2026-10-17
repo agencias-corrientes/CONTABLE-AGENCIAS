@@ -949,7 +949,7 @@ export async function createAgencyPrizePayment(formData: FormData) {
 
   const { error } = await supabase.rpc("register_agency_prize_payment", {
     p_organization_id: organizationId,
-    p_cash_account_id: cashAccountId,
+    p_cash_account_id: cashAccountId as string,
     p_coupon_number: couponNumber,
     p_prize_amount: Math.round(amount * 100) / 100,
     p_payment_date: todayInAgencyTimeZone(),
