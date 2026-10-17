@@ -22,7 +22,7 @@ export async function bootstrapOrganization(formData: FormData) {
   if (namedCode && namedCode !== agencyCode) redirect("/setup?error=agencia-codigo-discordante");
 
   // Store a standard agency number prefix in the name as a second readable guard.
-  const name = ("Agencia N.º " + agencyCode + (displayName ? " · " + displayName : "")).slice(0, 120);
+  const name = (namedCode === agencyCode ? displayName : ("Agencia N.º " + agencyCode + (displayName ? " · " + displayName : ""))).slice(0, 120);
 
   const { data, error } = await supabase.rpc("bootstrap_agency_organization", {
     p_name: name,
