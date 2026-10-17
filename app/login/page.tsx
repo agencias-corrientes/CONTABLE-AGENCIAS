@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, Suspense, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -17,6 +17,89 @@ function LoginForm() {
       : ""
   );
   const [loading, setLoading] = useState(false);
+
+  // Some customized Supabase recovery email templates send the user to the Site URL
+  // (the login page) instead of honoring resetPasswordForEmail.redirectTo. Handle
+  // recovery credentials here as a safe fallback and continue to the new-password form.
+  useEffect(() => {
+    let active = true;
+
+    async function handleRecoveryReturn() {
+      const currentUrl = new URL(window.location.href);
+      const params = currentUrl.searchParams;
+      const fragment = new URLSearchParams(currentUrl.hash.replace(/^#/, ""));
+      const recoveryType = params.get("type") === "recovery" || fragment.get("type") === "recovery";
+      const recoveryFlow = params.get("flow") === "recovery" || recoveryType;
+      if (!recoveryFlow) return;
+
+      setLoading(true);
+      setMessage("Validando el enlace para cambiar la contraseña…");
+
+      try {
+        const supabase = createClient();
+        let sessionReady = false;
+        let failureMessage = "";
+
+        const code = params.get("code");
+        const tokenHash = params.get("token_hash") || params.get("token");
+
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          sessionReady = Boolean(data.session) && !error;
+          if (error) failureMessage = error.message;
+        } else if (tokenHash && recoveryType) {
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: "recovery",
+          });
+          sessionReady = Boolean(data.session) && !error;
+          if (error) failureMessage = error.message;
+        } else {
+          const accessToken = fragment.get("access_token");
+          const refreshToken = fragment.get("refresh_token");
+          if (accessToken && refreshToken && recoveryType) {
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            sessionReady = Boolean(data.session) && !error;
+            if (error) failureMessage = error.message;
+          } else {
+            const { data, error } = await supabase.auth.getSession();
+            sessionReady = Boolean(data.session) && !error;
+            if (error) failureMessage = error.message;
+          }
+        }
+
+        if (!active) return;
+
+        if (sessionReady) {
+          // Remove one-time credentials from the address bar before navigating.
+          window.history.replaceState({}, document.title, "/login?perfil=administrador");
+          router.replace("/recuperar/nueva");
+          router.refresh();
+          return;
+        }
+
+        setMessage(
+          failureMessage
+            ? "El enlace de recuperación venció o ya fue utilizado. Solicitá uno nuevo desde «Olvidé mi contraseña»."
+            : "El enlace llegó al inicio de sesión, pero no contiene una autorización activa para cambiar la contraseña. Solicitá un enlace nuevo y abrilo desde el correo más reciente."
+        );
+        setLoading(false);
+      } catch {
+        if (!active) return;
+        setMessage("No pudimos validar el enlace de recuperación. Solicitá uno nuevo y volvé a abrirlo desde el correo más reciente.");
+        setLoading(false);
+      }
+    }
+
+    void handleRecoveryReturn();
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
   const rawProfile = searchParams.get("perfil");
   const profile = rawProfile === "administrador" || rawProfile === "empleado" ? rawProfile : "";
 
