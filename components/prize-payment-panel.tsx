@@ -1,0 +1,236 @@
+"use client";
+
+import { useState, type ChangeEvent } from "react";
+import jsQR from "jsqr";
+import { createAgencyPrizePayment } from "@/app/(app)/agencias/actions";
+
+type CaptureMode = "manual" | "photo" | "qr";
+type PrizePayment = {
+  id: string;
+  coupon_number: string;
+  game_name: string | null;
+  prize_amount: number;
+  payment_date: string;
+  capture_method: string;
+};
+
+function couponFromQrPayload(payload: string): string {
+  const raw = payload.trim();
+  if (!raw) return "";
+  const keys = ["coupon_number", "coupon", "ticket_number", "ticket", "cupon", "numero_cupon", "number", "id"];
+  try {
+    const data = JSON.parse(raw) as Record<string, unknown>;
+    for (const key of keys) {
+      const value = data[key];
+      if (typeof value === "string" || typeof value === "number") {
+        const candidate = String(value).trim();
+        if (candidate.length >= 2 && /\d/.test(candidate)) return candidate;
+      }
+    }
+  } catch {
+    // QR payloads can be URLs or plain text.
+  }
+  try {
+    const url = new URL(raw);
+    for (const key of keys) {
+      const value = url.searchParams.get(key);
+      if (value && value.length >= 2 && /\d/.test(value)) return value.trim();
+    }
+    const last = url.pathname.split("/").filter(Boolean).at(-1) ?? "";
+    if (/^[A-Z0-9-]{2,64}$/i.test(last) && /\d/.test(last)) return last;
+  } catch {
+    // Continue with the plain-text form.
+  }
+  const labelled = raw.match(/\b(?:CUPON|TICKET|TKT|COMPROBANTE|N(?:RO|UMERO|[º°.#]))\b[^A-Z0-9]{0,16}([A-Z0-9][A-Z0-9-]{1,63})/i);
+  if (labelled?.[1] && /\d/.test(labelled[1])) return labelled[1].trim();
+  return /^[A-Z0-9-]{2,64}$/i.test(raw) && /\d/.test(raw) ? raw : "";
+}
+
+function moneyLabel(amount: number, currency: string) {
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: currency || "ARS" }).format(amount);
+}
+
+export function PrizePaymentPanel({
+  canRegisterPayments,
+  currencyCode,
+  returnAgentId = "",
+  recentPayments,
+}: {
+  canRegisterPayments: boolean;
+  currencyCode: string;
+  returnAgentId?: string;
+  recentPayments: PrizePayment[];
+}) {
+  const [captureMode, setCaptureMode] = useState<CaptureMode>("manual");
+  const [couponNumber, setCouponNumber] = useState("");
+  const [qrPayload, setQrPayload] = useState("");
+  const [scanMessage, setScanMessage] = useState("");
+  const [readingPhoto, setReadingPhoto] = useState(false);
+
+  function handleQrPayload(value: string) {
+    setQrPayload(value);
+    const detected = couponFromQrPayload(value);
+    if (detected) {
+      setCouponNumber(detected);
+      setScanMessage("Número de cupón detectado desde el contenido QR. Verificalo con el comprobante antes de pagar.");
+    }
+  }
+
+  async function handlePhoto(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setCaptureMode("photo");
+    setScanMessage("");
+    if (!file.type.startsWith("image/")) {
+      setScanMessage("Elegí una imagen del cupón.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setScanMessage("La imagen supera 5 MB. Sacá otra foto más liviana.");
+      return;
+    }
+    setReadingPhoto(true);
+    try {
+      let detectedQr = "";
+      const bitmap = await createImageBitmap(file);
+      try {
+        const scale = Math.min(1, 1800 / bitmap.width, 1800 / bitmap.height);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        if (context) {
+          context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+          const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+          detectedQr = jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: "attemptBoth" })?.data?.trim() ?? "";
+        }
+      } finally {
+        bitmap.close();
+      }
+
+      if (detectedQr) {
+        setQrPayload(detectedQr);
+        const qrCoupon = couponFromQrPayload(detectedQr);
+        if (qrCoupon) {
+          setCouponNumber(qrCoupon);
+          setScanMessage("Se leyó el QR de la imagen. Comprobá que el cupón y el importe sean correctos antes de pagar.");
+        } else {
+          setCaptureMode("qr");
+          setScanMessage("Se leyó el QR, pero no contiene un número de cupón reconocible. Revisá el contenido y completá el número manualmente.");
+        }
+        setReadingPhoto(false);
+        return;
+      }
+
+      const { createWorker } = await import("tesseract.js");
+      const worker = await createWorker("spa+eng", 1);
+      try {
+        const result = await worker.recognize(file);
+        const text = String(result.data.text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+        const patterns = [
+          /\b(?:CUPON|TICKET|TKT|COMPROBANTE)\s*(?:(?:NRO|NUM(?:ERO)?|N[º°]|N|#)\s*)?[:.#º°-]?\s*([A-Z0-9][A-Z0-9-]{1,63})\b/,
+          /\b(?:NRO|NUM(?:ERO)?|N[º°]|#)\s*(?:DE\s*)?(?:CUPON|TICKET|COMPROBANTE)\s*[:.#º°-]?\s*([A-Z0-9][A-Z0-9-]{1,63})\b/,
+        ];
+        let detected = "";
+        for (const pattern of patterns) {
+          const match = text.match(pattern);
+          if (match?.[1] && /\d/.test(match[1])) {
+            detected = match[1].replace(/[.,;:]$/, "");
+            break;
+          }
+        }
+        if (detected) {
+          setCouponNumber(detected);
+          setScanMessage("Número detectado por lectura de foto. Comparalo con el cupón original; la lectura automática puede equivocarse.");
+        } else {
+          setScanMessage("La foto se cargó, pero no pudimos identificar con seguridad el número del cupón. Ingresalo manualmente.");
+        }
+      } finally {
+        await worker.terminate();
+      }
+    } catch {
+      setScanMessage("No pudimos leer la imagen. Podés volver a fotografiar el cupón o escribir el número manualmente.");
+    } finally {
+      setReadingPhoto(false);
+    }
+  }
+
+  return (
+    <section className="panel prize-payment-panel" aria-labelledby="prize-payment-heading">
+      <div className="panel-head prize-payment-head">
+        <div>
+          <p className="eyebrow">CAJA · EGRESO</p>
+          <h2 id="prize-payment-heading">Pagar premio</h2>
+          <p className="muted">Identificá el cupón por número, foto o QR. Antes de entregar efectivo, verificá el premio y el importe en el sistema oficial de Lotería; esta pantalla registra el pago, pero no consulta ni valida premios en línea.</p>
+        </div>
+      </div>
+
+      {!canRegisterPayments ? (
+        <p className="message error-message">Tu usuario no tiene permiso para registrar pagos. El titular debe habilitar los cobros en Caja.</p>
+      ) : (
+        <form action={createAgencyPrizePayment} className="form-stack prize-payment-form">
+          <input type="hidden" name="return_agent_id" value={returnAgentId} />
+          <input type="hidden" name="capture_method" value={captureMode} />
+          <div className="prize-capture-options" role="group" aria-label="Método para identificar el cupón">
+            <button type="button" className={captureMode === "manual" ? "button primary" : "button ghost"} aria-pressed={captureMode === "manual"} onClick={() => { setCaptureMode("manual"); setScanMessage(""); }}>Número de cupón</button>
+            <button type="button" className={captureMode === "photo" ? "button primary" : "button ghost"} aria-pressed={captureMode === "photo"} onClick={() => { setCaptureMode("photo"); setScanMessage(""); }}>Foto del cupón</button>
+            <button type="button" className={captureMode === "qr" ? "button primary" : "button ghost"} aria-pressed={captureMode === "qr"} onClick={() => { setCaptureMode("qr"); setScanMessage(""); }}>QR</button>
+          </div>
+
+          {captureMode === "photo" && (
+            <label>Fotografiar o adjuntar cupón
+              <input type="file" name="prize_photo" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={handlePhoto} />
+              <small className="muted">La lectura intenta identificar el número. Revisalo antes de registrar el pago; el importe se ingresa y verifica manualmente.</small>
+            </label>
+          )}
+
+          {captureMode === "qr" && (
+            <>
+              <label>Foto del QR (opcional)
+                <input type="file" name="prize_photo" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={handlePhoto} />
+              </label>
+              <label>Contenido del QR
+                <textarea name="qr_payload" rows={2} value={qrPayload} onChange={(event) => handleQrPayload(event.target.value)} placeholder="Pegá el contenido del QR si ya lo escaneaste." />
+              </label>
+              <small className="muted">Si el QR proviene de una imagen cargada, el contenido se leerá automáticamente cuando sea posible.</small>
+            </>
+          )}
+
+          {scanMessage && <p className="message" role="status">{readingPhoto ? "Leyendo la imagen…" : scanMessage}</p>}
+          {readingPhoto && <p className="muted" role="status">Analizando la foto del cupón…</p>}
+
+          <div className="prize-payment-grid">
+            <label>Número de cupón
+              <input name="coupon_number" required maxLength={128} value={couponNumber} onChange={(event) => setCouponNumber(event.target.value)} placeholder="Número impreso o detectado" autoComplete="off" />
+            </label>
+            <label>Juego (opcional)
+              <input name="game_name" maxLength={120} placeholder="Nombre del juego" />
+            </label>
+            <label>Importe del premio
+              <input name="prize_amount" type="text" inputMode="decimal" required placeholder="Ej.: 125000,00" />
+            </label>
+            <label>Observaciones (opcional)
+              <input name="notes" maxLength={1000} placeholder="Referencia, validación o nota" />
+            </label>
+          </div>
+          <button className="button primary" type="submit" disabled={readingPhoto}>Registrar pago de premio en Caja</button>
+          <p className="muted small-text">El número de cupón solo puede registrarse una vez por agencia. El alta del pago y la salida de Caja se guardan juntas, sin descontar dos veces un mismo cupón.</p>
+        </form>
+      )}
+
+      <div className="prize-payment-recent">
+        <h3>Últimos premios pagados</h3>
+        {recentPayments.length ? (
+          <div className="prize-payment-recent-list">
+            {recentPayments.map((payment) => (
+              <div className="prize-payment-recent-item" key={payment.id}>
+                <span><strong>Cupón {payment.coupon_number}</strong><small>{payment.game_name || "Juego no indicado"} · {payment.payment_date}</small></span>
+                <strong>{moneyLabel(payment.prize_amount, currencyCode)}</strong>
+              </div>
+            ))}
+          </div>
+        ) : <p className="muted">Todavía no hay premios pagados registrados.</p>}
+      </div>
+    </section>
+  );
+}
