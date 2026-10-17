@@ -39,9 +39,14 @@ export async function GET(request: NextRequest) {
     confirmed = false;
   }
 
-  // Never trust a URL supplied by the email query string for the post-confirmation
-  // destination. A successful verification always opens our own success page.
-  return NextResponse.redirect(
-    new URL(confirmed ? "/registro/confirmado" : "/registro/confirmacion-error", url.origin),
-  );
+  // Use only fixed internal destinations. Recovery links must return to the password
+  // form after Supabase has exchanged the one-time code for a session.
+  const recoveryFlow = url.searchParams.get("flow") === "recovery" || rawType === "recovery";
+  const destination = !confirmed
+    ? "/registro/confirmacion-error"
+    : recoveryFlow
+      ? "/recuperar/nueva"
+      : "/registro/confirmado";
+
+  return NextResponse.redirect(new URL(destination, url.origin));
 }
