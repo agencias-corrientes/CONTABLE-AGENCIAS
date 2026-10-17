@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import jsQR from "jsqr";
 import { createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
 import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod } from "@/lib/agency-draw-schedule";
-import { extractTicketPeriodNumber, mapTicketClosureAmounts, parseTicketClosure, type TicketClosureData } from "@/lib/agency-ticket-closure";
+import { extractTicketPeriodNumber, mapTicketClosureAmounts, parseTicketClosure, type TicketClosureData, type TicketReceiptMetric } from "@/lib/agency-ticket-closure";
 import { TicketClosureReceipt } from "@/components/ticket-closure-receipt";
 
 type Game = { id: string; name: string; category: string; enabled?: boolean; commissionPercent?: number | null };
