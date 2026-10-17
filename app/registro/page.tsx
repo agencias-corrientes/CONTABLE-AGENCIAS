@@ -26,24 +26,19 @@ export default function RegisterOwnerPage() {
     }
     setLoading(true);
     const supabase = createClient();
-    const currentHost = window.location.hostname.toLowerCase();
-    const isProjectDeployment = currentHost.endsWith("-agencias-corrientes-project.vercel.app");
-    const isCanonicalProduction = currentHost === "contable-agencias.vercel.app";
-    // Use the stable Preview branch alias instead of a one-deployment hostname.
-    // Production signups stay on the canonical production domain so they never
-    // exchange a confirmation code against a different Supabase project.
-    const confirmationOrigin =
-      isProjectDeployment && !isCanonicalProduction
-        ? "https://contable-agencias-git-previe-6d6939-agencias-corrientes-project.vercel.app"
-        : window.location.origin;
-    const emailRedirectTo = new URL("/auth/callback", confirmationOrigin).toString();
+    // El enlace de confirmación vuelve al mismo entorno desde el que se creó la cuenta.
+    // La URL de Preview correspondiente debe estar autorizada en Authentication → URL Configuration.
+    const emailRedirectTo = new URL("/auth/callback", window.location.origin).toString();
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { data: { full_name: fullName.trim() }, emailRedirectTo },
+      options: { data: { full_name: fullName.trim(), registration_type: "agency_owner" }, emailRedirectTo },
     });
     if (error) {
-      setMessage("No se pudo crear la cuenta. Revisá el correo, la conexión y los requisitos de contraseña.");
+      const detail = error.message.toLowerCase();
+      setMessage(detail.includes("redirect") || detail.includes("allow list")
+        ? "Supabase rechazó la URL de confirmación de este Preview. Hay que autorizar esta URL en Authentication → URL Configuration del proyecto Preview."
+        : "No se pudo crear la cuenta. Revisá el correo, la conexión y los requisitos de contraseña.");
       setLoading(false);
       return;
     }
@@ -63,7 +58,7 @@ export default function RegisterOwnerPage() {
       return;
     }
     setWaiting(true);
-    setMessage("Te enviamos un correo de confirmación. Abrilo para continuar con la configuración de tu agencia.");
+    setMessage("Te enviamos un correo de confirmación. Después de confirmar la dirección, el administrador maestro debe aprobar el alta antes de que puedas crear la agencia.");
     setLoading(false);
   }
 

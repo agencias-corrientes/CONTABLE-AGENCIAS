@@ -11,6 +11,12 @@ export async function getCurrentContext() {
   const userId = String(claims.sub);
   const userEmail = typeof claims.email === "string" ? claims.email : "Usuario";
 
+  const { data: accessStatusData, error: accessStatusError } = await (supabase as any).rpc("get_platform_access_status");
+  if (accessStatusError) throw new Error("No pudimos verificar la autorización de plataforma.");
+  const accessStatus = typeof accessStatusData === "string" ? accessStatusData : "not_requested";
+  if (["rejected", "suspended", "revoked"].includes(accessStatus)) redirect("/acceso-bloqueado");
+  if (accessStatus === "pending") redirect("/acceso-pendiente");
+
   const { data: member, error: memberError } = await supabase
     .from("organization_members")
     .select("organization_id, role, created_at")
