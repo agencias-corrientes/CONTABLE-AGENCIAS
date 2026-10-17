@@ -11,7 +11,11 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(
+    searchParams.get("password") === "updated"
+      ? "La contraseña se actualizó correctamente. Ingresá con tu nueva contraseña."
+      : ""
+  );
   const [loading, setLoading] = useState(false);
   const rawProfile = searchParams.get("perfil");
   const profile = rawProfile === "administrador" || rawProfile === "empleado" ? rawProfile : "";
