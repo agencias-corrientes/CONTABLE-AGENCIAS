@@ -141,7 +141,7 @@ export default function RegisterOwnerPage() {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
-        options: { data: { full_name: fullName.trim() }, emailRedirectTo: confirmationRedirectTo() },
+        options: { data: { full_name: fullName.trim(), registration_type: "agency_owner" }, emailRedirectTo: confirmationRedirectTo() },
       });
 
       if (error) {
@@ -182,7 +182,7 @@ export default function RegisterOwnerPage() {
         return;
       }
       setWaiting(true);
-      setMessage("Te enviamos un correo de confirmación. Abrilo para continuar con la configuración de tu agencia.");
+      setMessage("Te enviamos un correo de confirmación. Primero confirmá tu dirección; después el administrador de plataforma debe aprobar el alta antes de que puedas crear la agencia.");
     } catch {
       setMessage("No se pudo conectar con el servicio de autenticación. Revisá la conexión e intentá nuevamente.");
     }
