@@ -22,3 +22,7 @@ npm run dev
 Variables:
 - NEXT_PUBLIC_SUPABASE_URL
 - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+
+## Entornos Preview de Vercel
+
+Cada rama de Preview que use un esquema de base de datos distinto debe tener `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` configuradas en Vercel para Preview y limitadas al nombre exacto de esa rama. Deben apuntar al proyecto Supabase de prueba. No se debe permitir que una rama de Preview herede las variables generales de Producción. Al cambiar variables de entorno, hay que generar un nuevo despliegue para que surtan efecto.
