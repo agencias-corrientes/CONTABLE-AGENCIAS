@@ -33,7 +33,7 @@ export async function getCurrentContext() {
 
   const { data: organization, error: organizationError } = await supabase
     .from("organizations")
-    .select("id, name, legal_name, tax_id, currency_code, timezone")
+    .select("id, name, agency_code, legal_name, tax_id, currency_code, timezone")
     .eq("id", member.organization_id)
     .single();
 
