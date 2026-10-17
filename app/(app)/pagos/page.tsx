@@ -505,7 +505,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         <div className="stat-card"><span>Comisiones rendidas</span><strong>{money(todayComisiones, activeOrganization.currency_code)}</strong><small>comisiones reconocidas en las rendiciones del día</small></div>
         <div className="stat-card"><span>Agente activo</span><strong>{selectedAgent ? selectedAgent.code : activeAgents.length}</strong><small>{selectedAgent ? selectedAgent.full_name : activeAgents.filter((agent) => agent.kind === "subagent").length + " subagentes · " + activeAgents.filter((agent) => agent.kind === "ambulant").length + " ambulantes"}</small></div>
       </div>
-      {params.ticket === "guardado" && <p className="message success-message">Se guardó el detalle completo del ticket de fin de jornada junto con la rendición.</p>
+      {params.ticket === "guardado" && <p className="message success-message">Se guardó el detalle completo del ticket de fin de jornada junto con la rendición.</p>}
       {params.ticket === "error" && <p className="message error-message">La rendición financiera ya se guardó, pero el detalle OCR del ticket no pudo adjuntarse. No vuelvas a registrar la rendición para corregir esto; abrí el registro existente.</p>}
       {params.resultado === "premio-pagado" && <p className="message success-message" role="status">Premio registrado y salida de Caja contabilizada. El cupón quedó marcado como pagado y no puede volver a descontarse.</p>}
       {!selectedAgentId ? (
