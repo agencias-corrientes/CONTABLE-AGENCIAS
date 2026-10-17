@@ -198,8 +198,12 @@ function focusedClosureMetric(
       candidates.push(next);
       if (amountsFromLine(next).length) break;
     }
-    for (const candidate of candidates) {
-      const values = amountsFromLine(candidate);
+    for (let candidateIndex = 0; candidateIndex < candidates.length; candidateIndex += 1) {
+      const candidate = candidates[candidateIndex] ?? "";
+      // Quitar el rótulo antes de buscar números: en "Quini 6" y "Loto 5 Plus",
+      // ese dígito identifica el juego y nunca debe leerse como importe.
+      const numericText = candidateIndex === 0 ? candidate.replace(matcher, " ").trim() : candidate;
+      const values = amountsFromLine(numericText);
       const amount = values.at(-1);
       if (amount === undefined || !Number.isFinite(amount) || amount < 0) continue;
       const count = values.length > 1 ? Math.max(0, Math.trunc(values[values.length - 2] ?? 0)) : null;
