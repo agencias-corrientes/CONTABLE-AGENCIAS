@@ -10,19 +10,14 @@ export async function bootstrapOrganization(formData: FormData) {
 
   if (!claims?.sub) redirect("/login");
 
-  const displayName = String(formData.get("name") ?? "").trim();
   const agencyCode = String(formData.get("agency_code") ?? "").trim();
   const legalName = String(formData.get("legal_name") ?? "").trim();
   const taxId = String(formData.get("tax_id") ?? "").trim();
 
   if (!/^\d{3}$/.test(agencyCode)) redirect("/setup?error=agencia-invalida");
-  if (displayName.length > 70) redirect("/setup?error=agencia-invalida");
-  const namedCode = displayName.match(/agencia[^0-9]*([0-9]{3,6})/i)?.[1]
-    ?? (/^\d{3,6}$/.test(displayName) ? displayName : "");
-  if (namedCode && namedCode !== agencyCode) redirect("/setup?error=agencia-codigo-discordante");
 
-  // Store a standard agency number prefix in the name as a second readable guard.
-  const name = (namedCode === agencyCode ? displayName : ("Agencia N.º " + agencyCode + (displayName ? " · " + displayName : ""))).slice(0, 120);
+  // Nombre interno generado a partir del número oficial.
+  const name = "Agencia N.º " + agencyCode;
 
   const { data, error } = await supabase.rpc("bootstrap_agency_organization", {
     p_name: name,

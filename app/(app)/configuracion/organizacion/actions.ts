@@ -34,13 +34,13 @@ async function getAgencyOwnerContext() {
     supabase,
     organizationId: String(organization.id),
     organizationName: String(organization.name),
+    agencyCode: String(organization.agency_code ?? ""),
     claims: authData.claims,
   };
 }
 
 export async function updateAgencyProfile(formData: FormData) {
   const { supabase, organizationId } = await getAgencyOwnerContext();
-  let name = String(formData.get("name") ?? "").trim();
   const agencyCode = String(formData.get("agency_code") ?? "").trim();
   const legalName = String(formData.get("legal_name") ?? "").trim();
   const taxId = String(formData.get("tax_id") ?? "").trim();
@@ -50,15 +50,9 @@ export async function updateAgencyProfile(formData: FormData) {
       !/^[A-Z]{3}$/.test(currencyCode)) {
     redirect("/configuracion/organizacion?error=datos-invalidos");
   }
-  // If an older agency name was only its number (e.g. "000"), changing the number
-  // should not leave that stale number as the new display name.
-  if (/^\d{3}$/.test(name) && name !== agencyCode) name = "Agencia N.º " + agencyCode;
-  const namedCode = name.match(/agencia[^0-9]*([0-9]{3,6})/i)?.[1]
-    ?? (/^\d{3,6}$/.test(name) ? name : "");
-  if (namedCode && namedCode !== agencyCode) {
-    redirect("/configuracion/organizacion?error=agencia-codigo-discordante");
-  }
 
+  // El nombre interno se deriva del número oficial; la interfaz sólo solicita el número.
+  const name = "Agencia N.º " + agencyCode;
   const { error } = await (supabase as any).rpc("update_agency_profile", {
     p_organization_id: organizationId,
     p_name: name,
@@ -80,23 +74,26 @@ export async function updateAgencyProfile(formData: FormData) {
   revalidatePath("/configuracion/organizacion");
   revalidatePath("/configuracion");
   revalidatePath("/dashboard");
+  revalidatePath("/agencias");
+  revalidatePath("/pagos");
   redirect("/configuracion/organizacion?resultado=datos-guardados");
 }
 
 export async function deleteAgencyProfile(formData: FormData) {
-  const { supabase, organizationId, organizationName } = await getAgencyOwnerContext();
+  const { supabase, organizationId, organizationName, agencyCode } = await getAgencyOwnerContext();
   const confirmation = String(formData.get("confirmation") ?? "");
   const password = String(formData.get("password") ?? "");
+  const internalConfirmation = "ELIMINAR: " + organizationName;
 
-  if (formData.get("confirm_delete") !== "yes" || confirmation !== "ELIMINAR: " + organizationName) {
+  if (formData.get("confirm_delete") !== "yes" || confirmation !== "ELIMINAR: " + agencyCode) {
     redirect("/configuracion/organizacion?error=confirmacion-no-valida");
   }
-  // The Edge Function verifies the password again and performs the account cleanup server-side.
+  // La pantalla pide el número oficial; la función de borrado mantiene su comprobación interna.
   if (!password) redirect("/configuracion/organizacion?error=verificacion-fallida");
 
   const { data, error } = await supabase.functions.invoke<{ ok?: boolean; code?: string }>(
     "delete-agency-and-owner",
-    { body: { organization_id: organizationId, confirmation, password } }
+    { body: { organization_id: organizationId, confirmation: internalConfirmation, password } }
   );
 
   if (error || !data?.ok) {

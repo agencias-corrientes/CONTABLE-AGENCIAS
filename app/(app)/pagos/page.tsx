@@ -60,6 +60,14 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   ]);
   const cutoffTime = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);
   const today = agencyBusinessDateForCutoff(cutoffTime);
+  const { data: todayPrizePaymentRows, error: todayPrizePaymentError } = await supabase
+    .from("agency_prize_payments")
+    .select("prize_amount")
+    .eq("organization_id", activeOrganization.id)
+    .eq("payment_date", today);
+  if (todayPrizePaymentError) throw new Error("No se pudieron cargar los premios pagados de hoy: " + todayPrizePaymentError.message);
+  const todayPrizeTotal = (todayPrizePaymentRows ?? []).reduce((sum: number, row: any) => sum + Number(row.prize_amount ?? 0), 0);
+
   async function loadAllRenditions() {
     const accumulated: any[] = [];
     const pageSize = 500;
@@ -184,7 +192,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       .some((value) => String(value).toLocaleLowerCase("es-AR").includes(normalizedSearch));
   });
   const selectedAgent = activeAgents.find((agent) => String(agent.id) === selectedAgentId);
-  const todayRendido = todayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
+  const todayRendidoBruto = todayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
+  const todayRendido = todayRendidoBruto - todayPrizeTotal;
   const todayCobrado = todayRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_payments) ? row.agency_rendition_payments : []).reduce((subtotal: number, payment: any) => subtotal + Number(payment.amount ?? 0), 0), 0);
   const todayComisiones = todayRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_game_amounts) ? row.agency_rendition_game_amounts : []).reduce((subtotal: number, game: any) => subtotal + Number(game.commission_amount ?? 0), 0), 0);
   // Pending is based on net cash due after commission, not gross sales minus cash received.
@@ -559,9 +568,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "backup-destinatario": "No hay un correo de respaldo configurado para la agencia. Abrí Personal y permisos y guardá el correo del titular.",
         "backup-no-enviado": "El backup sigue guardado, pero el proveedor rechazó el envío. Revisá el correo configurado y la configuración de Resend."
       } as Record<string,string>)[params.error] ?? "La operación no se pudo completar. Verificá permisos y datos."}</p>}
-          <PrizePaymentPanel canRegisterPayments={canRegisterPayments} currencyCode={activeOrganization.currency_code} returnAgentId={selectedAgentId} recentPayments={recentPrizePayments} />
           <div className="stats-grid compact rendition-stats">
-            <div className="stat-card"><span>Rendido hoy</span><strong>{money(todayRendido, activeOrganization.currency_code)}</strong><small>{todayRows.length} registros</small></div>
+            <div className="stat-card"><span>Rendido hoy</span><strong>{money(todayRendido, activeOrganization.currency_code)}</strong><small>{todayRows.length} registros · menos {money(todayPrizeTotal, activeOrganization.currency_code)} en premios</small></div>
             <div className="stat-card"><span>Cobrado hoy</span><strong>{money(todayCobrado, activeOrganization.currency_code)}</strong><small>cobros registrados</small></div>
             <div className="stat-card"><span>Pendiente hoy</span><strong>{money(todayPendiente, activeOrganization.currency_code)}</strong><small>efectivo neto pendiente después de comisión</small></div>
             <div className="stat-card"><span>Comisiones rendidas</span><strong>{money(todayComisiones, activeOrganization.currency_code)}</strong><small>comisiones reconocidas en las rendiciones del día</small></div>
@@ -678,6 +686,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             ) : <p className="muted rendition-archive-empty">Todavía no hay jornadas anteriores guardadas. Al cambiar la jornada operativa, las rendiciones y los estados quedarán listados acá sin borrarse.</p>}
           </section>
 
+          <PrizePaymentPanel canRegisterPayments={canRegisterPayments} currencyCode={activeOrganization.currency_code} returnAgentId={selectedAgentId} recentPayments={recentPrizePayments} />
           </>
       ) : (
         <div className="rendition-selected-view">
@@ -742,12 +751,12 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "backup-destinatario": "No hay un correo de respaldo configurado para la agencia. Abrí Personal y permisos y guardá el correo del titular.",
         "backup-no-enviado": "El backup sigue guardado, pero el proveedor rechazó el envío. Revisá el correo configurado y la configuración de Resend."
       } as Record<string,string>)[params.error] ?? "La operación no se pudo completar. Verificá permisos y datos."}</p>}
-          <PrizePaymentPanel canRegisterPayments={canRegisterPayments} currencyCode={activeOrganization.currency_code} returnAgentId={selectedAgentId} recentPayments={recentPrizePayments} />
           {selectedAgent ? (
             <AgentAccordion agent={selectedAgent} />
           ) : (
             <div className="message error-message">No encontramos ese subagente o ambulante. Volvé a la lista y seleccioná otro código.</div>
           )}
+          <PrizePaymentPanel canRegisterPayments={canRegisterPayments} currencyCode={activeOrganization.currency_code} returnAgentId={selectedAgentId} recentPayments={recentPrizePayments} />
         </div>
       )}
     </div>

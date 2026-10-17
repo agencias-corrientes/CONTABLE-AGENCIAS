@@ -176,6 +176,59 @@ export async function createAgencyAgent(formData: FormData) {
   redirect("/agencias?resultado=creado&codigo=" + encodeURIComponent(code));
 }
 
+export async function updateAgencyAgentProfile(formData: FormData) {
+  const { supabase, organizationId, role } = await getOrg();
+  const agentId = String(formData.get("agent_id") ?? "").trim();
+  if (role !== "owner") redirect("/agencias/" + encodeURIComponent(agentId) + "?error=solo-titular-editar-agente");
+
+  const kind = String(formData.get("kind") ?? "");
+  const code = String(formData.get("code") ?? "").trim();
+  const fullName = String(formData.get("full_name") ?? "").trim();
+  const dni = String(formData.get("dni") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+  const whatsapp = String(formData.get("whatsapp") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
+  const notes = String(formData.get("notes") ?? "").trim();
+
+  if (!agentId) redirect("/agencias?error=agente-no-encontrado");
+  if (!["subagent", "ambulant"].includes(kind) || !/^\d{3}-\d{3}-\d{2}$/.test(code) || !fullName) {
+    redirect("/agencias/" + encodeURIComponent(agentId) + "?error=codigo-invalido");
+  }
+
+  const { error } = await supabase.rpc("update_agency_agent_profile", {
+    p_organization_id: organizationId,
+    p_agent_id: agentId,
+    p_kind: kind,
+    p_full_name: fullName,
+    p_code: code,
+    p_dni: dni || null,
+    p_phone: phone || null,
+    p_whatsapp: whatsapp || null,
+    p_address: address || null,
+    p_notes: notes || null,
+  });
+
+  if (error) {
+    const message = String(error.message ?? "").toLowerCase();
+    if (error.code === "42501" || message.includes("solo el titular") || message.includes("sin permisos")) {
+      redirect("/agencias/" + encodeURIComponent(agentId) + "?error=solo-titular-editar-agente");
+    }
+    if (error.code === "23505" || message.includes("agency_agents_global_code_uq") || message.includes("ese código ya está utilizado")) {
+      redirect("/agencias/" + encodeURIComponent(agentId) + "?error=codigo-duplicado");
+    }
+    if (message.includes("debe comenzar con el número oficial") || message.includes("número oficial de agencia")) {
+      redirect("/agencias/" + encodeURIComponent(agentId) + "?error=agente-codigo-ajeno");
+    }
+    redirect("/agencias/" + encodeURIComponent(agentId) + "?error=agente-datos-no-guardados");
+  }
+
+  revalidatePath("/agencias");
+  revalidatePath("/agencias/" + agentId);
+  revalidatePath("/pagos");
+  revalidatePath("/dashboard");
+  redirect("/agencias/" + encodeURIComponent(agentId) + "?resultado=datos-agente-guardados");
+}
+
 export async function createAgencyRendition(formData: FormData) {
   const { supabase, organizationId, permissions } = await getOrg();
   if (!permissions.can_create_renditions) redirect("/pagos?error=sin-permiso-rendicion");

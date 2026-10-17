@@ -4,8 +4,9 @@ import { getCurrentContext, money } from "@/lib/accounting";
 import { agencyBusinessDateForCutoff, formatAgencyDateTime } from "@/lib/agency-datetime";
 import { getAllOfficialDrawPeriods, getOfficialDrawPeriodsForDate, drawPeriodHasPassed, getPreferredPendingDrawPeriod } from "@/lib/agency-draw-schedule";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
+import { AgencyCodeInput } from "@/components/agency-code-input";
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
-import { receiveAgencyRendition, saveAgentGameCommissions, saveAgentRenditionPolicy, setAgencyDailyRenditionStatus } from "../actions";
+import { receiveAgencyRendition, saveAgentGameCommissions, saveAgentRenditionPolicy, setAgencyDailyRenditionStatus, updateAgencyAgentProfile } from "../actions";
 
 export default async function AgencyDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ error?: string; resultado?: string }> }) {
   const { id } = await params;
@@ -71,6 +72,24 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
         <div className="agency-profile-data"><div><span>Nombre</span><strong>{agent.full_name}</strong></div><div><span>Código</span><strong>{code}</strong></div><div><span>DNI</span><strong>{agent.dni || "—"}</strong></div><div><span>Teléfono</span><strong>{agent.phone || "—"}</strong></div><div><span>WhatsApp</span><strong>{agent.whatsapp || "—"}</strong></div><div><span>Alta</span><strong>{agent.created_at.slice(0, 10)}</strong></div></div>
       </section>
 
+      {isOwner && (
+        <section className="panel agent-profile-edit-panel">
+          <div className="panel-head"><div><h2>Editar datos del operador</h2><p className="muted">El código debe empezar con los tres dígitos oficiales de la agencia. Podés corregir el subagente o ambulante sin modificar los datos de la agencia.</p></div><span className="badge success">Solo titular</span></div>
+          <form action={updateAgencyAgentProfile} className="agency-create-grid">
+            <input type="hidden" name="agent_id" value={agent.id} />
+            <label>Tipo<select name="kind" defaultValue={agent.kind} required><option value="subagent">Subagente</option><option value="ambulant">Ambulante</option></select></label>
+            <label>Código del operador<AgencyCodeInput name="code" defaultValue={code} /></label>
+            <label>Nombre y apellido<input name="full_name" defaultValue={agent.full_name ?? ""} maxLength={160} required /></label>
+            <label>DNI<input name="dni" defaultValue={agent.dni ?? ""} maxLength={40} /></label>
+            <label>Teléfono<input name="phone" defaultValue={agent.phone ?? ""} maxLength={80} /></label>
+            <label>WhatsApp<input name="whatsapp" defaultValue={agent.whatsapp ?? ""} maxLength={80} /></label>
+            <label>Domicilio<input name="address" defaultValue={agent.address ?? ""} maxLength={240} /></label>
+            <label>Observaciones<textarea name="notes" defaultValue={agent.notes ?? ""} maxLength={2000} rows={3} /></label>
+            <button className="button primary" type="submit">Guardar datos del operador</button>
+          </form>
+        </section>
+      )}
+
       <div className="stats-grid compact">
         <div className="stat-card"><span>Total rendido</span><strong>{money(totalDue, organization.currency_code)}</strong><small>importe generado</small></div>
         <div className="stat-card"><span>Total cobrado</span><strong>{money(totalReceived, organization.currency_code)}</strong><small>cobros registrados</small></div>
@@ -78,10 +97,16 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
         <div className="stat-card"><span>Comisión acumulada</span><strong>{money(totalCommission, organization.currency_code)}</strong><small>según tarifas vigentes en cada rendición</small></div>
       </div>
 
+      {pageParams.resultado === "datos-agente-guardados" && <p className="message success-message">Los datos del subagente o ambulante se guardaron correctamente.</p>}
+      {pageParams.error === "codigo-invalido" && <p className="message error-message">Ingresá el código con el formato 447-005-03.</p>}
+      {pageParams.error === "codigo-duplicado" && <p className="message error-message">Ese código ya está utilizado por otro subagente o ambulante.</p>}
+      {pageParams.error === "agente-codigo-ajeno" && <p className="message error-message">Los tres primeros dígitos del código deben coincidir con el número oficial de la agencia. Corregí el código o el número oficial.</p>}
+      {pageParams.error === "solo-titular-editar-agente" && <p className="message error-message">Solo el titular puede editar los datos de los subagentes y ambulantes.</p>}
+      {pageParams.error === "agente-datos-no-guardados" && <p className="message error-message">No se pudieron guardar los datos del operador. No se aplicaron cambios.</p>}
       {pageParams.resultado === "comisiones-guardadas" && <p className="message success-message">Comisiones guardadas. Se aplicarán automáticamente a las próximas rendiciones de este operador.</p>}
       {pageParams.resultado === "modalidad-guardada" && <p className="message success-message">Modalidad guardada. Se aplicará desde la próxima jornada sin alterar el historial existente.</p>}
       {pageParams.error === "comision-invalida" && <p className="message error-message">Cada comisión debe estar entre 0 y 100 %.</p>}
-      {pageParams.error && pageParams.error !== "comision-invalida" && <p className="message error-message">{pageParams.error === "modalidad-bloqueada-jornada" ? "Hoy ya hay rendiciones registradas para este operador. Podés cambiar la modalidad al comenzar una nueva jornada." : pageParams.error === "solo-titular-modalidad" ? "Solo el titular puede modificar la modalidad de rendición." : pageParams.error === "modalidad-invalida" ? "Elegí una modalidad válida y, si seleccionás sorteos, marcá al menos uno." : pageParams.error === "cierre-diario-antes-de-hora" ? "El cierre único se habilita después del último sorteo programado de la jornada." : "No se pudo guardar la configuración. Revisá los datos e intentá nuevamente."}</p>}
+      {pageParams.error && !["comision-invalida", "codigo-invalido", "codigo-duplicado", "agente-codigo-ajeno", "solo-titular-editar-agente", "agente-datos-no-guardados"].includes(pageParams.error) && <p className="message error-message">{pageParams.error === "modalidad-bloqueada-jornada" ? "Hoy ya hay rendiciones registradas para este operador. Podés cambiar la modalidad al comenzar una nueva jornada." : pageParams.error === "solo-titular-modalidad" ? "Solo el titular puede modificar la modalidad de rendición." : pageParams.error === "modalidad-invalida" ? "Elegí una modalidad válida y, si seleccionás sorteos, marcá al menos uno." : pageParams.error === "cierre-diario-antes-de-hora" ? "El cierre único se habilita después del último sorteo programado de la jornada." : "No se pudo guardar la configuración. Revisá los datos e intentá nuevamente."}</p>}
       {isOwner && (
         <section className="panel agent-rendition-policy-panel">
           <div className="panel-head"><div><h2>Modalidad de rendición</h2><p className="muted">Configuración individual para {typeLabel.toLowerCase()} {code}. Si hoy ya tiene rendiciones, la modificación se bloquea para no mezclar modalidades en la misma jornada.</p></div><span className="badge success">Solo titular</span></div>
