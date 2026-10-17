@@ -466,3 +466,50 @@ html,body{background:var(--bg);color:var(--text)}
 
 /* Acciones de Administración Central: conservar estilos de botón y separar renglones */
 .landing-central-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;width:100%;margin:30px 0 22px;align-items:stretch}.landing-central-actions>.button{width:100%;min-width:0;min-height:52px;padding:14px 20px;white-space:normal;line-height:1.35;text-align:center;overflow-wrap:anywhere}.landing-central-actions>.button.primary{background:var(--primary);color:#fff}.landing-central-actions>.button.ghost{background:var(--surface2);color:var(--text)}.landing-central-actions>.button.primary:hover{background:var(--primary2)}
+/* Control de acceso central: todos los controles tienen el mismo estilo y espacio sin superponerse. */
+.platform-admin-page .platform-access-summary-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
+  width:100%;
+  margin:18px 0 14px;
+  align-items:stretch;
+}
+.platform-admin-page .platform-access-navigation{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  width:100%;
+  margin:0 0 18px;
+  align-items:stretch;
+}
+.platform-admin-page .platform-summary-button{
+  display:flex;
+  width:100%;
+  min-width:0;
+  min-height:52px;
+  margin:0;
+  padding:13px 16px;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  border:1px solid var(--line);
+  border-bottom:3px solid #cfc3a1;
+  border-radius:12px;
+  background:var(--surface2);
+  color:var(--text);
+  font-size:14px;
+  font-weight:800;
+  line-height:1.35;
+  text-align:center;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  box-shadow:0 3px 0 rgba(42,32,32,.06);
+}
+.platform-admin-page .platform-summary-button strong{font-size:17px;font-weight:900}
+.platform-admin-page .platform-access-navigation .platform-summary-button:hover{background:#fffdf6;border-color:var(--primary);box-shadow:0 4px 10px rgba(42,32,32,.10)}
+@media(max-width:700px){
+ .platform-admin-page .platform-access-summary-grid{grid-template-columns:1fr;gap:10px}
+ .platform-admin-page .platform-access-navigation{grid-template-columns:1fr;gap:10px}
+ .platform-admin-page .platform-summary-button{min-height:50px}
+}
