@@ -1289,6 +1289,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       const parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber);
       if (parsed.receiptData && focusedClosingAmountsText) {
         parsed.receiptData = mergeFocusedClosureAmounts(parsed.receiptData, focusedClosingAmountsText);
+        // The original amountMap was built before the focused OCR values were merged.
+        // Rebuild it from the merged receipt so sales/commission/net totals use the corrected values.
+        parsed.amountMap = mapTicketClosureAmounts(parsed.receiptData, activeGames);
       }
       const detectedPeriod = parsed.period || qrPeriodCandidate;
       let autoDetectedPeriodChanged = false;
