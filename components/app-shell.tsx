@@ -20,11 +20,13 @@ export function AppShell({
   organizationName,
   userEmail,
   userRole,
+  isPlatformAdmin = false,
 }: {
   children: React.ReactNode;
   organizationName: string;
   userEmail: string;
   userRole: string;
+  isPlatformAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -36,7 +38,10 @@ export function AppShell({
     }
   }, [pathname]);
   const isOwner = userRole === "owner";
-  const visibleNav = nav.filter(([slug]) => isOwner || !["juegos", "equipo", "configuracion"].includes(slug));
+  const baseNav = nav.filter(([slug]) => isOwner || !["juegos", "equipo", "configuracion"].includes(slug));
+  const visibleNav = isPlatformAdmin
+    ? [...baseNav, ["plataforma/accesos", "Administración Central", "AC"] as const]
+    : baseNav;
 
   async function signOut() {
     const supabase = createClient();
@@ -59,7 +64,7 @@ export function AppShell({
         </div>
         <nav className="nav-list">
           {visibleNav.map(([slug, label]) => {
-            const href = `/${slug}`;
+            const href = slug === "plataforma/accesos" ? "/plataforma/accesos" : `/${slug}`;
             return (
               <Link
                 key={slug}

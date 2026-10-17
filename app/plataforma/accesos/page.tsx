@@ -144,6 +144,10 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
           <span className="user-role-pill">Agencias registradas: {agencies.length}</span>
           <span className="user-role-pill">Cuentas encontradas: {accountCount}</span>
         </div>
+        <p className="muted small-text">Estás viendo la base de datos aislada de Preview. Las agencias que solo existan en Producción no se muestran ni se modifican desde este panel.</p>
+        {agencies.length === 1 && agencies[0]?.members.every((member) => member.is_platform_admin) && (
+          <p className="message">La única cuenta listada es también la administradora central, por eso está protegida y no tiene botones de suspensión. Las acciones aparecerán en las otras cuentas cuando sus titulares registren o vinculen su acceso. El personal de una agencia se administra desde «Personal y permisos» dentro de esa agencia.</p>
+        )}
 
         {params.actualizado === "1" && <p className="message">Se actualizó el estado de acceso.</p>}
         {params.error && <p className="message error-message">No se pudo aplicar el cambio. Revisá el estado de la cuenta, la conexión y que tu usuario conserve el permiso de administrador central.</p>}

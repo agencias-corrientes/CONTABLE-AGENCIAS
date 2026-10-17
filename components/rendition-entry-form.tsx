@@ -258,7 +258,8 @@ function mergeFocusedClosureAmounts(base: TicketClosureData, rawFocusedText: str
   const totalOther = focusedClosureMetric(lines, /TOTAL\s+(?:(?:O|0)\.?\s*)?JUEGOS|TOTAL\s+OTROS\s+JUEGOS/, otherIndex >= 0 ? otherIndex : 0, digitalIndex);
   const otherPrizes = focusedClosureMetric(lines, /PREMIOS?\s+P[A-Z]{2,3}/, totalOtherIndex >= 0 ? totalOtherIndex + 1 : otherStart, digitalIndex);
   const totalPrizes = focusedClosureMetric(lines, /(?:TOTAL\s+(?:DE\s+)?PREMIOS?|PREMIOS?\s+PAGADOS?\s+TOTAL)/, 0, digitalIndex);
-  const generalTotal = focusedClosureMetric(lines, /TOTAL\s+GENE?RA[L1I]?/, otherStart, digitalIndex);
+  // "Total general" puede quedar al pie, después de "Medios digitales".
+  const generalTotal = focusedClosureMetric(lines, /TOTAL\s+GENE?RA[L1I]?/, 0, lines.length);
   const cobros = focusedClosureMetric(lines, /^COBROS?\b/, digitalIndex, lines.length);
   const devoluciones = focusedClosureMetric(lines, /^DEVOLUCIONES?\b/, digitalIndex, lines.length);
   return {
@@ -1082,9 +1083,29 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         const result = await worker.recognize(file);
         recognizedText = result.data.text ?? "";
 
+        const normalizedInitialText = normalize(recognizedText);
+        const closureEvidencePatterns = [
+          /FIN\s+DE\s+(?:JOR|TOR)NADA/,
+          /TOTALES?\s+EN\s+T[J7I1]/,
+          /TOTAL\s+GENE?RA[L1I]?/,
+          /OTROS\s+JUE/,
+          /MEDIOS\s+DIGITALES/,
+          /PER[I1]ODO/,
+          /CERRAD[O0]?/,
+          /AB[I1L]ERTO\s+E[L1I]/,
+          /SUBAG(?:ENTE)?/,
+          /MAQ(?:UINA)?\s+REAL|MAQ\s+REAL/,
+          /PREM[I1]OS?\s+P[A-Z]{2,3}/,
+          /VENTAS?\s+BRUTAS?/,
+          /EFECTIVO\s+(?:NETO\s+)?A\s+RENDIR/,
+          /COMISI[O0]N(?:ES)?/,
+        ];
+        const closureEvidenceCount = closureEvidencePatterns.filter((pattern) => pattern.test(normalizedInitialText)).length;
         const initialClosureCandidate = Boolean(parseTicketClosure(recognizedText)) ||
-          /\bFIN\s+DE\s+(?:JOR|TOR)NADA\b/i.test(normalize(recognizedText)) ||
-          /\bTOTALES?\s+EN\s+T[J7I1]\b/i.test(normalize(recognizedText));
+          /FIN\s+DE\s+(?:JOR|TOR)NADA/.test(normalizedInitialText) ||
+          /TOTALES?\s+EN\s+T[J7I1]/.test(normalizedInitialText) ||
+          (closureEvidenceCount >= 3 &&
+            /TOTAL\s+GENE?RA[L1I]?|OTROS\s+JUE|MEDIOS\s+DIGITALES|PER[I1]ODO|CERRAD[O0]?|EFECTIVO\s+(?:NETO\s+)?A\s+RENDIR/.test(normalizedInitialText));
         if (initialClosureCandidate) {
           // El OCR original lee bien el cuerpo, pero en fotos de tickets térmicos puede perder
           // los importes pequeños del pie. Releer la imagen completa ampliada y elegir la pasada

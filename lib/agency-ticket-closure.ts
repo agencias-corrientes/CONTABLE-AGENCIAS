@@ -266,8 +266,10 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   });
   const totalOtherGames = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, totalOtherMatcher);
   const otherGamesPrizes = metricInRange(lines, totalOtherIndex >= 0 ? totalOtherIndex + 1 : (otherIndex >= 0 ? otherIndex : 0), otherEnd, /PREMIOS?\s+P[A-Z]{2,3}/);
-  const totalPrizes = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /PREMIOS?\s+P[A-Z]{2,3}/, true);
-  const generalTotal = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /TOTAL\s+GENERAL/);
+  // Los importes de cierre pueden estar impresos después del bloque de medios digitales.
+  // El total de premios y el total general se buscan en todo el ticket, no solo en "Otros juegos".
+  const totalPrizes = metricInRange(lines, 0, lines.length, /PREMIOS?\s+P[A-Z]{2,3}/, true);
+  const generalTotal = metricInRange(lines, 0, lines.length, /TOTAL\s+GENE?RA[L1I]?/, true);
   const cobros = digitalIndex >= 0 ? metricInRange(lines, digitalIndex, lines.length, /^COBROS?\b/) : emptyMetric();
   const devoluciones = digitalIndex >= 0 ? metricInRange(lines, digitalIndex, lines.length, /^DEVOLUCIONES?\b/) : emptyMetric();
 
