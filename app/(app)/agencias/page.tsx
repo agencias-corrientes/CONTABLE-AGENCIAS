@@ -84,6 +84,7 @@ export default async function AgenciasPage({
       {params.resultado === "creado" && <p className="message success-message">Se cargó correctamente el agente {params.codigo || ""}.</p>}
       {params.error === "duplicado" && <p className="message error-message">Este {params.tipo === "ambulante" ? "ambulante" : "subagente"} {params.codigo || ""} ya está cargado en esta agencia. No se creó otro registro.</p>}
       {params.error === "duplicado-global" && <p className="message error-message">Ese código ya pertenece a un subagente o ambulante de otra agencia. No se aceptó para evitar cruzar cuentas y movimientos entre titulares.</p>}
+      {params.error === "agencia-ajena" && <p className="message error-message" role="alert">El código debe comenzar con el número oficial de esta agencia. No se creó el subagente o ambulante porque pertenece a otro número de agencia.</p>}
       {params.error && !["duplicado", "duplicado-global"].includes(params.error) && <p className="message error-message">{({
         "sin-permiso-alta": "No tenés permiso para dar de alta subagentes o ambulantes.",
         "sin-permiso-baja": "Solo el administrador o un empleado autorizado puede eliminar agentes.",
@@ -92,7 +93,8 @@ export default async function AgenciasPage({
         "nombre-obligatorio": "Ingresá el nombre del subagente o ambulante.",
         "alta-fallida": "No se pudo guardar el alta. Revisá el código y volvé a intentar.",
         "baja-fallida": "No se pudo completar la baja. No se modificó el historial.",
-        "agente-no-encontrado": "No encontramos ese subagente o ambulante."
+        "agente-no-encontrado": "No encontramos ese subagente o ambulante.",
+        "agencia-no-configurada": "Antes de cargar agentes, configurá el número oficial de 3 dígitos en Configuración → Datos de la agencia."
       } as Record<string,string>)[params.error] ?? "No se pudo completar la operación. Revisá tus permisos o los datos e intentá nuevamente."}</p>}
 
       {canCreateAgents ? <section className="agency-create-panel">
