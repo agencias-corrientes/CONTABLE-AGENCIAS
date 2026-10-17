@@ -82,8 +82,9 @@ export default async function AgenciasPage({
       {params.resultado === "archivado" && <p className="message success-message">El agente {params.codigo || ""} tenía rendiciones. Se desactivó para conservar su historial.</p>}
       {params.resultado === "eliminado" && <p className="message success-message">El agente {params.codigo || ""} se eliminó porque no tenía rendiciones asociadas.</p>}
       {params.resultado === "creado" && <p className="message success-message">Se cargó correctamente el agente {params.codigo || ""}.</p>}
-      {params.error === "duplicado" && <p className="message error-message">Este {params.tipo === "ambulante" ? "ambulante" : "subagente"} {params.codigo || ""} ya está cargado. No se creó otro registro.</p>}
-      {params.error && params.error !== "duplicado" && <p className="message error-message">{({
+      {params.error === "duplicado" && <p className="message error-message">Este {params.tipo === "ambulante" ? "ambulante" : "subagente"} {params.codigo || ""} ya está cargado en esta agencia. No se creó otro registro.</p>}
+      {params.error === "duplicado-global" && <p className="message error-message">Ese código ya pertenece a un subagente o ambulante de otra agencia. No se aceptó para evitar cruzar cuentas y movimientos entre titulares.</p>}
+      {params.error && !["duplicado", "duplicado-global"].includes(params.error) && <p className="message error-message">{({
         "sin-permiso-alta": "No tenés permiso para dar de alta subagentes o ambulantes.",
         "sin-permiso-baja": "Solo el administrador o un empleado autorizado puede eliminar agentes.",
         "tipo-invalido": "El tipo de agente seleccionado no es válido.",
