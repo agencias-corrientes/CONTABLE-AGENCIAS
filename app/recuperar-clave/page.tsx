@@ -4,9 +4,6 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-const RECOVERY_PREVIEW_ORIGIN =
-  "https://contable-agencias-git-previe-6d6939-agencias-corrientes-project.vercel.app";
-
 export default function RecoverPasswordPage() {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -21,11 +18,11 @@ export default function RecoverPasswordPage() {
 
     try {
       const supabase = createClient();
-      // The current Supabase recovery template sends a Reset Password link, not an OTP.
-      // Return that link to the password form through the allow-listed Preview callback.
+      // Return the recovery link to this exact deployment. Hard-coding an old Preview
+      // made Production recovery links open a different deployment and could lose the session.
       const redirectTo = new URL(
         "/auth/callback?next=%2Fcambiar-clave",
-        RECOVERY_PREVIEW_ORIGIN,
+        window.location.origin,
       ).toString();
       const { error } = await supabase.auth.resetPasswordForEmail(
         email.trim().toLowerCase(),
@@ -46,7 +43,7 @@ export default function RecoverPasswordPage() {
       }
 
       setSent(true);
-      setMessage("Si ese correo pertenece a una cuenta, recibirás un enlace «Reset Password». Abrilo desde este Preview y en el mismo navegador para elegir la contraseña nueva. Revisá también Spam.");
+      setMessage("Si ese correo pertenece a una cuenta, recibirás un enlace «Reset Password». Abrilo una sola vez, en este mismo navegador, para elegir la contraseña nueva. Usá el correo más reciente y revisá también Spam.");
     } catch {
       setMessage("No se pudo conectar con el servicio de autenticación. Revisá la conexión e intentá nuevamente.");
     } finally {
