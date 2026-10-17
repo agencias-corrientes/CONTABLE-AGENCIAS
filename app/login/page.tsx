@@ -23,6 +23,22 @@ function LoginForm() {
   // recovery credentials here as a safe fallback and continue to the new-password form.
   useEffect(() => {
     let active = true;
+    let navigatingToRecovery = false;
+    const supabase = createClient();
+
+    function openNewPasswordForm() {
+      if (!active || navigatingToRecovery) return;
+      navigatingToRecovery = true;
+      window.history.replaceState({}, document.title, "/login?perfil=administrador");
+      router.replace("/recuperar/nueva");
+      router.refresh();
+    }
+
+    // Supabase can emit PASSWORD_RECOVERY when its client consumes a recovery link,
+    // including templates that return to the login URL with a session fragment.
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" && session) openNewPasswordForm();
+    });
 
     async function handleRecoveryReturn() {
       const currentUrl = new URL(window.location.href);
@@ -36,7 +52,6 @@ function LoginForm() {
       setMessage("Validando el enlace para cambiar la contraseña…");
 
       try {
-        const supabase = createClient();
         let sessionReady = false;
         let failureMessage = "";
 
@@ -75,9 +90,7 @@ function LoginForm() {
 
         if (sessionReady) {
           // Remove one-time credentials from the address bar before navigating.
-          window.history.replaceState({}, document.title, "/login?perfil=administrador");
-          router.replace("/recuperar/nueva");
-          router.refresh();
+          openNewPasswordForm();
           return;
         }
 
@@ -97,6 +110,7 @@ function LoginForm() {
     void handleRecoveryReturn();
     return () => {
       active = false;
+      authListener.subscription.unsubscribe();
     };
   }, [router]);
 
