@@ -462,3 +462,7 @@ html,body{background:var(--bg);color:var(--text)}
  .platform-admin-page .platform-inline-form,.platform-admin-page .platform-danger-form{grid-template-columns:1fr}
  .platform-admin-page .platform-inline-form .button,.platform-admin-page .platform-danger-form .button{width:100%}
 }
+
+
+/* Acciones de Administración Central: conservar estilos de botón y separar renglones */
+.landing-central-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;width:100%;margin:30px 0 22px;align-items:stretch}.landing-central-actions>.button{width:100%;min-width:0;min-height:52px;padding:14px 20px;white-space:normal;line-height:1.35;text-align:center;overflow-wrap:anywhere}.landing-central-actions>.button.primary{background:var(--primary);color:#fff}.landing-central-actions>.button.ghost{background:var(--surface2);color:var(--text)}.landing-central-actions>.button.primary:hover{background:var(--primary2)}
