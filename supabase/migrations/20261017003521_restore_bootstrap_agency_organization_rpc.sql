@@ -77,3 +77,5 @@ $function$;
 
 revoke all on function public.bootstrap_agency_organization(text, text, text) from public, anon;
 grant execute on function public.bootstrap_agency_organization(text, text, text) to authenticated;
+
+notify pgrst, 'reload schema';

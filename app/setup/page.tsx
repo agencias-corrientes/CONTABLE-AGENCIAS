@@ -19,7 +19,7 @@ export default async function SetupPage({ searchParams }: { searchParams?: Promi
           y prepara Caja y los ajustes operativos básicos. No se crean subagentes ni rendiciones de prueba.
         </p>
         {creationFailed && (
-          <div role="alert" className="setup-error">
+          <div role="alert" className="setup-error" style={{ border: "1px solid #b45309", background: "#fff7ed", padding: "12px", borderRadius: "8px", color: "#7c2d12", marginBottom: "14px" }}>
             No se pudo crear la agencia. Tu cuenta sigue creada; no hace falta registrarte de nuevo.
             Revisá el nombre y volvé a intentar. Si vuelve a fallar, el error técnico queda registrado para poder corregirlo.
           </div>
