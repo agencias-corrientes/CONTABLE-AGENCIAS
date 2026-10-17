@@ -23,7 +23,7 @@ function LoginForm() {
     const supabase = createClient();
 
     if (!profile) {
-      setMessage("Primero elegí Administrador o Empleado.");
+      setMessage("Primero elegí Agenciero o Empleado.");
       setLoading(false);
       return;
     }
@@ -100,7 +100,7 @@ function LoginForm() {
       await supabase.auth.signOut();
       setMessage(profile === "administrador"
         ? "Esta cuenta no tiene perfil de administrador. Elegí Empleado o solicitá al titular que revise tu acceso."
-        : "Esta cuenta pertenece al perfil de administrador. Volvé atrás y elegí Administrador.");
+        : "Esta cuenta pertenece al perfil de administrador. Volvé atrás y elegí Agenciero.");
       setLoading(false);
       return;
     }
@@ -114,7 +114,7 @@ function LoginForm() {
       <div className="form-stack login-role-selector">
         <p className="muted">Seleccioná el perfil de tu cuenta existente.</p>
         <Link className="landing-role-choice landing-role-admin" href="/login?perfil=administrador">
-          <span className="landing-role-copy"><strong>Administrador</strong><small>Acceso del titular y configuración de la agencia</small></span>
+          <span className="landing-role-copy"><strong>Agenciero</strong><small>Acceso del titular y configuración de la agencia</small></span>
           <span className="landing-role-enter">Ingresar →</span>
         </Link>
         <Link className="landing-role-choice landing-role-employee" href="/login?perfil=empleado">
@@ -129,7 +129,7 @@ function LoginForm() {
   return (
     <form onSubmit={submit} className="form-stack">
       <div className="login-selected-profile">
-        <span className="user-role-pill">{profile === "administrador" ? "Administrador" : "Empleado"}</span>
+        <span className="user-role-pill">{profile === "administrador" ? "Agenciero" : "Empleado"}</span>
         <Link href="/login">Cambiar perfil</Link>
       </div>
       <label>Correo electrónico
