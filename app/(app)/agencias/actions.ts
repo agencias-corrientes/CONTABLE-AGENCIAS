@@ -350,7 +350,7 @@ export async function createAgencyRendition(formData: FormData) {
     const result = await supabase.rpc("create_and_receive_agency_daily_rendition", {
       p_organization_id: organizationId, p_agent_id: agentId, p_rendition_date: renditionDate,
       p_amount_due: totalDue, p_operational_date: operationalDate, p_daily_status: dailyStatus,
-      p_cash_account_id: cashAccountId, p_payment_date: todayInAgencyTimeZone(),
+      p_cash_account_id: cashAccountId!, p_payment_date: todayInAgencyTimeZone(),
       p_game_breakdown: breakdown, p_ticket_numbers: ticketNumbers, p_ticket_qr_payload: qrPayload ?? undefined,
       p_game_period: drawPeriod, p_draw_number: drawNumber ?? undefined, p_capture_method: captureMethod,
       p_reference: String(formData.get("reference") ?? "").trim() || undefined,
