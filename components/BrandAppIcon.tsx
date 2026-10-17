@@ -1,4 +1,10 @@
-export function BrandAppIcon() {
+type BrandAppIconProps = {
+  scale?: number;
+};
+
+export function BrandAppIcon({ scale = 1 }: BrandAppIconProps) {
+  const lineHeight = Math.max(2, 7 * scale);
+
   return (
     <div
       style={{
@@ -17,7 +23,7 @@ export function BrandAppIcon() {
         style={{
           position: "absolute",
           inset: "4%",
-          border: "3px solid #f5cf4d",
+          border: `${3 * scale}px solid #f5cf4d`,
           borderRadius: "19%",
           display: "flex",
         }}
@@ -34,15 +40,15 @@ export function BrandAppIcon() {
           justifyContent: "space-evenly",
           padding: "7%",
           boxSizing: "border-box",
-          borderRadius: 12,
+          borderRadius: 12 * scale,
           backgroundColor: "#fff8e7",
-          border: "4px solid #f5cf4d",
+          border: `${4 * scale}px solid #f5cf4d`,
           transform: "rotate(-8deg)",
         }}
       >
-        <div style={{ height: 7, width: "100%", borderRadius: 4, backgroundColor: "#70243a", display: "flex" }} />
-        <div style={{ height: 7, width: "72%", borderRadius: 4, backgroundColor: "#70243a", display: "flex" }} />
-        <div style={{ height: 7, width: "92%", borderRadius: 4, backgroundColor: "#70243a", display: "flex" }} />
+        <div style={{ height: lineHeight, width: "100%", borderRadius: 4 * scale, backgroundColor: "#70243a", display: "flex" }} />
+        <div style={{ height: lineHeight, width: "72%", borderRadius: 4 * scale, backgroundColor: "#70243a", display: "flex" }} />
+        <div style={{ height: lineHeight, width: "92%", borderRadius: 4 * scale, backgroundColor: "#70243a", display: "flex" }} />
       </div>
       <div
         style={{
@@ -55,11 +61,11 @@ export function BrandAppIcon() {
           alignItems: "center",
           justifyContent: "center",
           borderRadius: "50%",
-          border: "7px solid #fff8e7",
+          border: `${7 * scale}px solid #fff8e7`,
           backgroundColor: "#f5cf4d",
           color: "#70243a",
           fontFamily: "Arial, Helvetica, sans-serif",
-          fontSize: 94,
+          fontSize: 94 * scale,
           fontWeight: 900,
           lineHeight: 1,
         }}
@@ -72,8 +78,8 @@ export function BrandAppIcon() {
           left: "15%",
           bottom: "13%",
           width: "28%",
-          height: 8,
-          borderRadius: 4,
+          height: Math.max(2, 8 * scale),
+          borderRadius: 4 * scale,
           backgroundColor: "#fff8e7",
           display: "flex",
         }}
