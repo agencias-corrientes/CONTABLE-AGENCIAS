@@ -517,7 +517,9 @@ function readFocusedCodes(codesText:string,agencyDigitsText:string,machineDigits
   let agency=numericSequenceInSegment(labelledNumberSegment(codesText,agencyLabels,[...subagentLabels,...machineLabels]));
   const subagent=numericSequenceInSegment(labelledNumberSegment(codesText,subagentLabels,machineLabels));
   let machine=numericSequenceInSegment(labelledNumberSegment(codesText,machineLabels,[]));
-  if(agency)agency=agency.length<4?agency.padStart(4,"0"):agency.slice(-4);
+  // El identificador oficial tiene tres dígitos; no agregar un cero delante.
+  if (agency && agency.length === 4 && /^[01]\d{3}$/.test(agency)) agency = agency.slice(1);
+  if (agency && !/^\d{3}$/.test(agency)) agency = "";
   if(machine)machine=machine.length<2?machine.padStart(2,"0"):machine.slice(-2);
   return {agencyCode:agency||null,subagentCode:subagent||null,machineCode:machine||null};
 }
@@ -676,19 +678,16 @@ function readFocusedAgencyCode(values:string[]):string|null {
     const tokens=raw.toUpperCase().match(/[0-9OQIL|!BDGCEAZH]{3,4}/g)??[];
     for(const token of tokens){
       let digits=ocrDigitSequence(token,true);
-      if(digits.length===3)digits=digits.padStart(4,"0");
-      if(/^\d{4}$/.test(digits))rawCandidates.push(digits);
+      // El número oficial es de tres dígitos. El OCR a veces añade un prefijo 0/1.
+      if(digits.length===4 && /^[01]\d{3}$/.test(digits)) digits=digits.slice(1);
+      if(/^\d{3}$/.test(digits))rawCandidates.push(digits);
     }
   }
   if(!rawCandidates.length)return null;
-  const hasLeadingZero=new Set(rawCandidates.filter(v=>v.startsWith("0")).map(v=>v.slice(1)));
-  const candidates=rawCandidates.map(v=>v.startsWith("1")&&hasLeadingZero.has(v.slice(1))?"0"+v.slice(1):v);
   const counts=new Map<string,number>();
-  for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
+  for(const value of rawCandidates)counts.set(value,(counts.get(value)??0)+1);
   const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
-  if(ranked.length>1&&ranked[0]![1]===ranked[1]![1]){
-    return ranked.find(([value])=>value.startsWith("0"))?.[0]??null;
-  }
+  if(ranked.length>1&&ranked[0]![1]===ranked[1]![1])return null;
   return ranked[0]?.[0]??null;
 }
 
@@ -1143,9 +1142,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const digits = String(value ?? "").replace(/\D/g, "");
           return /^\d{3}$/.test(digits) ? digits : null;
         };
+        const validAgencyCode = (value: string | null | undefined) => {
+          const digits = String(value ?? "").replace(/\D/g, "");
+          if (/^\d{3}$/.test(digits)) return digits;
+          if (/^[01]\d{3}$/.test(digits)) return digits.slice(1);
+          return null;
+        };
         const closureReceipt = {
           ...parsed.receiptData,
-          agencyCode: focusedClosureMetadata.agencyCode ?? parsed.receiptData.agencyCode,
+          agencyCode: validAgencyCode(focusedClosureMetadata.agencyCode) ?? validAgencyCode(parsed.receiptData.agencyCode),
           // No rescatar SUBAG desde el OCR general: solo vale la franja identificada.
           subagentCode: validSubagent(focusedClosureMetadata.subagentCode),
           machineCode: focusedClosureMetadata.machineCode ?? null,

@@ -193,7 +193,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   });
   const selectedAgent = activeAgents.find((agent) => String(agent.id) === selectedAgentId);
   const todayRendidoBruto = todayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
-  const todayRendido = todayRendidoBruto - todayPrizeTotal;
+  const todayRendido = Math.max(0, todayRendidoBruto - todayPrizeTotal);
   const todayCobrado = todayRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_payments) ? row.agency_rendition_payments : []).reduce((subtotal: number, payment: any) => subtotal + Number(payment.amount ?? 0), 0), 0);
   const todayComisiones = todayRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_game_amounts) ? row.agency_rendition_game_amounts : []).reduce((subtotal: number, game: any) => subtotal + Number(game.commission_amount ?? 0), 0), 0);
   // Pending is based on net cash due after commission, not gross sales minus cash received.
@@ -498,7 +498,14 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     <div className="page rendition-page-clean">
       <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={drawPeriods.map((period) => period.time).filter((time): time is string => Boolean(time))} renderedAt={new Date().toISOString()} />
       <RenditionScrollHelper />
-      {params.ticket === "guardado" && <p className="message success-message">Se guardó el detalle completo del ticket de fin de jornada junto con la rendición.</p>}
+      <div className="stats-grid compact rendition-stats">
+        <div className="stat-card"><span>Rendido hoy</span><strong>{money(todayRendido, activeOrganization.currency_code)}</strong><small>{todayRows.length} registros · menos {money(todayPrizeTotal, activeOrganization.currency_code)} en premios</small></div>
+        <div className="stat-card"><span>Cobrado hoy</span><strong>{money(todayCobrado, activeOrganization.currency_code)}</strong><small>cobros registrados</small></div>
+        <div className="stat-card"><span>Pendiente hoy</span><strong>{money(todayPendiente, activeOrganization.currency_code)}</strong><small>efectivo neto pendiente después de comisión</small></div>
+        <div className="stat-card"><span>Comisiones rendidas</span><strong>{money(todayComisiones, activeOrganization.currency_code)}</strong><small>comisiones reconocidas en las rendiciones del día</small></div>
+        <div className="stat-card"><span>Agente activo</span><strong>{selectedAgent ? selectedAgent.code : activeAgents.length}</strong><small>{selectedAgent ? selectedAgent.full_name : activeAgents.filter((agent) => agent.kind === "subagent").length + " subagentes · " + activeAgents.filter((agent) => agent.kind === "ambulant").length + " ambulantes"}</small></div>
+      </div>
+      {params.ticket === "guardado" && <p className="message success-message">Se guardó el detalle completo del ticket de fin de jornada junto con la rendición.</p>
       {params.ticket === "error" && <p className="message error-message">La rendición financiera ya se guardó, pero el detalle OCR del ticket no pudo adjuntarse. No vuelvas a registrar la rendición para corregir esto; abrí el registro existente.</p>}
       {params.resultado === "premio-pagado" && <p className="message success-message" role="status">Premio registrado y salida de Caja contabilizada. El cupón quedó marcado como pagado y no puede volver a descontarse.</p>}
       {!selectedAgentId ? (
@@ -568,13 +575,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "backup-destinatario": "No hay un correo de respaldo configurado para la agencia. Abrí Personal y permisos y guardá el correo del titular.",
         "backup-no-enviado": "El backup sigue guardado, pero el proveedor rechazó el envío. Revisá el correo configurado y la configuración de Resend."
       } as Record<string,string>)[params.error] ?? "La operación no se pudo completar. Verificá permisos y datos."}</p>}
-          <div className="stats-grid compact rendition-stats">
-            <div className="stat-card"><span>Rendido hoy</span><strong>{money(todayRendido, activeOrganization.currency_code)}</strong><small>{todayRows.length} registros · menos {money(todayPrizeTotal, activeOrganization.currency_code)} en premios</small></div>
-            <div className="stat-card"><span>Cobrado hoy</span><strong>{money(todayCobrado, activeOrganization.currency_code)}</strong><small>cobros registrados</small></div>
-            <div className="stat-card"><span>Pendiente hoy</span><strong>{money(todayPendiente, activeOrganization.currency_code)}</strong><small>efectivo neto pendiente después de comisión</small></div>
-            <div className="stat-card"><span>Comisiones rendidas</span><strong>{money(todayComisiones, activeOrganization.currency_code)}</strong><small>comisiones reconocidas en las rendiciones del día</small></div>
-            <div className="stat-card"><span>Agentes activos</span><strong>{activeAgents.length}</strong><small>{activeAgents.filter((agent) => agent.kind === "subagent").length} subagentes · {activeAgents.filter((agent) => agent.kind === "ambulant").length} ambulantes</small></div>
-          </div>
+
 
           <RenditionDeadlineAlert closeTime={closeAlertTime} agents={pendingBeforeCloseAgents} />
 

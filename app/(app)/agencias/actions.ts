@@ -295,7 +295,10 @@ export async function createAgencyRendition(formData: FormData) {
     }
   }
   if (identityTicket) {
-    const ticketAgencyCode = String(identityTicket.agencyCode ?? "").replace(/\D/g, "");
+    const ticketAgencyDigits = String(identityTicket.agencyCode ?? "").replace(/\D/g, "");
+    const ticketAgencyCode = ticketAgencyDigits.length === 4 && /^[01]\d{3}$/.test(ticketAgencyDigits)
+      ? ticketAgencyDigits.slice(1)
+      : ticketAgencyDigits;
     const expectedParts = selectedAgentCode.split("-");
     const ticketSubagentCode = String(identityTicket.subagentCode ?? "").replace(/\D/g, "");
     if (!ticketAgencyCode || !ticketSubagentCode) {
