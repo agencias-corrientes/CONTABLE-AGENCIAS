@@ -4,6 +4,18 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
+function recoveryOrigin() {
+  const hostname = window.location.hostname.toLowerCase();
+  const isProjectDeployment = hostname.endsWith("-agencias-corrientes-project.vercel.app");
+  const isCanonicalProduction = hostname === "contable-agencias.vercel.app";
+
+  // Supabase has an existing allow-listed preview callback hostname. It will be
+  // reassigned to this production-based preview so the reset link returns here.
+  return isProjectDeployment && !isCanonicalProduction
+    ? "https://contable-agencias-git-previe-6d6939-agencias-corrientes-project.vercel.app"
+    : window.location.origin;
+}
+
 export default function RecoverAccountPage() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -18,9 +30,9 @@ export default function RecoverAccountPage() {
 
     try {
       const supabase = createClient();
-      // Keep the callback on the same deployment being tested. Vercel preview URLs
-      // must be allowed in Supabase Authentication > URL Configuration.
-      const redirectTo = new URL("/auth/callback?flow=recovery", window.location.origin).toString();
+      // Use the allow-listed preview callback hostname; Vercel will route that alias
+      // to this deployment while we test password recovery.
+      const redirectTo = new URL("/auth/callback?flow=recovery", recoveryOrigin()).toString();
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
 
       if (error) {
