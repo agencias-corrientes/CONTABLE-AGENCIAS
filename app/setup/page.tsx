@@ -2,9 +2,11 @@ import { redirect } from "next/navigation";
 import { getCurrentContext } from "@/lib/accounting";
 import { bootstrapOrganization } from "./actions";
 
-export default async function SetupPage() {
+export default async function SetupPage({ searchParams }: { searchParams?: Promise<{ error?: string }> }) {
   const { member } = await getCurrentContext();
   if (member) redirect("/pagos");
+  const params = await searchParams;
+  const creationFailed = params?.error === "creation_failed";
 
   return (
     <main className="auth-page">
@@ -16,6 +18,12 @@ export default async function SetupPage() {
           Este paso crea una agencia independiente para tu cuenta, carga el catálogo oficial de juegos
           y prepara Caja y los ajustes operativos básicos. No se crean subagentes ni rendiciones de prueba.
         </p>
+        {creationFailed && (
+          <div role="alert" className="setup-error">
+            No se pudo crear la agencia. Tu cuenta sigue creada; no hace falta registrarte de nuevo.
+            Revisá el nombre y volvé a intentar. Si vuelve a fallar, el error técnico queda registrado para poder corregirlo.
+          </div>
+        )}
         <form action={bootstrapOrganization} className="form-stack">
           <label>Nombre de la agencia<input name="name" required maxLength={120} placeholder="Agencia N.º 251" /></label>
           <label>Razón social (opcional)<input name="legal_name" maxLength={160} placeholder="Razón social" /></label>

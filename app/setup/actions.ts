@@ -23,10 +23,19 @@ export async function bootstrapOrganization(formData: FormData) {
   });
 
   if (error) {
+    console.error("[setup] bootstrap_agency_organization failed", {
+      code: error.code ?? null,
+      message: error.message,
+      details: error.details ?? null,
+      hint: error.hint ?? null,
+    });
     if (/already belongs|ya está asociada|already associated/i.test(error.message)) redirect("/pagos");
-    throw new Error("No se pudo configurar la agencia. Revisá los datos e intentá nuevamente.");
+    redirect("/setup?error=creation_failed");
   }
-  if (!data) throw new Error("No se pudo crear la agencia.");
+  if (!data) {
+    console.error("[setup] bootstrap_agency_organization returned no organization id");
+    redirect("/setup?error=creation_failed");
+  }
 
   redirect("/pagos");
 }
