@@ -286,7 +286,19 @@ function mergeFocusedClosureAmounts(base: TicketClosureData, rawFocusedText: str
   };
 }
 
-function parseTicketText(text: string, games: Game[], recoveredPeriodNumber = "") {
+function parseTicketText(
+  text: string,
+  games: Game[],
+  recoveredPeriodNumber = "",
+): {
+  amountMap: Record<string, string>;
+  period: string;
+  drawNumber: string;
+  date: string | null;
+  ticketNumber: string;
+  detectedGames: string[];
+  receiptData: TicketClosureData | null;
+} {
   const receiptData = parseTicketClosure(text);
   if (receiptData) {
     return {
