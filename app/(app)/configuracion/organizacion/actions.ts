@@ -34,28 +34,27 @@ async function getAgencyOwnerContext() {
     supabase,
     organizationId: String(organization.id),
     organizationName: String(organization.name),
-    agencyCode: String(organization.agency_code ?? ""),
     claims: authData.claims,
   };
 }
 
 export async function updateAgencyProfile(formData: FormData) {
-  const { supabase, organizationId, agencyCode: currentAgencyCode } = await getAgencyOwnerContext();
+  const { supabase, organizationId } = await getAgencyOwnerContext();
   let name = String(formData.get("name") ?? "").trim();
   const agencyCode = String(formData.get("agency_code") ?? "").trim();
   const legalName = String(formData.get("legal_name") ?? "").trim();
   const taxId = String(formData.get("tax_id") ?? "").trim();
   const currencyCode = String(formData.get("currency_code") ?? "").trim().toUpperCase();
 
-  if (!/^\\d{3}$/.test(agencyCode) || legalName.length > 180 || taxId.length > 40 ||
+  if (!/^\d{3}$/.test(agencyCode) || legalName.length > 180 || taxId.length > 40 ||
       !/^[A-Z]{3}$/.test(currencyCode)) {
     redirect("/configuracion/organizacion?error=datos-invalidos");
   }
   // If an older agency name was only its number (e.g. "000"), changing the number
   // should not leave that stale number as the new display name.
-  if (/^\\d{3}$/.test(name) && name !== agencyCode) name = "Agencia N.º " + agencyCode;
+  if (/^\d{3}$/.test(name) && name !== agencyCode) name = "Agencia N.º " + agencyCode;
   const namedCode = name.match(/agencia[^0-9]*([0-9]{3,6})/i)?.[1]
-    ?? (/^\\d{3,6}$/.test(name) ? name : "");
+    ?? (/^\d{3,6}$/.test(name) ? name : "");
   if (namedCode && namedCode !== agencyCode) {
     redirect("/configuracion/organizacion?error=agencia-codigo-discordante");
   }
