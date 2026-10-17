@@ -136,6 +136,26 @@ function LoginForm() {
       return;
     }
 
+    const rpcClient = supabase as any;
+    const [{ data: platformAdminData, error: platformAdminError }, { data: accessStatusData, error: accessStatusError }] = await Promise.all([
+      rpcClient.rpc("is_platform_admin"),
+      rpcClient.rpc("get_platform_access_status"),
+    ]);
+    if (platformAdminError || accessStatusError) {
+      await supabase.auth.signOut();
+      setMessage("No pudimos comprobar la autorización central de esta cuenta. No se inició la sesión; volvé a intentarlo más tarde.");
+      setLoading(false);
+      return;
+    }
+    const isPlatformAdmin = platformAdminData === true;
+    const accessStatus = typeof accessStatusData === "string" ? accessStatusData : "not_requested";
+
+    if (["rejected", "suspended", "revoked"].includes(accessStatus)) {
+      router.push("/acceso-bloqueado");
+      router.refresh();
+      return;
+    }
+
     const { data: member, error: memberError } = await supabase
       .from("organization_members")
       .select("role")
@@ -153,7 +173,14 @@ function LoginForm() {
 
     if (!member) {
       if (profile === "administrador") {
-        router.push("/setup");
+        const destination = isPlatformAdmin
+          ? "/plataforma/accesos"
+          : accessStatus === "approved"
+            ? "/setup"
+            : accessStatus === "pending"
+              ? "/acceso-pendiente"
+              : "/setup";
+        router.push(destination);
         router.refresh();
         return;
       }
