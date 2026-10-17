@@ -44,7 +44,7 @@ export default function RecoverPasswordPage() {
       const supabase = createClient();
       const { error } = await supabase.auth.verifyOtp({
         email: email.trim().toLowerCase(),
-        token: token.trim().replace(/\\s/g, ""),
+        token: token.trim().replace(/\s/g, ""),
         type: "recovery",
       });
       if (error) {
