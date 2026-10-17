@@ -457,7 +457,7 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   periodTail:  {left:0.625,right:0.805,top:0.885,bottom:0.909,scale:11,contrast:1.5},
   // Leer aparte la zona de totales inferior: el OCR de página completa suele omitir los importes
   // pequeños del cierre aunque reconozca bien el resto del comprobante.
-  closingAmounts:{left:0.025,right:0.975,top:0.565,bottom:0.885,scale:5,contrast:1.8},
+  closingAmounts:{left:0.025,right:0.975,top:0.405,bottom:0.885,scale:5,contrast:1.8},
   // El número del cupón tiene siete casilleros de ancho fijo; se leen glifo por glifo.
   periodGlyph1:{left:0.375,right:0.414,top:0.885,bottom:0.909,scale:10,contrast:1.4},
   periodGlyph2:{left:0.425,right:0.463,top:0.885,bottom:0.909,scale:10,contrast:1.4},
