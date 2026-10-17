@@ -195,7 +195,7 @@ export async function updateAgencyAgentProfile(formData: FormData) {
     redirect("/agencias/" + encodeURIComponent(agentId) + "?error=codigo-invalido");
   }
 
-  const { error } = await supabase.rpc("update_agency_agent_profile", {
+  const { error } = await (supabase as any).rpc("update_agency_agent_profile", {
     p_organization_id: organizationId,
     p_agent_id: agentId,
     p_kind: kind,
