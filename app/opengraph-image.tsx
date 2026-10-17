@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { BrandAppIcon } from "@/components/BrandAppIcon";
 
 export const alt = "Agencias Corrientes — gestión de agencias de quiniela";
 export const size = { width: 1200, height: 630 };
@@ -9,79 +10,123 @@ export default function OpenGraphImage() {
     (
       <div
         style={{
-          width: "100%",
-          height: "100%",
+          width: "1200px",
+          height: "630px",
           display: "flex",
-          flexDirection: "column",
-          background: "#f8f5ef",
-          color: "#371622",
+          flexDirection: "row",
+          backgroundColor: "#f7f0e4",
           fontFamily: "Arial, Helvetica, sans-serif",
         }}
       >
-        <div style={{ display: "flex", height: 16, width: "100%", background: "#ffdf00" }} />
-        <div style={{ display: "flex", flex: 1, alignItems: "center", padding: "34px 72px", gap: 60 }}>
+        <div
+          style={{
+            width: "410px",
+            height: "630px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            position: "relative",
+            backgroundColor: "#70243a",
+            borderRight: "12px solid #f5cf4d",
+          }}
+        >
+          <div
+            style={{
+              width: "284px",
+              height: "284px",
+              display: "flex",
+            }}
+          >
+            <BrandAppIcon />
+          </div>
+          <div
+            style={{
+              position: "absolute",
+              bottom: "35px",
+              color: "#f5cf4d",
+              fontSize: "16px",
+              letterSpacing: "4px",
+              fontWeight: 700,
+              display: "flex",
+            }}
+          >
+            CORRIENTES · ARGENTINA
+          </div>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            height: "630px",
+            padding: "58px 48px 44px 48px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            color: "#70243a",
+          }}
+        >
           <div
             style={{
               display: "flex",
-              width: 340,
-              height: 340,
-              flexShrink: 0,
-              alignItems: "center",
-              justifyContent: "center",
-              background: "#6b283b",
-              border: "10px solid #d8ad38",
-              borderRadius: 58,
-              boxShadow: "0 12px 0 #e6ded0",
+              color: "#876c35",
+              fontSize: "16px",
+              letterSpacing: "3px",
+              fontWeight: 800,
+              marginBottom: "22px",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                width: 245,
-                height: 280,
-                padding: "20px 18px",
-                borderRadius: 14,
-                background: "#fffaf0",
-                border: "5px solid #e7bf4b",
-              }}
-            >
-              <div style={{ display: "flex", color: "#6b283b", fontSize: 24, fontWeight: 900, letterSpacing: 2 }}>
-                QUINIELA
-              </div>
-              <div style={{ display: "flex", width: 190, height: 5, marginTop: 12, background: "#6b283b", borderRadius: 3 }} />
-              <div style={{ display: "flex", flexDirection: "column", gap: 11, width: 190, marginTop: 20 }}>
-                <div style={{ display: "flex", width: "100%", height: 4, background: "#d7bd89", borderRadius: 3 }} />
-                <div style={{ display: "flex", width: "100%", height: 4, background: "#d7bd89", borderRadius: 3 }} />
-                <div style={{ display: "flex", width: "100%", height: 4, background: "#d7bd89", borderRadius: 3 }} />
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 24 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 56, height: 56, borderRadius: 32, background: "#c8263d", color: "#fffaf0", fontSize: 23, fontWeight: 900, border: "4px solid white" }}>3</div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 67, height: 67, borderRadius: 38, background: "#ffdf00", color: "#4b1628", fontSize: 27, fontWeight: 900, border: "4px solid white" }}>7</div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 56, height: 56, borderRadius: 32, background: "#176fc6", color: "#fffaf0", fontSize: 19, fontWeight: 900, border: "4px solid white" }}>15</div>
-              </div>
+            GESTIÓN PARA AGENCIAS DE QUINIELA
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              fontSize: "62px",
+              lineHeight: 1.04,
+              letterSpacing: "-1.5px",
+              fontWeight: 900,
+            }}
+          >
+            <div>AGENCIAS</div>
+            <div style={{ color: "#33252a" }}>CORRIENTES</div>
+          </div>
+          <div
+            style={{
+              width: "100%",
+              height: "5px",
+              marginTop: "27px",
+              marginBottom: "24px",
+              borderRadius: "4px",
+              backgroundColor: "#f5cf4d",
+              display: "flex",
+            }}
+          />
+          <div
+            style={{
+              fontSize: "25px",
+              lineHeight: 1.3,
+              color: "#4d4242",
+              display: "flex",
+            }}
+          >
+            Tu agencia organizada, todos los días.
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "13px", marginTop: "31px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", fontSize: "19px", fontWeight: 700, color: "#70243a" }}>
+              <div style={{ width: "11px", height: "11px", borderRadius: "50%", backgroundColor: "#f0c744", display: "flex" }} />
+              Rendiciones diarias
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", fontSize: "19px", fontWeight: 700, color: "#70243a" }}>
+              <div style={{ width: "11px", height: "11px", borderRadius: "50%", backgroundColor: "#f0c744", display: "flex" }} />
+              Subagentes y ambulantes
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", fontSize: "19px", fontWeight: 700, color: "#70243a" }}>
+              <div style={{ width: "11px", height: "11px", borderRadius: "50%", backgroundColor: "#f0c744", display: "flex" }} />
+              Caja y cobranzas
             </div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center" }}>
-            <div style={{ display: "flex", color: "#8b6a24", fontSize: 22, fontWeight: 800, letterSpacing: 4, marginBottom: 22 }}>
-              PLATAFORMA DE GESTIÓN
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", fontSize: 66, lineHeight: 1.06, fontWeight: 900, color: "#6b283b", letterSpacing: -2 }}>
-              <span>AGENCIAS</span>
-              <span>CORRIENTES</span>
-            </div>
-            <div style={{ display: "flex", width: 92, height: 7, marginTop: 26, background: "#ffdf00", borderRadius: 4 }} />
-            <div style={{ display: "flex", color: "#62545a", fontSize: 26, marginTop: 22 }}>
-              Gestión diaria de agencias de quiniela
-            </div>
-          </div>
-        </div>
-        <div style={{ display: "flex", height: 58, width: "100%", alignItems: "center", padding: "0 72px", background: "#6b283b", color: "#fffaf0", fontSize: 17, letterSpacing: 3, fontWeight: 700 }}>
-          RENDICIONES  ·  SUBAGENTES  ·  COBRANZAS
         </div>
       </div>
     ),
-    { ...size }
+    { ...size },
   );
 }
