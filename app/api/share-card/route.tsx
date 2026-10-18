@@ -6,7 +6,21 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export async function GET(request: Request) {
-  const imageUrl = new URL("/logo-agencias-corrientes.webp", request.url).toString();
+  const logoUrl = new URL("/logo-agencias-corrientes.webp?v=20261018b", request.url);
+  const logoResponse = await fetch(logoUrl, { cache: "no-store" });
+
+  if (!logoResponse.ok) {
+    return new Response("No se pudo cargar el logo de Agencias Corrientes", {
+      status: 502,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
+
+  const logoBytes = await logoResponse.arrayBuffer();
+  const logoBase64 = btoa(
+    Array.from(new Uint8Array(logoBytes), (byte) => String.fromCharCode(byte)).join(""),
+  );
+  const logoDataUrl = `data:image/webp;base64,${logoBase64}`;
 
   return new ImageResponse(
     (
@@ -23,7 +37,7 @@ export async function GET(request: Request) {
         }}
       >
         <img
-          src={imageUrl}
+          src={logoDataUrl}
           alt={alt}
           width="560"
           height="560"
@@ -31,6 +45,6 @@ export async function GET(request: Request) {
         />
       </div>
     ),
-    { ...size }
+    { ...size },
   );
 }
