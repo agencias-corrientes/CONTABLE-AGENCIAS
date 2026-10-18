@@ -40,12 +40,12 @@ export function LandingSplash() {
       <Image
         src="/logo-agencias-corrientes.webp"
         alt=""
-        width={360}
+        width={176}
         height={360}
         priority
         style={{
           display: "block",
-          width: "min(78vw, 360px)",
+          width: "min(72vw, 176px)",
           height: "auto",
           borderRadius: "18%",
           boxShadow: "0 24px 64px rgba(67, 23, 39, .25)",
