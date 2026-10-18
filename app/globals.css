@@ -540,3 +540,52 @@ html,body{background:var(--bg);color:var(--text)}
  .prize-capture-options>*{flex:1 1 100%}
  .prize-payment-recent-item{align-items:flex-start}
 }
+
+
+/* Identidad única de la aplicación: logo original arriba y a la izquierda. */
+.brand-logo-top-left {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  align-self: flex-start !important;
+  margin: 0 auto 14px 0 !important;
+}
+.brand-logo-top-left img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: left top;
+}
+.landing-card .brand-logo-top-left {
+  width: 96px;
+  height: 96px;
+}
+.auth-card .brand-logo-top-left,
+.auth-card .brand-logo-top-left.auth-page-logo {
+  width: 96px;
+  height: 96px;
+  flex: 0 0 96px;
+}
+.auth-card .login-agency-brand.brand-logo-top-left {
+  width: 104px;
+  height: 104px;
+  flex: 0 0 104px;
+}
+@media (max-width: 640px) {
+  .landing-card .brand-logo-top-left {
+    width: 82px;
+    height: 82px;
+  }
+  .auth-card .brand-logo-top-left,
+  .auth-card .brand-logo-top-left.auth-page-logo {
+    width: 82px;
+    height: 82px;
+    flex-basis: 82px;
+  }
+  .auth-card .login-agency-brand.brand-logo-top-left {
+    width: 90px;
+    height: 90px;
+    flex-basis: 90px;
+  }
+}
