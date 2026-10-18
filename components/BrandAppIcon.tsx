@@ -20,7 +20,6 @@ export function BrandAppIcon({ scale = 1 }: BrandAppIconProps) {
     fontWeight: 900,
     lineHeight: 1,
     whiteSpace: "nowrap" as const,
-    zIndex: 2,
   };
 
   return (
@@ -53,7 +52,6 @@ export function BrandAppIcon({ scale = 1 }: BrandAppIconProps) {
           borderTop: `${Math.max(2, 5 * scale)}px solid #f5cf4d`,
           borderTopLeftRadius: "50% 24%",
           borderTopRightRadius: "50% 24%",
-          zIndex: 0,
         }}
       />
 
@@ -67,7 +65,6 @@ export function BrandAppIcon({ scale = 1 }: BrandAppIconProps) {
           alignItems: "center",
           justifyContent: "center",
           position: "relative",
-          zIndex: 2,
         }}
       >
         <div
@@ -85,7 +82,6 @@ export function BrandAppIcon({ scale = 1 }: BrandAppIconProps) {
             backgroundColor: "#fff8e7",
             border: `${Math.max(2, 5 * scale)}px solid #70243a`,
             transform: "rotate(10deg)",
-            zIndex: 1,
           }}
         >
           <div
@@ -134,7 +130,6 @@ export function BrandAppIcon({ scale = 1 }: BrandAppIconProps) {
             fontSize: 88 * scale,
             fontWeight: 900,
             lineHeight: 1,
-            zIndex: 3,
           }}
         >
           1
@@ -155,7 +150,6 @@ export function BrandAppIcon({ scale = 1 }: BrandAppIconProps) {
           width: "78%",
           borderRadius: `${3 * scale}px`,
           backgroundColor: "#70243a",
-          zIndex: 2,
         }}
       />
       <div
@@ -172,7 +166,6 @@ export function BrandAppIcon({ scale = 1 }: BrandAppIconProps) {
           letterSpacing: 3 * scale,
           lineHeight: 1,
           whiteSpace: "nowrap",
-          zIndex: 2,
         }}
       >
         QUINIELA OFICIAL
