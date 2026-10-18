@@ -327,10 +327,10 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                 {row.ticket_receipt_data?.type === "loteria-corrientes-end-of-day-v1" && <TicketClosureReceipt data={row.ticket_receipt_data} />}
                 {row.ticket_receipt_data?.type === "loteria-corrientes-end-of-day-batch-v1" && Array.isArray(row.ticket_receipt_data.tickets) && (
                   <section className="weekly-ticket-receipt-history">
-                    <strong>Cupones incluidos en la rendición ({row.ticket_receipt_data.tickets.length})</strong>
-                    {row.ticket_receipt_data.tickets.map((ticket: any, index: number) => <details key={String(ticket.periodNumber ?? "sin-periodo") + "-" + index}>
+                    <strong>Comprobantes oficiales leídos y guardados en esta rendición ({row.ticket_receipt_data.tickets.length})</strong>
+                    {row.ticket_receipt_data.tickets.map((ticket: any, index: number) => <details open key={String(ticket.periodNumber ?? "sin-periodo") + "-" + index}>
                       <summary>Cupón {index + 1} · Período {ticket.periodNumber || "no detectado"} · {ticket.closedAt?.date ?? ticket.printedAt?.date ?? ticket.openedAt?.date ?? "Fecha no detectada"}</summary>
-                      <TicketClosureReceipt data={ticket} compact />
+                      <TicketClosureReceipt data={ticket} />
                     </details>)}
                   </section>
                 )}
