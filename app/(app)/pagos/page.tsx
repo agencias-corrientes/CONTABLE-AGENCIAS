@@ -193,8 +193,9 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   });
   const selectedAgent = activeAgents.find((agent) => String(agent.id) === selectedAgentId);
   const todayRendidoBruto = todayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
-  const todayRendido = Math.max(0, todayRendidoBruto - todayPrizeTotal);
-  const todayCobrado = todayRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_payments) ? row.agency_rendition_payments : []).reduce((subtotal: number, payment: any) => subtotal + Number(payment.amount ?? 0), 0), 0);
+  const todayTotalNetoAntesDePremios = todayRows.reduce((sum, row) => sum + Number(row.net_due ?? row.amount_due ?? 0), 0);
+  // El TOTAL RENDIDO refleja el efectivo neto tras comisiones y resta los premios pagados en la jornada.
+  const todayTotalRendido = Math.max(0, todayTotalNetoAntesDePremios - todayPrizeTotal);
   const todayComisiones = todayRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_game_amounts) ? row.agency_rendition_game_amounts : []).reduce((subtotal: number, game: any) => subtotal + Number(game.commission_amount ?? 0), 0), 0);
   // Pending is based on net cash due after commission, not gross sales minus cash received.
   const todayPendiente = todayRows.reduce((sum, row) => {
@@ -576,11 +577,10 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={drawPeriods.map((period) => period.time).filter((time): time is string => Boolean(time))} renderedAt={new Date().toISOString()} />
       <RenditionScrollHelper />
       <div className="stats-grid compact rendition-stats">
-        <div className="stat-card"><span>Rendido hoy</span><strong>{money(todayRendido, activeOrganization.currency_code)}</strong><small>{todayRows.length} registros · menos {money(todayPrizeTotal, activeOrganization.currency_code)} en premios</small></div>
-        <div className="stat-card"><span>Cobrado hoy</span><strong>{money(todayCobrado, activeOrganization.currency_code)}</strong><small>cobros registrados</small></div>
+        <div className="stat-card"><span>Ventas brutas</span><strong>{money(todayRendidoBruto, activeOrganization.currency_code)}</strong><small>{todayRows.length} registros · antes de comisiones y premios</small></div>
+        <div className="stat-card"><span>TOTAL RENDIDO</span><strong>{money(todayTotalRendido, activeOrganization.currency_code)}</strong><small>neto después de comisiones y premios · premios descontados: {money(todayPrizeTotal, activeOrganization.currency_code)}</small></div>
         <div className="stat-card"><span>Pendiente hoy</span><strong>{money(todayPendiente, activeOrganization.currency_code)}</strong><small>efectivo neto pendiente después de comisión</small></div>
         <div className="stat-card"><span>Comisiones rendidas</span><strong>{money(todayComisiones, activeOrganization.currency_code)}</strong><small>comisiones reconocidas en las rendiciones del día</small></div>
-        <div className="stat-card"><span>Agente activo</span><strong>{selectedAgent ? selectedAgent.code : activeAgents.length}</strong><small>{selectedAgent ? selectedAgent.full_name : activeAgents.filter((agent) => agent.kind === "subagent").length + " subagentes · " + activeAgents.filter((agent) => agent.kind === "ambulant").length + " ambulantes"}</small></div>
       </div>
       {params.ticket === "guardado" && <p className="message success-message">Se guardó el detalle completo del ticket de fin de jornada junto con la rendición.</p>}
       {params.ticket === "error" && <p className="message error-message">La rendición financiera ya se guardó, pero el detalle OCR del ticket no pudo adjuntarse. No vuelvas a registrar la rendición para corregir esto; abrí el registro existente.</p>}
