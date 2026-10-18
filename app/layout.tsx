@@ -40,8 +40,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: "/opengraph-image",
-        width: 1200,
-        height: 1200,
+        width: 512,
+        height: 512,
         alt: "Agencias Corrientes — gestión de agencias de quiniela",
       },
     ],
