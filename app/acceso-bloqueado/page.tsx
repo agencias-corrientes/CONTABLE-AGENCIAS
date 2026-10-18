@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AccessBlockedPage() {
@@ -32,7 +33,7 @@ export default async function AccessBlockedPage() {
   return (
     <main className="auth-page">
       <section className="auth-card">
-        <div className="brand-mark small">AC</div>
+        <div className="brand-logo-wrap brand-logo-top-left auth-page-logo"><Image src="/agencias-corrientes-app.svg" alt="Agencias Corrientes — Quiniela Oficial" width={76} height={76} priority /></div>
         <p className="eyebrow">AUTORIZACIÓN DE PLATAFORMA</p>
         <h1>Acceso {statusLabel}</h1>
         <p className="muted">Esta cuenta no puede ingresar a la agencia ni operar sus datos mientras la autorización esté {statusLabel}. Los registros guardados no se eliminan por este bloqueo.</p>
