@@ -32,7 +32,7 @@ export default async function AccessPendingPage() {
   return (
     <main className="auth-page">
       <section className="auth-card">
-        <div className="brand-logo-wrap brand-logo-top-left auth-page-logo"><Image src="/agencias-corrientes-app.svg" alt="Agencias Corrientes — Quiniela Oficial" width={76} height={76} priority /></div>
+        <div className="brand-logo-wrap brand-logo-top-left auth-page-logo"><Image src="/icon" alt="Agencias Corrientes — Quiniela Oficial" width={76} height={76} priority /></div>
         <p className="eyebrow">AUTORIZACIÓN DE PLATAFORMA</p>
         <h1>Solicitud pendiente</h1>
         <p className="muted">La cuenta {email} quedó registrada. El administrador central debe aprobar el acceso antes de que puedas crear o administrar una agencia.</p>
