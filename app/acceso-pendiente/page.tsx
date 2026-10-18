@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AccessPendingPage() {
@@ -31,7 +32,7 @@ export default async function AccessPendingPage() {
   return (
     <main className="auth-page">
       <section className="auth-card">
-        <div className="brand-mark small">AC</div>
+        <div className="brand-logo-wrap brand-logo-top-left auth-page-logo"><Image src="/agencias-corrientes-app.svg" alt="Agencias Corrientes — Quiniela Oficial" width={76} height={76} priority /></div>
         <p className="eyebrow">AUTORIZACIÓN DE PLATAFORMA</p>
         <h1>Solicitud pendiente</h1>
         <p className="muted">La cuenta {email} quedó registrada. El administrador central debe aprobar el acceso antes de que puedas crear o administrar una agencia.</p>
