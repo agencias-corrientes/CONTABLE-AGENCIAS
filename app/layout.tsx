@@ -42,14 +42,13 @@ export const metadata: Metadata = {
         url: "/opengraph-image",
         width: 512,
         height: 512,
-        alt: "Agencias Corrientes — gestión de agencias de quiniela",
+        alt: "Agencias Corrientes — Quiniela Oficial",
       },
     ],
   },
   twitter: {
     card: "summary",
     title: siteTitle,
-    description: siteDescription,
     images: ["/opengraph-image"],
   },
 };
