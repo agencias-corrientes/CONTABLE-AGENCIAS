@@ -11,8 +11,8 @@ const siteUrl =
 const siteTitle = "Agencias Corrientes";
 const siteDescription =
   "Gestión diaria de agencias de quiniela, rendiciones y cobranzas.";
-const brandLogo = "/logo-agencias-corrientes.webp?v=20261018";
-const shareCard = `${siteUrl}/api/share-card?v=20261018`;
+const brandLogo = "/logo-agencias-corrientes.webp?v=20261018b";
+const shareCard = `${siteUrl}/api/share-card?v=20261018b`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   description: siteDescription,
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/logo-agencias-corrientes.webp?v=20261018", type: "image/webp", sizes: "512x512" }],
-    shortcut: [{ url: "/logo-agencias-corrientes.webp?v=20261018", type: "image/webp", sizes: "512x512" }],
-    apple: [{ url: "/logo-agencias-corrientes.webp?v=20261018", type: "image/webp", sizes: "512x512" }],
+    icon: [{ url: brandLogo, type: "image/webp", sizes: "512x512" }],
+    shortcut: [{ url: brandLogo, type: "image/webp", sizes: "512x512" }],
+    apple: [{ url: brandLogo, type: "image/webp", sizes: "512x512" }],
   },
   appleWebApp: {
     capable: true,
