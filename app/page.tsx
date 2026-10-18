@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { LandingSplash } from "@/components/landing-splash";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -22,7 +23,7 @@ export default async function HomePage() {
       return (
         <main className="landing">
           <section className="landing-card landing-role-card">
-            <div className="brand-logo-wrap brand-logo-top-left"><Image src="/icon" alt="Agencias Corrientes — Quiniela Oficial" width={80} height={80} priority /></div>
+            <div className="brand-logo-wrap brand-logo-top-left"><Image src="/icon" alt="Agencias Corrientes — Quiniela Oficial" width={100} height={100} priority /></div>
             <p className="eyebrow">ACCESO EXCLUSIVO · ADMINISTRADOR MAESTRO</p>
             <h1>Administración Central</h1>
             <p className="lead">Administrá solicitudes de alta, autorización de agencias y estado de las cuentas sin entrar al panel operativo de un agenciero.</p>
@@ -40,8 +41,9 @@ export default async function HomePage() {
 
   return (
     <main className="landing">
+      <LandingSplash />
       <section className="landing-card landing-role-card">
-        <div className="brand-logo-wrap brand-logo-top-left"><Image src="/icon" alt="Agencias Corrientes — Quiniela Oficial" width={96} height={96} priority /></div>
+        <div className="brand-logo-wrap brand-logo-top-left"><Image src="/icon" alt="Agencias Corrientes — Quiniela Oficial" width={128} height={128} priority /></div>
         <p className="eyebrow">AGENCIAS CORRIENTES</p>
         <h1>Control de Agencias</h1>
         <p className="lead">Gestión diaria de subagentes y ambulantes, con una agencia independiente para cada titular.</p>

@@ -36,19 +36,21 @@ export const metadata: Metadata = {
     locale: "es_AR",
     siteName: siteTitle,
     title: siteTitle,
+    description: siteDescription,
     url: siteUrl,
     images: [
       {
         url: "/opengraph-image",
         width: 512,
         height: 512,
-        alt: "Agencias Corrientes — Quiniela Oficial",
+        alt: "Logo original de Agencias Corrientes — Quiniela Oficial",
       },
     ],
   },
   twitter: {
     card: "summary",
     title: siteTitle,
+    description: siteDescription,
     images: ["/opengraph-image"],
   },
 };
