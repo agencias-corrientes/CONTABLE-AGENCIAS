@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCurrentContext, money } from "@/lib/accounting";
+import { TicketOcrDetails } from "@/components/ticket-ocr-details";
 
 type AgentRow = {
   id: string;
@@ -14,6 +15,7 @@ type RenditionRow = {
   rendition_date: string;
   amount_due: number;
   reference: string | null;
+  ticket_receipt_data: any;
 };
 
 type TicketRow = {
@@ -30,7 +32,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   const [{ data: agents }, { data: renditions }, { data: tickets }] = await Promise.all([
     supabase.from("agency_agents").select("id,kind,code,full_name").eq("organization_id", organization.id).order("code").limit(1000),
-    supabase.from("agency_renditions").select("id,agent_id,rendition_date,amount_due,reference").eq("organization_id", organization.id).neq("status", "void").order("rendition_date", { ascending: false }).limit(1000),
+    supabase.from("agency_renditions").select("id,agent_id,rendition_date,amount_due,reference,ticket_receipt_data").eq("organization_id", organization.id).neq("status", "void").order("rendition_date", { ascending: false }).limit(1000),
     supabase.from("agency_rendition_tickets").select("id,ticket_number,rendition_id").eq("organization_id", organization.id).order("created_at", { ascending: false }).limit(2000),
   ]);
 
@@ -45,8 +47,16 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(query))
   );
+  const receiptSearchText = (value: any): string => {
+    if (typeof value === "string" || typeof value === "number") return String(value);
+    if (!value || typeof value !== "object") return "";
+    if (Array.isArray(value)) return value.map(receiptSearchText).join(" ");
+    return [value.rawText, value.ticketNumber, value.periodNumber, value.type, value.tickets]
+      .map(receiptSearchText)
+      .join(" ");
+  };
   const matchedRenditions = !query ? [] : renditionRows.filter((rendition) =>
-    [rendition.id, rendition.rendition_date, rendition.reference]
+    [rendition.id, rendition.rendition_date, rendition.reference, receiptSearchText(rendition.ticket_receipt_data)]
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(query))
   );
@@ -95,17 +105,17 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
           <section className="panel table-panel">
             <div className="panel-head"><div><h2>Rendiciones</h2><p className="muted">Resultados por fecha, referencia o identificador.</p></div></div>
-            <div className="table-wrap"><table><thead><tr><th>Fecha</th><th>Subagente / ambulante</th><th>Código</th><th>Importe</th><th>Referencia</th><th></th></tr></thead><tbody>
-              {matchedRenditions.slice(0, 20).map((rendition) => { const agent = agentById.get(rendition.agent_id); return <tr key={rendition.id}><td>{rendition.rendition_date}</td><td>{agent?.kind === "ambulant" ? "Ambulante" : "Subagente"}</td><td className="mono">{agent?.code ?? "—"}</td><td className="mono">{money(rendition.amount_due, organization.currency_code)}</td><td>{rendition.reference || "—"}</td><td><Link href={`/agencias/${rendition.agent_id}`} className="agency-enter">Abrir →</Link></td></tr>; })}
-              {!matchedRenditions.length && <tr><td colSpan={6}>Sin coincidencias.</td></tr>}
+            <div className="table-wrap"><table><thead><tr><th>Fecha</th><th>Subagente / ambulante</th><th>Código</th><th>Importe</th><th>Referencia</th><th>Comprobante OCR</th><th></th></tr></thead><tbody>
+              {matchedRenditions.slice(0, 20).map((rendition) => { const agent = agentById.get(rendition.agent_id); return <tr key={rendition.id}><td>{rendition.rendition_date}</td><td>{agent?.kind === "ambulant" ? "Ambulante" : "Subagente"}</td><td className="mono">{agent?.code ?? "—"}</td><td className="mono">{money(rendition.amount_due, organization.currency_code)}</td><td>{rendition.reference || "—"}</td><td>{rendition.ticket_receipt_data ? <TicketOcrDetails data={rendition.ticket_receipt_data} compact /> : "—"}</td><td><Link href={`/agencias/${rendition.agent_id}`} className="agency-enter">Abrir →</Link></td></tr>; })}
+              {!matchedRenditions.length && <tr><td colSpan={7}>Sin coincidencias.</td></tr>}
             </tbody></table></div>
           </section>
 
           <section className="panel table-panel">
             <div className="panel-head"><div><h2>Tickets</h2><p className="muted">Tickets encontrados por número y su rendición asociada.</p></div></div>
-            <div className="table-wrap"><table><thead><tr><th>Ticket</th><th>Fecha</th><th>Subagente / ambulante</th><th>Código</th><th>Importe rendido</th><th></th></tr></thead><tbody>
-              {matchedTickets.slice(0, 30).map((ticket) => { const rendition = renditionById.get(ticket.rendition_id); const agent = rendition ? agentById.get(rendition.agent_id) : undefined; return <tr key={ticket.id}><td className="mono"><strong>{ticket.ticket_number}</strong></td><td>{rendition?.rendition_date ?? "—"}</td><td>{agent?.kind === "ambulant" ? "Ambulante" : "Subagente"}</td><td className="mono">{agent?.code ?? "—"}</td><td className="mono">{rendition ? money(rendition.amount_due, organization.currency_code) : "—"}</td><td>{agent ? <Link href={`/agencias/${agent.id}`} className="agency-enter">Abrir →</Link> : "—"}</td></tr>; })}
-              {!matchedTickets.length && <tr><td colSpan={6}>Sin coincidencias.</td></tr>}
+            <div className="table-wrap"><table><thead><tr><th>Ticket</th><th>Fecha</th><th>Subagente / ambulante</th><th>Código</th><th>Importe rendido</th><th>Comprobante OCR</th><th></th></tr></thead><tbody>
+              {matchedTickets.slice(0, 30).map((ticket) => { const rendition = renditionById.get(ticket.rendition_id); const agent = rendition ? agentById.get(rendition.agent_id) : undefined; return <tr key={ticket.id}><td className="mono"><strong>{ticket.ticket_number}</strong></td><td>{rendition?.rendition_date ?? "—"}</td><td>{agent?.kind === "ambulant" ? "Ambulante" : "Subagente"}</td><td className="mono">{agent?.code ?? "—"}</td><td className="mono">{rendition ? money(rendition.amount_due, organization.currency_code) : "—"}</td><td>{rendition?.ticket_receipt_data ? <TicketOcrDetails data={rendition.ticket_receipt_data} compact /> : "—"}</td><td>{agent ? <Link href={`/agencias/${agent.id}`} className="agency-enter">Abrir →</Link> : "—"}</td></tr>; })}
+              {!matchedTickets.length && <tr><td colSpan={7}>Sin coincidencias.</td></tr>}
             </tbody></table></div>
           </section>
         </>
