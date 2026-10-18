@@ -53,7 +53,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
 
   const [{ data: operationalSettings }, { data: agents }, { data: gameTypes }, { data: agentCommissions }, { data: commissionDefaults }] = await Promise.all([
     supabase.from("agency_operational_settings").select("rendition_cutoff_time").eq("organization_id", activeOrganization.id).maybeSingle(),
-    supabase.from("agency_agents").select("id,kind,full_name,code,is_active,phone,rendition_policy,rendition_periods").eq("organization_id", activeOrganization.id).order("kind").order("code"),
+    supabase.from("agency_agents").select("id,kind,full_name,code,is_active,phone,rendition_policy,rendition_periods,rendition_frequency,rendition_weekdays").eq("organization_id", activeOrganization.id).order("kind").order("code"),
     supabase.from("agency_game_types").select("id,name,category,enabled").eq("organization_id", activeOrganization.id).order("sort_order").order("name"),
     supabase.from("agency_agent_game_commissions").select("agent_id,game_type_id,commission_percent").eq("organization_id", activeOrganization.id),
     supabase.from("agency_game_commission_defaults").select("game_type_id,commission_percent").eq("organization_id", activeOrganization.id),
@@ -325,7 +325,16 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                   </div>
                 </div>
                 {row.ticket_receipt_data?.type === "loteria-corrientes-end-of-day-v1" && <TicketClosureReceipt data={row.ticket_receipt_data} />}
-                {isDailyClosure && row.status !== "void" && row.ticket_receipt_data?.type !== "loteria-corrientes-end-of-day-v1" && (canCreateRenditions || canEditRenditions) && (
+                {row.ticket_receipt_data?.type === "loteria-corrientes-end-of-day-batch-v1" && Array.isArray(row.ticket_receipt_data.tickets) && (
+                  <section className="weekly-ticket-receipt-history">
+                    <strong>Cupones incluidos en la rendición ({row.ticket_receipt_data.tickets.length})</strong>
+                    {row.ticket_receipt_data.tickets.map((ticket: any, index: number) => <details key={String(ticket.periodNumber ?? "sin-periodo") + "-" + index}>
+                      <summary>Cupón {index + 1} · Período {ticket.periodNumber || "no detectado"} · {ticket.closedAt?.date ?? ticket.printedAt?.date ?? ticket.openedAt?.date ?? "Fecha no detectada"}</summary>
+                      <TicketClosureReceipt data={ticket} compact />
+                    </details>)}
+                  </section>
+                )}
+                {isDailyClosure && row.status !== "void" && row.ticket_receipt_data?.type !== "loteria-corrientes-end-of-day-v1" && row.ticket_receipt_data?.type !== "loteria-corrientes-end-of-day-batch-v1" && (canCreateRenditions || canEditRenditions) && (
                   <details className="rendition-edit-details">
                     <summary>Recuperar detalle OCR del ticket</summary>
                     <p className="muted small-text">La rendición financiera ya existe. Volvé a seleccionar la foto del FIN DE JORNADA para adjuntar únicamente su detalle OCR. Esta acción no cambia ventas, importes, cobros ni movimientos de Caja.</p>
@@ -470,6 +479,10 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   function AgentAccordion({ agent }: { agent: any }) {
     const todayAgentRows = todayRows.filter((row) => row.agent_id === agent.id);
     const renditionPolicy = String(agent.rendition_policy ?? "daily");
+    const renditionFrequency = String((agent as any).rendition_frequency ?? "daily");
+    const renditionWeekdays = Array.isArray((agent as any).rendition_weekdays) ? (agent as any).rendition_weekdays.map(String) : ["mon","tue","wed","thu","fri","sat"];
+    const weekdayKeys = ["sun","mon","tue","wed","thu","fri","sat"];
+    const isScheduledRenditionDay = renditionFrequency !== "weekly" || renditionWeekdays.includes(weekdayKeys[new Date(today + "T00:00:00.000Z").getUTCDay()]);
     const configuredRenditionPeriods = Array.isArray(agent.rendition_periods) ? agent.rendition_periods.map(String) : [];
     const dailyRendition = todayAgentRows.find((row: any) => String(row.game_period ?? "").trim() === "Cierre diario");
     const dailyStatus = dailyStatusByAgent.get(String(agent.id)) as any;
@@ -489,7 +502,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       <div className={"rendition-agent-accordion " + (subagent ? "rendition-subagent" : "rendition-ambulant")}>
         <div className="rendition-agent-expanded">
           <div className="rendition-agent-expanded-head">
-            <div><span className="eyebrow">{renditionPolicy === "daily" ? "RENDICIÓN DEL DÍA" : renditionPolicy === "selected_draws" ? "SORTEOS SELECCIONADOS" : "RENDICIONES POR SORTEO"}</span><h3>{agentLabel(agent)} {agent.code} · {agent.full_name}</h3><p className="muted">{renditionPolicy === "daily" ? "Una sola rendición reúne los importes de todos los juegos del día." : renditionPolicy === "selected_draws" ? "Solo se controlan los sorteos habilitados para este operador." : "Cada sorteo tiene su rendición independiente."} Comisión acumulada: <strong>{money(commission, activeOrganization.currency_code)}</strong> · Neto estimado: <strong>{money(netDue, activeOrganization.currency_code)}</strong>.</p></div>
+            <div><span className="eyebrow">{renditionFrequency === "weekly" ? "RENDICIÓN ACUMULADA" : renditionPolicy === "daily" ? "RENDICIÓN DEL DÍA" : renditionPolicy === "selected_draws" ? "SORTEOS SELECCIONADOS" : "RENDICIONES POR SORTEO"}</span><h3>{agentLabel(agent)} {agent.code} · {agent.full_name}</h3><p className="muted">{renditionFrequency === "weekly" ? "Acumula cupones oficiales de FIN DE JORNADA y registra una sola entrega en Caja el día habilitado." : renditionPolicy === "daily" ? "Una sola rendición reúne los importes de todos los juegos del día." : renditionPolicy === "selected_draws" ? "Solo se controlan los sorteos habilitados para este operador." : "Cada sorteo tiene su rendición independiente."} Comisión acumulada: <strong>{money(commission, activeOrganization.currency_code)}</strong> · Neto estimado: <strong>{money(netDue, activeOrganization.currency_code)}</strong>.</p></div>
             <Link href={"/agencias/" + agent.id} className="button ghost">Configurar</Link>
           </div>
           <div className="draw-period-chip-list expanded-draw-period-list" aria-label={"Estados de rendición de " + agent.code}>
@@ -540,16 +553,17 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                       />
                     </>
                   : <p className="message">La rendición del día ya está registrada. {dailyStatusKind === "complete" ? "El cierre está confirmado." : "Revisá el historial y los cobros registrados."}</p>
-                : <>
-                    <RenditionEntryForm agentId={agent.id} games={gamesForAgent(String(agent.id))} today={today} periods={[dailyClosurePeriod]} allPeriods={allOfficialDrawPeriods} defaultPeriod="Cierre diario" dailyMode dailyCloseAllowed={dailyCloseAllowed} />
-
+                : renditionFrequency === "weekly" && !isScheduledRenditionDay
+                  ? <p className="message">Este operador no tiene rendición habilitada hoy. Días configurados: {renditionWeekdays.map((day: string) => ({mon:"lunes",tue:"martes",wed:"miércoles",thu:"jueves",fri:"viernes",sat:"sábado",sun:"domingo"} as Record<string,string>)[day]).filter(Boolean).join(", ")}.</p>
+                  : <>
+                    <RenditionEntryForm agentId={agent.id} games={gamesForAgent(String(agent.id))} today={today} periods={[dailyClosurePeriod]} allPeriods={allOfficialDrawPeriods} defaultPeriod="Cierre diario" dailyMode dailyCloseAllowed={dailyCloseAllowed} batchMode={renditionFrequency === "weekly"} />
                   </>
               : formPeriods.length > 0
                 ? <RenditionEntryForm agentId={agent.id} games={gamesForAgent(String(agent.id))} today={today} periods={formPeriods} allPeriods={allOfficialDrawPeriods} defaultPeriod={defaultPeriod} />
                 : <p className="message">No hay otro sorteo habilitado vencido pendiente para registrar. Los turnos futuros se habilitan cuando llega su horario.</p>
             : <p className="message">No tenés permiso para registrar rendiciones. El titular debe habilitar esta operación.</p>}
           <section className="rendition-agent-history">
-            <div className="panel-head"><div><h3>Rendiciones del día operativo</h3><p className="muted">{renditionPolicy === "daily" ? "Una sola rendición reúne todos los juegos de la jornada; el historial conserva los importes registrados." : "Los períodos anteriores quedan en el historial; cada sorteo habilitado se registra por separado."}</p></div><span className="muted">{todayAgentRows.length} registros</span></div>
+            <div className="panel-head"><div><h3>Rendiciones del día operativo</h3><p className="muted">{renditionFrequency === "weekly" ? "Cada lote conserva el detalle de cada cupón por fecha; Caja registra una sola entrega por el total del lote." : renditionPolicy === "daily" ? "Una sola rendición reúne todos los juegos de la jornada; el historial conserva los importes registrados." : "Los períodos anteriores quedan en el historial; cada sorteo habilitado se registra por separado."}</p></div><span className="muted">{todayAgentRows.length} registros</span></div>
             <RenditionHistory agent={agent} historyRows={todayRows} />
           </section>
         </div>
@@ -570,6 +584,13 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       </div>
       {params.ticket === "guardado" && <p className="message success-message">Se guardó el detalle completo del ticket de fin de jornada junto con la rendición.</p>}
       {params.ticket === "error" && <p className="message error-message">La rendición financiera ya se guardó, pero el detalle OCR del ticket no pudo adjuntarse. No vuelvas a registrar la rendición para corregir esto; abrí el registro existente.</p>}
+      {params.error === "dia-rendicion-no-habilitado" && <p className="message error-message">Hoy no es un día habilitado para la rendición acumulada de este operador. Revisá su frecuencia en la ficha del subagente o ambulante.</p>}
+      {params.error === "lote-cupones-obligatorio" && <p className="message error-message">Para esta modalidad tenés que cargar entre 1 y 12 cupones oficiales de FIN DE JORNADA.</p>}
+      {params.error === "lote-cupon-duplicado" && <p className="message error-message">El lote contiene un cupón repetido. No se registró esta rendición.</p>}
+      {params.error === "lote-cupon-datos-incompletos" && <p className="message error-message">No se pudo identificar el Período N.º de 7 dígitos y la fecha de uno de los cupones. Corregí el OCR antes de confirmar.</p>}
+      {params.error === "lote-fecha-invalida" && <p className="message error-message">Uno de los cupones tiene una fecha inválida o posterior al día de rendición. No se registró el lote.</p>}
+      {params.error === "lote-verificacion-fallida" && <p className="message error-message">No se pudo verificar el historial de cupones para evitar duplicados. No se registró esta rendición; volvé a intentar.</p>}
+      {params.error === "lote-cupon-ya-rendido" && <p className="message error-message">Uno o más cupones de este lote ya figuran en una rendición anterior de este operador. No se volvió a contabilizar.</p>}
       {params.resultado === "ticket-ocr-adjuntado" && <p className="message success-message">Detalle OCR adjuntado al cierre diario existente. No se modificaron importes ni movimientos de Caja.</p>}
       {params.resultado === "premio-pagado" && <p className="message success-message" role="status">Premio registrado y salida de Caja contabilizada. El cupón quedó marcado como pagado y no puede volver a descontarse.</p>}
       {!selectedAgentId ? (

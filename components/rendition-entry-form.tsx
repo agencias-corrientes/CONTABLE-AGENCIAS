@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { attachAgencyRenditionTicketReceiptDataToExisting, createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
 import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod } from "@/lib/agency-draw-schedule";
@@ -754,7 +754,7 @@ function readPeriodTail(values:string[]):string|null {
   if(ranked[1]&&ranked[0][1]===ranked[1][1])return null;
   return ranked[0][0];
 }
-export function RenditionEntryForm({ agentId, games, today, periods, allPeriods, defaultPeriod, initialRendition, dailyMode = false, dailyCloseAllowed = true, receiptOnlyMode = false }: { agentId: string; games: Game[]; today: string; periods: OfficialDrawPeriod[]; allPeriods?: OfficialDrawPeriod[]; defaultPeriod?: string; initialRendition?: InitialRendition; dailyMode?: boolean; dailyCloseAllowed?: boolean; receiptOnlyMode?: boolean }) {
+export function RenditionEntryForm({ agentId, games, today, periods, allPeriods, defaultPeriod, initialRendition, dailyMode = false, dailyCloseAllowed = true, receiptOnlyMode = false, batchMode = false }: { agentId: string; games: Game[]; today: string; periods: OfficialDrawPeriod[]; allPeriods?: OfficialDrawPeriod[]; defaultPeriod?: string; initialRendition?: InitialRendition; dailyMode?: boolean; dailyCloseAllowed?: boolean; receiptOnlyMode?: boolean; batchMode?: boolean }) {
   const [mode, setMode] = useState<"photo" | "manual">(receiptOnlyMode ? "photo" : initialRendition?.captureMethod === "manual" ? "manual" : "photo");
   const [date, setDate] = useState(initialRendition?.renditionDate ?? today);
   const [period, setPeriod] = useState(initialRendition?.period ?? (dailyMode ? "Cierre diario" : defaultPeriod ?? periods[0]?.label ?? ""));
@@ -769,8 +769,13 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [reference, setReference] = useState(initialRendition?.reference ?? "");
   const [notes, setNotes] = useState(initialRendition?.notes ?? "");
   const [receiptData, setReceiptData] = useState<TicketClosureData | null>(initialRendition?.receiptData ?? null);
+  const [batchTickets, setBatchTickets] = useState<TicketClosureData[]>(() => {
+    const saved: any = initialRendition?.receiptData;
+    return saved?.type === "loteria-corrientes-end-of-day-batch-v1" && Array.isArray(saved.tickets) ? saved.tickets : [];
+  });
+  const batchTicketsRef = useRef<TicketClosureData[]>(batchTickets);
   const [gameListExpanded, setGameListExpanded] = useState(false);
-  const [receiptReviewed, setReceiptReviewed] = useState(Boolean(initialRendition?.receiptData?.userConfirmedReview));
+  const [receiptReviewed, setReceiptReviewed] = useState(Boolean((initialRendition?.receiptData as any)?.userConfirmedReview));
   const [ocrText, setOcrText] = useState("");
   const [fileName, setFileName] = useState("");
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
@@ -805,7 +810,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const canConfirmClosedTicket = Boolean(
     receiptHasConfirmedClosure && receiptReviewed && receiptData?.userConfirmedReview === true
   );
-  const canConfirmDaily = dailyCloseAllowed || canConfirmClosedTicket;
+  const canConfirmDaily = batchMode ? batchTickets.length > 0 && receiptReviewed : dailyCloseAllowed || canConfirmClosedTicket;
 
   // Refresh the proposed period at draw boundaries only while the form is untouched.
   useEffect(() => {
@@ -1102,6 +1107,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       setOcrText([recognizedText, focusedOcrDebugText].filter(Boolean).join("\n\n"));
       const activeGames = games.filter((game) => game.enabled !== false);
       const parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber);
+      if (batchMode && !parsed.receiptData) {
+        setError("Esta modalidad acepta comprobantes oficiales FIN DE JORNADA. El cupón no se agregó al lote.");
+        setProgress("No se incorporó el archivo. Elegí un cierre oficial o continuá con otro cupón.");
+        setProgressPercent(0);
+        return;
+      }
       const detectedPeriod = parsed.period || qrPeriodCandidate;
       let autoDetectedPeriodChanged = false;
       let detectedPeriodDefinition: OfficialDrawPeriod | null = null;
@@ -1162,10 +1173,42 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         };
         // The printed date stays in receipt metadata; the financial entry stays on today's operational day.
         setDate(initialRendition?.renditionDate ?? today);
+        if (batchMode) {
+          const ticketPeriod = String(closureReceipt.periodNumber ?? "").replace(/\s+/g, "");
+          const ticketDate = String(closureReceipt.closedAt?.date ?? closureReceipt.printedAt?.date ?? closureReceipt.openedAt?.date ?? "");
+          const ticketKey = ticketPeriod + "|" + ticketDate;
+          const validPrintedDate = /^\d{4}-\d{2}-\d{2}$/.test(ticketDate) || /^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$/.test(ticketDate);
+          if (!/^\d{7}$/.test(ticketPeriod) || !validPrintedDate) {
+            setError("No pude confirmar el Período N.º de 7 dígitos y la fecha impresa del cupón. Revisá el ticket antes de agregarlo al lote.");
+            setProgress("Cupón no incorporado: falta identificar correctamente su período o fecha.");
+            setProgressPercent(0);
+            return;
+          }
+          if (batchTicketsRef.current.some((item) =>
+            String(item.periodNumber ?? "").replace(/\s+/g, "") + "|" + String(item.closedAt?.date ?? item.printedAt?.date ?? item.openedAt?.date ?? "") === ticketKey)) {
+            setError("Este cupón ya fue agregado al lote. No se volvió a sumar.");
+            setProgress("Cupón duplicado detectado; los importes del lote se mantienen sin cambios.");
+            setProgressPercent(0);
+            return;
+          }
+          const nextBatch = [...batchTicketsRef.current, closureReceipt];
+          batchTicketsRef.current = nextBatch;
+          setBatchTickets(nextBatch);
+        }
         setReceiptData(closureReceipt);
         setGameListExpanded(true);
         setReceiptReviewed(false);
-        setAmounts(mapTicketClosureAmounts(closureReceipt, periodGames));
+        setAmounts((previous) => {
+          const incoming = mapTicketClosureAmounts(closureReceipt, periodGames);
+          if (!batchMode) return incoming;
+          const combined = { ...previous };
+          for (const [gameId, rawAmount] of Object.entries(incoming)) {
+            const add = parseMoney(String(rawAmount ?? "")) ?? 0;
+            if (add <= 0) continue;
+            combined[gameId] = ((parseMoney(String(previous[gameId] ?? "")) ?? 0) + add).toFixed(2);
+          }
+          return combined;
+        });
         if (!dailyMode) {
           setDetectedPeriodMismatch("__DAILY_CLOSURE__");
           setNotice("Este comprobante es un FIN DE JORNADA completo. Para registrarlo, configurá este operador con modalidad Rendición diaria / cierre diario; no corresponde a un único sorteo.");
@@ -1334,7 +1377,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       <input type="hidden" name="agent_id" value={agentId} />
       <input type="hidden" name="rendition_id" value={initialRendition?.id ?? ""} />
       <input type="hidden" name="ticket_qr_payload" value={qrPayload} />
-      <input type="hidden" name="ticket_receipt_data" value={receiptData ? JSON.stringify(receiptData) : ""} />
+      <input type="hidden" name="ticket_receipt_data" value={batchMode
+        ? (batchTickets.length ? JSON.stringify({
+            type: "loteria-corrientes-end-of-day-batch-v1",
+            userConfirmedReview: receiptReviewed,
+            agencyCode: batchTickets[0]?.agencyCode ?? null,
+            subagentCode: batchTickets[0]?.subagentCode ?? null,
+            tickets: batchTickets.map((ticket) => ({ ...ticket, userConfirmedReview: receiptReviewed })),
+          }) : "")
+        : (receiptData ? JSON.stringify(receiptData) : "")} />
       <input type="hidden" name="game_period" value={period} />
       <input type="hidden" name="draw_period" value={period} />
       <input type="hidden" name="draw_number" value={drawNumber} />
@@ -1435,6 +1486,19 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               }}
             />
           </div>
+          {batchMode && (
+            <div className="weekly-ticket-batch-upload-help">
+              <div>
+                <strong>{batchTickets.length === 0 ? "Carga acumulada de FIN DE JORNADA" : `${batchTickets.length} cupón${batchTickets.length === 1 ? "" : "es"} agregado${batchTickets.length === 1 ? "" : "s"}`}</strong>
+                <p>{batchTickets.length === 0 ? "Elegí el primer comprobante. Después podés agregar los demás, uno por uno, sin registrar una rendición todavía." : "El cupón ya está en este lote. Volvé a elegir otro archivo para sumar el siguiente comprobante a la misma rendición."}</p>
+              </div>
+              <button type="button" className="button ghost small" disabled={busy || batchTickets.length >= 12} onClick={() => {
+                const input = document.getElementById(ticketPhotoInputId) as HTMLInputElement | null;
+                input?.click();
+              }}>{batchTickets.length === 0 ? "Elegir primer FIN DE JORNADA" : "Agregar otro FIN DE JORNADA"}</button>
+              <small>Repetí esta operación por cada cupón. Revisá la lista y marcá la revisión antes de tocar “Confirmar rendición acumulada”. Máximo 12 cupones por lote.</small>
+            </div>
+          )}
           {photoPreviewUrl && <div className="ticket-photo-preview"><button type="button" className="ticket-photo-preview-button" onClick={() => setPhotoExpanded(true)} aria-label="Ampliar foto del ticket"><img src={photoPreviewUrl} alt="Vista previa del ticket cargado" /><span>Ampliar foto</span></button></div>}
           {photoExpanded && photoPreviewUrl && <div className="ticket-photo-lightbox" role="dialog" aria-modal="true" aria-label="Foto del ticket ampliada" onClick={() => setPhotoExpanded(false)}><button type="button" className="ticket-photo-lightbox-close" onClick={() => setPhotoExpanded(false)}>Cerrar ✕</button><img src={photoPreviewUrl} alt="Foto del ticket ampliada" onClick={(event) => event.stopPropagation()} /></div>}
           <p className="muted small-text">También podés subir una foto guardada. La lectura se procesa en el navegador y la imagen se adjunta a la rendición para auditoría.</p>
@@ -1529,7 +1593,64 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           </div>
         </div>
         {gameListExpanded ? (
-          receiptData ? (
+          batchMode ? (
+            <div className="weekly-ticket-batch-panel">
+              <div className="panel-head">
+                <div><h3>Cupones incluidos en esta rendición</h3><p className="muted">Los cupones quedan separados por fecha; los importes de abajo son el total acumulado del lote.</p></div>
+                <span className="badge">{batchTickets.length} cupones</span>
+              </div>
+              {batchTickets.map((ticket, index) => <details className="weekly-ticket-batch-row" key={String(ticket.periodNumber ?? "sin-periodo") + "-" + index}>
+                <summary><strong>Cupón {index + 1} · Período {ticket.periodNumber || "no detectado"}</strong><small>{ticket.closedAt?.date ?? ticket.printedAt?.date ?? ticket.openedAt?.date ?? "Fecha impresa no detectada"}</small></summary>
+                <TicketClosureReceipt data={ticket} compact editable onChange={(next) => {
+                  const nextKey = String(next.periodNumber ?? "").replace(/\s+/g, "") + "|" + String(next.closedAt?.date ?? next.printedAt?.date ?? next.openedAt?.date ?? "");
+                  if (batchTicketsRef.current.some((item, itemIndex) => itemIndex !== index &&
+                    String(item.periodNumber ?? "").replace(/\s+/g, "") + "|" + String(item.closedAt?.date ?? item.printedAt?.date ?? item.openedAt?.date ?? "") === nextKey)) {
+                    setError("Ese período y fecha ya están en otro cupón del lote. No se guardó la corrección duplicada.");
+                    return;
+                  }
+                  const editableTicket = { ...next, userConfirmedReview: false };
+                  const priorAmounts = mapTicketClosureAmounts(ticket, periodGames);
+                  const nextAmounts = mapTicketClosureAmounts(editableTicket, periodGames);
+                  setAmounts((previous) => {
+                    const combined = { ...previous };
+                    for (const game of periodGames) {
+                      const current = parseMoney(String(previous[game.id] ?? "")) ?? 0;
+                      const oldValue = parseMoney(String(priorAmounts[game.id] ?? "")) ?? 0;
+                      const newValue = parseMoney(String(nextAmounts[game.id] ?? "")) ?? 0;
+                      combined[game.id] = Math.max(0, current - oldValue + newValue).toFixed(2);
+                    }
+                    return combined;
+                  });
+                  const updated = batchTicketsRef.current.map((item, itemIndex) => itemIndex === index ? editableTicket : item);
+                  batchTicketsRef.current = updated;
+                  setBatchTickets(updated);
+                  setReceiptData(updated[updated.length - 1] ?? null);
+                  setReceiptReviewed(false);
+                  setError("");
+                }} />
+              </details>)}
+              <label className="ticket-input-block weekly-ticket-batch-review">
+                <span><input type="checkbox" checked={receiptReviewed} onChange={(event) => setReceiptReviewed(event.currentTarget.checked)} />
+                  Confirmo que revisé todos los cupones OCR de este lote.</span>
+              </label>
+              <div className="game-rendition-list">
+                {periodGames.map((game) => <label className="game-rendition-row" key={game.id}>
+                  <span><strong>{game.name}</strong><small>{game.category} · total de todos los cupones</small></span>
+                  <input type="number" name={"game_" + game.id} min="0" step="0.01" inputMode="decimal" placeholder="0,00" value={amounts[game.id] ?? ""} onChange={(event) => setAmounts((previous) => ({ ...previous, [game.id]: event.target.value }))} />
+                </label>)}
+              </div>
+              <button type="button" className="button ghost small" disabled={!batchTickets.length || busy} onClick={() => {
+                batchTicketsRef.current = [];
+                setBatchTickets([]);
+                setReceiptData(null);
+                setReceiptReviewed(false);
+                setAmounts(Object.fromEntries(games.map((game) => [game.id, ""])));
+                setTicketNumbers("");
+                setError("");
+                setNotice("");
+              }}>Vaciar lote y empezar de nuevo</button>
+            </div>
+          ) : receiptData ? (
             <>
               <TicketClosureReceipt data={receiptData} editable onChange={(next) => {
                 setReceiptData({ ...next, userConfirmedReview: false });
@@ -1572,8 +1693,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             <div className="game-rendition-collapsed" role="status">
               <span className="game-rendition-collapsed-mark" aria-hidden="true">{receiptData ? "✓" : "…"}</span>
               <div>
-                <strong>{receiptData ? "Ticket de fin de jornada leído" : total > 0 ? "Importes reconocidos y listos para revisar" : "Lista de juegos contraída"}</strong>
-                <p>{receiptData
+                <strong>{batchMode && batchTickets.length ? batchTickets.length + " cupones de fin de jornada listos" : receiptData ? "Ticket de fin de jornada leído" : total > 0 ? "Importes reconocidos y listos para revisar" : "Lista de juegos contraída"}</strong>
+                <p>{batchMode && batchTickets.length
+                  ? "Se acumularon " + batchTickets.length + " cupones. Abrí la lista completa para revisar cada fecha y los importes consolidados antes de guardar."
+                  : receiptData
                   ? "Los datos detectados se conservaron. Abrí la lista completa para revisar juegos, sorteos, importes y totales antes de guardar."
                   : total > 0
                     ? "Se detectaron importes por " + new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(total) + ". Abrí la lista para verificar o corregir cada valor."
@@ -1584,7 +1707,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         )}
       </div>
 
-      <label className="ticket-input-block"><span>Número(s) de ticket / cupón</span><textarea name="ticket_numbers" rows={2} value={ticketNumbers} onChange={(event) => setTicketNumbers(event.target.value)} placeholder="Se completa desde la lectura o ingresalo manualmente." /></label>
+      <label className="ticket-input-block"><span>Número(s) de ticket / cupón</span><textarea name="ticket_numbers" rows={2} value={ticketNumbers} onChange={(event) => setTicketNumbers(event.target.value)} readOnly={batchMode} placeholder={batchMode ? "El detalle de cada cupón queda en el lote." : "Se completa desde la lectura o ingresalo manualmente."} /></label>
       <label className="ticket-input-block"><span>Observaciones</span><textarea name="notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Opcional." /></label>
       <div className="rendition-settlement-bar">
         <div className="rendition-settlement-values">
@@ -1596,15 +1719,22 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <button className="button primary" type={initialRendition ? "submit" : "button"}
           onClick={initialRendition ? undefined : () => {
             setConfirmationError("");
-            if (receiptData) {
+            if (batchMode) {
+              if (!batchTickets.length || !receiptReviewed) {
+                setConfirmationError("Agregá los cupones oficiales, revisá todos y marcá la confirmación antes de continuar.");
+                setConfirmationOpen(true);
+                return;
+              }
+              setDailyStatusChoice("complete");
+            } else if (receiptData) {
               setReceiptReviewed(true);
               setReceiptData((previous) => previous ? { ...previous, userConfirmedReview: true } : previous);
               setDailyStatusChoice("complete");
             }
             setConfirmationOpen(true);
           }}
-          disabled={!periodGames.length || !period || busy || total <= 0 || netToRemit <= 0 || Boolean(detectedPeriodMismatch)}>
-          {busy ? "Leyendo ticket…" : initialRendition ? "Guardar cambios de la rendición" : "Confirmar y guardar rendición"}
+          disabled={!periodGames.length || !period || busy || total <= 0 || netToRemit <= 0 || Boolean(detectedPeriodMismatch) || (batchMode && (!batchTickets.length || !receiptReviewed))}>
+          {busy ? "Leyendo ticket…" : initialRendition ? "Guardar cambios de la rendición" : batchMode ? "Confirmar rendición acumulada" : "Confirmar y guardar rendición"}
         </button>
       </div>
 

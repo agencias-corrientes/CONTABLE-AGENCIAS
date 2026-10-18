@@ -767,3 +767,29 @@ input:focus,select:focus,textarea:focus{
 @media(max-width:700px){
   .platform-admin-page .platform-access-navigation{gap:12px;margin-bottom:18px}
 }
+
+/* Weekly accumulated rendition: keep every official closure receipt visible in the saved lot. */
+.weekly-ticket-batch-panel,
+.weekly-ticket-receipt-history { display: grid; gap: 12px; min-width: 0; }
+.weekly-ticket-batch-row,
+.weekly-ticket-receipt-history details {
+  border: 1px solid var(--border, #d8d8d8);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--panel, #fff);
+}
+.weekly-ticket-batch-row > summary,
+.weekly-ticket-receipt-history details > summary {
+  cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px;
+}
+.weekly-ticket-batch-row > summary small { color: var(--muted, #666); margin-left: auto; }
+.weekly-ticket-batch-review > span { display: flex; align-items: flex-start; gap: 8px; }
+.agent-rendition-weekdays { margin-top: 10px; }
+
+
+/* Clear next step when preparing a multi-ticket closure batch. */
+.weekly-ticket-batch-upload-help{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;margin-top:12px;padding:14px 15px;border:1px solid #dbc778;border-left:5px solid #c6a33b;border-radius:11px;background:#fffbed;color:#432b2f}
+.weekly-ticket-batch-upload-help>div{flex:1 1 240px;min-width:0}
+.weekly-ticket-batch-upload-help strong{display:block;font-size:15px;font-weight:800}
+.weekly-ticket-batch-upload-help p{margin:5px 0 0;font-size:13px;line-height:1.45}
+.weekly-ticket-batch-upload-help>small{flex-basis:100%;color:#67585b;font-size:12px;line-height:1.45}

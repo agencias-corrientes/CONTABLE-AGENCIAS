@@ -135,8 +135,10 @@ export type Database = {
           notes: string | null
           organization_id: string
           phone: string | null
+          rendition_frequency: string
           rendition_periods: string[]
           rendition_policy: string
+          rendition_weekdays: string[]
           updated_at: string
           whatsapp: string | null
         }
@@ -154,8 +156,10 @@ export type Database = {
           notes?: string | null
           organization_id: string
           phone?: string | null
+          rendition_frequency?: string
           rendition_periods?: string[]
           rendition_policy?: string
+          rendition_weekdays?: string[]
           updated_at?: string
           whatsapp?: string | null
         }
@@ -173,8 +177,10 @@ export type Database = {
           notes?: string | null
           organization_id?: string
           phone?: string | null
+          rendition_frequency?: string
           rendition_periods?: string[]
           rendition_policy?: string
+          rendition_weekdays?: string[]
           updated_at?: string
           whatsapp?: string | null
         }
@@ -815,6 +821,7 @@ export type Database = {
           reference: string | null
           rendition_date: string
           status: Database["public"]["Enums"]["agency_rendition_status"]
+          ticket_receipt_data: Json | null
           updated_at: string
         }
         Insert: {
@@ -834,6 +841,7 @@ export type Database = {
           reference?: string | null
           rendition_date?: string
           status?: Database["public"]["Enums"]["agency_rendition_status"]
+          ticket_receipt_data?: Json | null
           updated_at?: string
         }
         Update: {
@@ -853,6 +861,7 @@ export type Database = {
           reference?: string | null
           rendition_date?: string
           status?: Database["public"]["Enums"]["agency_rendition_status"]
+          ticket_receipt_data?: Json | null
           updated_at?: string
         }
         Relationships: [
@@ -2210,6 +2219,15 @@ export type Database = {
           p_organization_id: string
           p_periods?: string[]
           p_policy: string
+        }
+        Returns: undefined
+      }
+      update_agency_agent_rendition_schedule: {
+        Args: {
+          p_agent_id: string
+          p_frequency: string
+          p_organization_id: string
+          p_weekdays?: string[]
         }
         Returns: undefined
       }

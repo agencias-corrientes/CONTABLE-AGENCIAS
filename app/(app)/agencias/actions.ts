@@ -47,16 +47,47 @@ async function getOrg() {
 
 function isConfirmedOfficialClosureTicket(formData: FormData): boolean {
   const raw = String(formData.get("ticket_receipt_data") ?? "").trim();
-  if (!raw || raw.length > 20000) return false;
+  if (!raw || raw.length > 200000) return false;
   try {
     const ticket = JSON.parse(raw);
-    // The user explicitly reviewed the parsed end-of-day receipt. OCR may not read
-    // the footer perfectly; the receipt parser already requires multiple closure markers.
-    return ticket?.type === "loteria-corrientes-end-of-day-v1"
-      && ticket?.userConfirmedReview === true;
+    if (ticket?.type === "loteria-corrientes-end-of-day-v1") return ticket?.userConfirmedReview === true;
+    return ticket?.type === "loteria-corrientes-end-of-day-batch-v1"
+      && ticket?.userConfirmedReview === true
+      && Array.isArray(ticket?.tickets)
+      && ticket.tickets.length >= 1 && ticket.tickets.length <= 12
+      && ticket.tickets.every((item: any) => item?.type === "loteria-corrientes-end-of-day-v1" && item?.userConfirmedReview === true);
   } catch {
     return false;
   }
+}
+
+function normalizeClosureReceiptDate(value: unknown): string | null {
+  const raw = String(value ?? "").trim();
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) {
+    const year = Number(iso[1]), month = Number(iso[2]), day = Number(iso[3]);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() !== month - 1 || parsed.getUTCDate() !== day) return null;
+    return raw;
+  }
+  const local = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  if (!local) return null;
+  const day = Number(local[1]), month = Number(local[2]);
+  const year = local[3]!.length === 2 ? Number("20" + local[3]) : Number(local[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return String(year).padStart(4, "0") + "-" + String(month).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+}
+function closureReceiptDuplicateKey(ticket: any): string | null {
+  const period = String(ticket?.periodNumber ?? "").replace(/\s+/g, "");
+  const printedDate = normalizeClosureReceiptDate(ticket?.closedAt?.date ?? ticket?.printedAt?.date ?? ticket?.openedAt?.date);
+  if (!/^\d{7}$/.test(period) || !printedDate) return null;
+  return period + "|" + printedDate;
+}
+function individualClosureReceipts(value: any): any[] {
+  if (value?.type === "loteria-corrientes-end-of-day-v1") return [value];
+  if (value?.type === "loteria-corrientes-end-of-day-batch-v1" && Array.isArray(value.tickets)) return value.tickets;
+  return [];
 }
 
 async function storeRenditionTicketPhoto(supabase: any, organizationId: string, renditionId: string, formData: FormData): Promise<"saved" | "skipped" | "failed"> {
@@ -86,9 +117,14 @@ async function storeRenditionTicketReceiptData(
   if (!raw && !clearWhenEmpty) return "none";
   let receiptData: any = null;
   if (raw) {
-    if (raw.length > 20000) return "failed";
+    if (raw.length > 200000) return "failed";
     try { receiptData = JSON.parse(raw); } catch { return "failed"; }
-    if (!receiptData || receiptData.type !== "loteria-corrientes-end-of-day-v1") return "failed";
+    const single = receiptData?.type === "loteria-corrientes-end-of-day-v1" && raw.length <= 20000;
+    const batch = receiptData?.type === "loteria-corrientes-end-of-day-batch-v1"
+      && Array.isArray(receiptData.tickets) && receiptData.tickets.length >= 1 && receiptData.tickets.length <= 12
+      && receiptData.userConfirmedReview === true
+      && receiptData.tickets.every((item: any) => item?.type === "loteria-corrientes-end-of-day-v1" && item?.userConfirmedReview === true);
+    if (!single && !batch) return "failed";
   }
 
   // Clearing OCR data from a normal (non-daily) rendition is an edit operation,
@@ -273,7 +309,7 @@ export async function createAgencyRendition(formData: FormData) {
   const agentId = String(formData.get("agent_id") ?? "").trim();
   if (!agentId) redirect("/pagos?error=agente-no-encontrado");
   const { data: agentPolicyRow, error: policyLookupError } = await supabase.from("agency_agents")
-    .select("code,rendition_policy,rendition_periods").eq("id", agentId).eq("organization_id", organizationId).maybeSingle();
+    .select("code,rendition_policy,rendition_periods,rendition_frequency,rendition_weekdays").eq("id", agentId).eq("organization_id", organizationId).maybeSingle();
   if (policyLookupError || !agentPolicyRow) redirect("/pagos?error=agente-no-encontrado");
   const { data: agencyIdentity, error: agencyIdentityError } = await supabase
     .from("organizations")
@@ -294,6 +330,8 @@ export async function createAgencyRendition(formData: FormData) {
     redirect("/pagos?error=agente-codigo-ajeno&agent=" + encodeURIComponent(agentId));
   }
   const renditionPolicy = String(agentPolicyRow.rendition_policy ?? "daily");
+  const renditionFrequency = String(agentPolicyRow.rendition_frequency ?? "daily");
+  const renditionWeekdays = Array.isArray(agentPolicyRow.rendition_weekdays) ? agentPolicyRow.rendition_weekdays.map(String) : [];
   const selectedRenditionPeriods = Array.isArray(agentPolicyRow.rendition_periods) ? agentPolicyRow.rendition_periods.map(String) : [];
   const submittedDate = String(formData.get("rendition_date") ?? "").trim();
   const renditionDate = submittedDate || todayInAgencyTimeZone();
@@ -393,6 +431,32 @@ export async function createAgencyRendition(formData: FormData) {
     redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
   }
   if (renditionDate !== operationalDate) redirect("/pagos?error=fecha-sorteo-invalida&agent=" + encodeURIComponent(agentId));
+  if (renditionFrequency === "weekly") {
+    const weekdayKeys = ["sun","mon","tue","wed","thu","fri","sat"];
+    const operationalWeekday = weekdayKeys[new Date(operationalDate + "T00:00:00.000Z").getUTCDay()];
+    if (renditionPolicy !== "daily" || !renditionWeekdays.includes(operationalWeekday)) redirect("/pagos?error=dia-rendicion-no-habilitado&agent=" + encodeURIComponent(agentId));
+    let batchReceipt: any = null;
+    try { batchReceipt = ticketReceiptRaw ? JSON.parse(ticketReceiptRaw) : null; } catch { batchReceipt = null; }
+    if (!batchReceipt || batchReceipt.type !== "loteria-corrientes-end-of-day-batch-v1" || !Array.isArray(batchReceipt.tickets) || batchReceipt.tickets.length < 1 || batchReceipt.tickets.length > 12) redirect("/pagos?error=lote-cupones-obligatorio&agent=" + encodeURIComponent(agentId));
+    const keys = batchReceipt.tickets.map((item: any) => closureReceiptDuplicateKey(item));
+    if (keys.some((key: string | null) => !key)) redirect("/pagos?error=lote-cupon-datos-incompletos&agent=" + encodeURIComponent(agentId));
+    if (new Set(keys).size !== keys.length) redirect("/pagos?error=lote-cupon-duplicado&agent=" + encodeURIComponent(agentId));
+    const printedDates = batchReceipt.tickets.map((item: any) => normalizeClosureReceiptDate(item?.closedAt?.date ?? item?.printedAt?.date ?? item?.openedAt?.date));
+    if (printedDates.some((date: string | null) => !date || date > operationalDate)) redirect("/pagos?error=lote-fecha-invalida&agent=" + encodeURIComponent(agentId));
+    const { data: previousClosures, error: previousClosuresError } = await supabase
+      .from("agency_renditions").select("id,ticket_receipt_data")
+      .eq("organization_id", organizationId).eq("agent_id", agentId).eq("game_period", "Cierre diario")
+      .neq("status", "void").limit(1000);
+    if (previousClosuresError) redirect("/pagos?error=lote-verificacion-fallida&agent=" + encodeURIComponent(agentId));
+    const previousKeys = new Set<string>();
+    for (const previous of previousClosures ?? []) {
+      for (const receipt of individualClosureReceipts(previous.ticket_receipt_data)) {
+        const key = closureReceiptDuplicateKey(receipt);
+        if (key) previousKeys.add(key);
+      }
+    }
+    if (keys.some((key: string) => previousKeys.has(key))) redirect("/pagos?error=lote-cupon-ya-rendido&agent=" + encodeURIComponent(agentId));
+  }
   if ((renditionPolicy === "daily" && drawPeriod !== "Cierre diario") ||
       (renditionPolicy !== "daily" && drawPeriod === "Cierre diario") ||
       (renditionPolicy === "selected_draws" && !selectedRenditionPeriods.includes(drawPeriod))) {
@@ -634,12 +698,21 @@ export async function deleteAgencyAgent(formData: FormData) {
 export async function saveAgentRenditionPolicy(formData: FormData) {
   const { supabase, organizationId, role } = await getOrg();
   const agentId = String(formData.get("agent_id") ?? "").trim();
-  const policy = String(formData.get("rendition_policy") ?? "");
+  let policy = String(formData.get("rendition_policy") ?? "");
   const periods = formData.getAll("rendition_periods").map((value) => String(value));
+  const frequency = String(formData.get("rendition_frequency") ?? "daily");
+  const weekdays = formData.getAll("rendition_weekdays").map((value) => String(value));
   if (!agentId) redirect("/agencias?error=agente-no-encontrado");
   if (role !== "owner") redirect("/agencias/" + agentId + "?error=solo-titular-modalidad");
+  if (!["daily", "weekly"].includes(frequency) ||
+      (frequency === "weekly" && (!weekdays.length || weekdays.some((day) => !["mon", "tue", "wed", "thu", "fri", "sat", "sun"].includes(day))))) {
+    redirect("/agencias/" + agentId + "?error=modalidad-invalida");
+  }
+  // Weekly batches always use the official FIN DE JORNADA settlement.
+  if (frequency === "weekly") policy = "daily";
   const { error } = await supabase.rpc("update_agency_agent_rendition_policy", {
-    p_organization_id: organizationId, p_agent_id: agentId, p_policy: policy, p_periods: periods,
+    p_organization_id: organizationId, p_agent_id: agentId,
+    p_policy: policy, p_periods: policy === "selected_draws" ? periods : [],
   });
   if (error) {
     const message = String(error.message ?? "").toLowerCase();
@@ -648,8 +721,17 @@ export async function saveAgentRenditionPolicy(formData: FormData) {
     if (message.includes("seleccioná al menos un sorteo") || message.includes("cronograma") || message.includes("modalidad")) redirect("/agencias/" + agentId + "?error=modalidad-invalida");
     redirect("/agencias/" + agentId + "?error=modalidad-no-guardada");
   }
+  const scheduleResult = await supabase.rpc("update_agency_agent_rendition_schedule", {
+    p_organization_id: organizationId, p_agent_id: agentId,
+    p_frequency: frequency, p_weekdays: weekdays,
+  });
+  if (scheduleResult.error) {
+    const message = String(scheduleResult.error.message ?? "").toLowerCase();
+    if (message.includes("permiso") || message.includes("titular")) redirect("/agencias/" + agentId + "?error=solo-titular-modalidad");
+    redirect("/agencias/" + agentId + "?error=modalidad-invalida");
+  }
   revalidatePath("/agencias"); revalidatePath("/agencias/" + agentId); revalidatePath("/pagos");
-  redirect("/agencias/" + agentId + "?resultado=modalidad-guardada");
+  redirect("/agencias/" + encodeURIComponent(agentId) + "?resultado=modalidad-guardada");
 }
 
 export async function saveAgentGameCommissions(formData: FormData) {
