@@ -22,8 +22,8 @@ export const metadata: Metadata = {
   description: siteDescription,
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/icon", type: "image/svg+xml", sizes: "any" }],
-    shortcut: [{ url: "/icon", type: "image/svg+xml" }],
+    icon: [{ url: "/icon", type: "image/png", sizes: "512x512" }],
+    shortcut: [{ url: "/icon", type: "image/png", sizes: "512x512" }],
     apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
   },
   appleWebApp: {
