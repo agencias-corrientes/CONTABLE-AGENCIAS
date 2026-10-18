@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useState } from "react";
 import jsQR from "jsqr";
-import { createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
+import { attachAgencyRenditionTicketReceiptDataToExisting, createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
 import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod } from "@/lib/agency-draw-schedule";
 import { extractTicketPeriodNumber, mapTicketClosureAmounts, parseTicketClosure, type TicketClosureData } from "@/lib/agency-ticket-closure";
 import { TicketClosureReceipt } from "@/components/ticket-closure-receipt";
@@ -754,8 +754,8 @@ function readPeriodTail(values:string[]):string|null {
   if(ranked[1]&&ranked[0][1]===ranked[1][1])return null;
   return ranked[0][0];
 }
-export function RenditionEntryForm({ agentId, games, today, periods, allPeriods, defaultPeriod, initialRendition, dailyMode = false, dailyCloseAllowed = true }: { agentId: string; games: Game[]; today: string; periods: OfficialDrawPeriod[]; allPeriods?: OfficialDrawPeriod[]; defaultPeriod?: string; initialRendition?: InitialRendition; dailyMode?: boolean; dailyCloseAllowed?: boolean }) {
-  const [mode, setMode] = useState<"photo" | "manual">(initialRendition?.captureMethod === "manual" ? "manual" : "photo");
+export function RenditionEntryForm({ agentId, games, today, periods, allPeriods, defaultPeriod, initialRendition, dailyMode = false, dailyCloseAllowed = true, receiptOnlyMode = false }: { agentId: string; games: Game[]; today: string; periods: OfficialDrawPeriod[]; allPeriods?: OfficialDrawPeriod[]; defaultPeriod?: string; initialRendition?: InitialRendition; dailyMode?: boolean; dailyCloseAllowed?: boolean; receiptOnlyMode?: boolean }) {
+  const [mode, setMode] = useState<"photo" | "manual">(receiptOnlyMode ? "photo" : initialRendition?.captureMethod === "manual" ? "manual" : "photo");
   const [date, setDate] = useState(initialRendition?.renditionDate ?? today);
   const [period, setPeriod] = useState(initialRendition?.period ?? (dailyMode ? "Cierre diario" : defaultPeriod ?? periods[0]?.label ?? ""));
   const [periodManuallySelected, setPeriodManuallySelected] = useState(Boolean(initialRendition));
@@ -1232,6 +1232,74 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     } finally {
       setBusy(false);
     }
+  }
+
+  if (receiptOnlyMode) {
+    return (
+      <form
+        action={attachAgencyRenditionTicketReceiptDataToExisting}
+        className="form-stack rendition-entry-form"
+        noValidate
+        onSubmit={(event) => {
+          if (!receiptData || receiptData.type !== "loteria-corrientes-end-of-day-v1" || !receiptReviewed) {
+            event.preventDefault();
+            setError("Leé el ticket oficial de fin de jornada y marcá que revisaste el detalle antes de adjuntarlo.");
+          }
+        }}
+      >
+        <input type="hidden" name="agent_id" value={agentId} />
+        <input type="hidden" name="rendition_id" value={initialRendition?.id ?? ""} />
+        <input type="hidden" name="ticket_receipt_data" value={receiptData ? JSON.stringify({ ...receiptData, userConfirmedReview: receiptReviewed }) : ""} />
+        <section className="ticket-capture-panel">
+          <div className="ticket-photo-picker">
+            <span className="ticket-photo-icon" aria-hidden="true">▧</span>
+            <strong>Adjuntar detalle OCR al cierre existente</strong>
+            <span>Seleccioná la foto original del FIN DE JORNADA o una copia guardada. Esto no vuelve a registrar importes ni cobros.</span>
+            <span className="ticket-photo-picker-cta" aria-hidden="true">Elegir foto o archivo</span>
+            <input
+              id={ticketPhotoInputId}
+              className="ticket-photo-native-input"
+              type="file"
+              accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+              aria-label="Elegir foto del ticket para recuperar el detalle OCR"
+              disabled={busy}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                if (file) {
+                  const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
+                  if (isImage) void processTicket(file);
+                  else setError("El archivo elegido no parece ser una imagen. Seleccioná la foto del ticket en Fotos, Galería o Archivos.");
+                }
+                event.currentTarget.value = "";
+              }}
+            />
+          </div>
+          {photoPreviewUrl && <div className="ticket-photo-preview"><img src={photoPreviewUrl} alt="Vista previa del ticket para recuperar su detalle OCR" /></div>}
+          {progress && <p className="ticket-read-notice">{progress}{progressPercent > 0 ? " (" + progressPercent + "%)" : ""}</p>}
+          {error && <p className="ticket-read-error" role="alert">{error}</p>}
+          {notice && !error && <p className="ticket-read-notice">{notice}</p>}
+          {ocrText && <details className="ticket-ocr-text"><summary>Ver texto reconocido</summary><pre>{ocrText}</pre></details>}
+        </section>
+        {receiptData && <TicketClosureReceipt data={receiptData} compact />}
+        {receiptData && (
+          <label className="ticket-input-block">
+            <span><input
+              type="checkbox"
+              checked={receiptReviewed}
+              onChange={(event) => {
+                const checked = event.currentTarget.checked;
+                setReceiptReviewed(checked);
+                setReceiptData((previous) => previous ? { ...previous, userConfirmedReview: checked } : previous);
+              }}
+            /> Confirmo que revisé los datos OCR del ticket oficial.</span>
+          </label>
+        )}
+        <button className="button primary" type="submit" disabled={!receiptData || !receiptReviewed || busy}>
+          {busy ? "Leyendo ticket…" : "Adjuntar OCR a esta rendición existente"}
+        </button>
+        <p className="muted small-text">Esta acción solo guarda el detalle del comprobante en el registro seleccionado. No crea otra rendición, no modifica ventas o importes y no registra movimientos en Caja.</p>
+      </form>
+    );
   }
 
   return (
