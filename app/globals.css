@@ -351,8 +351,8 @@ html,body{background:var(--bg);color:var(--text)}
 .ticket-photo-deadline-alert li a{font-weight:900;color:#7c3347;text-decoration:underline}
 
 
-/* Five independent summary cards; commissions are not an outstanding debt. */
-.stats-grid.compact.rendition-stats{grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+/* Four summary cards; commissions remain a separate informational total. */
+.stats-grid.compact.rendition-stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .rendition-stats .stat-card span{font-weight:800;line-height:1.3}
 .rendition-stats .stat-card small{line-height:1.35}
 @media(max-width:1180px){.stats-grid.compact.rendition-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
