@@ -66,7 +66,7 @@ export default function UpdatePasswordPage() {
     <main className="auth-page">
       <section className="auth-card">
         <Link href="/login?perfil=administrador" className="back-link">← Volver al ingreso</Link>
-        <div className="brand-logo-wrap brand-logo-top-left auth-page-logo"><Image src="/agencias-corrientes-app.svg" alt="Agencias Corrientes — Quiniela Oficial" width={76} height={76} priority /></div>
+        <div className="brand-logo-wrap brand-logo-top-left auth-page-logo"><Image src="/icon" alt="Agencias Corrientes — Quiniela Oficial" width={76} height={76} priority /></div>
         <p className="eyebrow">RECUPERACIÓN DE ACCESO</p>
         <h1>Elegir contraseña nueva</h1>
         {status === "checking" && <p className="muted">Verificando el enlace de recuperación…</p>}
