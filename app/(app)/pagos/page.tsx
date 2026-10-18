@@ -9,7 +9,7 @@ import { RenditionDeadlineAlert } from "@/components/rendition-deadline-alert";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
 import { TicketClosureReceipt } from "@/components/ticket-closure-receipt";
 import { PrizePaymentPanel } from "@/components/prize-payment-panel";
-import { receiveAgencyRendition, voidAgencyRendition, setAgencyDrawRenditionStatus, setAgencyDailyRenditionStatus, sendAgencyBackupManually } from "../agencias/actions";
+import { receiveAgencyRendition, voidAgencyRendition, correctAgencyDailyRenditionAmount, annulAgencyDailyRendition, setAgencyDrawRenditionStatus, setAgencyDailyRenditionStatus, sendAgencyBackupManually } from "../agencias/actions";
 
 type GameAmount = {
   id: string;
@@ -293,6 +293,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
           const totals = rowTotals(row);
           const gameAmounts = (Array.isArray(row.agency_rendition_game_amounts) ? row.agency_rendition_game_amounts : []) as GameAmount[];
           const tickets = Array.isArray(row.agency_rendition_tickets) ? row.agency_rendition_tickets : [];
+          const isDailyClosure = String(row.game_period ?? "").trim().toLocaleLowerCase("es-AR") === "cierre diario";
           return (
             <details className="rendition-record" key={row.id}>
               <summary>
@@ -382,9 +383,42 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                     </div>
                   </details>
                 )}
-                {canEditRenditions && totals.received > 0 && <p className="message">Esta rendición tiene cobros registrados; no puede editarse hasta resolver esos movimientos de Caja.</p>}
+                {canEditRenditions && isDailyClosure && row.status === "closed" && (
+                  <details className="rendition-edit-details">
+                    <summary>Corregir importe neto del cierre diario</summary>
+                    <div className="rendition-correction-panel">
+                      <p className="muted small-text">La corrección actualiza el importe neto y los movimientos existentes de Caja en una sola operación. No registra un segundo cobro y deja constancia en la auditoría.</p>
+                      <form action={correctAgencyDailyRenditionAmount} className="agency-pay-form">
+                        <input type="hidden" name="rendition_id" value={row.id} />
+                        <input type="hidden" name="agent_id" value={agent.id} />
+                        <label>Nuevo importe neto a rendir
+                          <input type="number" name="new_net_amount" min="0.01" max="999999999999.99" step="0.01" defaultValue={Number(row.net_due ?? row.amount_due).toFixed(2)} required />
+                        </label>
+                        <label>Motivo de la corrección
+                          <textarea name="reason" rows={2} maxLength={1000} placeholder="Ej.: corrección del importe final del cierre" required />
+                        </label>
+                        <label><input type="checkbox" name="confirm_correction" value="yes" required /> Confirmo corregir este importe y sincronizar los movimientos existentes de Caja</label>
+                        <button className="button primary small" type="submit">Guardar importe corregido</button>
+                      </form>
+                    </div>
+                  </details>
+                )}
+                {canEditRenditions && totals.received > 0 && !isDailyClosure && <p className="message">Esta rendición tiene cobros registrados; no puede editarse hasta resolver esos movimientos de Caja.</p>}
                 {canEditRenditions && totals.received <= 0 && row.status === "open" && (!String(row.game_period ?? "").trim() || !getOfficialDrawPeriodsForDate(String(row.rendition_date)).some((period) => period.label === row.game_period)) && <p className="message">Esta rendición histórica no tiene un período oficial identificable. Se conserva y no se reasigna automáticamente.</p>}
-                {canDeleteRenditions && totals.received <= 0 && row.status === "open" && (
+                {canDeleteRenditions && isDailyClosure && row.status !== "void" && (
+                  <details className="rendition-void-details">
+                    <summary>Anular cierre diario y revertir Caja</summary>
+                    <p className="muted small-text">El cierre se marca como anulado sin borrar la rendición ni sus cobros originales. Si ya hubo cobros, se registran salidas compensatorias en Caja para conservar el historial contable.</p>
+                    <form action={annulAgencyDailyRendition} className="rendition-void-form">
+                      <input type="hidden" name="rendition_id" value={row.id} />
+                      <input type="hidden" name="agent_id" value={agent.id} />
+                      <label>Motivo de anulación<textarea name="reason" rows={2} maxLength={1000} placeholder="Ej.: cierre cargado al operador equivocado" required /></label>
+                      <label><input type="checkbox" name="confirm_void" value="yes" required /> Confirmo anular el cierre diario y conservar el historial</label>
+                      <button className="button danger small" type="submit">Anular cierre diario</button>
+                    </form>
+                  </details>
+                )}
+                {canDeleteRenditions && !isDailyClosure && totals.received <= 0 && row.status === "open" && (
                   <details className="rendition-void-details">
                     <summary>Anular rendición y conservar historial</summary>
                     <form action={voidAgencyRendition} className="rendition-void-form">
@@ -527,6 +561,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       {params.resultado === "rendicion-creada" && <p className={(params.backup === "enviado" || params.backup === "cierre-diario") ? "message success-message" : "message backup-pending-message"}>Rendición registrada correctamente. {params.backup === "cierre-diario" ? "La copia quedó acumulada para enviarse en un único correo al cierre de la jornada." : params.backup === "enviado" ? "El backup de texto se envió al correo configurado para el titular." : params.backup === "dominio-no-verificado" ? "La rendición y su copia de texto se conservaron, pero Resend bloqueó el envío porque falta verificar un dominio y usarlo en la dirección del remitente. Configurá el dominio en Resend y RESEND_FROM_EMAIL en los secretos de la función de Supabase; después reintentá desde Personal y permisos." : "El respaldo quedó guardado, pero el correo no confirmó la entrega. Revisá el estado en Personal y permisos."}{params.foto === "no-adjunta" ? " La foto no se adjuntó; el respaldo de texto se conserva." : ""}</p>}
       {params.resultado === "rendicion-corregida" && <p className={(params.backup === "enviado" || params.backup === "cierre-diario") ? "message success-message" : "message backup-pending-message"}>Rendición corregida. Se conserva la auditoría y se creó una nueva revisión del respaldo. {params.backup === "cierre-diario" ? "La nueva revisión quedó acumulada para el correo único de cierre diario." : params.backup === "enviado" ? "El correo se envió." : params.backup === "dominio-no-verificado" ? "Resend rechazó el envío porque falta verificar un dominio y usar una dirección remitente de ese dominio. La copia permanece guardada; configurá Resend y reintentá desde Personal y permisos." : "El correo no confirmó entrega; la revisión permanece guardada para reintento."}</p>}
       {params.resultado === "rendicion-anulada" && <p className={(params.backup === "enviado" || params.backup === "cierre-diario") ? "message success-message" : "message backup-pending-message"}>Rendición anulada con historial conservado. {params.backup === "cierre-diario" ? "El respaldo actualizado quedó acumulado para el correo único de cierre diario." : params.backup === "enviado" ? "El respaldo actualizado se envió al correo del titular." : params.backup === "dominio-no-verificado" ? "La rendición anulada y su respaldo siguen registrados, pero Resend requiere verificar un dominio y configurar la dirección remitente antes de enviar. Reintentá después de esa configuración." : "El respaldo quedó registrado, pero el correo no confirmó entrega."}</p>}
+      {params.resultado === "cierre-diario-corregido" && <p className="message success-message">Importe neto corregido. Los movimientos existentes de Caja quedaron sincronizados en la misma operación; no se creó un cobro duplicado y se conservó la auditoría.</p>}
+      {params.resultado === "cierre-diario-anulado" && <p className="message success-message">Cierre diario anulado. Se conservaron la rendición y los cobros originales; los importes cobrados se compensaron con salidas en Caja y quedó registrada la auditoría.</p>}
       {params.resultado === "estado-rendida" && <p className="message success-message">Estado actualizado: rendición confirmada como completa para esta jornada.</p>}
       {params.resultado === "estado-incompleta" && <p className="message backup-pending-message">Estado actualizado: rendición marcada como incompleta. Podés dejar una observación para recordar qué falta.</p>}
       {params.error === "solo-titular-configuracion" && <p className="message error-message">La configuración es exclusiva del titular de la agencia.</p>}
@@ -542,6 +578,12 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "edicion-fallida": "No se pudo corregir la rendición. No se guardaron los cambios.",
         "anulacion-no-confirmada": "Marcá la confirmación para anular la rendición.",
         "anulacion-fallida": "No se pudo anular la rendición. El historial permanece sin cambios.",
+        "cierre-diario-importe-invalido": "Ingresá un importe neto mayor que cero y un motivo para corregir el cierre diario.",
+        "cierre-diario-correccion-fallida": "No se pudo corregir el cierre diario. No se guardaron cambios ni se agregaron cobros.",
+        "cierre-diario-caja-inconsistente": "No se pudo corregir porque la Caja y los cobros vinculados no coinciden. No se modificó ningún registro.",
+        "cierre-diario-no-se-puede-corregir": "Este cierre no se puede corregir de esa forma. Revisá que esté confirmado y que sus cobros estén vinculados a Caja.",
+        "cierre-diario-anulacion-fallida": "No se pudo anular el cierre diario. No se borraron rendiciones ni cobros.",
+        "cierre-diario-anulacion-confirmacion": "Marcá la confirmación y escribí el motivo para anular el cierre diario.",
         "rendicion-fallida": "No se pudo registrar la rendición. La operación fue rechazada por la base de datos; no vuelvas a crear registros duplicados. Revisá la información del ticket e intentá una vez más.",
         "agencia-identidad-no-configurada": "La agencia no tiene un número oficial válido. Configurá sus 3 dígitos en Configuración → Datos de la agencia antes de registrar rendiciones.",
         "agente-codigo-ajeno": "El código de este subagente o ambulante no coincide con el número oficial de la agencia. No se guardó la rendición; corregí el dato antes de seguir.",
@@ -704,6 +746,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       {params.resultado === "rendicion-creada" && <p className={(params.backup === "enviado" || params.backup === "cierre-diario") ? "message success-message" : "message backup-pending-message"}>Rendición registrada correctamente. {params.backup === "cierre-diario" ? "La copia quedó acumulada para enviarse en un único correo al cierre de la jornada." : params.backup === "enviado" ? "El backup de texto se envió al correo configurado para el titular." : params.backup === "dominio-no-verificado" ? "La rendición y su copia de texto se conservaron, pero Resend bloqueó el envío porque falta verificar un dominio y usarlo en la dirección del remitente. Configurá el dominio en Resend y RESEND_FROM_EMAIL en los secretos de la función de Supabase; después reintentá desde Personal y permisos." : "El respaldo quedó guardado, pero el correo no confirmó la entrega. Revisá el estado en Personal y permisos."}{params.foto === "no-adjunta" ? " La foto no se adjuntó; el respaldo de texto se conserva." : ""}</p>}
       {params.resultado === "rendicion-corregida" && <p className={(params.backup === "enviado" || params.backup === "cierre-diario") ? "message success-message" : "message backup-pending-message"}>Rendición corregida. Se conserva la auditoría y se creó una nueva revisión del respaldo. {params.backup === "cierre-diario" ? "La nueva revisión quedó acumulada para el correo único de cierre diario." : params.backup === "enviado" ? "El correo se envió." : params.backup === "dominio-no-verificado" ? "Resend rechazó el envío porque falta verificar un dominio y usar una dirección remitente de ese dominio. La copia permanece guardada; configurá Resend y reintentá desde Personal y permisos." : "El correo no confirmó entrega; la revisión permanece guardada para reintento."}</p>}
       {params.resultado === "rendicion-anulada" && <p className={(params.backup === "enviado" || params.backup === "cierre-diario") ? "message success-message" : "message backup-pending-message"}>Rendición anulada con historial conservado. {params.backup === "cierre-diario" ? "El respaldo actualizado quedó acumulado para el correo único de cierre diario." : params.backup === "enviado" ? "El respaldo actualizado se envió al correo del titular." : params.backup === "dominio-no-verificado" ? "La rendición anulada y su respaldo siguen registrados, pero Resend requiere verificar un dominio y configurar la dirección remitente antes de enviar. Reintentá después de esa configuración." : "El respaldo quedó registrado, pero el correo no confirmó entrega."}</p>}
+      {params.resultado === "cierre-diario-corregido" && <p className="message success-message">Importe neto corregido. Los movimientos existentes de Caja quedaron sincronizados en la misma operación; no se creó un cobro duplicado y se conservó la auditoría.</p>}
+      {params.resultado === "cierre-diario-anulado" && <p className="message success-message">Cierre diario anulado. Se conservaron la rendición y los cobros originales; los importes cobrados se compensaron con salidas en Caja y quedó registrada la auditoría.</p>}
       {params.resultado === "estado-rendida" && <p className="message success-message">Estado actualizado: rendición confirmada como completa para esta jornada.</p>}
       {params.resultado === "estado-incompleta" && <p className="message backup-pending-message">Estado actualizado: rendición marcada como incompleta. Podés dejar una observación para recordar qué falta.</p>}
       {params.error === "solo-titular-configuracion" && <p className="message error-message">La configuración es exclusiva del titular de la agencia.</p>}
@@ -719,6 +763,12 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "edicion-fallida": "No se pudo corregir la rendición. No se guardaron los cambios.",
         "anulacion-no-confirmada": "Marcá la confirmación para anular la rendición.",
         "anulacion-fallida": "No se pudo anular la rendición. El historial permanece sin cambios.",
+        "cierre-diario-importe-invalido": "Ingresá un importe neto mayor que cero y un motivo para corregir el cierre diario.",
+        "cierre-diario-correccion-fallida": "No se pudo corregir el cierre diario. No se guardaron cambios ni se agregaron cobros.",
+        "cierre-diario-caja-inconsistente": "No se pudo corregir porque la Caja y los cobros vinculados no coinciden. No se modificó ningún registro.",
+        "cierre-diario-no-se-puede-corregir": "Este cierre no se puede corregir de esa forma. Revisá que esté confirmado y que sus cobros estén vinculados a Caja.",
+        "cierre-diario-anulacion-fallida": "No se pudo anular el cierre diario. No se borraron rendiciones ni cobros.",
+        "cierre-diario-anulacion-confirmacion": "Marcá la confirmación y escribí el motivo para anular el cierre diario.",
         "rendicion-fallida": "No se pudo registrar la rendición. La operación fue rechazada por la base de datos; no vuelvas a crear registros duplicados. Revisá la información del ticket e intentá una vez más.",
         "agencia-identidad-no-configurada": "La agencia no tiene un número oficial válido. Configurá sus 3 dígitos en Configuración → Datos de la agencia antes de registrar rendiciones.",
         "agente-codigo-ajeno": "El código de este subagente o ambulante no coincide con el número oficial de la agencia. No se guardó la rendición; corregí el dato antes de seguir.",

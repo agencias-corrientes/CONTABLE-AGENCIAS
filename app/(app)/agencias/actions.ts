@@ -741,6 +741,76 @@ export async function updateAgencyRendition(formData: FormData) {
 }
 
 
+export async function correctAgencyDailyRenditionAmount(formData: FormData) {
+  const { supabase, organizationId, permissions } = await getOrg();
+  const agentId = String(formData.get("agent_id") ?? "").trim();
+  const renditionId = String(formData.get("rendition_id") ?? "").trim();
+  const amountRaw = String(formData.get("new_net_amount") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  const amount = Number(amountRaw.replace(",", "."));
+  const fail = (code: string): never => redirect("/pagos?error=" + encodeURIComponent(code) + "&agent=" + encodeURIComponent(agentId));
+
+  if (!permissions.can_edit_renditions) fail("sin-permiso-editar");
+  if (!agentId || !renditionId) fail("rendicion-invalida");
+  if (formData.get("confirm_correction") !== "yes" || !reason || !Number.isFinite(amount) || amount <= 0 || amount > 999999999999.99) {
+    fail("cierre-diario-importe-invalido");
+  }
+
+  const { error } = await supabase.rpc("correct_agency_daily_rendition_net_amount", {
+    p_organization_id: organizationId,
+    p_rendition_id: renditionId,
+    p_new_net_amount: Math.round(amount * 100) / 100,
+    p_reason: reason.slice(0, 1000),
+  });
+  if (error) {
+    const message = String(error.message ?? "").toLowerCase();
+    if (message.includes("permiso")) fail("sin-permiso-editar");
+    if (message.includes("caja") || message.includes("movimiento") || message.includes("cobro vinculado")) fail("cierre-diario-caja-inconsistente");
+    if (message.includes("solo se puede corregir") || message.includes("no se puede corregir") || message.includes("cerrado")) fail("cierre-diario-no-se-puede-corregir");
+    fail("cierre-diario-correccion-fallida");
+  }
+
+  const backupStatus = await sendRenditionBackup(supabase, renditionId);
+  revalidatePath("/pagos");
+  revalidatePath("/agencias/" + agentId);
+  revalidatePath("/movimientos");
+  revalidatePath("/dashboard");
+  redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=cierre-diario-corregido&backup=" + backupStatus);
+}
+
+export async function annulAgencyDailyRendition(formData: FormData) {
+  const { supabase, organizationId, permissions } = await getOrg();
+  const agentId = String(formData.get("agent_id") ?? "").trim();
+  const renditionId = String(formData.get("rendition_id") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  const fail = (code: string): never => redirect("/pagos?error=" + encodeURIComponent(code) + "&agent=" + encodeURIComponent(agentId));
+
+  if (!permissions.can_delete_renditions) fail("sin-permiso-anular");
+  if (!agentId || !renditionId || formData.get("confirm_void") !== "yes" || !reason) {
+    fail("cierre-diario-anulacion-confirmacion");
+  }
+
+  const { error } = await supabase.rpc("annul_agency_daily_rendition", {
+    p_organization_id: organizationId,
+    p_rendition_id: renditionId,
+    p_reason: reason.slice(0, 1000),
+  });
+  if (error) {
+    const message = String(error.message ?? "").toLowerCase();
+    if (message.includes("permiso")) fail("sin-permiso-anular");
+    if (message.includes("movimiento") || message.includes("caja") || message.includes("cobro vinculado")) fail("cierre-diario-caja-inconsistente");
+    fail("cierre-diario-anulacion-fallida");
+  }
+
+  const backupStatus = await sendRenditionBackup(supabase, renditionId);
+  revalidatePath("/pagos");
+  revalidatePath("/agencias/" + agentId);
+  revalidatePath("/movimientos");
+  revalidatePath("/dashboard");
+  redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=cierre-diario-anulado&backup=" + backupStatus);
+}
+
+
 export async function setAgencyDailyRenditionStatus(formData: FormData) {
   const { supabase, organizationId, permissions } = await getOrg();
   const agentId = String(formData.get("agent_id") ?? "").trim();
