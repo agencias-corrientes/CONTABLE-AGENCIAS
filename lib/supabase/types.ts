@@ -2230,6 +2230,23 @@ export type Database = {
         }
         Returns: string
       }
+      annul_agency_daily_rendition: {
+        Args: {
+          p_organization_id: string
+          p_rendition_id: string
+          p_reason: string
+        }
+        Returns: undefined
+      }
+      correct_agency_daily_rendition_net_amount: {
+        Args: {
+          p_organization_id: string
+          p_rendition_id: string
+          p_new_net_amount: number
+          p_reason?: string
+        }
+        Returns: undefined
+      }
       void_agency_rendition: {
         Args: {
           p_organization_id: string
