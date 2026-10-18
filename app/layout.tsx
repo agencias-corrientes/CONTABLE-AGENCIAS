@@ -12,9 +12,7 @@ const siteTitle = "Agencias Corrientes";
 const siteDescription =
   "Gestión diaria de agencias de quiniela, rendiciones y cobranzas.";
 const brandLogo = "/logo-agencias-corrientes.webp?v=20261018b";
-// Use the public, static, approved brand artwork directly. Social crawlers must
-// not depend on the ImageResponse route or a server-side image transformation.
-const shareCard = `${siteUrl}/logo-agencias-corrientes-v2.webp?v=20261018d`;
+const shareCard = `${siteUrl}/share-card.jpg?v=20261018e`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -45,6 +43,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: shareCard,
+        width: 320,
+        height: 168,
         alt: "Agencias Corrientes — Quiniela Oficial",
       },
     ],
