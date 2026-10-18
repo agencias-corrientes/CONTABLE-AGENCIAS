@@ -38,7 +38,7 @@ export function LandingSplash() {
       }}
     >
       <Image
-        src="/icon"
+        src="/logo-agencias-corrientes.webp"
         alt=""
         width={360}
         height={360}

@@ -22,9 +22,9 @@ export const metadata: Metadata = {
   description: siteDescription,
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/icon", type: "image/png", sizes: "512x512" }],
-    shortcut: [{ url: "/icon", type: "image/png", sizes: "512x512" }],
-    apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
+    icon: [{ url: "/logo-agencias-corrientes.webp", type: "image/webp", sizes: "320x320" }],
+    shortcut: [{ url: "/logo-agencias-corrientes.webp", type: "image/webp", sizes: "320x320" }],
+    apple: [{ url: "/logo-agencias-corrientes.webp", type: "image/webp", sizes: "320x320" }],
   },
   appleWebApp: {
     capable: true,
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     url: siteUrl,
     images: [
       {
-        url: "/opengraph-image",
+        url: "/logo-agencias-corrientes.webp",
         width: 512,
         height: 512,
         alt: "Logo original de Agencias Corrientes — Quiniela Oficial",
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     card: "summary",
     title: siteTitle,
     description: siteDescription,
-    images: ["/opengraph-image"],
+    images: ["/logo-agencias-corrientes.webp"],
   },
 };
 
