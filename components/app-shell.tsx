@@ -51,7 +51,7 @@ export function AppShell({
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <div className="brand-mark small brand-logo-wrap"><Image src="/logo-agencias-quiniela.webp" alt="Agencias de Quiniela" width={44} height={44} priority /></div>
+          <div className="brand-mark small brand-logo-wrap"><Image src="/logo-agencias-quiniela.svg" alt="Agencias de Quiniela" width={44} height={44} priority /></div>
           <div className="brand-copy">
             <div className="brand-title-row"><strong>Agencias</strong>{officialAgencyNumber && <span className="official-agency-number" aria-label={"Agencia oficial " + officialAgencyNumber}>{officialAgencyNumber}</span>}</div>
             <span className="brand-subtitle">Subagentes · Ambulantes</span>

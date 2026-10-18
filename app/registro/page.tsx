@@ -86,7 +86,7 @@ export default function RegisterOwnerPage() {
     <main className="auth-page">
       <div className="auth-card">
         <Link href="/" className="back-link">← Volver</Link>
-        <div className="brand-mark small">AC</div>
+        <div className="brand-mark small brand-logo-wrap"><img src="/logo-agencias-quiniela.svg" alt="Agencias Corrientes" width="88" height="88" /></div>
         <p className="eyebrow">ALTA DEL TITULAR</p>
         <h1>Crear cuenta de propietario</h1>
         <p className="muted">Usá el correo que querés emplear para ingresar. Cada titular tendrá su propia agencia, separada de las demás.</p>

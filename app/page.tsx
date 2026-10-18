@@ -22,7 +22,7 @@ export default async function HomePage() {
       return (
         <main className="landing">
           <section className="landing-card landing-role-card">
-            <div className="brand-mark brand-logo-wrap"><Image src="/logo-agencias-quiniela.webp" alt="Agencias de Quiniela" width={64} height={64} priority /></div>
+            <div className="brand-mark brand-logo-wrap landing-app-logo"><Image src="/logo-agencias-quiniela.svg" alt="Agencias Corrientes — Quiniela Oficial" width={176} height={176} priority /></div>
             <p className="eyebrow">ACCESO EXCLUSIVO · ADMINISTRADOR MAESTRO</p>
             <h1>Administración Central</h1>
             <p className="lead">Administrá solicitudes de alta, autorización de agencias y estado de las cuentas sin entrar al panel operativo de un agenciero.</p>

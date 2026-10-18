@@ -1,48 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="logoTitle logoDesc">
-  <title id="logoTitle">Agencias de Quiniela Corrientes</title>
-  <desc id="logoDesc">Emblema circular bordó, azul y dorado con un ticket y bolas de quiniela.</desc>
-  <defs>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff0a1"/><stop offset=".28" stop-color="#e9bc48"/><stop offset=".58" stop-color="#b98219"/><stop offset=".82" stop-color="#ffdf70"/><stop offset="1" stop-color="#9a6410"/></linearGradient>
-    <linearGradient id="maroon" x1="0" y1="0" x2=".9" y2="1"><stop offset="0" stop-color="#a52c43"/><stop offset=".48" stop-color="#762036"/><stop offset="1" stop-color="#4f142b"/></linearGradient>
-    <radialGradient id="navy" cx=".32" cy=".2" r=".9"><stop offset="0" stop-color="#174e9a"/><stop offset=".65" stop-color="#082d6c"/><stop offset="1" stop-color="#061c48"/></radialGradient>
-    <radialGradient id="redBall" cx=".3" cy=".2" r=".85"><stop offset="0" stop-color="#ff8b87"/><stop offset=".28" stop-color="#e72a37"/><stop offset=".75" stop-color="#a50d28"/><stop offset="1" stop-color="#65091c"/></radialGradient>
-    <radialGradient id="blueBall" cx=".3" cy=".2" r=".85"><stop offset="0" stop-color="#83dcff"/><stop offset=".3" stop-color="#147be8"/><stop offset=".78" stop-color="#0642a7"/><stop offset="1" stop-color="#062568"/></radialGradient>
-    <radialGradient id="yellowBall" cx=".28" cy=".18" r=".9"><stop offset="0" stop-color="#fff5a8"/><stop offset=".3" stop-color="#ffd43d"/><stop offset=".78" stop-color="#d69a0a"/><stop offset="1" stop-color="#956108"/></radialGradient>
-    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf4"/><stop offset="1" stop-color="#f3dfae"/></linearGradient>
-    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#210913" flood-opacity=".52"/></filter>
-    <filter id="smallShadow" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="1.5" stdDeviation="1.2" flood-color="#09152c" flood-opacity=".48"/></filter>
-  </defs>
-  <g filter="url(#shadow)">
-    <circle cx="128" cy="128" r="123" fill="url(#gold)" stroke="#681a2e" stroke-width="3"/>
-    <circle cx="128" cy="128" r="115" fill="url(#maroon)" stroke="#ffe07a" stroke-width="2.5"/>
-    <circle cx="128" cy="128" r="82" fill="url(#navy)" stroke="url(#gold)" stroke-width="4"/>
-    <circle cx="128" cy="128" r="108" fill="none" stroke="#f4cb59" stroke-opacity=".38" stroke-width="1.2"/>
-    <text x="128" y="43" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="21" font-weight="bold" letter-spacing=".7" fill="#fff9e7" stroke="#7d4312" stroke-width=".8" paint-order="stroke">AGENCIAS</text>
-    <text x="128" y="229" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="17" font-weight="bold" letter-spacing=".2" fill="#fff9e7" stroke="#7d4312" stroke-width=".8" paint-order="stroke">DE QUINIELA</text>
-    <path d="M30 100l5 11 12 1-9 8 3 12-11-6-11 6 3-12-9-8 12-1z" fill="url(#gold)" stroke="#ffe38b" stroke-width="1"/>
-    <path d="M226 100l5 11 12 1-9 8 3 12-11-6-11 6 3-12-9-8 12-1z" fill="url(#gold)" stroke="#ffe38b" stroke-width="1"/>
-    <g transform="rotate(7 128 111)" filter="url(#smallShadow)">
-      <rect x="91" y="70" width="74" height="91" rx="5" fill="url(#paper)" stroke="#e7c45e" stroke-width="2"/>
-      <rect x="98" y="77" width="60" height="4" rx="2" fill="#8a2135"/>
-      <text x="128" y="94" text-anchor="middle" font-family="Arial,sans-serif" font-size="9" font-weight="900" letter-spacing=".8" fill="#802239">QUINIELA</text>
-      <path d="M98 101h60M98 113h60M98 125h60M98 137h60M118 101v48M138 101v48" fill="none" stroke="#ad7b42" stroke-width="1.4"/>
-      <g fill="#7b2338" font-family="Arial,sans-serif" font-size="7" font-weight="bold" text-anchor="middle"><text x="108" y="110">01</text><text x="128" y="110">12</text><text x="148" y="110">23</text><text x="108" y="122">34</text><text x="128" y="122">45</text><text x="148" y="122">56</text><text x="108" y="134">67</text><text x="128" y="134">78</text><text x="148" y="134">89</text><text x="108" y="146">10</text><text x="128" y="146">20</text><text x="148" y="146">30</text></g>
-    </g>
-    <path d="M61 130c8-18 26-29 48-31-18 9-28 23-29 38 12-10 25-13 36-13-18 11-28 28-28 44" fill="none" stroke="url(#gold)" stroke-width="4" stroke-linecap="round"/>
-    <path d="M195 125c18 10 25 26 25 43-12-12-27-17-42-13 12-13 15-26 10-37" fill="none" stroke="url(#gold)" stroke-width="4" stroke-linecap="round"/>
-    <g filter="url(#smallShadow)">
-      <circle cx="87" cy="146" r="24" fill="url(#redBall)" stroke="#ffd5b5" stroke-width="1.6"/>
-      <ellipse cx="80" cy="137" rx="9" ry="4.5" transform="rotate(-35 80 137)" fill="#fff" opacity=".55"/>
-      <circle cx="169" cy="146" r="24" fill="url(#blueBall)" stroke="#b9edff" stroke-width="1.6"/>
-      <ellipse cx="162" cy="137" rx="9" ry="4.5" transform="rotate(-35 162 137)" fill="#fff" opacity=".58"/>
-      <circle cx="128" cy="151" r="29" fill="url(#yellowBall)" stroke="#fff0a0" stroke-width="2"/>
-      <ellipse cx="119" cy="139" rx="11" ry="5" transform="rotate(-35 119 139)" fill="#fff" opacity=".65"/>
-      <circle cx="87" cy="146" r="15" fill="#fff8dd" stroke="#fff" stroke-width="1"/>
-      <circle cx="169" cy="146" r="15" fill="#fff8dd" stroke="#fff" stroke-width="1"/>
-      <circle cx="128" cy="151" r="18" fill="#fff8dd" stroke="#fff" stroke-width="1.2"/>
-      <text x="87" y="153" text-anchor="middle" font-family="Arial,sans-serif" font-size="21" font-weight="900" fill="#1a1a20">3</text>
-      <text x="128" y="160" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" font-weight="900" fill="#1a1a20">7</text>
-      <text x="169" y="153" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" font-weight="900" fill="#1a1a20">15</text>
-    </g>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">Agencias Corrientes — Quiniela Oficial</title>
+<desc id="desc">Logo original de Agencias Corrientes en amarillo y bordó, con un cupón de quiniela y una bolilla.</desc>
+<defs>
+ <linearGradient id="yellow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe333"/><stop offset=".6" stop-color="#ffcf00"/><stop offset="1" stop-color="#f2b900"/></linearGradient>
+ <linearGradient id="wine" x1="0" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#800027"/><stop offset="1" stop-color="#4e001b"/></linearGradient>
+ <linearGradient id="ball" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fffef4"/><stop offset="1" stop-color="#f1e8d5"/></linearGradient>
+ <filter id="shadow" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#461326" flood-opacity=".28"/></filter>
+</defs>
+<rect width="512" height="512" rx="92" fill="url(#wine)"/>
+<path d="M92 4h328c48 0 88 40 88 88v286C351 437 161 437 4 378V92C4 44 44 4 92 4z" fill="url(#yellow)" stroke="#f6cf36" stroke-width="5"/>
+<path d="M4 378c151 65 353 65 504 0v42c0 48-40 88-88 88H92c-48 0-88-40-88-88z" fill="url(#wine)"/>
+<path d="M4 378c151 65 353 65 504 0" fill="none" stroke="#f2c525" stroke-width="4"/>
+<g filter="url(#shadow)" transform="rotate(12 332 132)">
+  <rect x="273" y="50" width="126" height="188" rx="12" fill="#ffdf00" stroke="#6e001f" stroke-width="14"/>
+  <path d="M294 77h83M294 111h83M294 145h83M294 179h83M321 77v125M350 77v125" fill="none" stroke="#6e001f" stroke-width="12" stroke-linecap="round"/>
+</g>
+<path d="M114 154c24-53 74-82 132-82" fill="none" stroke="#7b0025" stroke-width="17" stroke-linecap="round"/>
+<path d="M102 192c19-60 61-94 118-111" fill="none" stroke="#f4b900" stroke-width="12" stroke-linecap="round"/>
+<g filter="url(#shadow)">
+  <circle cx="229" cy="166" r="91" fill="#71001f" stroke="#f9d348" stroke-width="7"/>
+  <circle cx="229" cy="166" r="74" fill="url(#ball)" stroke="#fff7d0" stroke-width="4"/>
+  <ellipse cx="204" cy="132" rx="20" ry="9" transform="rotate(-32 204 132)" fill="#fff" opacity=".7"/>
+  <text x="229" y="197" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="103" font-weight="900" fill="#71001f">1</text>
+</g>
+<text x="256" y="285" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="49" font-weight="900" letter-spacing="-1.2" fill="#730020">AGENCIAS</text>
+<text x="256" y="337" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="51" font-weight="900" letter-spacing="-1.8" fill="#730020">CORRIENTES</text>
+<path d="M58 357H454" stroke="#730020" stroke-width="4" stroke-linecap="round"/>
+<text x="256" y="389" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="800" letter-spacing="5.5" fill="#730020">QUINIELA OFICIAL</text>
 </svg>

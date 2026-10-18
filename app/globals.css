@@ -540,3 +540,41 @@ html,body{background:var(--bg);color:var(--text)}
  .prize-capture-options>*{flex:1 1 100%}
  .prize-payment-recent-item{align-items:flex-start}
 }
+
+
+/* Identidad visual oficial de Agencias Corrientes: logo amarillo y bordó. */
+.landing-card .brand-logo-wrap.landing-app-logo {
+  width: 176px !important;
+  height: 176px !important;
+  margin: 0 auto 20px !important;
+  flex: 0 0 176px;
+}
+.landing-card .landing-app-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 14px rgba(64, 16, 31, .20));
+}
+.auth-card .login-agency-brand {
+  width: 132px !important;
+  height: 132px !important;
+  flex: 0 0 132px;
+  margin: 0 auto 15px !important;
+}
+.auth-card .login-agency-brand img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+@media (max-width: 480px) {
+  .landing-card .brand-logo-wrap.landing-app-logo {
+    width: 148px !important;
+    height: 148px !important;
+    flex-basis: 148px;
+  }
+  .auth-card .login-agency-brand {
+    width: 112px !important;
+    height: 112px !important;
+    flex-basis: 112px;
+  }
+}
