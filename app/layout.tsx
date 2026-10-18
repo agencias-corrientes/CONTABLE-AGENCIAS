@@ -11,9 +11,8 @@ const siteUrl =
 const siteTitle = "Agencias Corrientes";
 const siteDescription =
   "Gestión diaria de agencias de quiniela, rendiciones y cobranzas.";
-const brandLogo = "/logo-agencias-corrientes.webp?v=20261018b";
-// Use a direct, static JPEG; WhatsApp must not depend on dynamic image rendering.
-const shareCard = `${siteUrl}/share-card.jpg?v=20261018e`;
+const brandLogo = "/logo-agencias-corrientes-v2.webp?v=20261018f";
+const shareCard = `${siteUrl}${brandLogo}`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -25,9 +24,9 @@ export const metadata: Metadata = {
   description: siteDescription,
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: brandLogo, type: "image/webp", sizes: "512x512" }],
-    shortcut: [{ url: brandLogo, type: "image/webp", sizes: "512x512" }],
-    apple: [{ url: brandLogo, type: "image/webp", sizes: "512x512" }],
+    icon: [{ url: brandLogo, type: "image/webp" }],
+    shortcut: [{ url: brandLogo, type: "image/webp" }],
+    apple: [{ url: brandLogo, type: "image/webp" }],
   },
   appleWebApp: {
     capable: true,
@@ -44,8 +43,6 @@ export const metadata: Metadata = {
     images: [
       {
         url: shareCard,
-        width: 400,
-        height: 210,
         alt: "Agencias Corrientes — Quiniela Oficial",
       },
     ],
