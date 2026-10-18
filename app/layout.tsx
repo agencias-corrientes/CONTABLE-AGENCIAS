@@ -4,7 +4,7 @@ import "./agency-ops.css";
 
 const siteUrl = "https://contable-agencias.vercel.app";
 const siteTitle = "Agencias Corrientes";
-const siteDescription = "Gestión diaria de agencias de quiniela, rendiciones y cobranzas.";
+const siteDescription = "Agencias Corrientes — Quiniela Oficial.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
