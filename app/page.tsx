@@ -41,7 +41,7 @@ export default async function HomePage() {
   return (
     <main className="landing">
       <section className="landing-card landing-role-card">
-        <div className="brand-mark brand-logo-wrap"><Image src="/logo-agencias-quiniela.webp" alt="Agencias de Quiniela" width={64} height={64} priority /></div>
+        <div className="brand-logo-wrap brand-logo-top-left"><Image src="/icon" alt="Agencias Corrientes — Quiniela Oficial" width={96} height={96} priority /></div>
         <p className="eyebrow">AGENCIAS CORRIENTES</p>
         <h1>Control de Agencias</h1>
         <p className="lead">Gestión diaria de subagentes y ambulantes, con una agencia independiente para cada titular.</p>
