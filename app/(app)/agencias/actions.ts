@@ -90,14 +90,12 @@ async function storeRenditionTicketReceiptData(
     try { receiptData = JSON.parse(raw); } catch { return "failed"; }
     if (!receiptData || receiptData.type !== "loteria-corrientes-end-of-day-v1") return "failed";
   }
-  const { data, error } = await supabase
-    .from("agency_renditions")
-    .update({ ticket_receipt_data: receiptData })
-    .eq("organization_id", organizationId)
-    .eq("id", renditionId)
-    .select("id")
-    .maybeSingle();
-  if (error || !data?.id) return "failed";
+  const { data, error } = await supabase.rpc("attach_agency_rendition_ticket_receipt_data", {
+    p_organization_id: organizationId,
+    p_rendition_id: renditionId,
+    p_receipt_data: receiptData,
+  });
+  if (error || data !== true) return "failed";
   return receiptData ? "saved" : "none";
 }
 
