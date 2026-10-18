@@ -31,11 +31,13 @@ export const metadata: Metadata = {
     title: siteTitle,
     description: siteDescription,
     url: siteUrl,
+    images: [{ url: "/logo-agencias-quiniela.webp", width: 512, height: 512, alt: "Logo oficial de Agencias Corrientes — Quiniela Oficial" }],
   },
   twitter: {
     card: "summary_large_image",
     title: siteTitle,
     description: siteDescription,
+    images: ["/logo-agencias-quiniela.webp"],
   },
 };
 
