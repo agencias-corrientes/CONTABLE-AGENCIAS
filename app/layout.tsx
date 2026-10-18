@@ -12,6 +12,7 @@ const siteTitle = "Agencias Corrientes";
 const siteDescription =
   "Gestión diaria de agencias de quiniela, rendiciones y cobranzas.";
 const brandLogo = "/logo-agencias-corrientes.webp?v=20261018b";
+// Use a direct, static JPEG; WhatsApp must not depend on dynamic image rendering.
 const shareCard = `${siteUrl}/share-card.jpg?v=20261018e`;
 
 export const metadata: Metadata = {
