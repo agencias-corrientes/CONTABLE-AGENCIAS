@@ -22,8 +22,9 @@ export const metadata: Metadata = {
   description: siteDescription,
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/icon", type: "image/png", sizes: "512x512" }],
-    apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
+    icon: [{ url: "/agencias-corrientes-app.svg", type: "image/svg+xml", sizes: "any" }],
+    shortcut: [{ url: "/agencias-corrientes-app.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/agencias-corrientes-app.svg" }],
   },
   appleWebApp: {
     capable: true,
@@ -35,13 +36,12 @@ export const metadata: Metadata = {
     locale: "es_AR",
     siteName: siteTitle,
     title: siteTitle,
-    description: siteDescription,
     url: siteUrl,
     images: [
       {
         url: "/opengraph-image",
-        width: 512,
-        height: 512,
+        width: 1200,
+        height: 1200,
         alt: "Agencias Corrientes — gestión de agencias de quiniela",
       },
     ],
