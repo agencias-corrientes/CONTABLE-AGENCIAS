@@ -325,6 +325,35 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                   </div>
                 </div>
                 {row.ticket_receipt_data?.type === "loteria-corrientes-end-of-day-v1" && <TicketClosureReceipt data={row.ticket_receipt_data} />}
+                {isDailyClosure && row.status !== "void" && row.ticket_receipt_data?.type !== "loteria-corrientes-end-of-day-v1" && (canCreateRenditions || canEditRenditions) && (
+                  <details className="rendition-edit-details">
+                    <summary>Recuperar detalle OCR del ticket</summary>
+                    <p className="muted small-text">La rendición financiera ya existe. Volvé a seleccionar la foto del FIN DE JORNADA para adjuntar únicamente su detalle OCR. Esta acción no cambia ventas, importes, cobros ni movimientos de Caja.</p>
+                    <RenditionEntryForm
+                      agentId={String(agent.id)}
+                      games={gamesForAgent(String(agent.id))}
+                      today={today}
+                      periods={[dailyClosurePeriod]}
+                      allPeriods={allOfficialDrawPeriods}
+                      defaultPeriod="Cierre diario"
+                      dailyMode
+                      receiptOnlyMode
+                      initialRendition={{
+                        id: String(row.id),
+                        renditionDate: String(row.rendition_date),
+                        period: "Cierre diario",
+                        drawNumber: String(row.draw_number ?? ""),
+                        amounts: Object.fromEntries(gameAmounts.map((game) => [String(game.game_type_id), Number(game.amount).toFixed(2)])),
+                        ticketNumbers: tickets.map((ticket: any) => String(ticket.ticket_number ?? "")).filter(Boolean),
+                        qrPayload: tickets.find((ticket: any) => ticket.ticket_qr_payload)?.ticket_qr_payload ?? "",
+                        reference: String(row.reference ?? ""),
+                        notes: String(row.notes ?? ""),
+                        captureMethod: "photo",
+                        receiptData: null,
+                      }}
+                    />
+                  </details>
+                )}
                 {totals.payments.length > 0 && (
                   <div className="rendition-saved-payments">
                     <h4>Cobros registrados</h4>
@@ -541,6 +570,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       </div>
       {params.ticket === "guardado" && <p className="message success-message">Se guardó el detalle completo del ticket de fin de jornada junto con la rendición.</p>}
       {params.ticket === "error" && <p className="message error-message">La rendición financiera ya se guardó, pero el detalle OCR del ticket no pudo adjuntarse. No vuelvas a registrar la rendición para corregir esto; abrí el registro existente.</p>}
+      {params.resultado === "ticket-ocr-adjuntado" && <p className="message success-message">Detalle OCR adjuntado al cierre diario existente. No se modificaron importes ni movimientos de Caja.</p>}
       {params.resultado === "premio-pagado" && <p className="message success-message" role="status">Premio registrado y salida de Caja contabilizada. El cupón quedó marcado como pagado y no puede volver a descontarse.</p>}
       {!selectedAgentId ? (
         <>
@@ -568,6 +598,9 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       {params.error === "solo-titular-configuracion" && <p className="message error-message">La configuración es exclusiva del titular de la agencia.</p>}
       {params.error && params.error !== "solo-titular-configuracion" && <p className="message error-message">{({
         "sin-permiso-rendicion": "No tenés permiso para registrar rendiciones.",
+        "sin-permiso-ticket-ocr": "No tenés permiso para adjuntar el detalle OCR. Solicitá permiso para crear o editar rendiciones.",
+        "ticket-ocr-no-validado": "Revisá la lectura del ticket oficial de FIN DE JORNADA y confirmá que el detalle es correcto.",
+        "ticket-ocr-adjunto-fallido": "No se pudo adjuntar el OCR al cierre existente. No se modificaron importes ni Caja; volvé a seleccionar y revisar la foto del ticket.",
         "sin-permiso-cobro": "No tenés permiso para registrar cobros.",
         "sin-permiso-editar": "No tenés permiso para corregir rendiciones.",
         "sin-permiso-anular": "No tenés permiso para anular rendiciones.",
@@ -753,6 +786,9 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       {params.error === "solo-titular-configuracion" && <p className="message error-message">La configuración es exclusiva del titular de la agencia.</p>}
       {params.error && params.error !== "solo-titular-configuracion" && <p className="message error-message">{({
         "sin-permiso-rendicion": "No tenés permiso para registrar rendiciones.",
+        "sin-permiso-ticket-ocr": "No tenés permiso para adjuntar el detalle OCR. Solicitá permiso para crear o editar rendiciones.",
+        "ticket-ocr-no-validado": "Revisá la lectura del ticket oficial de FIN DE JORNADA y confirmá que el detalle es correcto.",
+        "ticket-ocr-adjunto-fallido": "No se pudo adjuntar el OCR al cierre existente. No se modificaron importes ni Caja; volvé a seleccionar y revisar la foto del ticket.",
         "sin-permiso-cobro": "No tenés permiso para registrar cobros.",
         "sin-permiso-editar": "No tenés permiso para corregir rendiciones.",
         "sin-permiso-anular": "No tenés permiso para anular rendiciones.",
