@@ -11,7 +11,7 @@ const siteUrl =
 const siteTitle = "Agencias Corrientes";
 const siteDescription =
   "Gestión diaria de agencias de quiniela, rendiciones y cobranzas.";
-const shareImage = "/logo-agencias-quiniela.webp?v=20261018";
+const brandLogo = "/logo-agencias-corrientes.webp?v=20261018";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -23,9 +23,9 @@ export const metadata: Metadata = {
   description: siteDescription,
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/logo-agencias-quiniela.webp", type: "image/webp", sizes: "512x512" }],
-    shortcut: [{ url: "/logo-agencias-quiniela.webp", type: "image/webp", sizes: "512x512" }],
-    apple: [{ url: "/logo-agencias-quiniela.webp", type: "image/webp", sizes: "512x512" }],
+    icon: [{ url: "/logo-agencias-corrientes.webp?v=20261018", type: "image/webp", sizes: "512x512" }],
+    shortcut: [{ url: "/logo-agencias-corrientes.webp?v=20261018", type: "image/webp", sizes: "512x512" }],
+    apple: [{ url: "/logo-agencias-corrientes.webp?v=20261018", type: "image/webp", sizes: "512x512" }],
   },
   appleWebApp: {
     capable: true,
@@ -41,10 +41,10 @@ export const metadata: Metadata = {
     url: siteUrl,
     images: [
       {
-        url: shareImage,
+        url: brandLogo,
         width: 512,
         height: 512,
-        alt: "Logo original de Agencias Corrientes — Quiniela Oficial, amarillo y bordó",
+        alt: "Agencias Corrientes — Quiniela Oficial",
       },
     ],
   },
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: siteTitle,
     description: siteDescription,
-    images: [shareImage],
+    images: [brandLogo],
   },
 };
 
