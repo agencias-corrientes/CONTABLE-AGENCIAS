@@ -11,6 +11,7 @@ const siteUrl =
 const siteTitle = "Agencias Corrientes";
 const siteDescription =
   "Gestión diaria de agencias de quiniela, rendiciones y cobranzas.";
+const shareImage = "/logo-agencias-quiniela.webp?v=20261018";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -22,9 +23,9 @@ export const metadata: Metadata = {
   description: siteDescription,
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/logo-agencias-corrientes.webp", type: "image/webp", sizes: "320x320" }],
-    shortcut: [{ url: "/logo-agencias-corrientes.webp", type: "image/webp", sizes: "320x320" }],
-    apple: [{ url: "/logo-agencias-corrientes.webp", type: "image/webp", sizes: "320x320" }],
+    icon: [{ url: "/logo-agencias-quiniela.webp", type: "image/webp", sizes: "512x512" }],
+    shortcut: [{ url: "/logo-agencias-quiniela.webp", type: "image/webp", sizes: "512x512" }],
+    apple: [{ url: "/logo-agencias-quiniela.webp", type: "image/webp", sizes: "512x512" }],
   },
   appleWebApp: {
     capable: true,
@@ -40,18 +41,18 @@ export const metadata: Metadata = {
     url: siteUrl,
     images: [
       {
-        url: "/logo-agencias-corrientes.webp",
+        url: shareImage,
         width: 512,
         height: 512,
-        alt: "Logo original de Agencias Corrientes — Quiniela Oficial",
+        alt: "Logo original de Agencias Corrientes — Quiniela Oficial, amarillo y bordó",
       },
     ],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: siteTitle,
     description: siteDescription,
-    images: ["/logo-agencias-corrientes.webp"],
+    images: [shareImage],
   },
 };
 
