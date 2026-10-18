@@ -44,8 +44,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: shareCard,
-        width: 320,
-        height: 168,
+        width: 400,
+        height: 210,
         alt: "Agencias Corrientes — Quiniela Oficial",
       },
     ],
