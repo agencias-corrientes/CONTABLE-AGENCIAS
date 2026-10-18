@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+// Splash de marca solo en el acceso público, sin tapar pantallas de sesión activa.
 import { LandingSplash } from "@/components/landing-splash";
 
 export default async function HomePage() {
