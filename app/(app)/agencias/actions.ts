@@ -90,6 +90,23 @@ async function storeRenditionTicketReceiptData(
     try { receiptData = JSON.parse(raw); } catch { return "failed"; }
     if (!receiptData || receiptData.type !== "loteria-corrientes-end-of-day-v1") return "failed";
   }
+
+  // Clearing OCR data from a normal (non-daily) rendition is an edit operation,
+  // so keep it under the existing can_edit_renditions policy. Adding a closure
+  // receipt after the financial insert uses the narrow SECURITY DEFINER RPC;
+  // this works for authorized creators without broadening table UPDATE access.
+  if (!receiptData && clearWhenEmpty) {
+    const { data, error } = await supabase
+      .from("agency_renditions")
+      .update({ ticket_receipt_data: null })
+      .eq("organization_id", organizationId)
+      .eq("id", renditionId)
+      .select("id")
+      .maybeSingle();
+    if (error || !data?.id) return "failed";
+    return "none";
+  }
+
   const { data, error } = await supabase.rpc("attach_agency_rendition_ticket_receipt_data", {
     p_organization_id: organizationId,
     p_rendition_id: renditionId,
@@ -103,6 +120,29 @@ async function sendRenditionBackup(_supabase: any, _renditionId: string): Promis
   // The audit trigger has already stored this revision in the outbox.
   // All queued revisions are sent together by the scheduled end-of-day job.
   return "cierre-diario";
+}
+
+export async function attachAgencyRenditionTicketReceiptDataToExisting(formData: FormData) {
+  const { supabase, organizationId, permissions } = await getOrg();
+  const agentId = String(formData.get("agent_id") ?? "").trim();
+  const renditionId = String(formData.get("rendition_id") ?? "").trim();
+  const returnTo = "/pagos?agent=" + encodeURIComponent(agentId);
+
+  if (!agentId || !renditionId) redirect("/pagos?error=rendicion-invalida");
+  if (!permissions.can_create_renditions && !permissions.can_edit_renditions) {
+    redirect(returnTo + "&error=sin-permiso-ticket-ocr");
+  }
+  if (!isConfirmedOfficialClosureTicket(formData)) {
+    redirect(returnTo + "&error=ticket-ocr-no-validado");
+  }
+
+  const result = await storeRenditionTicketReceiptData(supabase, organizationId, renditionId, formData, false);
+  if (result !== "saved") redirect(returnTo + "&error=ticket-ocr-adjunto-fallido");
+
+  revalidatePath("/pagos");
+  revalidatePath("/agencias");
+  revalidatePath("/agencias/" + agentId);
+  redirect(returnTo + "&resultado=ticket-ocr-adjuntado");
 }
 
 export async function createAgencyAgent(formData: FormData) {
