@@ -217,8 +217,7 @@ function AgencyManagementAccordion({ agency, isOwnAgency = false }: { agency: Ag
                 </label>
                 <label>Correo de la nueva persona titular
                   <input type="email" name="new_owner_email" required maxLength={254} placeholder="titular@correo.com" autoComplete="off" />
-                </label>
-                <label>Repetí el nombre actual de la agencia: {agency.organization_name}
+                </label>                <label>Repetí el nombre actual de la agencia: {agency.organization_name}
                   <input name="confirm_name" required autoComplete="off" placeholder="Nombre exacto de la agencia" />
                 </label>
                 <button className="button primary">Transferir titularidad</button>
@@ -296,8 +295,15 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
   // Recupera cuentas confirmadas sin membresía cuyo registro no generó una solicitud pendiente.
   // La acción de revisión crea/actualiza la solicitud de forma segura en el servidor.
   const listedRequestIds = new Set(listedRequests.map((request) => request.user_id));
+  // The agencies/accounts RPC includes non-pending requests without an agency. A reviewed
+  // account must never be reconstructed as a pending request just because it has no membership.
+  const reviewedUserIds = new Set(
+    accounts
+      .filter((account) => account.user_id && ["approved", "rejected", "suspended", "revoked"].includes(account.access_status))
+      .map((account) => String(account.user_id)),
+  );
   const recoverableRequests: AccessRequest[] = users
-    .filter((user) => user.email_confirmed_at && !user.is_platform_admin && user.membership_count === 0 && !listedRequestIds.has(user.user_id))
+    .filter((user) => user.email_confirmed_at && !user.is_platform_admin && user.membership_count === 0 && !listedRequestIds.has(user.user_id) && !reviewedUserIds.has(user.user_id))
     .map((user) => ({
       user_id: user.user_id,
       email: user.email || "",
@@ -343,11 +349,17 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
         <h1>Control de acceso a agencias</h1>
         <p className="muted">Este es el panel central. Las solicitudes nuevas aparecen arriba; las agencias y cuentas existentes se consultan abajo. El titular administra el alta, la baja y los permisos de sus empleados; desde acá solo podés suspender o reactivar globalmente una cuenta, sin borrar rendiciones ni movimientos.</p>
 
-        <div className="platform-access-summary platform-access-summary-grid" aria-label="Resumen del acceso">
-          <div className="button ghost platform-summary-button"><span>Solicitudes pendientes</span><strong>{requests.length}</strong></div>
-          <div className="button ghost platform-summary-button"><span>Agencias registradas</span><strong>{agencies.length}</strong></div>
-          <div className="button ghost platform-summary-button"><span>Cuentas de acceso</span><strong>{users.length}</strong></div>
-        </div>
+        <nav className="platform-access-summary platform-access-summary-grid" aria-label="Accesos rápidos del control central">
+          <Link className="button ghost platform-summary-button" href="#solicitudes-alta" aria-label={`Ir a solicitudes pendientes: ${requests.length}`}>
+            <span>Solicitudes pendientes</span><strong>{requests.length}</strong>
+          </Link>
+          <Link className="button ghost platform-summary-button" href="#agencias-registradas" aria-label={`Ir a agencias registradas: ${agencies.length}`}>
+            <span>Agencias registradas</span><strong>{agencies.length}</strong>
+          </Link>
+          <Link className="button ghost platform-summary-button" href="#cuentas-acceso" aria-label={`Ir a cuentas de acceso: ${users.length}`}>
+            <span>Cuentas de acceso</span><strong>{users.length}</strong>
+          </Link>
+        </nav>
         <div className="platform-access-navigation">
           <Link className="button primary platform-summary-button" href="#solicitudes-alta">Revisar altas y aprobar/rechazar</Link>
           <Link className="button ghost platform-summary-button" href="/">Volver a Control de Agencias</Link>
@@ -437,8 +449,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
           {requests.length === 0 ? (
             <p className="muted">No hay altas nuevas esperando aprobación en este momento.</p>
           ) : (
-            <div className="form-stack">
-              {requests.map((request) => (
+            <div className="form-stack">              {requests.map((request) => (
                 <article key={request.user_id} className="auth-card access-request-card">
                   <div>
                     <strong>{request.full_name || "Sin nombre informado"}</strong>
@@ -473,7 +484,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
           )}
         </section>
 
-        <section className="platform-access-section">
+        <section className="platform-access-section" id="agencias-registradas">
           <h2>4. Otras agencias</h2>
           <p className="muted">Cada agencia es un botón independiente. Al abrirlo, sus datos y sus cuentas quedan dentro de la misma ficha, sin mezclarse con tu agencia.</p>
           {otherAgencies.length === 0 ? (
@@ -487,7 +498,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
           )}
         </section>
 
-        <section className="platform-access-section">
+        <section className="platform-access-section" id="cuentas-acceso">
           <h2>5. Cuentas de acceso</h2>
           <p className="muted">Las cuentas se muestran en una lista de botones en columnas. Abrí una cuenta para suspender o reactivar el acceso, corregir el nombre o eliminar directamente un titular junto con sus agencias y datos asociados.</p>
           <div className="platform-user-list">
