@@ -605,7 +605,12 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         <div className="stat-card"><span>Premios pagados</span><strong>{money(todayPrizeTotal, activeOrganization.currency_code)}</strong><small>OCR: {money(todayOcrPrizeTotal, activeOrganization.currency_code)} · Caja fuera de OCR: {money(todayCashPrizeTotal, activeOrganization.currency_code)}</small></div>
         <div className="stat-card"><span>Pendiente hoy</span><strong>{money(todayPendiente, activeOrganization.currency_code)}</strong><small>efectivo neto pendiente después de comisión</small></div>
       </div>
-      {params.ticket === "guardado" && <p className="message success-message">Se guardó el detalle completo del ticket de fin de jornada junto con la rendición.</p>}
+      {params.ticket === "guardado" && (
+        <div className="ticket-save-success">
+          <p className="message success-message" role="status">Se guardó el detalle completo del ticket de fin de jornada junto con la rendición.</p>
+          <Link className="button primary ticket-save-return" href="/pagos#rendiciones">Volver a rendiciones</Link>
+        </div>
+      )}
       {params.ticket === "error" && <p className="message error-message">La rendición financiera ya se guardó, pero el detalle OCR del ticket no pudo adjuntarse. No vuelvas a registrar la rendición para corregir esto; abrí el registro existente.</p>}
       {params.error === "dia-rendicion-no-habilitado" && <p className="message error-message">Hoy no es un día habilitado para la rendición acumulada de este operador. Revisá su frecuencia en la ficha del subagente o ambulante.</p>}
       {params.error === "lote-cupones-obligatorio" && <p className="message error-message">Para esta modalidad tenés que cargar entre 1 y 12 cupones oficiales de FIN DE JORNADA.</p>}
@@ -705,7 +710,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
 
           <RenditionDeadlineAlert closeTime={closeAlertTime} agents={pendingBeforeCloseAgents} />
 
-          <section className="rendition-agent-selector" aria-label="Elegir subagente o ambulante">
+          <section id="rendiciones" className="rendition-agent-selector" aria-label="Elegir subagente o ambulante">
             <div className="rendition-agent-selector-head">
               <h2>Subagentes y ambulantes</h2>
               <span>{filteredActiveAgents.length} activos</span>
