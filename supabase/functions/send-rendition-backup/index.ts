@@ -175,9 +175,10 @@ async function queueHistoricalRenditionBackups(
   const renditionIds = renditions.map((row: any) => String(row.id));
   const { data: existingRows, error: existingError } = await admin
     .from("agency_rendition_backup_outbox")
-    .select("rendition_id")
+    .select("rendition_id, subject")
     .eq("organization_id", organizationId)
-    .in("rendition_id", renditionIds);
+    .in("rendition_id", renditionIds)
+    .like("subject", `${HISTORICAL_BACKUP_SUBJECT_PREFIX}%`);
 
   if (existingError) {
     return reply({ error: "historical_backup_outbox_lookup_failed" }, 500);
