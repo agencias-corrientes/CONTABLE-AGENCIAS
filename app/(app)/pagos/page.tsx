@@ -324,7 +324,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                 <span className="rendition-record-agent-code" aria-label={"Código del operador " + agent.code} title={"Código del operador " + agent.code}>{agent.code}</span>
                 <span className="rendition-record-period">{row.game_period || "Período no identificado"}{row.draw_number ? <small>Sorteo {row.draw_number}</small> : null}</span>
                 <span className="rendition-record-amount">{money(isDailyClosure ? (row.net_due ?? row.amount_due) : row.amount_due, activeOrganization.currency_code)}<small>{isDailyClosure ? "Importe final del cierre diario" : "Ventas brutas"} · {row.capture_method === "manual" ? "Carga manual" : row.capture_method === "qr" ? "Foto / QR" : "Foto del ticket"}</small><small className="commission-note">{isDailyClosure ? "Ventas brutas: " : "Neto a rendir: "}{money(isDailyClosure ? row.amount_due : (row.net_due ?? row.amount_due), activeOrganization.currency_code)}</small></span>
-                <span className={row.status === "void" ? "badge" : totals.pending <= 0 ? "badge success" : "badge"}>{row.status === "void" ? "Anulada" : totals.pending <= 0 ? "Cobrada" : "Pendiente " + money(totals.pending, activeOrganization.currency_code)}</span>
+                <span className={row.status === "void" ? "badge" : totals.pending <= 0 ? "badge success" : "badge"}>{row.status === "void" ? "Anulada" : totals.pending <= 0 ? (isDailyClosure ? "Rendida" : "Cobrada") : "Pendiente " + money(totals.pending, activeOrganization.currency_code)}</span>
               </summary>
               <div className="rendition-record-detail">
                 <div className="rendition-detail-columns">
@@ -771,11 +771,11 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                             : agentDayRows.length ? "Con rendiciones" : agentDrawStatuses.length ? "Estados por sorteo" : "Guardado";
                           const statusTone = dayStatus?.status === "complete" ? "is-complete" : dayStatus?.status === "incomplete" ? "is-incomplete" : "is-pending";
                           return (
-                            <details className="rendition-archive-agent" key={id}>
-                              <summary>
+                            <div className="rendition-archive-agent" key={id}>
+                              <div className="rendition-archive-agent-head">
                                 <span>{agent.kind === "subagent" ? "Subagente" : "Ambulante"}</span><strong>{agent.code} · {agent.full_name}</strong>
                                 <small>{agentDayRows.length} rendiciones</small><span className={"rendition-archive-status-badge " + statusTone}>{statusLabel}</span>
-                              </summary>
+                              </div>
                               <div className="rendition-archive-agent-body">
                                 {dayStatus && (
                                   <div className="rendition-archive-status">
@@ -802,7 +802,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                                 )}
                                 {agentDayRows.length ? <RenditionHistory agent={agent} historyRows={agentDayRows} /> : <div className="rendition-archive-empty-message">El estado quedó guardado, pero no hay importes por juego asociados a esa jornada.</div>}
                               </div>
-                            </details>
+                            </div>
                           );
                         })}
                       </div>

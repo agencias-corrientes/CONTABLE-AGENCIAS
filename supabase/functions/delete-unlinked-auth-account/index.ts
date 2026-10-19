@@ -81,9 +81,9 @@ Deno.serve(async (req: Request) => {
     .eq("user_id", target.id);
   if (membershipsError) return response(500, { code: "membership_check_failed" });
 
-  // Distinguish a staff account attached to this agency from an owner of a
-  // different agency. A different owner will not appear in this agency's team
-  // list and must remove their own agency before their Auth account can be deleted.
+  // Allow deletion of an employee only when this is their sole agency.
+  // Check every membership first so we never detach an account from one agency
+  // while leaving the requested deletion blocked by another agency.
   const targetMemberships = memberships ?? [];
   const ownsAnotherAgency = targetMemberships.some(
     (membership) => membership.role === "owner" && membership.organization_id !== organizationId,
@@ -91,11 +91,12 @@ Deno.serve(async (req: Request) => {
   if (ownsAnotherAgency) {
     return response(409, { code: "account_owner_of_other_agency" });
   }
-  if (targetMemberships.some((membership) => membership.organization_id === organizationId)) {
-    return response(409, { code: "account_still_linked" });
-  }
-  if (targetMemberships.length) {
+  if (targetMemberships.some((membership) => membership.organization_id !== organizationId)) {
     return response(409, { code: "account_linked_to_other_agency" });
+  }
+  const currentMembership = targetMemberships.find((membership) => membership.organization_id === organizationId);
+  if (currentMembership?.role === "owner") {
+    return response(409, { code: "account_member_is_owner" });
   }
 
   const { error: permissionCleanupError } = await admin
@@ -103,6 +104,15 @@ Deno.serve(async (req: Request) => {
     .delete()
     .eq("user_id", target.id);
   if (permissionCleanupError) return response(500, { code: "account_cleanup_failed" });
+
+  if (currentMembership) {
+    const { error: memberDeleteError } = await admin
+      .from("organization_members")
+      .delete()
+      .eq("organization_id", organizationId)
+      .eq("user_id", target.id);
+    if (memberDeleteError) return response(500, { code: "account_cleanup_failed" });
+  }
 
   const { error: deleteError } = await admin.auth.admin.deleteUser(target.id);
   if (deleteError) return response(500, { code: "account_delete_failed" });

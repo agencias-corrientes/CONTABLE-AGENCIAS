@@ -67,9 +67,9 @@ export async function addEmployeeByEmail(formData: FormData) {
   const { supabase, organizationId, userId } = await getOwnerContext();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const role = String(formData.get("role") ?? "accountant").trim() as "owner" | "admin" | "accountant" | "viewer";
+  const role = String(formData.get("role") ?? "accountant").trim() as "owner" | "accountant";
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) redirect("/equipo?error=email-invalido");
-  if (!["owner", "admin", "accountant", "viewer"].includes(role)) redirect("/equipo?error=datos-rol-invalidos");
+  if (!["owner", "accountant"].includes(role)) redirect("/equipo?error=datos-rol-invalidos");
 
   // Primero intentamos vincular el correo existente. Así no se bloquea el alta
   // si el usuario ya existe en Supabase Auth pero todavía no pertenece a esta agencia.
@@ -126,14 +126,32 @@ export async function addEmployeeByEmail(formData: FormData) {
 
   if (!memberUserId) redirect("/equipo?error=alta-empleado-fallida");
 
-  // Las cuentas nuevas o existentes comienzan con los permisos mínimos.
-  if (role !== "accountant") {
+  // La nueva cuenta solo puede empezar como Propietario o Empleado.
+  if (role === "owner") {
     const { error: roleError } = await supabase.rpc("set_member_role", {
       p_organization_id: organizationId,
       p_user_id: memberUserId,
       p_role: role,
     });
     if (roleError) redirect("/equipo?error=empleado-creado-rol-pendiente");
+  } else {
+    const permissions = {
+      organization_id: organizationId,
+      user_id: memberUserId,
+      can_create_agents: checked(formData, "can_create_agents"),
+      can_delete_agents: checked(formData, "can_delete_agents"),
+      can_create_renditions: checked(formData, "can_create_renditions"),
+      can_edit_renditions: checked(formData, "can_edit_renditions"),
+      can_delete_renditions: checked(formData, "can_delete_renditions"),
+      can_register_payments: checked(formData, "can_register_payments"),
+      can_manage_backups: checked(formData, "can_manage_backups"),
+      created_by: userId,
+      updated_at: new Date().toISOString(),
+    };
+    const { error: permissionsError } = await supabase
+      .from("organization_member_permissions")
+      .upsert(permissions, { onConflict: "organization_id,user_id" });
+    if (permissionsError) redirect("/equipo?error=permisos-no-guardados");
   }
 
   await supabase.from("audit_log").insert({
@@ -152,8 +170,8 @@ export async function addEmployeeByEmail(formData: FormData) {
 export async function saveEmployeeRole(formData: FormData) {
   const { supabase, organizationId, userId } = await getOwnerContext();
   const targetUserId = String(formData.get("user_id") ?? "").trim();
-  const role = String(formData.get("role") ?? "").trim() as "owner" | "admin" | "accountant" | "viewer";
-  if (!targetUserId || !["owner", "admin", "accountant", "viewer"].includes(role)) {
+  const role = String(formData.get("role") ?? "").trim() as "owner" | "accountant";
+  if (!targetUserId || !["owner", "accountant"].includes(role)) {
     redirect("/equipo?error=datos-rol-invalidos");
   }
   if (targetUserId === userId) redirect("/equipo?error=no-cambiar-rol-propio");

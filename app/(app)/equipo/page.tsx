@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { ConfirmDeleteAccountButton } from "@/components/confirm-delete-account-button";
+import { TeamAccountManager } from "@/components/team-account-manager";
 import { getCurrentContext } from "@/lib/accounting";
 import { formatAgencyDateTime } from "@/lib/agency-datetime";
-import { addEmployeeByEmail, removeEmployeeAccess, saveBackupEmail, retryRenditionBackup, generateHistoricalRenditionBackups, saveAgencySchedules, saveEmployeePermissions, saveEmployeeRole, cleanupAgencyTestData, deleteUnlinkedAuthAccount } from "./actions";
+import { addEmployeeByEmail, saveBackupEmail, retryRenditionBackup, generateHistoricalRenditionBackups, saveAgencySchedules, saveEmployeePermissions, saveEmployeeRole, cleanupAgencyTestData, deleteUnlinkedAuthAccount } from "./actions";
 
-const roleLabels: Record<string, string> = { owner: "Propietario", admin: "Administrador", accountant: "Contador", viewer: "Consulta" };
+const roleLabels: Record<string, string> = { owner: "Propietario", admin: "Empleado", accountant: "Empleado", viewer: "Empleado" };
 
 const permissionLabels = [
   ["can_create_agents", "Dar de alta subagentes o ambulantes"],
@@ -13,6 +13,7 @@ const permissionLabels = [
   ["can_edit_renditions", "Corregir rendiciones"],
   ["can_delete_renditions", "Anular rendiciones sin cobros"],
   ["can_register_payments", "Registrar cobros en Caja"],
+  ["can_manage_backups", "Administrar respaldos de rendiciones"],
 ] as const;
 
 export default async function TeamPermissionsPage({
@@ -68,7 +69,6 @@ export default async function TeamPermissionsPage({
     permisos_empleados: "Permisos de empleados",
     registros_auditoria: "Registros de auditoría",
   };
-  const ownerCount = (employees ?? []).filter((employee: { role: string }) => employee.role === "owner").length;
   const cleanupRows = cleanupPreview && typeof cleanupPreview === "object" && !Array.isArray(cleanupPreview)
     ? Object.entries(cleanupPreview).filter((entry): entry is [string, number] => typeof entry[1] === "number" && entry[1] > 0)
     : [];
@@ -107,11 +107,12 @@ export default async function TeamPermissionsPage({
 
     "confirmacion-cuenta-no-valida": "Marcá la confirmación y escribí exactamente ELIMINAR CUENTA: seguido del correo.",
     "cuenta-no-encontrada": "No encontramos una cuenta registrada con ese correo.",
-    "cuenta-vinculada": "Esa cuenta está vinculada a esta agencia. Quitá primero su acceso desde la tarjeta correspondiente del equipo; después podrás eliminar la cuenta de inicio de sesión si ya no pertenece a ninguna agencia.",
+    "cuenta-vinculada": "La cuenta todavía está vinculada a una agencia. No se eliminó; comprobá el rol y los accesos existentes antes de volver a intentarlo.",
     "cuenta-titular-otra-agencia": "Esa cuenta es titular de otra agencia, por eso no aparece en las tarjetas de empleados de esta agencia. Para eliminar también su acceso, iniciá sesión con ese titular y usá Configuración → Datos de la agencia → Eliminar agencia y cuenta del titular. No la elimines desde este panel porque podrías dejar otra agencia sin responsable.",
     "cuenta-vinculada-otra-agencia": "Esa cuenta tiene acceso a otra agencia distinta. No aparece en tu equipo porque pertenece a otra organización; quitá su acceso desde la administración de esa otra agencia antes de eliminar su cuenta.",
     "cuenta-no-eliminada": "No se pudo eliminar la cuenta de acceso. No se modificaron las rendiciones ni los datos de la agencia.",
     "no-borrar-usuario-actual": "No podés eliminar la cuenta con la que estás trabajando.",
+    "cuenta-es-propietario": "No se puede eliminar una cuenta Propietario desde la gestión de empleados. Cambiá su rol primero, asegurando que la agencia conserve al menos un Propietario.",
 
     "busqueda-cuenta-fallida": "No se pudo buscar esa cuenta en Supabase. Intentá otra vez; no se eliminó nada.",
     "limpieza-cuenta-fallida": "No se pudo comprobar o limpiar la cuenta. No se eliminó nada.",
@@ -128,7 +129,7 @@ export default async function TeamPermissionsPage({
       {params.resultado === "cuenta-eliminada" && <p className="message success-message">La cuenta global de inicio de sesión fue eliminada. No se borraron las rendiciones ni los datos de la agencia.</p>}
       {params.resultado === "permisos-guardados" && <p className="message success-message">Permisos guardados correctamente.</p>}
       {params.resultado === "rol-guardado" && <p className="message success-message">El rol se actualizó correctamente.</p>}
-      {params.resultado === "acceso-revocado" && <p className="message success-message">Se revocó el acceso del empleado a esta agencia. Su cuenta general de autenticación no fue eliminada.</p>}
+
       {params.resultado === "horarios-guardados" && <p className="message success-message">Se guardaron los horarios del reinicio diario y del envío automático del backup.</p>}
       {params.resultado === "backup-email-guardado" && <p className="message success-message">Se guardó el correo de respaldo. Las nuevas rendiciones se encolarán para enviarse a esa dirección.</p>}
       {params.resultado === "backup-reintento" && <p className="message success-message">Se solicitó nuevamente el envío del respaldo.</p>}
@@ -159,22 +160,11 @@ export default async function TeamPermissionsPage({
 
       <section className="panel team-permissions-panel">
         <div className="panel-head"><div><h2>Personal de la agencia</h2><p className="muted">Creá cuentas, asigná roles y configurá qué puede hacer cada persona. Todo se administra desde este bloque.</p></div><span className="muted">{employees?.length ?? 0} {(employees?.length ?? 0) === 1 ? "cuenta" : "cuentas"}</span></div>
-        <section className="team-add-member">
-          <div className="panel-head"><div><h3>Agregar una cuenta</h3><p className="muted">Si el correo ya existe, se vincula sin crear otro usuario y no hace falta contraseña. Si es nuevo, ingresá una contraseña inicial de al menos 8 caracteres. Desde la tarjeta de cada empleado podrás modificar el rol, ajustar permisos y eliminar su acceso a esta agencia.</p></div></div>
-          <form action={addEmployeeByEmail} className="inline-form team-add-form">
-            <label>Correo de acceso<input type="email" name="email" placeholder="correo@empleado.com" required autoComplete="off" /></label>
-            <label>Contraseña inicial (solo cuenta nueva)<input type="password" name="password" placeholder="Solo para correo nuevo · 8 caracteres" minLength={8} autoComplete="new-password" /></label>
-            <label>Rol inicial
-              <select name="role" defaultValue="accountant">
-                <option value="owner">Propietario</option>
-                <option value="admin">Administrador</option>
-                <option value="accountant">Contador</option>
-                <option value="viewer">Consulta</option>
-              </select>
-            </label>
-            <button className="button primary" type="submit">Crear cuenta y asignar rol</button>
-          </form>
-        </section>
+        <TeamAccountManager
+          addAction={addEmployeeByEmail}
+          deleteAction={deleteUnlinkedAuthAccount}
+          permissionLabels={permissionLabels}
+        />
                 {employeeError && <p className="message error-message">No se pudo consultar la lista de empleados.</p>}
         {!employeeError && (!employees || !employees.length) && <p className="muted">Todavía no hay personal vinculado. Usá el formulario “Agregar una cuenta” de este mismo bloque. Para crear el nuevo responsable, elegí “Propietario” en Rol inicial.</p>}
         <div className="team-member-list">
@@ -183,6 +173,8 @@ export default async function TeamPermissionsPage({
             const isOwner = employee.role === "owner";
             const isAdmin = employee.role === "admin";
             const roleName = roleLabels[employee.role] ?? "Empleado";
+            const isLegacyRole = employee.role === "admin" || employee.role === "viewer";
+            const roleName = isOwner ? "Propietario" : "Empleado";
             return <article className="team-member-card" key={employee.user_id}>
               <div className="team-member-header">
                 <div><h3>{employee.full_name || employee.email}</h3><p className="muted">{employee.email}</p></div>
@@ -196,54 +188,27 @@ export default async function TeamPermissionsPage({
                   <label>Modificar rol de acceso
                     <select name="role" defaultValue={employee.role} aria-label={"Modificar rol de " + employee.email}>
                       <option value="owner">Propietario</option>
-                      <option value="admin">Administrador</option>
-                      <option value="accountant">Contador</option>
-                      <option value="viewer">Consulta</option>
+                      <option value="accountant">Empleado</option>
+                      {isLegacyRole && <option value={employee.role} disabled>{employee.role === "admin" ? "Rol anterior: Administrador" : "Rol anterior: Consulta"}</option>}
                     </select>
                   </label>
                   <button className="button primary small" type="submit">Guardar cambios de rol</button>
                 </form>
               )}
-              {isOwner && isCurrentUser && ownerCount <= 1 && (
-                <p className="team-role-note">No se puede quitar este acceso porque es el único Propietario de la agencia. Primero agregá otra cuenta, elegí Propietario en su selector y guardá el cambio.</p>
-              )}
-              {isOwner && ownerCount > 1 && (
-                <div className="team-remove-access-visible">
-                  <strong>{isCurrentUser ? "Quitar mi acceso a esta agencia" : "Quitar acceso a esta agencia"}</strong>
-                  <p>La cuenta conservará su usuario global, pero dejará de entrar a esta agencia. Se mantienen las rendiciones y el historial.</p>
-                  <form action={removeEmployeeAccess}>
-                    <input type="hidden" name="user_id" value={employee.user_id} />
-                    <label>Contraseña actual del titular<input type="password" name="password" autoComplete="current-password" required aria-label={"Contraseña para quitar a " + employee.email} /></label>
-                    <label><input type="checkbox" name="confirm_remove" value="yes" required /> Confirmo quitar este acceso</label>
-                    <button className="button danger small" type="submit">{isCurrentUser ? "Quitar mi acceso" : "Eliminar acceso"}</button>
-                  </form>
-                </div>
-              )}
               {!isOwner && (
-                <>
-                  {isAdmin && <p className="message">Administrador: tiene acceso amplio a la gestión de la agencia y al catálogo. Revisá este rol antes de guardarlo.</p>}
-                  {!isAdmin && (
-                    <form action={saveEmployeePermissions} className="team-permissions-form">
-                      <input type="hidden" name="user_id" value={employee.user_id} />
-                      <h4>Modificar permisos del empleado</h4>
-                      <div className="team-permission-grid">
-                        {permissionLabels.map(([name, label]) => <label key={name} className="team-permission-option"><input type="checkbox" name={name} defaultChecked={employee[name]} /><span>{label}</span></label>)}
-                      </div>
-                      <p className="team-security-note">El catálogo de juegos y sus valores no se incluyen en los permisos de empleados. Solo Propietario o Administrador puede cambiar el catálogo y los precios.</p>
-                      <button className="button primary" type="submit">Guardar cambios de permisos</button>
-                    </form>
-                  )}
-                  <div className="team-remove-access-visible">
-                    <strong>Eliminar empleado de esta agencia</strong>
-                    <p>Quita su acceso y permisos en esta agencia. No elimina su usuario general de inicio de sesión ni las rendiciones históricas.</p>
-                    <form action={removeEmployeeAccess}>
-                      <input type="hidden" name="user_id" value={employee.user_id} />
-                      <label>Contraseña actual del titular<input type="password" name="password" autoComplete="current-password" required aria-label={"Contraseña para quitar a " + employee.email} /></label>
-                      <label><input type="checkbox" name="confirm_remove" value="yes" required /> Confirmo quitar el acceso de {employee.email}</label>
-                      <button className="button danger small" type="submit">Eliminar empleado de la agencia</button>
-                    </form>
-                  </div>
-                </>
+                isLegacyRole ? (
+                  <p className="message">Esta cuenta conserva un rol anterior. Seleccioná <strong>Empleado</strong> y guardá el cambio para aplicar los permisos detallados de empleado.</p>
+                ) : (
+                  <form action={saveEmployeePermissions} className="team-permissions-form">
+                    <input type="hidden" name="user_id" value={employee.user_id} />
+                    <h4>Permisos del empleado</h4>
+                    <div className="team-permission-grid">
+                      {permissionLabels.map(([name, label]) => <label key={name} className="team-permission-option"><input type="checkbox" name={name} defaultChecked={employee[name]} /><span>{label}</span></label>)}
+                    </div>
+                    <p className="team-security-note">El catálogo de juegos y sus valores no se incluyen en los permisos de empleados. Solo Propietario puede cambiar el catálogo y los precios.</p>
+                    <button className="button primary" type="submit">Guardar cambios de permisos</button>
+                  </form>
+                )
               )}
             </article>;
           })}
@@ -251,15 +216,7 @@ export default async function TeamPermissionsPage({
       </section>
 
 
-      <section className="panel team-auth-delete-panel">
-        <div className="panel-head"><div><h2>Eliminar cuenta</h2><p className="muted">Ingresá el correo de la cuenta y tu contraseña de titular. Al pulsar el botón, te pediremos confirmar una sola vez.</p></div></div>
-        <form action={deleteUnlinkedAuthAccount} className="team-auth-delete-form">
-          <label>Correo de la cuenta a eliminar<input type="email" name="target_email" placeholder="correo@gmail.com" autoComplete="off" required /></label>
-          <label>Tu contraseña<input type="password" name="owner_password" placeholder="Contraseña actual del titular" autoComplete="current-password" required /></label>
-          <input type="hidden" name="delete_account_confirmed" value="" />
-          <ConfirmDeleteAccountButton className="button danger">Eliminar cuenta</ConfirmDeleteAccountButton>
-        </form>
-      </section>
+
 
       <section className="panel team-backup-panel">
         <div className="panel-head"><div><h2>Backup de rendiciones</h2><p className="muted">Las nuevas rendiciones generan una copia. También podés preparar las que ya estaban guardadas, con sus tickets, detalle por juego, totales y observaciones.</p></div><span className={backupSettings?.enabled && backupSettings.recipient_email ? "badge success" : "badge"}>{backupSettings?.enabled && backupSettings.recipient_email ? "Correo configurado" : "Usa correo del titular"}</span></div>

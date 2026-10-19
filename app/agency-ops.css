@@ -1566,3 +1566,87 @@ input[type="time"]{font-variant-numeric:tabular-nums}
     line-height:1.2;
   }
 }
+
+
+/* Global yellow/white alternating panels. Rendiciones summary stat cards intentionally excluded. */
+.page .panel:nth-of-type(odd),
+.page section.panel:nth-of-type(odd) {
+  background: #fff6cf !important;
+  background-image: none !important;
+  border-color: #e5d58b;
+}
+.page .panel:nth-of-type(even),
+.page section.panel:nth-of-type(even) {
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: #e3dcc5;
+}
+.page .team-member-card:nth-child(odd),
+.page .team-backup-record:nth-child(odd),
+.page .rendition-archive-day:nth-child(odd),
+.page .rendition-archive-agent:nth-child(odd),
+.page .rendition-record:nth-child(odd) > summary {
+  background: #fff6cf;
+}
+.page .team-member-card:nth-child(even),
+.page .team-backup-record:nth-child(even),
+.page .rendition-archive-day:nth-child(even),
+.page .rendition-archive-agent:nth-child(even),
+.page .rendition-record:nth-child(even) > summary {
+  background: #ffffff;
+}
+.rendition-archive-agent-head {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  flex-wrap:wrap;
+  padding:10px;
+  border-bottom:1px solid #ded3b4;
+}
+.rendition-archive-agent-head>strong { flex:1; min-width:180px; font-size:12px; }
+.rendition-archive-agent-head>small { color:#70666a; font-size:11px; }
+.rendition-archive-agent-body { padding:10px; }
+.team-account-manager { display:grid; gap:12px; margin:12px 0 18px; }
+.team-account-toggle { display:flex; gap:8px; flex-wrap:wrap; }
+.team-account-toggle button {
+  appearance:none; border:1px solid #6d293d; border-radius:4px; background:#fff; color:#6d293d;
+  font-weight:800; padding:10px 16px; cursor:pointer; min-height:42px;
+}
+.team-account-toggle button.is-active { background:#7c3347; color:#fff; box-shadow:inset 0 -3px 0 rgba(0,0,0,.13); }
+.team-account-action-card { display:grid; gap:10px; padding:14px; border:1px solid #e3d18a; background:#fff6cf; }
+.team-account-action-card.is-delete { background:#fff; border-color:#ded3b4; }
+.team-account-action-card h3,.team-account-action-card p { margin:0; }
+.team-account-action-card h3 { font-size:15px; }
+.team-account-action-card>p { font-size:12px; line-height:1.45; }
+.team-account-action-card .team-add-form { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; align-items:end; }
+.team-account-action-card .team-add-form>label,
+.team-account-action-card .team-auth-delete-form>label { display:grid; gap:5px; min-width:0; font-size:12px; font-weight:800; color:#5a4b32; }
+.team-account-action-card .team-add-form input,
+.team-account-action-card .team-add-form select,
+.team-account-action-card .team-auth-delete-form input:not([type=checkbox]) { width:100%; min-width:0; padding:9px 10px; border:1px solid #cbbd93; border-radius:4px; background:#fff; color:#2a2020; font-size:12px; }
+.team-account-action-card .team-add-form>.team-new-permissions { grid-column:1/-1; padding:12px; border:1px solid #ded3b4; background:#fff; }
+.team-new-permissions h4 { margin:0 0 6px; font-size:13px; }
+.team-new-permissions p { margin:0 0 10px; }
+.team-account-action-card .team-add-form>.button { grid-column:1/-1; width:max-content; max-width:100%; }
+.team-account-action-card .team-auth-delete-form { display:grid; gap:10px; max-width:650px; }
+.team-account-action-card .team-auth-delete-form>.button { width:max-content; max-width:100%; }
+.ticket-photo-native-input {
+  position:absolute !important;
+  width:1px !important;
+  height:1px !important;
+  padding:0 !important;
+  margin:-1px !important;
+  overflow:hidden !important;
+  clip:rect(0,0,0,0) !important;
+  white-space:nowrap !important;
+  border:0 !important;
+  opacity:0 !important;
+}
+.ticket-capture-status { display:grid; gap:10px; margin-top:10px; }
+.ticket-capture-status .ticket-progress-panel { margin-top:0; }
+.ticket-capture-status .weekly-ticket-batch-upload-help { padding:10px 12px; border:1px solid #ded3b4; background:#fff; border-radius:6px; }
+@media(max-width:700px) {
+  .team-account-action-card .team-add-form { grid-template-columns:1fr; }
+  .team-account-action-card .team-add-form>.button,
+  .team-account-action-card .team-auth-delete-form>.button { width:100%; }
+}

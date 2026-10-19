@@ -1300,30 +1300,32 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <input type="hidden" name="agent_id" value={agentId} />
         <input type="hidden" name="rendition_id" value={initialRendition?.id ?? ""} />
         <input type="hidden" name="ticket_receipt_data" value={receiptData ? JSON.stringify({ ...receiptData, userConfirmedReview: receiptReviewed }) : ""} />
-        <section className="ticket-capture-panel">
-          <div className="ticket-photo-picker">
-            <span className="ticket-photo-icon" aria-hidden="true">▧</span>
-            <strong>Adjuntar detalle OCR al cierre existente</strong>
-            <span>Seleccioná la foto original del FIN DE JORNADA o una copia guardada. Esto no vuelve a registrar importes ni cobros.</span>
-            <span className="ticket-photo-picker-cta" aria-hidden="true">Elegir foto o archivo</span>
-            <input
-              id={ticketPhotoInputId}
-              className="ticket-photo-native-input"
-              type="file"
-              accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-              aria-label="Elegir foto del ticket para recuperar el detalle OCR"
-              disabled={busy}
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                if (file) {
-                  const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
-                  if (isImage) void processTicket(file);
-                  else setError("El archivo elegido no parece ser una imagen. Seleccioná la foto del ticket en Fotos, Galería o Archivos.");
-                }
-                event.currentTarget.value = "";
-              }}
-            />
+        <section className="ticket-capture-status">
+          <div className="rendition-mode-toolbar">
+          <div className="rendition-mode-switch" role="group" aria-label="Método de carga del ticket">
+            <button type="button" className="active" disabled={busy} onClick={() => {
+              const input = document.getElementById(ticketPhotoInputId) as HTMLInputElement | null;
+              input?.click();
+            }}>Foto automático</button>
           </div>
+          <input
+            id={ticketPhotoInputId}
+            className="ticket-photo-native-input"
+            type="file"
+            accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+            aria-label="Seleccionar una foto o archivo para leer el ticket"
+            disabled={busy}
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              if (file) {
+                const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
+                if (isImage) void processTicket(file);
+                else setError("El archivo elegido no parece ser una imagen. Seleccioná la foto del ticket en Fotos, Galería o Archivos.");
+              }
+              event.currentTarget.value = "";
+            }}
+          />
+        </div>
           {photoPreviewUrl && <div className="ticket-photo-preview"><img src={photoPreviewUrl} alt="Vista previa del ticket para recuperar su detalle OCR" /></div>}
           {progress && <p className="ticket-read-notice">{progress}{progressPercent > 0 ? " (" + progressPercent + "%)" : ""}</p>}
           {error && <p className="ticket-read-error" role="alert">{error}</p>}
@@ -1405,9 +1407,37 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         </>
       )}
 
+      <input
+        id={ticketPhotoInputId}
+        className="ticket-photo-native-input"
+        type="file"
+        name="ticket_photo"
+        accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+        aria-label="Seleccionar foto o archivo del ticket"
+        disabled={busy}
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          if (file) {
+            const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
+            if (isImage) void processTicket(file);
+            else {
+              setError("El archivo elegido no parece ser una imagen. Seleccioná una foto del ticket en Fotos, Galería o Archivos.");
+              setNotice("");
+            }
+          }
+          event.currentTarget.value = "";
+        }}
+      />
       <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
-          <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => setMode("photo")}>Foto (automático)</button>
+          <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => {
+            setMode("photo");
+            setError("");
+            if (!busy) {
+              const input = document.getElementById(ticketPhotoInputId) as HTMLInputElement | null;
+              input?.click();
+            }
+          }}>Foto automático</button>
           <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
             setMode("manual");
             if (!receiptData && !initialRendition) {
@@ -1465,45 +1495,14 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       )}
 
       {mode === "photo" && (
-        <div className="ticket-capture-panel">
-          <div className="ticket-photo-picker">
-            <span className="ticket-photo-icon" aria-hidden="true">▧</span>
-            <strong>Comprobante del ticket</strong>
-            <span>Seleccioná una foto guardada en el teléfono o sacá una nueva.</span>
-            <span className="ticket-photo-picker-cta" aria-hidden="true">Elegir foto o archivo</span>
-            <input
-              id={ticketPhotoInputId}
-              className="ticket-photo-native-input"
-              type="file"
-              name="ticket_photo"
-              aria-label="Elegir foto o archivo del comprobante del ticket"
-              disabled={busy}
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                if (file) {
-                  const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
-                  if (isImage) {
-                    void processTicket(file);
-                  } else {
-                    setError("El archivo elegido no parece ser una imagen. Seleccioná una foto del ticket en Fotos, Galería o Archivos.");
-                    setNotice("");
-                  }
-                }
-                event.currentTarget.value = "";
-              }}
-            />
-          </div>
+        <div className="ticket-capture-status">
           {batchMode && (
             <div className="weekly-ticket-batch-upload-help">
               <div>
                 <strong>{batchTickets.length === 0 ? "Carga acumulada de FIN DE JORNADA" : `${batchTickets.length} cupón${batchTickets.length === 1 ? "" : "es"} agregado${batchTickets.length === 1 ? "" : "s"}`}</strong>
-                <p>{batchTickets.length === 0 ? "Elegí el primer comprobante. Después podés agregar los demás, uno por uno, sin registrar una rendición todavía." : "El cupón ya está en este lote. Volvé a elegir otro archivo para sumar el siguiente comprobante a la misma rendición."}</p>
+                <p>{batchTickets.length === 0 ? "Elegí el primer cupón con el botón Foto automático. Después, volvé a presionarlo para agregar cada cupón siguiente sin registrar otra rendición." : "El cupón quedó en este lote. Volvé a presionar Foto automático para sumar el siguiente comprobante a la misma rendición."}</p>
               </div>
-              <button type="button" className="button ghost small" disabled={busy || batchTickets.length >= 12} onClick={() => {
-                const input = document.getElementById(ticketPhotoInputId) as HTMLInputElement | null;
-                input?.click();
-              }}>{batchTickets.length === 0 ? "Elegir primer FIN DE JORNADA" : "Agregar otro FIN DE JORNADA"}</button>
-              <small>Repetí esta operación por cada cupón. Revisá la lista y marcá la revisión antes de tocar “Confirmar rendición acumulada”. Máximo 12 cupones por lote.</small>
+              <small>Máximo 12 cupones por lote. Revisá los datos y marcá la revisión antes de confirmar.</small>
             </div>
           )}
           {photoPreviewUrl && <div className="ticket-photo-preview"><button type="button" className="ticket-photo-preview-button" onClick={() => setPhotoExpanded(true)} aria-label="Ampliar foto del ticket"><img src={photoPreviewUrl} alt="Vista previa del ticket cargado" /><span>Ampliar foto</span></button></div>}
