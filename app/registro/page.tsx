@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { PasswordInput } from "@/components/password-input";
 
 export default function RegisterOwnerPage() {
   const router = useRouter();
@@ -95,8 +96,8 @@ export default function RegisterOwnerPage() {
           <form onSubmit={submit} className="form-stack">
             <label>Nombre completo<input value={fullName} onChange={(e) => setFullName(e.target.value)} required maxLength={120} autoComplete="name" /></label>
             <label>Correo electrónico de acceso<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" /></label>
-            <label>Crear contraseña<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete="new-password" /></label>
-            <label>Repetir contraseña<input type="password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} required minLength={8} autoComplete="new-password" /></label>
+            <label>Crear contraseña<PasswordInput value={password} onChange={setPassword} required minLength={8} autoComplete="new-password" /></label>
+            <label>Repetir contraseña<PasswordInput value={confirmation} onChange={setConfirmation} required minLength={8} autoComplete="new-password" /></label>
             {message && (
               <div className="message error-message" role="alert">
                 {message}
