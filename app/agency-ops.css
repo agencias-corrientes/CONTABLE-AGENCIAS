@@ -1566,3 +1566,80 @@ input[type="time"]{font-variant-numeric:tabular-nums}
     line-height:1.2;
   }
 }
+
+
+/* Superficies alternadas: blanco limpio y el amarillo suave de TOTAL RENDIDO. */
+.config-shortcuts-panel .settings-card { background: #fffdf6; border-top: 4px solid #ded3b4; }
+.config-shortcuts-panel .settings-card:nth-child(even) { background: #fff6cf; border-top-color: #b79a45; }
+.config-shortcuts-panel .settings-card:nth-child(odd) { background: #fffdf6; }
+
+.operational-schedule-panel,
+.team-backup-panel,
+.team-security-panel { background: #fff6cf; border-color: #e8d991; }
+.team-permissions-panel,
+.team-cleanup-panel { background: #fffdf6; border-color: #ded3b4; }
+.team-add-member.team-personnel-action { margin: 0; padding: 0; border: 1px solid #e8d991; border-radius: 10px; background: #fff6cf; }
+.team-personnel-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 14px 0 16px; align-items: start; }
+.team-personnel-action { min-width: 0; border: 1px solid #ded3b4; border-radius: 10px; overflow: hidden; background: #fffdf6; }
+.team-personnel-action-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 11px 14px; cursor: pointer; list-style: none; background: #fff6cf; color: #572632; font-size: 13px; font-weight: 850; }
+.team-personnel-action-trigger::-webkit-details-marker { display: none; }
+.team-personnel-action-trigger::after { content: "+"; font-size: 20px; line-height: 1; color: #7c3347; }
+.team-personnel-action[open] > .team-personnel-action-trigger::after { content: "−"; }
+.team-delete-member > .team-personnel-action-trigger { background: #fffdf6; color: #7c3347; }
+.team-personnel-action-body { padding: 12px; border-top: 1px solid #ded3b4; background: #fffdf6; }
+.team-add-member > .team-personnel-action-body { background: #fff6cf; }
+.team-personnel-action-body > p { margin: 0 0 10px; font-size: 12px; line-height: 1.5; }
+.team-backup-log { margin-top: 14px; padding: 12px; border: 1px solid #ded3b4; border-radius: 10px; background: #fffdf6; }
+.team-member-card:nth-child(odd) { background: #fffdf6; }
+.team-member-card:nth-child(even) { background: #fff6cf; border-color: #e8d991; }
+.team-backup-record:nth-of-type(odd) { background: #fffdf6; }
+.team-backup-record:nth-of-type(even) { background: #fff6cf; border-color: #e8d991; }
+.team-backup-record:nth-of-type(even) .team-backup-record-body pre { background: #fffdf6; }
+.team-cleanup-count:nth-child(odd) { background: #fffdf6; }
+.team-cleanup-count:nth-child(even) { background: #fff6cf; }
+.team-cleanup-form { background: #fff6cf; }
+
+.agency-profile { background: #fff6cf; }
+.agency-profile-data > div:nth-child(odd) { background: #fffdf6; }
+.agency-profile-data > div:nth-child(even) { background: #fff6cf; }
+.agent-profile-edit-panel { background: #fffdf6; }
+.agent-rendition-policy-panel { background: #fff6cf; }
+.agent-commission-panel { background: #fffdf6; }
+.agency-profile-edit-form > label:nth-of-type(odd),
+.agency-create-grid > label:nth-of-type(odd) { background: #fff6cf; border-radius: 8px; padding: 8px; }
+.agency-profile-edit-form > label:nth-of-type(even),
+.agency-create-grid > label:nth-of-type(even) { background: #fffdf6; border-radius: 8px; padding: 8px; }
+.agency-delete-panel { background: #fffdf6; }
+.agency-delete-panel .agency-delete-form { background: #fff6cf; }
+
+.rendition-page-clean > .rendition-stats .stat-card:nth-child(odd) { background: #fff6cf; border-color: #e8d991; }
+.rendition-page-clean > .rendition-stats .stat-card:nth-child(even) { background: #fffdf6; }
+.rendition-page-clean > .rendition-stats .rendition-total-card { background: #fff6cf; }
+.rendition-page-clean .rendition-general-history { background: #fff6cf; }
+.rendition-archive-day:nth-child(odd) { background: #fffdf6; }
+.rendition-archive-day:nth-child(even) { background: #fff6cf; border-color: #e8d991; }
+.rendition-archive-agent:nth-child(odd) { background: #fffdf6; }
+.rendition-archive-agent:nth-child(even) { background: #fff6cf; border-color: #e8d991; }
+.rendition-archive-agent-body { background: transparent; }
+.rendition-agent-expanded { background: #fffdf6; }
+.rendition-agent-expanded > .rendition-entry-form { padding: 13px; border: 1px solid #e8d991; border-radius: 10px; background: #fff6cf; }
+.rendition-agent-history { margin-top: 14px; padding: 12px; border: 1px solid #ded3b4; border-radius: 10px; background: #fffdf6; }
+.rendition-history-list > .rendition-record:nth-child(odd) { background: #fffdf6; }
+.rendition-history-list > .rendition-record:nth-child(even) { background: #fff6cf; border-color: #e8d991; }
+.rendition-record-detail { background: #fffdf6; }
+.agency-pay-details { margin-top: 10px; border: 1px solid #e8d991; border-radius: 9px; overflow: hidden; background: #fff6cf; }
+.agency-pay-details > summary { cursor: pointer; padding: 10px 12px; background: #fff6cf; color: #572632; font-weight: 850; }
+.agency-pay-form { padding: 12px; background: #fffdf6; border-top: 1px solid #e8d991; border-radius: 0 0 9px 9px; }
+.rendition-general-history .rendition-archive-day > summary { background: linear-gradient(90deg, #fff6cf, #fffdf6); }
+
+.agency-profile-data > div,
+.team-cleanup-count,
+.team-backup-record,
+.team-member-card,
+.config-shortcuts-panel .settings-card { transition: background-color .15s ease; }
+.ticket-photo-native-input[hidden] { display: none !important; }
+
+@media (max-width: 700px) {
+  .team-personnel-actions { grid-template-columns: 1fr; }
+  .team-personnel-action-body { padding: 10px; }
+}
