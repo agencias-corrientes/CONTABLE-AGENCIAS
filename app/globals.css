@@ -813,3 +813,67 @@ input:focus,select:focus,textarea:focus{
 .platform-admin-page .platform-logout-button{grid-column:1 / -1}
 .platform-admin-page .platform-employee-access-actions{gap:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface2)}
 .platform-admin-page .platform-employee-access-actions .button{width:100%;white-space:normal}
+
+
+/* Administración Central: cada agencia y cuenta se abre como una ficha independiente en columnas. */
+.platform-admin-page .platform-agency-grid,
+.platform-admin-page .platform-user-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;align-items:start}
+.platform-admin-page .platform-agency-accordion,
+.platform-admin-page .platform-user-accordion{display:block;min-width:0;padding:0;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden;box-shadow:0 5px 16px rgba(40,25,12,.05)}
+.platform-admin-page .platform-entity-summary{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:14px;min-width:0;cursor:pointer;list-style:none;background:#fff7d6}
+.platform-admin-page .platform-entity-summary::-webkit-details-marker{display:none}
+.platform-admin-page .platform-entity-summary:hover{background:#ffefb5}
+.platform-admin-page .platform-agency-accordion.is-own-agency>.platform-agency-summary{background:#ffe28a;border-bottom:1px solid #dfbf4f}
+.platform-admin-page .platform-agency-accordion.is-own-agency>.platform-agency-summary:hover{background:#ffda6e}
+.platform-admin-page .platform-entity-kind{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:5px 8px;border-radius:8px;background:var(--primary);color:#fff;font-size:10px;font-weight:900;letter-spacing:.06em;white-space:nowrap}
+.platform-admin-page .platform-entity-copy{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere}
+.platform-admin-page .platform-entity-copy strong{font-size:14px;line-height:1.25}
+.platform-admin-page .platform-entity-copy small{font-size:11px;line-height:1.3;color:var(--muted);font-weight:600}
+.platform-admin-page .platform-entity-open{font-size:11px;font-weight:850;color:var(--primary);white-space:nowrap}
+.platform-admin-page .platform-agency-content,
+.platform-admin-page .platform-user-content{display:grid;gap:14px;padding:14px;border-top:1px solid var(--line)}
+.platform-admin-page .platform-agency-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.platform-admin-page .platform-agency-facts>div{display:grid;align-content:start;gap:5px;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fffdf6}
+.platform-admin-page .platform-agency-facts span{font-size:10px;line-height:1.2;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:800}
+.platform-admin-page .platform-agency-facts strong{font-size:12px;line-height:1.35;overflow-wrap:anywhere}
+.platform-admin-page .platform-agency-manage-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
+.platform-admin-page .platform-agency-manage-card{min-width:0;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fffdf6}
+.platform-admin-page .platform-agency-manage-card h4,
+.platform-admin-page .platform-agency-linked-accounts h4,
+.platform-admin-page .platform-user-access-list h4{margin:0;font-size:13px}
+.platform-admin-page .platform-agency-manage-card .platform-inline-form{grid-template-columns:minmax(0,1fr);gap:8px;margin-top:10px}
+.platform-admin-page .platform-agency-manage-card .platform-inline-form .button{width:100%}
+.platform-admin-page .platform-agency-linked-accounts{display:grid;gap:9px}
+.platform-admin-page .platform-agency-member-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.platform-admin-page .platform-agency-member{display:grid;gap:4px;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.platform-admin-page .platform-agency-member strong{font-size:12px;overflow-wrap:anywhere}
+.platform-admin-page .platform-agency-member span{font-size:11px;overflow-wrap:anywhere}
+.platform-admin-page .platform-agency-member small{font-size:10px;color:var(--muted)}
+.platform-admin-page .platform-user-summary{grid-template-columns:minmax(0,1fr) auto auto}
+.platform-admin-page .platform-user-status{font-size:10px;font-weight:800;color:var(--muted);text-align:right}
+.platform-admin-page .platform-user-content>.platform-management-identity{padding:0 0 8px;border-bottom:1px solid var(--line)}
+.platform-admin-page .platform-user-access-list{display:grid;gap:9px}
+.platform-admin-page .platform-user-access-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,.85fr);gap:12px;align-items:start;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fffdf6}
+.platform-admin-page .platform-user-access-row>div:first-child{min-width:0;overflow-wrap:anywhere}
+.platform-admin-page .platform-user-access-row>div:first-child>strong{font-size:12px}
+.platform-admin-page .platform-user-access-row>div:first-child>p{margin:5px 0 0}
+.platform-admin-page .platform-user-access-row .form-stack{gap:8px;margin-top:0}
+.platform-admin-page .platform-user-access-row .platform-access-actions{padding:0;border:0;background:transparent}
+.platform-admin-page .platform-user-content>.platform-inline-form{grid-template-columns:minmax(0,1fr) auto}
+.platform-admin-page .platform-user-content .platform-details{min-width:0}
+@media(max-width:900px){
+ .platform-admin-page .platform-agency-facts{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .platform-admin-page .platform-user-summary{grid-template-columns:minmax(0,1fr) auto}
+ .platform-admin-page .platform-user-summary .platform-user-status{grid-column:1}
+ .platform-admin-page .platform-user-summary .platform-entity-open{grid-column:2;grid-row:1/3}
+ .platform-admin-page .platform-user-access-row{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+ .platform-admin-page .platform-agency-grid,.platform-admin-page .platform-user-list{grid-template-columns:1fr}
+ .platform-admin-page .platform-entity-summary{grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:12px}
+ .platform-admin-page .platform-agency-summary .platform-entity-kind{grid-column:1/-1;justify-self:start}
+ .platform-admin-page .platform-entity-open{grid-column:2;grid-row:1/3}
+ .platform-admin-page .platform-agency-facts,.platform-admin-page .platform-agency-manage-grid{grid-template-columns:1fr}
+ .platform-admin-page .platform-user-content>.platform-inline-form{grid-template-columns:1fr}
+ .platform-admin-page .platform-user-content>.platform-inline-form .button{width:100%}
+}
