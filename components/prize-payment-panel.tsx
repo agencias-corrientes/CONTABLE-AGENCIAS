@@ -184,7 +184,7 @@ export function PrizePaymentPanel({
 
           {captureMode === "photo" && (
             <label>Fotografiar o adjuntar cupón
-              <input type="file" name="prize_photo" accept="image/*" onChange={handlePhoto" />
+              <input type="file" name="prize_photo" accept="image/*" onChange={handlePhoto} />
               <small className="muted">La lectura intenta identificar el número. Revisalo antes de registrar el pago; el importe se ingresa y verifica manualmente.</small>
             </label>
           )}
