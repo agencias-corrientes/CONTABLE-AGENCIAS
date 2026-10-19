@@ -1651,3 +1651,41 @@ input[type="time"]{font-variant-numeric:tabular-nums}
   .team-account-action-card .team-add-form>.button,
   .team-account-action-card .team-auth-delete-form>.button { width:100%; }
 }
+
+
+
+/* Activar el selector de archivos mediante una etiqueta nativa mejora la compatibilidad móvil. */
+.rendition-mode-switch .ticket-photo-source-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid #ded3b4;
+  border-radius: 8px;
+  background: #eee4bc;
+  color: #2a2020;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.rendition-mode-switch .ticket-photo-source-label.active {
+  background: #7c3347;
+  border-color: #7c3347;
+  color: #fff;
+}
+.rendition-mode-switch .ticket-photo-source-label[aria-disabled="true"] {
+  opacity: .6;
+  cursor: wait;
+}
+@media(max-width:700px) {
+  .rendition-mode-switch .ticket-photo-source-label {
+    min-height: 36px;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+}
