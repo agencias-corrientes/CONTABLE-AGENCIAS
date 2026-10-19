@@ -26,6 +26,14 @@ function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 }
 
+function closureBatchKey(ticket: TicketClosureData): string {
+  const agency = String(ticket.agencyCode ?? "").replace(/\D/g, "");
+  const subagent = String(ticket.subagentCode ?? "").replace(/\D/g, "");
+  const period = String(ticket.periodNumber ?? "").replace(/\s+/g, "");
+  const date = String(ticket.closedAt?.date ?? ticket.printedAt?.date ?? ticket.openedAt?.date ?? "");
+  return agency + "|" + subagent + "|" + period + "|" + date;
+}
+
 function extractTicketNumber(text: string): string {
   const normalizedText = normalize(text);
   const patterns = [
@@ -1176,7 +1184,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         if (batchMode) {
           const ticketPeriod = String(closureReceipt.periodNumber ?? "").replace(/\s+/g, "");
           const ticketDate = String(closureReceipt.closedAt?.date ?? closureReceipt.printedAt?.date ?? closureReceipt.openedAt?.date ?? "");
-          const ticketKey = ticketPeriod + "|" + ticketDate;
+          const ticketKey = closureBatchKey(closureReceipt);
           const validPrintedDate = /^\d{4}-\d{2}-\d{2}$/.test(ticketDate) || /^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$/.test(ticketDate);
           if (!/^\d{7}$/.test(ticketPeriod) || !validPrintedDate) {
             setError("No pude confirmar el Período N.º de 7 dígitos y la fecha impresa del cupón. Revisá el ticket antes de agregarlo al lote.");
@@ -1184,8 +1192,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             setProgressPercent(0);
             return;
           }
-          if (batchTicketsRef.current.some((item) =>
-            String(item.periodNumber ?? "").replace(/\s+/g, "") + "|" + String(item.closedAt?.date ?? item.printedAt?.date ?? item.openedAt?.date ?? "") === ticketKey)) {
+          if (batchTicketsRef.current.some((item) => closureBatchKey(item) === ticketKey)) {
             setError("Este cupón ya fue agregado al lote. No se volvió a sumar.");
             setProgress("Cupón duplicado detectado; los importes del lote se mantienen sin cambios.");
             setProgressPercent(0);
@@ -1602,9 +1609,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               {batchTickets.map((ticket, index) => <details className="weekly-ticket-batch-row" key={String(ticket.periodNumber ?? "sin-periodo") + "-" + index}>
                 <summary><strong>Cupón {index + 1} · Período {ticket.periodNumber || "no detectado"}</strong><small>{ticket.closedAt?.date ?? ticket.printedAt?.date ?? ticket.openedAt?.date ?? "Fecha impresa no detectada"}</small></summary>
                 <TicketClosureReceipt data={ticket} compact editable onChange={(next) => {
-                  const nextKey = String(next.periodNumber ?? "").replace(/\s+/g, "") + "|" + String(next.closedAt?.date ?? next.printedAt?.date ?? next.openedAt?.date ?? "");
-                  if (batchTicketsRef.current.some((item, itemIndex) => itemIndex !== index &&
-                    String(item.periodNumber ?? "").replace(/\s+/g, "") + "|" + String(item.closedAt?.date ?? item.printedAt?.date ?? item.openedAt?.date ?? "") === nextKey)) {
+                  const nextKey = closureBatchKey(next);
+                  if (batchTicketsRef.current.some((item, itemIndex) => itemIndex !== index && closureBatchKey(item) === nextKey)) {
                     setError("Ese período y fecha ya están en otro cupón del lote. No se guardó la corrección duplicada.");
                     return;
                   }

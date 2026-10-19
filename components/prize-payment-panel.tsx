@@ -2,7 +2,7 @@
 
 import { useState, type ChangeEvent } from "react";
 import jsQR from "jsqr";
-import { createAgencyPrizePayment } from "@/app/(app)/agencias/actions";
+import { createAgencyPrizePayment, deleteAgencyPrizePayment, updateAgencyPrizePayment } from "@/app/(app)/agencias/actions";
 
 type CaptureMode = "manual" | "photo" | "qr";
 type PrizePayment = {
@@ -12,6 +12,8 @@ type PrizePayment = {
   prize_amount: number;
   payment_date: string;
   capture_method: string;
+  notes: string | null;
+  included_in_ticket_ocr: boolean;
 };
 
 function couponFromQrPayload(payload: string): string {
@@ -66,6 +68,7 @@ export function PrizePaymentPanel({
   const [qrPayload, setQrPayload] = useState("");
   const [scanMessage, setScanMessage] = useState("");
   const [readingPhoto, setReadingPhoto] = useState(false);
+  const [editingPaymentId, setEditingPaymentId] = useState("");
 
   function handleQrPayload(value: string) {
     setQrPayload(value);
@@ -215,7 +218,8 @@ export function PrizePaymentPanel({
               <input name="notes" maxLength={1000} placeholder="Referencia, validación o nota" />
             </label>
           </div>
-          <button className="button primary" type="submit" disabled={readingPhoto}>Registrar pago de premio en Caja</button>
+          <label className="prize-included-ocr"><input type="checkbox" name="included_in_ticket_ocr" /><span>Este premio ya está incluido en “Premios pagados” de un ticket OCR de hoy.<small>Marcá esta opción si el comprobante oficial ya suma este pago, para que no se descuente dos veces.</small></span></label>
+          <button className="button primary" type="submit" disabled={readingPhoto}>Aceptar y registrar pago de premio en Caja</button>
           <p className="muted small-text">El número de cupón solo puede registrarse una vez por agencia. El alta del pago y la salida de Caja se guardan juntas, sin descontar dos veces un mismo cupón.</p>
         </form>
       )}
@@ -225,10 +229,32 @@ export function PrizePaymentPanel({
         {recentPayments.length ? (
           <div className="prize-payment-recent-list">
             {recentPayments.map((payment) => (
-              <div className="prize-payment-recent-item" key={payment.id}>
-                <span><strong>Cupón {payment.coupon_number}</strong><small>{payment.game_name || "Juego no indicado"} · {payment.payment_date}</small></span>
+              <article className="prize-payment-recent-item" key={payment.id}>
+                <span><strong>Cupón {payment.coupon_number}</strong><small>{payment.game_name || "Juego no indicado"} · {payment.payment_date}</small><small>{payment.included_in_ticket_ocr ? "Incluido en OCR · no se vuelve a descontar" : "Pago de Caja separado del total OCR"}</small>{payment.notes && <small>{payment.notes}</small>}</span>
                 <strong>{moneyLabel(payment.prize_amount, currencyCode)}</strong>
-              </div>
+                {canRegisterPayments && <div className="prize-payment-row-actions">
+                  <button type="button" className="button ghost small" aria-expanded={editingPaymentId === payment.id} onClick={() => setEditingPaymentId((current) => current === payment.id ? "" : payment.id)}>{editingPaymentId === payment.id ? "Cerrar edición" : "Editar"}</button>
+                  <form action={deleteAgencyPrizePayment} onSubmit={(event) => { if (!window.confirm("¿Eliminar el pago de este premio y su movimiento asociado de Caja?")) event.preventDefault(); }}>
+                    <input type="hidden" name="prize_payment_id" value={payment.id} />
+                    <input type="hidden" name="return_agent_id" value={returnAgentId} />
+                    <button type="submit" className="button ghost small danger-button">Eliminar</button>
+                  </form>
+                </div>}
+                {editingPaymentId === payment.id && <form action={updateAgencyPrizePayment} className="prize-payment-edit-form">
+                  <input type="hidden" name="prize_payment_id" value={payment.id} />
+                  <input type="hidden" name="return_agent_id" value={returnAgentId} />
+                  <label>Número de cupón<input name="coupon_number" defaultValue={payment.coupon_number} maxLength={128} required /></label>
+                  <label>Juego<input name="game_name" defaultValue={payment.game_name ?? ""} maxLength={120} /></label>
+                  <label>Importe del premio<input name="prize_amount" defaultValue={payment.prize_amount.toFixed(2)} inputMode="decimal" required /></label>
+                  <label>Fecha de pago<input name="payment_date" type="date" defaultValue={payment.payment_date} required /></label>
+                  <label>Observaciones<textarea name="notes" defaultValue={payment.notes ?? ""} maxLength={1000} rows={2} /></label>
+                  <label className="prize-included-ocr"><input type="checkbox" name="included_in_ticket_ocr" defaultChecked={payment.included_in_ticket_ocr} /><span>Ya está incluido en un cierre OCR de hoy<small>Se mantiene como movimiento de Caja, pero no se vuelve a descontar del total OCR.</small></span></label>
+                  <div className="prize-payment-row-actions">
+                    <button type="submit" className="button primary">Guardar cambios en premio y Caja</button>
+                    <button type="button" className="button ghost" onClick={() => setEditingPaymentId("")}>Cancelar</button>
+                  </div>
+                </form>}
+              </article>
             ))}
           </div>
         ) : <p className="muted">Todavía no hay premios pagados registrados.</p>}

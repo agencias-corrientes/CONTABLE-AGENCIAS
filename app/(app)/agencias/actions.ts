@@ -82,7 +82,9 @@ function closureReceiptDuplicateKey(ticket: any): string | null {
   const period = String(ticket?.periodNumber ?? "").replace(/\s+/g, "");
   const printedDate = normalizeClosureReceiptDate(ticket?.closedAt?.date ?? ticket?.printedAt?.date ?? ticket?.openedAt?.date);
   if (!/^\d{7}$/.test(period) || !printedDate) return null;
-  return period + "|" + printedDate;
+  const agencyCode = String(ticket?.agencyCode ?? "").replace(/\D/g, "");
+  const subagentCode = String(ticket?.subagentCode ?? "").replace(/\D/g, "");
+  return agencyCode + "|" + subagentCode + "|" + period + "|" + printedDate;
 }
 function individualClosureReceipts(value: any): any[] {
   if (value?.type === "loteria-corrientes-end-of-day-v1") return [value];
@@ -370,7 +372,10 @@ export async function createAgencyRendition(formData: FormData) {
       identityTicket = null;
     }
   }
-  if (identityTicket) {
+  // La agencia oficial 000 se reserva para pruebas del administrador central:
+  // permite revisar tickets de cualquier agencia sin relajar las validaciones
+  // de las agencias operativas.
+  if (identityTicket && registeredAgencyCode !== "000") {
     const ticketAgencyDigits = String(identityTicket.agencyCode ?? "").replace(/\D/g, "");
     const ticketAgencyCode = ticketAgencyDigits.length === 4 && /^[01]\d{3}$/.test(ticketAgencyDigits)
       ? ticketAgencyDigits.slice(1)
@@ -1140,6 +1145,7 @@ export async function createAgencyPrizePayment(formData: FormData) {
 
   const selectedMethod = String(formData.get("capture_method") ?? "manual");
   const qrPayload = String(formData.get("qr_payload") ?? "").trim();
+  const includedInTicketOcr = formData.get("included_in_ticket_ocr") === "on";
   const captureMethod = selectedMethod === "qr" || qrPayload ? "qr" : selectedMethod === "photo" ? "photo" : "manual";
   const gameName = String(formData.get("game_name") ?? "").trim().slice(0, 120);
   const notes = String(formData.get("notes") ?? "").trim().slice(0, 1000);
@@ -1193,13 +1199,14 @@ export async function createAgencyPrizePayment(formData: FormData) {
     fail("caja-no-configurada");
   }
 
-  const { error } = await supabase.rpc("register_agency_prize_payment", {
+  const { error } = await supabase.rpc("register_agency_prize_payment_with_ocr_status", {
     p_organization_id: organizationId,
     p_cash_account_id: cashAccountId as string,
     p_coupon_number: couponNumber,
     p_prize_amount: Math.round(amount * 100) / 100,
     p_payment_date: todayInAgencyTimeZone(),
     p_capture_method: captureMethod,
+    p_included_in_ticket_ocr: includedInTicketOcr,
     p_game_name: gameName || undefined,
     p_qr_payload: qrPayload || undefined,
     p_photo_path: photoPath,
@@ -1221,5 +1228,91 @@ export async function createAgencyPrizePayment(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath("/movimientos");
   redirect("/pagos?resultado=premio-pagado" + (returnAgentId ? "&agent=" + encodeURIComponent(returnAgentId) : ""));
+}
+
+function parsePrizeAmount(value: string): number {
+  let amountText = value.trim().replace(/[^0-9,.-]/g, "");
+  if (amountText.includes(".") && amountText.includes(",")) {
+    amountText = amountText.replace(/\./g, "").replace(",", ".");
+  } else if (amountText.includes(",")) {
+    const decimals = amountText.length - amountText.lastIndexOf(",") - 1;
+    amountText = decimals > 0 && decimals <= 2
+      ? amountText.replace(/\./g, "").replace(",", ".")
+      : amountText.replace(/,/g, "");
+  } else if (amountText.includes(".")) {
+    const chunks = amountText.split(".");
+    if ((chunks[chunks.length - 1] ?? "").length === 3) amountText = chunks.join("");
+  }
+  return Number(amountText);
+}
+
+export async function updateAgencyPrizePayment(formData: FormData) {
+  const { supabase, organizationId, permissions } = await getOrg();
+  const returnAgentRaw = String(formData.get("return_agent_id") ?? "").trim();
+  const returnAgentId = /^[-0-9a-f]{0,36}$/i.test(returnAgentRaw) ? returnAgentRaw : "";
+  const returnSuffix = returnAgentId ? "&agent=" + encodeURIComponent(returnAgentId) : "";
+  const fail = (code: string): never => redirect("/pagos?error=" + encodeURIComponent(code) + returnSuffix);
+  if (!permissions.can_register_payments) fail("sin-permiso-cobro");
+
+  const paymentId = String(formData.get("prize_payment_id") ?? "").trim();
+  const couponNumber = String(formData.get("coupon_number") ?? "").trim();
+  const normalizedCoupon = couponNumber.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const amount = parsePrizeAmount(String(formData.get("prize_amount") ?? ""));
+  const paymentDate = String(formData.get("payment_date") ?? "").trim();
+  const parsedDate = new Date(paymentDate + "T00:00:00.000Z");
+  if (!paymentId) fail("premio-no-encontrado");
+  if (!couponNumber || couponNumber.length > 128 || !normalizedCoupon) fail("premio-cupon-invalido");
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 999999999999.99) fail("premio-importe-invalido");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(paymentDate) || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== paymentDate) fail("premio-fecha-invalida");
+
+  const { error } = await supabase.rpc("update_agency_prize_payment", {
+    p_organization_id: organizationId,
+    p_prize_payment_id: paymentId,
+    p_coupon_number: couponNumber,
+    p_game_name: String(formData.get("game_name") ?? "").trim().slice(0, 120) || undefined,
+    p_prize_amount: Math.round(amount * 100) / 100,
+    p_payment_date: paymentDate,
+    p_notes: String(formData.get("notes") ?? "").trim().slice(0, 1000) || undefined,
+    p_included_in_ticket_ocr: formData.get("included_in_ticket_ocr") === "on",
+  });
+  if (error) {
+    const normalized = error.message.toLowerCase();
+    if (error.code === "23505" || normalized.includes("cupón ya tiene") || normalized.includes("agency_prize_payments_org_coupon_uq")) fail("premio-duplicado");
+    if (normalized.includes("movimiento") || normalized.includes("caja")) fail("premio-movimiento-inconsistente");
+    if (normalized.includes("permiso") || error.code === "42501") fail("sin-permiso-cobro");
+    console.error("[premio] update failed", { code: error.code, message: error.message, details: error.details });
+    fail("premio-actualizacion-fallida");
+  }
+  revalidatePath("/pagos");
+  revalidatePath("/dashboard");
+  revalidatePath("/movimientos");
+  redirect("/pagos?resultado=premio-corregido" + (returnAgentId ? "&agent=" + encodeURIComponent(returnAgentId) : ""));
+}
+
+export async function deleteAgencyPrizePayment(formData: FormData) {
+  const { supabase, organizationId, permissions } = await getOrg();
+  const returnAgentRaw = String(formData.get("return_agent_id") ?? "").trim();
+  const returnAgentId = /^[-0-9a-f]{0,36}$/i.test(returnAgentRaw) ? returnAgentRaw : "";
+  const returnSuffix = returnAgentId ? "&agent=" + encodeURIComponent(returnAgentId) : "";
+  const fail = (code: string): never => redirect("/pagos?error=" + encodeURIComponent(code) + returnSuffix);
+  if (!permissions.can_register_payments) fail("sin-permiso-cobro");
+  const paymentId = String(formData.get("prize_payment_id") ?? "").trim();
+  if (!paymentId) fail("premio-no-encontrado");
+
+  const { error } = await supabase.rpc("delete_agency_prize_payment", {
+    p_organization_id: organizationId,
+    p_prize_payment_id: paymentId,
+  });
+  if (error) {
+    const normalized = error.message.toLowerCase();
+    if (normalized.includes("movimiento") || normalized.includes("caja")) fail("premio-movimiento-inconsistente");
+    if (normalized.includes("permiso") || error.code === "42501") fail("sin-permiso-cobro");
+    console.error("[premio] delete failed", { code: error.code, message: error.message, details: error.details });
+    fail("premio-eliminacion-fallida");
+  }
+  revalidatePath("/pagos");
+  revalidatePath("/dashboard");
+  revalidatePath("/movimientos");
+  redirect("/pagos?resultado=premio-eliminado" + (returnAgentId ? "&agent=" + encodeURIComponent(returnAgentId) : ""));
 }
 

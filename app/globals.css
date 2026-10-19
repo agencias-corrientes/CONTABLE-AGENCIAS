@@ -142,6 +142,8 @@ html,body{background:var(--bg);color:var(--text)}
 .rendition-page-topbar{align-items:center}
 .rendition-manual-backup-form{margin:0;flex:0 0 auto}
 .rendition-stats .stat-card{min-width:0}
+.rendition-stats .rendition-total-card{background:#fff6cf;border-color:#e8d991;border-top-color:#c5a43b;color:#4b3d16}
+.rendition-stats .rendition-total-card span,.rendition-stats .rendition-total-card small{color:#6c5b28}
 .rendition-agent-selector{padding:14px 0 0;margin-top:18px;border-top:1px solid #ded3b4}
 .rendition-agent-selector-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
 .rendition-agent-selector-head h2{font-size:17px;margin:0}
@@ -524,21 +526,33 @@ html,body{background:var(--bg);color:var(--text)}
 .prize-capture-options .button{min-height:42px}
 .prize-payment-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .prize-payment-grid label{display:flex;flex-direction:column;gap:6px;min-width:0;font-weight:700}
+.prize-included-ocr{display:flex;flex-direction:row!important;align-items:flex-start;gap:10px!important;font-weight:700}
+.prize-included-ocr input{width:18px;height:18px;flex:0 0 auto;margin:2px 0 0}
+.prize-included-ocr span{display:grid;gap:4px}
+.prize-included-ocr small{font-weight:400;line-height:1.4}
 .prize-payment-grid input,.prize-payment-panel textarea,.prize-payment-panel input[type=file]{width:100%;min-width:0;max-width:100%}
 .prize-payment-panel label small{font-weight:400;line-height:1.45}
 .prize-payment-recent{border-top:1px solid var(--line);margin-top:20px;padding-top:14px}
 .prize-payment-recent h3{margin:0 0 10px;font-size:17px}
 .prize-payment-recent-list{display:grid;gap:0}
 .prize-payment-recent-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid var(--line)}
+.prize-payment-recent-item{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center}
 .prize-payment-recent-item:last-child{border-bottom:0}
 .prize-payment-recent-item>span{display:flex;flex-direction:column;gap:4px;min-width:0}
 .prize-payment-recent-item small{color:var(--muted);overflow-wrap:anywhere}
 .prize-payment-recent-item>strong{white-space:nowrap}
+.prize-payment-row-actions{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.prize-payment-row-actions form{margin:0}
+.prize-payment-edit-form{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:6px;padding:12px;border-radius:10px;background:var(--surface2)}
+.prize-payment-edit-form label{display:flex;flex-direction:column;gap:5px;font-weight:700}
+.prize-payment-edit-form input,.prize-payment-edit-form textarea{width:100%;min-width:0}
+.prize-payment-edit-form label:last-of-type{grid-column:1/-1}
 @media(max-width:700px){
  .prize-payment-panel{padding:13px;margin:14px 0}
  .prize-payment-grid{grid-template-columns:1fr}
  .prize-capture-options>*{flex:1 1 100%}
  .prize-payment-recent-item{align-items:flex-start}
+ .prize-payment-edit-form{grid-template-columns:1fr}
 }
 
 

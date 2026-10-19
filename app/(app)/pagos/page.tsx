@@ -20,6 +20,23 @@ type GameAmount = {
   agency_game_types: { id: string; name: string; category: string } | null;
 };
 
+function reportedPrizeTotal(receipt: any): number {
+  if (!receipt || typeof receipt !== "object") return 0;
+  const tickets = receipt.type === "loteria-corrientes-end-of-day-batch-v1" && Array.isArray(receipt.tickets)
+    ? receipt.tickets
+    : receipt.type === "loteria-corrientes-end-of-day-v1" ? [receipt] : [];
+  return tickets.reduce((sum: number, ticket: any) => {
+    const totalAmount = ticket?.totalPrizes?.amount;
+    const components = [ticket?.quiniela?.prizesPaid?.amount, ticket?.quinielaAlToque?.prizesPaid?.amount, ticket?.otherGamesPrizes?.amount]
+      .filter((value) => value !== null && value !== undefined && Number.isFinite(Number(value)));
+    const componentsTotal = components.reduce((subtotal: number, value: unknown) => subtotal + Math.max(0, Number(value)), 0);
+    if (totalAmount !== null && totalAmount !== undefined && Number.isFinite(Number(totalAmount)) && Number(totalAmount) > 0) {
+      return sum + Number(totalAmount);
+    }
+    return sum + componentsTotal;
+  }, 0);
+}
+
 export default async function PagosPage({ searchParams }: { searchParams?: Promise<{ agent?: string; busqueda?: string; resultado?: string; error?: string; backup?: string; foto?: string; copias?: string; ticket?: string }> }) {
   const params = searchParams ? await searchParams : {};
   const selectedAgentId = params.agent ?? "";
@@ -38,10 +55,10 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const canRegisterPayments = Boolean(permissions?.can_register_payments);
   const { data: recentPrizePaymentRows } = await supabase
     .from("agency_prize_payments")
-    .select("id,coupon_number,game_name,prize_amount,payment_date,capture_method")
+    .select("id,coupon_number,game_name,prize_amount,payment_date,capture_method,notes,included_in_ticket_ocr")
     .eq("organization_id", activeOrganization.id)
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(25);
   const recentPrizePayments = (recentPrizePaymentRows ?? []).map((row: any) => ({
     id: String(row.id),
     coupon_number: String(row.coupon_number),
@@ -49,6 +66,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     prize_amount: Number(row.prize_amount),
     payment_date: String(row.payment_date),
     capture_method: String(row.capture_method),
+    notes: row.notes ? String(row.notes) : null,
+    included_in_ticket_ocr: Boolean(row.included_in_ticket_ocr),
   }));
 
   const [{ data: operationalSettings }, { data: agents }, { data: gameTypes }, { data: agentCommissions }, { data: commissionDefaults }] = await Promise.all([
@@ -62,11 +81,12 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const today = agencyBusinessDateForCutoff(cutoffTime);
   const { data: todayPrizePaymentRows, error: todayPrizePaymentError } = await supabase
     .from("agency_prize_payments")
-    .select("prize_amount")
+    .select("prize_amount,included_in_ticket_ocr")
     .eq("organization_id", activeOrganization.id)
     .eq("payment_date", today);
   if (todayPrizePaymentError) throw new Error("No se pudieron cargar los premios pagados de hoy: " + todayPrizePaymentError.message);
-  const todayPrizeTotal = (todayPrizePaymentRows ?? []).reduce((sum: number, row: any) => sum + Number(row.prize_amount ?? 0), 0);
+  const todayCashPrizeTotal = (todayPrizePaymentRows ?? []).reduce((sum: number, row: any) =>
+    sum + (row.included_in_ticket_ocr ? 0 : Number(row.prize_amount ?? 0)), 0);
 
   async function loadAllRenditions() {
     const accumulated: any[] = [];
@@ -194,8 +214,10 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const selectedAgent = activeAgents.find((agent) => String(agent.id) === selectedAgentId);
   const todayRendidoBruto = todayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
   const todayTotalNetoAntesDePremios = todayRows.reduce((sum, row) => sum + Number(row.net_due ?? row.amount_due ?? 0), 0);
-  // El TOTAL RENDIDO refleja el efectivo neto tras comisiones y resta los premios pagados en la jornada.
-  const todayTotalRendido = Math.max(0, todayTotalNetoAntesDePremios - todayPrizeTotal);
+  const todayOcrPrizeTotal = todayRows.reduce((sum, row) => sum + reportedPrizeTotal(row.ticket_receipt_data), 0);
+  const todayPrizeTotal = todayOcrPrizeTotal + todayCashPrizeTotal;
+  // Mostrar el saldo negativo también permite detectar premios que superan el neto vendido.
+  const todayTotalRendido = todayTotalNetoAntesDePremios - todayPrizeTotal;
   const todayComisiones = todayRows.reduce((sum, row) => sum + (Array.isArray(row.agency_rendition_game_amounts) ? row.agency_rendition_game_amounts : []).reduce((subtotal: number, game: any) => subtotal + Number(game.commission_amount ?? 0), 0), 0);
   // Pending is based on net cash due after commission, not gross sales minus cash received.
   const todayPendiente = todayRows.reduce((sum, row) => {
@@ -577,10 +599,11 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={drawPeriods.map((period) => period.time).filter((time): time is string => Boolean(time))} renderedAt={new Date().toISOString()} />
       <RenditionScrollHelper />
       <div className="stats-grid compact rendition-stats">
+        <div className="stat-card rendition-total-card"><span>TOTAL RENDIDO</span><strong>{money(todayTotalRendido, activeOrganization.currency_code)}</strong><small>neto después de comisiones y premios · premios descontados: {money(todayPrizeTotal, activeOrganization.currency_code)}</small></div>
         <div className="stat-card"><span>Ventas brutas</span><strong>{money(todayRendidoBruto, activeOrganization.currency_code)}</strong><small>{todayRows.length} registros · antes de comisiones y premios</small></div>
-        <div className="stat-card"><span>TOTAL RENDIDO</span><strong>{money(todayTotalRendido, activeOrganization.currency_code)}</strong><small>neto después de comisiones y premios · premios descontados: {money(todayPrizeTotal, activeOrganization.currency_code)}</small></div>
         <div className="stat-card"><span>Pendiente hoy</span><strong>{money(todayPendiente, activeOrganization.currency_code)}</strong><small>efectivo neto pendiente después de comisión</small></div>
         <div className="stat-card"><span>Comisiones rendidas</span><strong>{money(todayComisiones, activeOrganization.currency_code)}</strong><small>comisiones reconocidas en las rendiciones del día</small></div>
+        <div className="stat-card"><span>Premios pagados</span><strong>{money(todayPrizeTotal, activeOrganization.currency_code)}</strong><small>OCR: {money(todayOcrPrizeTotal, activeOrganization.currency_code)} · Caja fuera de OCR: {money(todayCashPrizeTotal, activeOrganization.currency_code)}</small></div>
       </div>
       {params.ticket === "guardado" && <p className="message success-message">Se guardó el detalle completo del ticket de fin de jornada junto con la rendición.</p>}
       {params.ticket === "error" && <p className="message error-message">La rendición financiera ya se guardó, pero el detalle OCR del ticket no pudo adjuntarse. No vuelvas a registrar la rendición para corregir esto; abrí el registro existente.</p>}
@@ -593,6 +616,8 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       {params.error === "lote-cupon-ya-rendido" && <p className="message error-message">Uno o más cupones de este lote ya figuran en una rendición anterior de este operador. No se volvió a contabilizar.</p>}
       {params.resultado === "ticket-ocr-adjuntado" && <p className="message success-message">Detalle OCR adjuntado al cierre diario existente. No se modificaron importes ni movimientos de Caja.</p>}
       {params.resultado === "premio-pagado" && <p className="message success-message" role="status">Premio registrado y salida de Caja contabilizada. El cupón quedó marcado como pagado y no puede volver a descontarse.</p>}
+      {params.resultado === "premio-corregido" && <p className="message success-message" role="status">Pago de premio corregido. El importe y la fecha del movimiento asociado de Caja se actualizaron juntos.</p>}
+      {params.resultado === "premio-eliminado" && <p className="message success-message" role="status">Pago de premio y movimiento asociado de Caja eliminados juntos; la corrección quedó auditada.</p>}
       {!selectedAgentId ? (
         <>
           <div className="topbar rendition-page-topbar">
@@ -650,6 +675,11 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "premio-foto-invalida": "La foto del cupón debe ser JPG, PNG o WebP y no superar 5 MB.",
         "premio-foto-fallida": "No se pudo guardar la foto del cupón. No se registró el pago de premio.",
         "premio-registro-fallido": "No se pudo registrar el pago de premio. No se descontó de Caja; revisá los datos antes de volver a intentarlo.",
+        "premio-no-encontrado": "No se encontró el pago de premio que intentás corregir.",
+        "premio-fecha-invalida": "Ingresá una fecha de pago válida.",
+        "premio-movimiento-inconsistente": "No se pudo cambiar este pago porque su movimiento vinculado de Caja no coincide. No se modificó ningún dato.",
+        "premio-actualizacion-fallida": "No se pudo corregir el pago de premio. No se modificó el movimiento de Caja.",
+        "premio-eliminacion-fallida": "No se pudo eliminar el pago de premio. No se modificó el movimiento de Caja.",
         "sorteo-ya-rendido": "Este operador ya tiene una rendición activa para ese sorteo. No se creó un duplicado.",
         "juegos-periodo-invalido": "Uno o más juegos no corresponden al turno seleccionado. No se guardó la rendición.",
         "fecha-sorteo-invalida": "La fecha de la rendición debe coincidir con la jornada operativa. No se guardó el registro.",
