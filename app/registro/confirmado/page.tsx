@@ -1,7 +1,20 @@
 import Link from "next/link";
 import Image from "next/image";
+import { createClient } from "@/lib/supabase/server";
 
-export default function RegistrationConfirmedPage() {
+export default async function RegistrationConfirmedPage() {
+  let requestSaved = false;
+  try {
+    const supabase = await createClient();
+    const { data: authData } = await supabase.auth.getClaims();
+    if (authData?.claims?.sub) {
+      const { data, error } = await (supabase as any).rpc("submit_platform_access_request");
+      requestSaved = !error && ["pending", "approved", "member"].includes(String(data));
+    }
+  } catch {
+    requestSaved = false;
+  }
+
   return (
     <main className="auth-page">
       <section className="auth-card" aria-labelledby="confirmed-title">
@@ -17,10 +30,12 @@ export default function RegistrationConfirmedPage() {
         <p className="eyebrow">AGENCIAS CORRIENTES</p>
         <h1 id="confirmed-title">¡Ya estás registrado!</h1>
         <div className="message success-message" role="status">
-          Tu correo electrónico quedó confirmado y tu solicitud de alta ya está registrada. Ahora Administración Central debe aprobarla para que puedas configurar tu agencia.
+          Tu correo electrónico quedó confirmado. {requestSaved
+            ? "La solicitud ya está registrada y aparece en Administración Central para que el administrador maestro pueda aprobarla o rechazarla."
+            : "Iniciá sesión con este mismo correo para registrar la solicitud de aprobación en Administración Central."}
         </div>
         <p className="muted">
-          No necesitás volver a registrarte ni abrir otro enlace. Cuando el administrador apruebe tu solicitud, ingresá con este correo y tu contraseña para continuar con la configuración.
+          No necesitás volver a registrarte ni abrir otro enlace. La agencia solo podrá configurarse después de que Administración Central apruebe el alta.
         </p>
         <div className="form-stack">
           <Link className="button primary full" href="/login?perfil=administrador">
