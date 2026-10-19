@@ -795,6 +795,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [error, setError] = useState("");
   const [confirmationError, setConfirmationError] = useState("");
   const confirmationId = useId();
+  const ticketPhotoInputId = useId();
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">(dailyMode && !dailyCloseAllowed ? "incomplete" : "complete");
   const [reportedAmount, setReportedAmount] = useState("");
@@ -1299,30 +1300,29 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <input type="hidden" name="agent_id" value={agentId} />
         <input type="hidden" name="rendition_id" value={initialRendition?.id ?? ""} />
         <input type="hidden" name="ticket_receipt_data" value={receiptData ? JSON.stringify({ ...receiptData, userConfirmedReview: receiptReviewed }) : ""} />
-        <section className="ticket-capture-status">
-          <div className="rendition-mode-toolbar">
-            <div className="rendition-mode-switch" role="group" aria-label="Método de carga del ticket">
-              <label className="ticket-photo-source-label active" aria-disabled={busy}>
-                Seleccionar archivo
-                <input
-                  className="ticket-photo-native-input"
-                  type="file"
-                  accept="image/*"
-                  aria-label="Seleccionar foto desde cámara, galería o archivos"
-                  disabled={busy}
-                  onChange={(event) => {
-                    const file = event.currentTarget.files?.[0];
-                    if (file) {
-                      setError("");
-                      const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
-                      if (isImage) void processTicket(file);
-                      else setError("El archivo elegido no parece ser una imagen. Seleccioná una foto de cámara, galería o archivos.");
-                    }
-                    event.currentTarget.value = "";
-                  }}
-                />
-              </label>
-            </div>
+        <section className="ticket-capture-panel">
+          <div className="ticket-photo-picker">
+            <span className="ticket-photo-icon" aria-hidden="true">▧</span>
+            <strong>Adjuntar detalle OCR al cierre existente</strong>
+            <span>Seleccioná la foto original del FIN DE JORNADA o una copia guardada. Esto no vuelve a registrar importes ni cobros.</span>
+            <span className="ticket-photo-picker-cta" aria-hidden="true">Elegir foto o archivo</span>
+            <input
+              id={ticketPhotoInputId}
+              className="ticket-photo-native-input"
+              type="file"
+              accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+              aria-label="Elegir foto del ticket para recuperar el detalle OCR"
+              disabled={busy}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                if (file) {
+                  const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
+                  if (isImage) void processTicket(file);
+                  else setError("El archivo elegido no parece ser una imagen. Seleccioná la foto del ticket en Fotos, Galería o Archivos.");
+                }
+                event.currentTarget.value = "";
+              }}
+            />
           </div>
           {photoPreviewUrl && <div className="ticket-photo-preview"><img src={photoPreviewUrl} alt="Vista previa del ticket para recuperar su detalle OCR" /></div>}
           {progress && <p className="ticket-read-notice">{progress}{progressPercent > 0 ? " (" + progressPercent + "%)" : ""}</p>}
@@ -1407,7 +1407,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
-          <button type="button" className={mode === "photo" ? "active" : ""} disabled={busy} onClick={() => setMode("photo")}>Foto automático</button>
+          <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => setMode("photo")}>Foto (automático)</button>
           <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
             setMode("manual");
             if (!receiptData && !initialRendition) {
@@ -1446,6 +1446,24 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         )}
       </div>
 
+      {mode === "manual" && !receiptData && (
+        <section className="manual-closure-template-panel" aria-label="Carga manual de FIN DE JORNADA">
+          <div>
+            <strong>Cargar un FIN DE JORNADA sin foto</strong>
+            <p>Abre el formato del cupón para ingresar los datos identificatorios, períodos, cantidades e importes en sus renglones correspondientes.</p>
+          </div>
+          <button type="button" className="button ghost" onClick={() => {
+            const template = createManualClosureTemplate(games.filter((game) => game.enabled !== false));
+            setReceiptData(template);
+            setAmounts(mapTicketClosureAmounts(template, periodGames));
+            setTicketNumbers("");
+            setReceiptReviewed(false);
+            setGameListExpanded(true);
+            setNotice("Plantilla manual de FIN DE JORNADA abierta. Completá cada valor del cupón antes de confirmar.");
+          }}>Usar formato FIN DE JORNADA</button>
+        </section>
+      )}
+
       {mode === "photo" && (
         <div className="ticket-capture-panel">
           <div className="ticket-photo-picker">
@@ -1454,6 +1472,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             <span>Seleccioná una foto guardada en el teléfono o sacá una nueva.</span>
             <span className="ticket-photo-picker-cta" aria-hidden="true">Elegir foto o archivo</span>
             <input
+              id={ticketPhotoInputId}
               className="ticket-photo-native-input"
               type="file"
               name="ticket_photo"
@@ -1474,36 +1493,17 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               }}
             />
           </div>
-        </div>
-      )}
-
-      {mode === "manual" && !receiptData && (
-        <section className="manual-closure-template-panel" aria-label="Carga manual de FIN DE JORNADA">
-          <div>
-            <strong>Cargar un FIN DE JORNADA sin foto</strong>
-            <p>Abre el formato del cupón para ingresar los datos identificatorios, períodos, cantidades e importes en sus renglones correspondientes.</p>
-          </div>
-          <button type="button" className="button ghost" onClick={() => {
-            const template = createManualClosureTemplate(games.filter((game) => game.enabled !== false));
-            setReceiptData(template);
-            setAmounts(mapTicketClosureAmounts(template, periodGames));
-            setTicketNumbers("");
-            setReceiptReviewed(false);
-            setGameListExpanded(true);
-            setNotice("Plantilla manual de FIN DE JORNADA abierta. Completá cada valor del cupón antes de confirmar.");
-          }}>Usar formato FIN DE JORNADA</button>
-        </section>
-      )}
-
-      {mode === "photo" && (
-        <div className="ticket-capture-status">
           {batchMode && (
             <div className="weekly-ticket-batch-upload-help">
               <div>
                 <strong>{batchTickets.length === 0 ? "Carga acumulada de FIN DE JORNADA" : `${batchTickets.length} cupón${batchTickets.length === 1 ? "" : "es"} agregado${batchTickets.length === 1 ? "" : "s"}`}</strong>
-                <p>{batchTickets.length === 0 ? "Elegí el primer cupón con el botón Foto automático. Después, volvé a presionarlo para agregar cada cupón siguiente sin registrar otra rendición." : "El cupón quedó en este lote. Volvé a presionar Foto automático para sumar el siguiente comprobante a la misma rendición."}</p>
+                <p>{batchTickets.length === 0 ? "Elegí el primer comprobante. Después podés agregar los demás, uno por uno, sin registrar una rendición todavía." : "El cupón ya está en este lote. Volvé a elegir otro archivo para sumar el siguiente comprobante a la misma rendición."}</p>
               </div>
-              <small>Máximo 12 cupones por lote. Revisá los datos y marcá la revisión antes de confirmar.</small>
+              <button type="button" className="button ghost small" disabled={busy || batchTickets.length >= 12} onClick={() => {
+                const input = document.getElementById(ticketPhotoInputId) as HTMLInputElement | null;
+                input?.click();
+              }}>{batchTickets.length === 0 ? "Elegir primer FIN DE JORNADA" : "Agregar otro FIN DE JORNADA"}</button>
+              <small>Repetí esta operación por cada cupón. Revisá la lista y marcá la revisión antes de tocar “Confirmar rendición acumulada”. Máximo 12 cupones por lote.</small>
             </div>
           )}
           {photoPreviewUrl && <div className="ticket-photo-preview"><button type="button" className="ticket-photo-preview-button" onClick={() => setPhotoExpanded(true)} aria-label="Ampliar foto del ticket"><img src={photoPreviewUrl} alt="Vista previa del ticket cargado" /><span>Ampliar foto</span></button></div>}
