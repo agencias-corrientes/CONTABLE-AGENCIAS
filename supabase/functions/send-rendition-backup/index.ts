@@ -36,6 +36,69 @@ function relationOne<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? value[0] ?? null : value ?? null;
 }
 
+function historicalMetric(label: string, value: any): string[] {
+  if (!value || typeof value !== "object") return [];
+  const count = value.count;
+  const amount = value.amount;
+  if (count == null && amount == null) return [];
+  const parts: string[] = [];
+  if (count != null && Number.isFinite(Number(count))) parts.push("cantidad " + String(count));
+  if (amount != null && Number.isFinite(Number(amount))) parts.push("importe $ " + formatBackupAmount(amount));
+  return [label + ": " + parts.join(" · ")];
+}
+
+function historicalReceiptLines(value: any): string[] {
+  if (!value || typeof value !== "object") return [];
+  const tickets = value.type === "loteria-corrientes-end-of-day-batch-v1" && Array.isArray(value.tickets)
+    ? value.tickets
+    : [value];
+  const lines: string[] = [];
+  tickets.forEach((ticket: any, index: number) => {
+    if (!ticket || typeof ticket !== "object") return;
+    if (tickets.length > 1) lines.push("Ticket OCR " + (index + 1) + " de " + tickets.length);
+    const identifiers: [string, unknown][] = [
+      ["Agencia del ticket", ticket.agencyCode],
+      ["Subagencia", ticket.subagentCode],
+      ["Máquina", ticket.machineCode],
+      ["Terminal", ticket.terminalId],
+      ["Domicilio", ticket.address],
+      ["Período", ticket.periodNumber],
+      ["Impreso", ticket.printedAt?.date && ticket.printedAt?.time ? String(ticket.printedAt.date) + " " + String(ticket.printedAt.time) : ticket.printedAt?.date ?? ticket.printedAt?.time],
+      ["Cierre", ticket.closedAt?.date && ticket.closedAt?.time ? String(ticket.closedAt.date) + " " + String(ticket.closedAt.time) : ticket.closedAt?.date ?? ticket.closedAt?.time],
+    ];
+    for (const [label, raw] of identifiers) {
+      const text = String(raw ?? "").trim();
+      if (text) lines.push(label + ": " + text);
+    }
+    lines.push(...historicalMetric("Quiniela · válidos", ticket.quiniela?.valids));
+    lines.push(...historicalMetric("Quiniela · premios pagados", ticket.quiniela?.prizesPaid));
+    lines.push(...historicalMetric("Quiniela al Toque · válidos", ticket.quinielaAlToque?.valids));
+    lines.push(...historicalMetric("Quiniela al Toque · premios pagados", ticket.quinielaAlToque?.prizesPaid));
+    if (Array.isArray(ticket.otherGames)) {
+      for (const game of ticket.otherGames) {
+        const name = String(game?.name ?? "Otro juego");
+        lines.push(...historicalMetric(name + " · ventas válidas", { count: game?.count, amount: game?.amount }));
+      }
+    }
+    lines.push(...historicalMetric("Otros juegos · premios pagados", ticket.otherGamesPrizes));
+    lines.push(...historicalMetric("Otros juegos · total", ticket.totalOtherGames));
+    lines.push(...historicalMetric("Premios pagados · total del ticket", ticket.totalPrizes));
+    lines.push(...historicalMetric("Total general del ticket", ticket.generalTotal));
+    if (ticket.digital && typeof ticket.digital === "object") {
+      for (const [key, metric] of Object.entries(ticket.digital)) {
+        lines.push(...historicalMetric("Medios digitales · " + key, metric));
+      }
+    }
+    const rawText = String(ticket.rawText ?? "").trim();
+    if (rawText) {
+      lines.push("Texto OCR original:");
+      lines.push(rawText.slice(0, 12000));
+      if (rawText.length > 12000) lines.push("[Texto OCR recortado para mantener el respaldo legible.]");
+    }
+  });
+  return lines;
+}
+
 async function queueHistoricalRenditionBackups(
   admin: any,
   organizationId: string,
@@ -184,6 +247,11 @@ async function queueHistoricalRenditionBackups(
       "",
       "TICKETS / CUPONES",
       ticketLines.length ? ticketLines.join("\n") : "(sin tickets cargados)",
+      "",
+      "LECTURA OCR DEL TICKET",
+      historicalReceiptLines(rendition.ticket_receipt_data).length
+        ? historicalReceiptLines(rendition.ticket_receipt_data).join("\n")
+        : "(sin datos OCR guardados para esta rendición)",
       "",
       "OBSERVACIONES / MOTIVO: " + String(rendition.notes ?? "—"),
       "ID DE RENDICIÓN: " + String(rendition.id),
