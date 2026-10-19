@@ -15,9 +15,9 @@ export default function RegistrationConfirmedPage() {
           />
         </div>
         <p className="eyebrow">AGENCIAS CORRIENTES</p>
-        <h1 id="confirmed-title">¡Registro recibido!</h1>
+        <h1 id="confirmed-title">¡Ya estás registrado!</h1>
         <div className="message success-message" role="status">
-          Tu correo electrónico se confirmó correctamente y el registro quedó recibido. Todavía falta que Administración Central autorice tu agencia.
+          Tu correo electrónico quedó confirmado y tu solicitud de alta ya está registrada. Ahora Administración Central debe aprobarla para que puedas configurar tu agencia.
         </div>
         <p className="muted">
           No necesitás volver a registrarte ni abrir otro enlace. Cuando el administrador apruebe tu solicitud, ingresá con este correo y tu contraseña para continuar con la configuración.
