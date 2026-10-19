@@ -886,3 +886,48 @@ input:focus,select:focus,textarea:focus{
   .ticket-save-success{gap:14px}
   .ticket-save-return{width:100%;min-height:48px;white-space:normal}
 }
+
+/* Ajuste solicitado: todos los controles tipo botón son rectangulares, con esquinas rectas. */
+button,
+.button,
+[class*="-button"],
+[class*="button-"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+.ticket-photo-picker-cta {
+  border-radius: 0 !important;
+}
+
+/* Administración Central: botones rectangulares, de ancho completo y separados en móvil. */
+.landing-central-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 26px !important;
+}
+.landing-central-actions > .button {
+  width: 100% !important;
+  min-height: 58px !important;
+  padding: 15px 20px !important;
+  border-radius: 0 !important;
+}
+.platform-admin-page .platform-access-navigation {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 26px !important;
+  margin-bottom: 30px !important;
+}
+.platform-admin-page .platform-access-navigation > .platform-summary-button {
+  width: 100%;
+  min-height: 58px !important;
+  padding: 15px 20px !important;
+  border-radius: 0 !important;
+}
+.platform-admin-page .platform-back-control-button {
+  display: flex;
+  width: 100%;
+  min-height: 58px !important;
+  margin-top: 22px !important;
+  padding: 15px 20px !important;
+  border-radius: 0 !important;
+}

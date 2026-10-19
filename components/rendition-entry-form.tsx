@@ -880,6 +880,23 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     return canvas;
   }
 
+  function processSelectedTicketFile(file: File) {
+    const declaredType = String(file.type ?? "").toLowerCase();
+    const isDefinitelyVideo =
+      declaredType.startsWith("video/") ||
+      /\.(mp4|mov|m4v|avi|webm|3gp|3g2|mpeg|mpg|mkv|wmv)$/i.test(file.name);
+
+    if (isDefinitelyVideo) {
+      setError("El comprobante debe ser una foto fija, no un video. Elegí la cámara fotográfica o una imagen desde Archivos.");
+      setNotice("");
+      return;
+    }
+
+    // Algunos selectores/cámaras móviles devuelven type vacío o application/octet-stream.
+    // Se permite que el decodificador de imágenes compruebe el archivo en lugar de descartarlo aquí.
+    void processTicket(file);
+  }
+
   async function processTicket(file: File) {
     setBusy(true);
     setError("");
@@ -1316,9 +1333,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               onChange={(event) => {
                 const file = event.currentTarget.files?.[0];
                 if (file) {
-                  const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
-                  if (isImage) void processTicket(file);
-                  else setError("El archivo elegido no parece ser una imagen. Seleccioná la foto del ticket en Fotos, Galería o Archivos.");
+                  processSelectedTicketFile(file);
                 }
                 event.currentTarget.value = "";
               }}
@@ -1476,19 +1491,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               className="ticket-photo-native-input"
               type="file"
               name="ticket_photo"
-              accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
               aria-label="Elegir foto o archivo del comprobante del ticket"
               disabled={busy}
               onChange={(event) => {
                 const file = event.currentTarget.files?.[0];
                 if (file) {
-                  const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
-                  if (isImage) {
-                    void processTicket(file);
-                  } else {
-                    setError("El archivo elegido no parece ser una imagen. Seleccioná una foto del ticket en Fotos, Galería o Archivos.");
-                    setNotice("");
-                  }
+                  processSelectedTicketFile(file);
                 }
                 event.currentTarget.value = "";
               }}

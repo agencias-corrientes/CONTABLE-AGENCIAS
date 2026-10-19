@@ -321,7 +321,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
           <div className="button ghost platform-summary-button"><span>Cuentas de acceso</span><strong>{users.length}</strong></div>
         </div>
         <div className="platform-access-navigation">
-          <Link className="button ghost platform-summary-button" href="/">Volver a Administración Central</Link>
+          <Link className="button ghost platform-summary-button" href="/">Volver a Control de Agencias</Link>
           {currentMember?.organization_id && <Link className="button ghost platform-summary-button" href="/pagos">Ingresar a mi agencia</Link>}
           <SignOutButton className="button ghost platform-summary-button platform-logout-button" />
         </div>
@@ -540,7 +540,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
           <p className="muted small-text">La cuenta administradora central está protegida para evitar que se bloquee a sí misma desde este panel.</p>
         </div>
 
-        <Link href="/">Volver a Administración Central</Link>
+        <Link className="button ghost platform-summary-button platform-back-control-button" href="/">Volver a Control de Agencias</Link>
       </section>
     </main>
   );
