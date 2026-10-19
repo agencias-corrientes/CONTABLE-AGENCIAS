@@ -318,6 +318,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
           <div className="button ghost platform-summary-button"><span>Cuentas de acceso</span><strong>{users.length}</strong></div>
         </div>
         <div className="platform-access-navigation">
+          <Link className="button primary platform-summary-button" href="#solicitudes-alta">Revisar altas y aprobar/rechazar</Link>
           <Link className="button ghost platform-summary-button" href="/">Volver a Control de Agencias</Link>
           {currentMember?.organization_id && <Link className="button ghost platform-summary-button" href="/pagos">Ingresar a mi agencia</Link>}
           <SignOutButton className="button ghost platform-summary-button platform-logout-button" />
@@ -397,7 +398,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
           )}
         </section>
 
-        <section className="platform-access-section">
+        <section className="platform-access-section" id="solicitudes-alta">
           <h2>2. Solicitudes de alta pendientes</h2>
           <p className="muted">Cuando el titular completa el registro y confirma el correo, la solicitud aparece aquí. Aprobala para que pueda continuar y configurar su agencia; rechazala si no corresponde.</p>
           {requests.length === 0 ? (
