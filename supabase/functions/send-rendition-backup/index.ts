@@ -21,8 +21,6 @@ const DAILY_CLOSE_CRON_SECRET_SHA256 =
   "eb9a0fcfbf3e942ea3530ced14b5976aff59c6a64f426d10577a875ac804cceb";
 
 const AGENCY_TIME_ZONE = "America/Argentina/Cordoba";
-const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbz4sFO9eo0FaCjl76Og5-aYceYzdfyibpDwBnZTNtnvz1Qm_tfjwg0x47Uck4JAzCo-fA/exec";
 const HISTORICAL_BACKUP_SUBJECT_PREFIX = "[HISTÓRICO · ENVÍO MANUAL] ";
 
 function formatBackupAmount(value: unknown): string {
@@ -513,74 +511,70 @@ function formatBackupHtml(text: string): string {
   return html;
 }
 
-async function sendBackupThroughAppsScript(
-  token: string,
+async function sendBackupThroughResend(
+  apiKey: string,
+  sender: string,
   payload: {
     to: string;
     subject: string;
     text: string;
     html: string;
     attachments: { filename: string; content: string }[];
+    idempotencyKey: string;
   },
 ): Promise<void> {
-  let response = await fetch(APPS_SCRIPT_URL, {
+  const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: { "Content-Type": "text/plain;charset=UTF-8" },
-    body: JSON.stringify({ secret: token, ...payload }),
-    redirect: "manual",
-    signal: AbortSignal.timeout(20000),
+    headers: {
+      "Authorization": "Bearer " + apiKey,
+      "Content-Type": "application/json",
+      "Idempotency-Key": payload.idempotencyKey,
+    },
+    body: JSON.stringify({
+      from: sender,
+      to: [payload.to],
+      subject: payload.subject,
+      text: payload.text,
+      html: payload.html,
+      ...(payload.attachments.length ? { attachments: payload.attachments } : {}),
+    }),
+    signal: AbortSignal.timeout(30000),
   });
 
-  let redirectHops = 0;
-  while ([301, 302, 303, 307, 308].includes(response.status) && redirectHops < 5) {
-    const location = response.headers.get("location");
-    if (!location) break;
-
-    const nextUrl = new URL(location, APPS_SCRIPT_URL);
-    if (
-      nextUrl.origin === new URL(APPS_SCRIPT_URL).origin &&
-      nextUrl.pathname.includes("/macros/s/") &&
-      nextUrl.pathname.endsWith("/exec")
-    ) {
-      break;
-    }
-
-    redirectHops++;
-    response = await fetch(nextUrl.toString(), {
-      method: "GET",
-      redirect: "manual",
-      signal: AbortSignal.timeout(20000),
-    });
-  }
-
-  let result: { ok?: boolean; error?: string } = {};
+  const responseText = await response.text();
+  let result: Record<string, unknown> | null = null;
   try {
-    result = await response.json();
+    result = JSON.parse(responseText);
   } catch {
-    // No guardamos el cuerpo del proveedor: puede incluir datos del correo.
+    result = null;
   }
 
-  if (!response.ok || result.ok !== true) {
-    const detail = typeof result.error === "string" ? result.error : "respuesta inválida";
-    throw new Error(
-      "Apps Script no confirmó el envío (HTTP " + response.status + ", " + detail + ").",
-    );
+  if (!response.ok || typeof result?.id !== "string") {
+    const detail = typeof result?.message === "string"
+      ? result.message
+      : typeof result?.name === "string" ? result.name : "respuesta inválida";
+    throw new Error("Resend no confirmó el envío (HTTP " + response.status + ", " + detail + ").");
   }
 }
 
 async function sendDailyCloseBackups(
   admin: any,
-  mailToken: string | undefined,
+  resendApiKey: string | undefined,
+  resendFromEmail: string | undefined,
   organizationIdFilter?: string,
   onlyRenditionId?: string,
   scheduledOnly = false,
 ) {
-  if (!mailToken) {
+  if (!resendApiKey) {
     return reply({
       error: "email_provider_not_configured",
-      message: "Configure AGENCY_MAIL_TOKEN en los secretos de la función de Supabase.",
+      message: "Configure RESEND_API_KEY en los secretos de la función de Supabase.",
     }, 503);
   }
+
+  // Sin dominio verificado, Resend permite probar con el correo titular de la cuenta.
+  const sender = String(resendFromEmail ?? "").trim() ||
+    "Agencias Corrientes <onboarding@resend.dev>";
 
   const now = new Date();
   const dateInfo = agencyDateInfo(now);
@@ -818,12 +812,28 @@ async function sendDailyCloseBackups(
     }
 
     try {
-      await sendBackupThroughAppsScript(mailToken, {
+      const idempotencySource = [
+        "agency-rendition-backup",
+        organizationId,
+        dateInfo.isoDay,
+        claimed.map((row) => String(row.id)).sort().join(","),
+      ].join("|");
+      const idempotencyDigest = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(idempotencySource),
+      );
+      const idempotencyKey = "agency-backup-" + Array.from(
+        new Uint8Array(idempotencyDigest),
+        (byte) => byte.toString(16).padStart(2, "0"),
+      ).join("").slice(0, 48);
+
+      await sendBackupThroughResend(resendApiKey, sender, {
         to: recipient,
         subject: "Backup diario de rendiciones - " + dateInfo.displayDay,
         text: textBody,
         html: formatBackupHtml(textBody),
         attachments,
+        idempotencyKey,
       });
     } catch (cause) {
       const reason = cause instanceof Error
@@ -878,7 +888,8 @@ async function sendDailyCloseBackups(
 
 async function sendScheduledDailyBackups(
   admin: any,
-  mailToken: string | undefined,
+  resendApiKey: string | undefined,
+  resendFromEmail: string | undefined,
 ) {
   const now = new Date();
   const currentTime = new Intl.DateTimeFormat("en-GB", {
@@ -942,7 +953,8 @@ async function sendScheduledDailyBackups(
   for (const organizationId of dueOrganizations) {
     const response = await sendDailyCloseBackups(
       admin,
-      mailToken,
+      resendApiKey,
+      resendFromEmail,
       organizationId,
       undefined,
       true,
@@ -989,7 +1001,8 @@ Deno.serve(async (request: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
     Deno.env.get("SUPABASE_SECRET_KEY");
 
-  const mailToken = Deno.env.get("AGENCY_MAIL_TOKEN");
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  const resendFromEmail = Deno.env.get("RESEND_FROM_EMAIL");
 
   if (!supabaseUrl || !anonKey || !serviceKey) {
     return reply({ error: "supabase_function_secrets_missing" }, 500);
@@ -1057,7 +1070,7 @@ Deno.serve(async (request: Request) => {
   });
 
   if (cronAuthorized) {
-    return await sendScheduledDailyBackups(admin, mailToken);
+    return await sendScheduledDailyBackups(admin, resendApiKey, resendFromEmail);
   }
 
   if (payload.manual_close === true) {
@@ -1079,7 +1092,8 @@ Deno.serve(async (request: Request) => {
 
     return await sendDailyCloseBackups(
       admin,
-      mailToken,
+      resendApiKey,
+      resendFromEmail,
       manualOrganizationId,
     );
   }
@@ -1156,7 +1170,8 @@ Deno.serve(async (request: Request) => {
   // El reintento desde Personal envía esta rendición ahora, sin esperar al cierre.
   return await sendDailyCloseBackups(
     admin,
-    mailToken,
+    resendApiKey,
+    resendFromEmail,
     String(outbox.organization_id),
     String(outbox.rendition_id),
   );
