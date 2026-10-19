@@ -795,19 +795,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [error, setError] = useState("");
   const [confirmationError, setConfirmationError] = useState("");
   const confirmationId = useId();
-  const ticketPhotoInputRef = useRef<HTMLInputElement>(null);
-  const openTicketPhotoPicker = () => {
-    if (busy) return;
-    const input = ticketPhotoInputRef.current;
-    if (!input) return;
-    try {
-      const showPicker = (input as HTMLInputElement & { showPicker?: () => void }).showPicker;
-      if (typeof showPicker === "function") showPicker.call(input);
-      else input.click();
-    } catch {
-      input.click();
-    }
-  };
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">(dailyMode && !dailyCloseAllowed ? "incomplete" : "complete");
   const [reportedAmount, setReportedAmount] = useState("");
@@ -1315,14 +1302,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <section className="ticket-capture-status">
           <div className="rendition-mode-toolbar">
             <div className="rendition-mode-switch" role="group" aria-label="Método de carga del ticket">
-              <button type="button" className="active ticket-photo-source-label" disabled={busy} onClick={openTicketPhotoPicker}>Foto automático</button>
-            </div>
-          </div>
-          <input
-                  ref={ticketPhotoInputRef}
+              <label className="ticket-photo-source-label active" aria-disabled={busy}>
+                Seleccionar archivo
+                <input
                   className="ticket-photo-native-input"
                   type="file"
-                  accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+                  accept="image/*"
                   aria-label="Seleccionar foto desde cámara, galería o archivos"
                   disabled={busy}
                   onChange={(event) => {
@@ -1336,6 +1321,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                     event.currentTarget.value = "";
                   }}
                 />
+              </label>
+            </div>
+          </div>
           {photoPreviewUrl && <div className="ticket-photo-preview"><img src={photoPreviewUrl} alt="Vista previa del ticket para recuperar su detalle OCR" /></div>}
           {progress && <p className="ticket-read-notice">{progress}{progressPercent > 0 ? " (" + progressPercent + "%)" : ""}</p>}
           {error && <p className="ticket-read-error" role="alert">{error}</p>}
@@ -1417,41 +1405,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         </>
       )}
 
-      <input
-        ref={ticketPhotoInputRef}
-        className="ticket-photo-native-input"
-        type="file"
-        name="ticket_photo"
-        accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-        aria-label="Seleccionar foto o archivo del ticket"
-        disabled={busy}
-        onChange={(event) => {
-          const file = event.currentTarget.files?.[0];
-          if (file) {
-            const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
-            if (isImage) {
-              void processTicket(file);
-            } else {
-              setError("El archivo elegido no parece ser una imagen. Seleccioná una foto del ticket en Fotos, Galería o Archivos.");
-              setNotice("");
-            }
-          }
-          event.currentTarget.value = "";
-        }}
-      />
-
       <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
-          <button
-            type="button"
-            className={mode === "photo" ? "active" : ""}
-            disabled={busy}
-            onClick={() => {
-              setMode("photo");
-              setError("");
-              openTicketPhotoPicker();
-            }}
-          >Foto automático</button>
+          <button type="button" className={mode === "photo" ? "active" : ""} disabled={busy} onClick={() => setMode("photo")}>Foto automático</button>
           <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
             setMode("manual");
             if (!receiptData && !initialRendition) {
@@ -1489,6 +1445,37 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           </div>
         )}
       </div>
+
+      {mode === "photo" && (
+        <div className="ticket-capture-panel">
+          <div className="ticket-photo-picker">
+            <span className="ticket-photo-icon" aria-hidden="true">▧</span>
+            <strong>Comprobante del ticket</strong>
+            <span>Seleccioná una foto guardada en el teléfono o sacá una nueva.</span>
+            <span className="ticket-photo-picker-cta" aria-hidden="true">Elegir foto o archivo</span>
+            <input
+              className="ticket-photo-native-input"
+              type="file"
+              name="ticket_photo"
+              aria-label="Elegir foto o archivo del comprobante del ticket"
+              disabled={busy}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                if (file) {
+                  const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
+                  if (isImage) {
+                    void processTicket(file);
+                  } else {
+                    setError("El archivo elegido no parece ser una imagen. Seleccioná una foto del ticket en Fotos, Galería o Archivos.");
+                    setNotice("");
+                  }
+                }
+                event.currentTarget.value = "";
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {mode === "manual" && !receiptData && (
         <section className="manual-closure-template-panel" aria-label="Carga manual de FIN DE JORNADA">
