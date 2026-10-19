@@ -786,6 +786,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [receiptReviewed, setReceiptReviewed] = useState(Boolean((initialRendition?.receiptData as any)?.userConfirmedReview));
   const [ocrText, setOcrText] = useState("");
   const [fileName, setFileName] = useState("");
+  const [photoSource, setPhotoSource] = useState<"camera" | "library">("camera");
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
   const [photoExpanded, setPhotoExpanded] = useState(false);
   const [progress, setProgress] = useState("");
@@ -1301,14 +1302,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <input type="hidden" name="ticket_receipt_data" value={receiptData ? JSON.stringify({ ...receiptData, userConfirmedReview: receiptReviewed }) : ""} />
         <section className="ticket-capture-status">
           <div className="rendition-mode-toolbar">
-            <div className="rendition-mode-switch" role="group" aria-label="Método de carga del ticket">
-              <label className="ticket-photo-source-label active" aria-disabled={busy}>
-                Seleccionar archivo
+            <div className="rendition-mode-switch ticket-photo-source-options" role="group" aria-label="Método de carga del ticket">
+              <label className="ticket-photo-source-label active ticket-photo-camera-label" aria-disabled={busy}>
+                <span aria-hidden="true">📷 </span>Foto automático
                 <input
                   className="ticket-photo-native-input"
                   type="file"
                   accept="image/*"
-                  aria-label="Seleccionar imagen desde cámara, galería o archivos"
+                  capture="environment"
+                  aria-label="Sacar una foto del ticket con la cámara"
                   disabled={busy}
                   onChange={(event) => {
                     const file = event.currentTarget.files?.[0];
@@ -1316,7 +1318,27 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                       setError("");
                       const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
                       if (isImage) void processTicket(file);
-                      else setError("El archivo elegido no parece ser una imagen. Seleccioná la foto del ticket en Fotos, Galería o Archivos.");
+                      else setError("El archivo elegido no parece ser una imagen. Sacá una foto o elegí una imagen de Fotos, Galería o Archivos.");
+                    }
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+              <label className="ticket-photo-source-label ticket-photo-library-label" aria-disabled={busy}>
+                <span aria-hidden="true">📁 </span>Elegir archivo o galería
+                <input
+                  className="ticket-photo-native-input"
+                  type="file"
+                  accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+                  aria-label="Elegir una imagen del teléfono, galería o archivos"
+                  disabled={busy}
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    if (file) {
+                      setError("");
+                      const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
+                      if (isImage) void processTicket(file);
+                      else setError("El archivo elegido no parece ser una imagen. Elegí una imagen de Fotos, Galería o Archivos.");
                     }
                     event.currentTarget.value = "";
                   }}
@@ -1408,26 +1430,57 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
           <label
-            className={(mode === "photo" ? "active " : "") + "ticket-photo-source-label"}
+            className={(mode === "photo" && photoSource === "camera" ? "active " : "") + "ticket-photo-source-label ticket-photo-camera-label"}
             aria-disabled={busy}
           >
-            Seleccionar archivo
+            <span aria-hidden="true">📷 </span>Foto automático
             <input
               className="ticket-photo-native-input"
               type="file"
-              name="ticket_photo"
+              name={photoSource === "camera" ? "ticket_photo" : undefined}
               accept="image/*"
-              aria-label="Seleccionar imagen desde cámara, galería o archivos"
+              capture="environment"
+              aria-label="Sacar una foto del ticket con la cámara"
               disabled={busy}
               onChange={(event) => {
                 const file = event.currentTarget.files?.[0];
                 if (file) {
+                  setPhotoSource("camera");
                   setMode("photo");
                   setError("");
                   const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
                   if (isImage) void processTicket(file);
                   else {
-                    setError("El archivo elegido no parece ser una imagen. Seleccioná una foto del ticket en Fotos, Galería o Archivos.");
+                    setError("El archivo elegido no parece ser una imagen. Sacá una foto del ticket con la cámara.");
+                    setNotice("");
+                  }
+                }
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
+          <label
+            className={(mode === "photo" && photoSource === "library" ? "active " : "") + "ticket-photo-source-label ticket-photo-library-label"}
+            aria-disabled={busy}
+          >
+            <span aria-hidden="true">📁 </span>Elegir archivo o galería
+            <input
+              className="ticket-photo-native-input"
+              type="file"
+              name={photoSource === "library" ? "ticket_photo" : undefined}
+              accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+              aria-label="Elegir una imagen del teléfono, galería o archivos"
+              disabled={busy}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                if (file) {
+                  setPhotoSource("library");
+                  setMode("photo");
+                  setError("");
+                  const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
+                  if (isImage) void processTicket(file);
+                  else {
+                    setError("El archivo elegido no parece ser una imagen. Elegí una imagen de Fotos, Galería o Archivos.");
                     setNotice("");
                   }
                 }
