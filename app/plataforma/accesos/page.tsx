@@ -11,6 +11,7 @@ import {
   deletePlatformUser,
   updatePlatformAgencyName,
   updatePlatformAgencyCity,
+  updatePlatformAgencyCode,
   deletePlatformAgency,
   transferPlatformAgencyOwner,
 } from "./actions";
@@ -188,6 +189,18 @@ function AgencyManagementAccordion({ agency, isOwnAgency = false }: { agency: Ag
             </form>
           </div>
 
+          <div className="platform-agency-manage-card">
+            <h4>Número oficial de agencia</h4>
+            <form action={updatePlatformAgencyCode} className="platform-inline-form">
+              <input type="hidden" name="organization_id" value={agency.organization_id} />
+              <label>Número oficial (3 dígitos)
+                <input name="agency_code" required inputMode="numeric" pattern="[0-9]{3}" minLength={3} maxLength={3} defaultValue={agency.organization_agency_code || ""} placeholder="000" />
+              </label>
+              <button className="button secondary">Guardar número oficial</button>
+            </form>
+            <p className="muted small-text">El número debe tener tres dígitos y no puede estar asignado a otra agencia.</p>
+          </div>
+
           {owners.length > 0 && (
             <details className="platform-details">
               <summary>Transferir titularidad de esta agencia</summary>
@@ -352,6 +365,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
               : params.actualizado === "admin_retirado" ? "Se retiró el permiso de administrador central y se cerró esa sesión."
               : params.actualizado === "agencia_editada" ? "Se guardó el nombre de la agencia."
               : params.actualizado === "ciudad_guardada" ? "Se guardó la ciudad de la agencia."
+              : params.actualizado === "agencia_codigo" ? "Se guardó el número oficial de la agencia."
               : params.actualizado === "titularidad_transferida" ? "Se transfirió la titularidad de la agencia."
               : params.actualizado === "agencia_eliminada" ? "Se eliminó la agencia y sus datos asociados. La cuenta titular también se eliminó si no tenía otros accesos."
               : params.actualizado === "nombre_usuario" ? "Se actualizó el nombre de la cuenta."
@@ -366,6 +380,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
               : params.error === "admin_retirar" ? "No se pudo retirar el permiso. Verificá la confirmación y que el panel conserve otro administrador autorizado."
               : params.error === "agencia_nombre" ? "No se pudo guardar el nombre. Revisá que no esté vacío y que la agencia siga existiendo."
               : params.error === "agencia_ciudad" ? "No se pudo guardar la ciudad. Revisá que tenga como máximo 120 caracteres."
+              : params.error === "agencia_codigo" ? "No se pudo guardar el número. Debe tener tres dígitos y no estar asignado a otra agencia."
               : params.error === "agencia_transferir" ? "No se pudo transferir la agencia. La nueva cuenta debe existir, tener el correo confirmado y estar autorizada; volvé a verificar el nombre de la agencia."
               : params.error === "agencia_eliminar" ? "No se pudo eliminar. Debés escribir exactamente el nombre actual de la agencia y luego ELIMINAR."
               : params.error === "usuario_nombre" ? "No se pudo actualizar el nombre de la cuenta."
