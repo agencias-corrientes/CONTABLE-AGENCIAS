@@ -931,3 +931,94 @@ input[type="reset"],
   padding: 15px 20px !important;
   border-radius: 0 !important;
 }
+
+
+/* Selector operativo: el archivo original sigue siendo el mismo; ahora se abre desde el selector común. */
+.ticket-photo-picker .ticket-photo-operational-input {
+  position: fixed !important;
+  inset: auto !important;
+  left: -10000px !important;
+  top: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.ticket-photo-picker-cta {
+  border: 0 !important;
+  cursor: pointer;
+  text-align: center;
+  justify-content: center;
+  min-width: min(100%, 230px);
+}
+.ticket-capture-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  background: rgba(24, 15, 19, .76);
+}
+.ticket-capture-dialog {
+  display: grid;
+  gap: 14px;
+  width: min(560px, 100%);
+  max-height: min(92dvh, 860px);
+  overflow: auto;
+  padding: 22px;
+  border: 2px solid var(--primary, #7c3347);
+  border-radius: 0 !important;
+  background: var(--surface, #fff);
+  color: var(--text, #21191d);
+  box-shadow: 0 18px 54px rgba(0, 0, 0, .28);
+}
+.ticket-capture-dialog-heading h3 {
+  margin: 0 0 7px;
+  font-size: 20px;
+  line-height: 1.25;
+}
+.ticket-capture-dialog-heading p {
+  margin: 0;
+  line-height: 1.45;
+  color: var(--muted, #665b60);
+}
+.ticket-capture-dialog-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+.ticket-capture-dialog button {
+  width: 100%;
+  min-height: 50px;
+  padding: 13px 16px;
+  border-radius: 0 !important;
+  white-space: normal;
+  line-height: 1.35;
+}
+.ticket-capture-dialog .ticket-capture-dialog-cancel {
+  margin-top: 2px;
+}
+.ticket-live-camera-video {
+  display: block;
+  width: 100%;
+  max-height: 58dvh;
+  min-height: 220px;
+  aspect-ratio: 3 / 4;
+  object-fit: contain;
+  background: #161214;
+  border: 1px solid var(--line, #d8cfd2);
+}
+@media (max-width: 640px) {
+  .ticket-capture-dialog { padding: 16px; gap: 12px; }
+  .ticket-capture-dialog-heading h3 { font-size: 18px; }
+  .ticket-live-camera-video { max-height: 50dvh; min-height: 180px; }
+}
+
+/* Más distancia entre volver al control central y cerrar sesión. */
+.platform-admin-page .platform-access-navigation {
+  gap: 34px !important;
+}
+.platform-admin-page .platform-access-navigation .platform-logout-button {
+  margin-top: 12px !important;
+}

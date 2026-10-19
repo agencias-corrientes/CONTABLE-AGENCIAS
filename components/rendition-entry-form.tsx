@@ -796,9 +796,38 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [confirmationError, setConfirmationError] = useState("");
   const confirmationId = useId();
   const ticketPhotoInputId = useId();
+  const [ticketCaptureChoiceOpen, setTicketCaptureChoiceOpen] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraStarting, setCameraStarting] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<"environment" | "user">("environment");
+  const [cameraStreamVersion, setCameraStreamVersion] = useState(0);
+  const [cameraError, setCameraError] = useState("");
+  const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">(dailyMode && !dailyCloseAllowed ? "incomplete" : "complete");
-  const [reportedAmount, setReportedAmount] = useState("");
+  const [pendingAmount, setPendingAmount] = useState("");
+
+  useEffect(() => {
+    if (!cameraOpen) return;
+    const video = cameraVideoRef.current;
+    const stream = cameraStreamRef.current;
+    if (!video || !stream) return;
+    video.srcObject = stream;
+    void video.play().catch(() => {
+      setCameraError("No se pudo iniciar la vista de la cámara. Cerrá y volvé a abrirla; también podés elegir una foto o archivo.");
+    });
+    return () => {
+      if (video.srcObject === stream) video.srcObject = null;
+    };
+  }, [cameraOpen, cameraStreamVersion]);
+
+  useEffect(() => () => {
+    const stream = cameraStreamRef.current;
+    if (stream) stream.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+  }, []);
 
   const total = useMemo(() =>
     Object.values(amounts).reduce((sum, value) => sum + (Number(value) > 0 ? Number(value) : 0), 0),
@@ -895,6 +924,153 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     // Algunos selectores/cámaras móviles devuelven type vacío o application/octet-stream.
     // Se permite que el decodificador de imágenes compruebe el archivo en lugar de descartarlo aquí.
     void processTicket(file);
+  }
+
+
+  async function startTicketCamera(facing: "environment" | "user") {
+    setCameraError("");
+    setCameraReady(false);
+    setCameraStarting(true);
+    const previousStream = cameraStreamRef.current;
+    if (previousStream) previousStream.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+
+    try {
+      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
+        throw new Error("camera-unsupported");
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+      });
+      cameraStreamRef.current = stream;
+      setCameraFacing(facing);
+      setCameraStreamVersion((version) => version + 1);
+      setCameraOpen(true);
+      setTicketCaptureChoiceOpen(false);
+    } catch (cause) {
+      const errorName = cause && typeof cause === "object" && "name" in cause
+        ? String((cause as { name?: unknown }).name ?? "")
+        : "";
+      const message = errorName === "NotAllowedError" || errorName === "PermissionDeniedError"
+        ? "El navegador bloqueó el acceso a la cámara. Permití el uso de Cámara para este sitio y volvé a intentarlo. La carga de archivos sigue disponible."
+        : errorName === "NotFoundError" || errorName === "DevicesNotFoundError"
+          ? "No se encontró una cámara disponible en este dispositivo. Podés elegir una foto o archivo."
+          : errorName === "NotReadableError" || errorName === "TrackStartError"
+            ? "La cámara está ocupada por otra aplicación. Cerrá la otra aplicación y volvé a intentarlo."
+            : "No se pudo iniciar la cámara. Revisá los permisos del navegador; también podés elegir una foto o archivo.";
+      setCameraError(message);
+      setCameraOpen(false);
+      setTicketCaptureChoiceOpen(true);
+    } finally {
+      setCameraStarting(false);
+    }
+  }
+
+  function closeTicketCamera() {
+    const stream = cameraStreamRef.current;
+    if (stream) stream.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    if (cameraVideoRef.current) cameraVideoRef.current.srcObject = null;
+    setCameraOpen(false);
+    setCameraReady(false);
+    setCameraError("");
+  }
+
+  async function captureTicketCameraPhoto() {
+    const video = cameraVideoRef.current;
+    if (!video || !video.videoWidth || !video.videoHeight) {
+      setCameraError("La cámara todavía se está iniciando. Esperá un momento y volvé a tomar la foto.");
+      return;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      setCameraError("No se pudo preparar la foto. Cerrá la cámara y volvé a abrirla.");
+      return;
+    }
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.94));
+    if (!blob) {
+      setCameraError("No se pudo generar la foto. Volvé a intentarlo.");
+      return;
+    }
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const file = new File([blob], "ticket-camara-" + stamp + ".jpg", {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
+    closeTicketCamera();
+    setTicketCaptureChoiceOpen(false);
+    processSelectedTicketFile(file);
+  }
+
+  function renderTicketCaptureDialogs() {
+    return (
+      <>
+        {ticketCaptureChoiceOpen && (
+          <div className="ticket-capture-dialog-backdrop" role="presentation" onClick={() => setTicketCaptureChoiceOpen(false)}>
+            <section className="ticket-capture-dialog" role="dialog" aria-modal="true" aria-labelledby={ticketPhotoInputId + "-capture-title"} onClick={(event) => event.stopPropagation()}>
+              <div className="ticket-capture-dialog-heading">
+                <h3 id={ticketPhotoInputId + "-capture-title"}>Elegí cómo cargar el ticket</h3>
+                <p>La foto tomada con cámara y los archivos pasan por el mismo lector OCR.</p>
+              </div>
+              {cameraError && <p className="ticket-read-error" role="alert">{cameraError}</p>}
+              {cameraStarting && <p className="ticket-read-notice" role="status">Solicitando acceso a la cámara…</p>}
+              <div className="ticket-capture-dialog-actions">
+                <button type="button" className="button primary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("environment")}>Usar cámara trasera</button>
+                <button type="button" className="button secondary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("user")}>Usar cámara frontal</button>
+                <button type="button" className="button ghost" disabled={busy} onClick={() => {
+                  setTicketCaptureChoiceOpen(false);
+                  setCameraError("");
+                  const input = document.getElementById(ticketPhotoInputId) as HTMLInputElement | null;
+                  input?.click();
+                }}>Elegir foto o archivo</button>
+              </div>
+              <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
+                setTicketCaptureChoiceOpen(false);
+                setCameraError("");
+              }}>Cancelar</button>
+            </section>
+          </div>
+        )}
+        {cameraOpen && (
+          <div className="ticket-capture-dialog-backdrop" role="presentation" onClick={closeTicketCamera}>
+            <section className="ticket-capture-dialog ticket-live-camera-dialog" role="dialog" aria-modal="true" aria-labelledby={ticketPhotoInputId + "-camera-title"} onClick={(event) => event.stopPropagation()}>
+              <div className="ticket-capture-dialog-heading">
+                <h3 id={ticketPhotoInputId + "-camera-title"}>Tomar foto del ticket</h3>
+                <p>{cameraFacing === "environment" ? "Cámara trasera" : "Cámara frontal"} · Centrá el cupón completo en la imagen.</p>
+              </div>
+              <video
+                ref={cameraVideoRef}
+                className="ticket-live-camera-video"
+                autoPlay
+                playsInline
+                muted
+                onCanPlay={() => setCameraReady(true)}
+                aria-label="Vista en vivo de la cámara para capturar el ticket"
+              />
+              {cameraError && <p className="ticket-read-error" role="alert">{cameraError}</p>}
+              <div className="ticket-capture-dialog-actions">
+                <button type="button" className="button secondary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera(cameraFacing === "environment" ? "user" : "environment")}>
+                  Cambiar a cámara {cameraFacing === "environment" ? "frontal" : "trasera"}
+                </button>
+                <button type="button" className="button primary" disabled={!cameraReady || cameraStarting || busy} onClick={() => void captureTicketCameraPhoto()}>
+                  Tomar foto y leer ticket
+                </button>
+                <button type="button" className="button ghost" onClick={closeTicketCamera}>Cancelar</button>
+              </div>
+            </section>
+          </div>
+        )}
+      </>
+    );
   }
 
   async function processTicket(file: File) {
@@ -1322,10 +1498,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             <span className="ticket-photo-icon" aria-hidden="true">▧</span>
             <strong>Adjuntar detalle OCR al cierre existente</strong>
             <span>Seleccioná la foto original del FIN DE JORNADA o una copia guardada. Esto no vuelve a registrar importes ni cobros.</span>
-            <span className="ticket-photo-picker-cta" aria-hidden="true">Elegir foto o archivo</span>
+            <button type="button" className="ticket-photo-picker-cta" disabled={busy} onClick={() => { setCameraError(""); setTicketCaptureChoiceOpen(true); }}>Elegir foto o archivo</button>
             <input
               id={ticketPhotoInputId}
-              className="ticket-photo-native-input"
+              className="ticket-photo-native-input ticket-photo-operational-input"
               type="file"
               accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
               aria-label="Elegir foto del ticket para recuperar el detalle OCR"
@@ -1339,6 +1515,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               }}
             />
           </div>
+          {renderTicketCaptureDialogs()}
           {photoPreviewUrl && <div className="ticket-photo-preview"><img src={photoPreviewUrl} alt="Vista previa del ticket para recuperar su detalle OCR" /></div>}
           {progress && <p className="ticket-read-notice">{progress}{progressPercent > 0 ? " (" + progressPercent + "%)" : ""}</p>}
           {error && <p className="ticket-read-error" role="alert">{error}</p>}
@@ -1386,10 +1563,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           return;
         }
         if (dailyStatusChoice === "incomplete") {
-          const value = Number(reportedAmount.replace(",", "."));
-          if (!reportedAmount.trim() || !Number.isFinite(value) || value <= 0 || value > netToRemit || value > 999999999999.99) {
+          const pendingValue = Number(pendingAmount.replace(",", "."));
+          if (!pendingAmount.trim() || !Number.isFinite(pendingValue) || pendingValue <= 0 || pendingValue >= netToRemit || pendingValue > 999999999999.99) {
             event.preventDefault();
-            setConfirmationError("Ingresá un importe mayor que cero y no superior al efectivo neto después de descontar la comisión.");
+            setConfirmationError("Ingresá la deuda que queda pendiente, mayor que cero y menor que el efectivo neto. El sistema calculará lo que efectivamente se entregó.");
             return;
           }
         }
@@ -1416,7 +1593,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <>
           <input type="hidden" name="operational_date" value={today} />
           <input type="hidden" name="draw_status" value={dailyStatusChoice} />
-          <input type="hidden" name="reported_amount" value={dailyStatusChoice === "incomplete" ? reportedAmount : netToRemit.toFixed(2)} />
+          <input type="hidden" name="reported_amount" value={dailyStatusChoice === "incomplete" ? Math.max(0, Math.round((netToRemit - Number(pendingAmount.replace(",", ".")) + Number.EPSILON) * 100) / 100).toFixed(2) : netToRemit.toFixed(2)} />
         </>
       )}
 
@@ -1485,10 +1662,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             <span className="ticket-photo-icon" aria-hidden="true">▧</span>
             <strong>Comprobante del ticket</strong>
             <span>Seleccioná una foto guardada en el teléfono o sacá una nueva.</span>
-            <span className="ticket-photo-picker-cta" aria-hidden="true">Elegir foto o archivo</span>
+            <button type="button" className="ticket-photo-picker-cta" disabled={busy} onClick={() => { setCameraError(""); setTicketCaptureChoiceOpen(true); }}>Elegir foto o archivo</button>
             <input
               id={ticketPhotoInputId}
-              className="ticket-photo-native-input"
+              className="ticket-photo-native-input ticket-photo-operational-input"
               type="file"
               name="ticket_photo"
               aria-label="Elegir foto o archivo del comprobante del ticket"
@@ -1502,6 +1679,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               }}
             />
           </div>
+          {renderTicketCaptureDialogs()}
           {batchMode && (
             <div className="weekly-ticket-batch-upload-help">
               <div>
@@ -1509,8 +1687,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                 <p>{batchTickets.length === 0 ? "Elegí el primer comprobante. Después podés agregar los demás, uno por uno, sin registrar una rendición todavía." : "El cupón ya está en este lote. Volvé a elegir otro archivo para sumar el siguiente comprobante a la misma rendición."}</p>
               </div>
               <button type="button" className="button ghost small" disabled={busy || batchTickets.length >= 12} onClick={() => {
-                const input = document.getElementById(ticketPhotoInputId) as HTMLInputElement | null;
-                input?.click();
+                setCameraError("");
+                setTicketCaptureChoiceOpen(true);
               }}>{batchTickets.length === 0 ? "Elegir primer FIN DE JORNADA" : "Agregar otro FIN DE JORNADA"}</button>
               <small>Repetí esta operación por cada cupón. Revisá la lista y marcá la revisión antes de tocar “Confirmar rendición acumulada”. Máximo 12 cupones por lote.</small>
             </div>
@@ -1792,7 +1970,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                 />
                 <span>
                   <strong>Guardar como incompleta</strong>
-                  <small>Indicá cuánto efectivo entregó hasta el momento, sin superar el neto después de comisión.</small>
+                  <small>Indicá cuánto queda debiendo. Caja registrará como cobrado el efectivo neto menos esa deuda.</small>
                 </span>
               </label>
             </div>
@@ -1800,15 +1978,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             {dailyStatusChoice === "incomplete" && (
               <div className="rendition-confirmation-fields">
                 <label className="rendition-confirm-amount-label">
-                  Monto rendido hasta el momento
+                  Monto pendiente por rendir
                   <input
                     type="number"
                     min="0.01"
-                    max={netToRemit}
+                    max={Math.max(0, netToRemit - 0.01)}
                     step="0.01"
                     inputMode="decimal"
-                    value={reportedAmount}
-                    onChange={(event) => { setReportedAmount(event.target.value); setConfirmationError(""); }}
+                    value={pendingAmount}
+                    onChange={(event) => { setPendingAmount(event.target.value); setConfirmationError(""); }}
                     placeholder="Ej.: 12500.00"
                   />
                 </label>
