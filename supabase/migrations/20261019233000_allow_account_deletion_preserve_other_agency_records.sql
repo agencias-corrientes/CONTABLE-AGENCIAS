@@ -1,9 +1,37 @@
 -- Allow permanent deletion of an access account without deleting another agency's business records.
 -- Rows created by a removed user in agencies they do not own are retained; creator references become NULL.
+ALTER TABLE public.agency_agents ALTER COLUMN created_by DROP NOT NULL;
+ALTER TABLE public.agency_agents DROP CONSTRAINT IF EXISTS agency_agents_created_by_fkey;
+ALTER TABLE public.agency_agents
+  ADD CONSTRAINT agency_agents_created_by_fkey
+  FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+
+ALTER TABLE public.agency_daily_closings ALTER COLUMN created_by DROP NOT NULL;
+ALTER TABLE public.agency_daily_closings DROP CONSTRAINT IF EXISTS agency_daily_closings_created_by_fkey;
+ALTER TABLE public.agency_daily_closings
+  ADD CONSTRAINT agency_daily_closings_created_by_fkey
+  FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.agency_daily_closings DROP CONSTRAINT IF EXISTS agency_daily_closings_closed_by_fkey;
+ALTER TABLE public.agency_daily_closings
+  ADD CONSTRAINT agency_daily_closings_closed_by_fkey
+  FOREIGN KEY (closed_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+
 ALTER TABLE public.agency_prize_payments ALTER COLUMN created_by DROP NOT NULL;
 ALTER TABLE public.agency_prize_payments DROP CONSTRAINT IF EXISTS agency_prize_payments_created_by_fkey;
 ALTER TABLE public.agency_prize_payments
   ADD CONSTRAINT agency_prize_payments_created_by_fkey
+  FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+
+ALTER TABLE public.agency_rendition_payments ALTER COLUMN created_by DROP NOT NULL;
+ALTER TABLE public.agency_rendition_payments DROP CONSTRAINT IF EXISTS agency_rendition_payments_created_by_fkey;
+ALTER TABLE public.agency_rendition_payments
+  ADD CONSTRAINT agency_rendition_payments_created_by_fkey
+  FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+
+ALTER TABLE public.agency_renditions ALTER COLUMN created_by DROP NOT NULL;
+ALTER TABLE public.agency_renditions DROP CONSTRAINT IF EXISTS agency_renditions_created_by_fkey;
+ALTER TABLE public.agency_renditions
+  ADD CONSTRAINT agency_renditions_created_by_fkey
   FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 ALTER TABLE public.cash_movements ALTER COLUMN created_by DROP NOT NULL;
@@ -17,7 +45,6 @@ ALTER TABLE public.journal_entries DROP CONSTRAINT IF EXISTS journal_entries_cre
 ALTER TABLE public.journal_entries
   ADD CONSTRAINT journal_entries_created_by_fkey
   FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
-
 ALTER TABLE public.journal_entries DROP CONSTRAINT IF EXISTS journal_entries_posted_by_fkey;
 ALTER TABLE public.journal_entries
   ADD CONSTRAINT journal_entries_posted_by_fkey
