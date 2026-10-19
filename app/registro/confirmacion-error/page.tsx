@@ -15,16 +15,19 @@ export default function RegistrationConfirmationErrorPage() {
           />
         </div>
         <p className="eyebrow">AGENCIAS CORRIENTES</p>
-        <h1 id="confirmation-error-title">No pudimos confirmar el correo</h1>
+        <h1 id="confirmation-error-title">Este enlace ya se usó o venció</h1>
         <div className="message" role="status">
-          El enlace puede haber vencido o ya haber sido utilizado. Volvé a abrir el último correo de confirmación. Si ya habías confirmado tu cuenta, podés intentar ingresar.
+          No vuelvas a crear otra cuenta por este mensaje. Si ya habías confirmado tu correo, tu cuenta sigue registrada: ingresá y Administración Central podrá aprobar tu solicitud. Si todavía no lo confirmaste, revisá el correo más reciente de confirmación.
         </div>
+        <p className="muted">
+          La aprobación de Administración Central se realiza después de confirmar el correo. No necesitás iniciar una recuperación de contraseña solo por haber visto este aviso.
+        </p>
         <div className="form-stack">
-          <Link className="button primary full" href="/registro">
-            Volver al registro
-          </Link>
-          <Link className="button ghost full" href="/login?perfil=administrador">
+          <Link className="button primary full" href="/login?perfil=administrador">
             Ingresar como titular
+          </Link>
+          <Link className="button ghost full" href="/registro">
+            Volver al registro
           </Link>
         </div>
       </section>
