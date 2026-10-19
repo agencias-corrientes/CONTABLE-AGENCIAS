@@ -4,8 +4,6 @@ import { getCurrentContext } from "@/lib/accounting";
 import { formatAgencyDateTime } from "@/lib/agency-datetime";
 import { addEmployeeByEmail, saveBackupEmail, retryRenditionBackup, generateHistoricalRenditionBackups, saveAgencySchedules, saveEmployeePermissions, saveEmployeeRole, cleanupAgencyTestData, deleteUnlinkedAuthAccount } from "./actions";
 
-const roleLabels: Record<string, string> = { owner: "Propietario", admin: "Empleado", accountant: "Empleado", viewer: "Empleado" };
-
 const permissionLabels = [
   ["can_create_agents", "Dar de alta subagentes o ambulantes"],
   ["can_delete_agents", "Eliminar agentes sin rendiciones históricas"],
@@ -171,8 +169,6 @@ export default async function TeamPermissionsPage({
           {(employees ?? []).map((employee: any) => {
             const isCurrentUser = employee.user_id === userId;
             const isOwner = employee.role === "owner";
-            const isAdmin = employee.role === "admin";
-            const roleName = roleLabels[employee.role] ?? "Empleado";
             const isLegacyRole = employee.role === "admin" || employee.role === "viewer";
             const roleName = isOwner ? "Propietario" : "Empleado";
             return <article className="team-member-card" key={employee.user_id}>
