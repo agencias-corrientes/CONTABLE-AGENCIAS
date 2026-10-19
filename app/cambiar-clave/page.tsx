@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { PasswordInput } from "@/components/password-input";
 
 type PageStatus = "checking" | "ready" | "invalid" | "saving" | "updated" | "error";
 
@@ -85,10 +86,10 @@ export default function UpdatePasswordPage() {
         {["ready", "saving", "error"].includes(status) && (
           <form onSubmit={submit} className="form-stack">
             <label>Nueva contraseña
-              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required autoComplete="new-password" />
+              <PasswordInput value={password} onChange={setPassword} minLength={8} required autoComplete="new-password" />
             </label>
             <label>Repetir nueva contraseña
-              <input type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} minLength={8} required autoComplete="new-password" />
+              <PasswordInput value={confirmation} onChange={setConfirmation} minLength={8} required autoComplete="new-password" />
             </label>
             {message && <p className="message error-message" role="alert">{message}</p>}
             <button className="button primary full" disabled={status === "saving"}>{status === "saving" ? "Guardando..." : "Guardar nueva contraseña"}</button>
