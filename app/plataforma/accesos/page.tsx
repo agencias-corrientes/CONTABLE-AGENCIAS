@@ -24,6 +24,7 @@ type AccessRequest = {
   reviewed_at: string | null;
   reviewed_by: string | null;
   review_note: string | null;
+  needs_recovery?: boolean;
 };
 
 type PlatformAccount = {
@@ -275,10 +276,27 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
   if (adminListError) throw new Error("No se pudo cargar el listado de administradores centrales.");
   if (userListError) throw new Error("No se pudo cargar el listado de cuentas de acceso.");
 
-  const requests = (Array.isArray(requestData) ? requestData : []) as AccessRequest[];
+  const listedRequests = (Array.isArray(requestData) ? requestData : []) as AccessRequest[];
   const accounts = (Array.isArray(accountData) ? accountData : []) as PlatformAccount[];
   const platformAdmins = (Array.isArray(adminData) ? adminData : []) as PlatformAdmin[];
   const users = (Array.isArray(userData) ? userData : []) as PlatformUser[];
+  // Recupera cuentas confirmadas sin membresía cuyo registro no generó una solicitud pendiente.
+  // La acción de revisión crea/actualiza la solicitud de forma segura en el servidor.
+  const listedRequestIds = new Set(listedRequests.map((request) => request.user_id));
+  const recoverableRequests: AccessRequest[] = users
+    .filter((user) => user.email_confirmed_at && !user.is_platform_admin && user.membership_count === 0 && !listedRequestIds.has(user.user_id))
+    .map((user) => ({
+      user_id: user.user_id,
+      email: user.email || "",
+      full_name: user.full_name,
+      status: "pending",
+      requested_at: user.created_at,
+      reviewed_at: null,
+      reviewed_by: null,
+      review_note: null,
+      needs_recovery: true,
+    }));
+  const requests = [...listedRequests, ...recoverableRequests].sort((a, b) => a.requested_at.localeCompare(b.requested_at));
   const currentUserId = String(authData.claims.sub);
   const params = await searchParams;
 
@@ -400,7 +418,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
 
         <section className="platform-access-section" id="solicitudes-alta">
           <h2>2. Solicitudes de alta pendientes</h2>
-          <p className="muted">Cuando el titular completa el registro y confirma el correo, la solicitud aparece aquí. Aprobala para que pueda continuar y configurar su agencia; rechazala si no corresponde.</p>
+          <p className="muted">Cuando el titular completa el registro y confirma el correo, la solicitud aparece aquí. Si una cuenta confirmada quedó sin solicitud registrada, también se muestra para que puedas aprobarla o rechazarla desde este mismo lugar.</p>
           {requests.length === 0 ? (
             <p className="muted">No hay altas nuevas esperando aprobación en este momento.</p>
           ) : (
@@ -410,7 +428,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
                   <div>
                     <strong>{request.full_name || "Sin nombre informado"}</strong>
                     <p>{request.email}</p>
-                    <p className="muted small-text">Solicitó acceso: {dateLabel(request.requested_at)}</p>
+                    <p className="muted small-text">{request.needs_recovery ? "Cuenta confirmada sin solicitud pendiente registrada · revisar alta" : "Solicitó acceso"}: {dateLabel(request.requested_at)}</p>
                   </div>
                   <form action={reviewPlatformAccessRequest} className="form-stack">
                     <input type="hidden" name="user_id" value={request.user_id} />
