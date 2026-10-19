@@ -161,3 +161,20 @@ export async function deletePlatformAgency(formData: FormData) {
   revalidatePath("/");
   redirect("/plataforma/accesos?actualizado=agencia_eliminada");
 }
+
+export async function updatePlatformAgencyCode(formData: FormData) {
+  const supabase = await createClient();
+  const { data: authData } = await supabase.auth.getClaims();
+  if (!authData?.claims?.sub) redirect("/login");
+  const organizationId = String(formData.get("organization_id") ?? "").trim();
+  const agencyCode = String(formData.get("agency_code") ?? "").trim();
+  if (!organizationId || !/^\d{3}$/.test(agencyCode)) redirect("/plataforma/accesos?error=agencia_codigo");
+  const { error } = await (supabase as any).rpc("update_platform_agency_code", {
+    p_organization_id: organizationId,
+    p_agency_code: agencyCode,
+  });
+  if (error) redirect("/plataforma/accesos?error=agencia_codigo");
+  revalidatePath("/plataforma/accesos");
+  revalidatePath("/");
+  redirect("/plataforma/accesos?actualizado=agencia_codigo");
+}
