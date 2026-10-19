@@ -65,6 +65,8 @@ export function PrizePaymentPanel({
 }) {
   const [captureMode, setCaptureMode] = useState<CaptureMode>("manual");
   const [couponNumber, setCouponNumber] = useState("");
+  const [prizeAmount, setPrizeAmount] = useState("");
+  const [gameName, setGameName] = useState("");
   const [qrPayload, setQrPayload] = useState("");
   const [scanMessage, setScanMessage] = useState("");
   const [readingPhoto, setReadingPhoto] = useState(false);
@@ -97,20 +99,26 @@ export function PrizePaymentPanel({
     setReadingPhoto(true);
     try {
       let detectedQr = "";
-      const bitmap = await createImageBitmap(file);
+      // QR decoding is optional: some browsers cannot create an ImageBitmap for HEIC/HEIF.
+      // If that fails, continue to OCR instead of aborting the entire photo workflow.
       try {
-        const scale = Math.min(1, 1800 / bitmap.width, 1800 / bitmap.height);
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-        const context = canvas.getContext("2d", { willReadFrequently: true });
-        if (context) {
-          context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-          const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-          detectedQr = jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: "attemptBoth" })?.data?.trim() ?? "";
+        const bitmap = await createImageBitmap(file);
+        try {
+          const scale = Math.min(1, 1800 / bitmap.width, 1800 / bitmap.height);
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+          canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+          const context = canvas.getContext("2d", { willReadFrequently: true });
+          if (context) {
+            context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+            detectedQr = jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: "attemptBoth" })?.data?.trim() ?? "";
+          }
+        } finally {
+          bitmap.close();
         }
-      } finally {
-        bitmap.close();
+      } catch {
+        // Fall through to Tesseract OCR below.
       }
 
       if (detectedQr) {
@@ -132,23 +140,56 @@ export function PrizePaymentPanel({
       try {
         const result = await worker.recognize(file);
         const text = String(result.data.text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-        const patterns = [
+        const couponPatterns = [
           /\b(?:CUPON|TICKET|TKT|COMPROBANTE)\s*(?:(?:NRO|NUM(?:ERO)?|N[º°]|N|#)\s*)?[:.#º°-]?\s*([A-Z0-9][A-Z0-9-]{1,63})\b/,
           /\b(?:NRO|NUM(?:ERO)?|N[º°]|#)\s*(?:DE\s*)?(?:CUPON|TICKET|COMPROBANTE)\s*[:.#º°-]?\s*([A-Z0-9][A-Z0-9-]{1,63})\b/,
         ];
         let detected = "";
-        for (const pattern of patterns) {
+        for (const pattern of couponPatterns) {
           const match = text.match(pattern);
           if (match?.[1] && /\d/.test(match[1])) {
             detected = match[1].replace(/[.,;:]$/, "");
             break;
           }
         }
-        if (detected) {
-          setCouponNumber(detected);
-          setScanMessage("Número detectado por lectura de foto. Comparalo con el cupón original; la lectura automática puede equivocarse.");
+
+        // Read prize values separately from coupon IDs; never assume a coupon number is an amount.
+        const amountPatterns = [
+          /\b(?:TOTAL\s+A\s+PAGAR|PREMIO(?:\s+(?:TOTAL|A\s+PAGAR|PAGADO))?|IMPORTE(?:\s+(?:DEL\s+)?PREMIO)?|MONTO(?:\s+DEL\s+PREMIO)?)\s*[:=]?\s*\$?\s*([0-9][0-9.,]{1,17})/m,
+          /\$\s*([0-9][0-9.,]{2,17})/m,
+        ];
+        let detectedAmount: number | null = null;
+        for (const pattern of amountPatterns) {
+          const match = text.match(pattern);
+          if (!match?.[1]) continue;
+          let raw = match[1].replace(/[^0-9.,]/g, "");
+          if (raw.includes(".") && raw.includes(",")) raw = raw.replace(/\./g, "").replace(",", ".");
+          else if (raw.includes(",")) {
+            const decimals = raw.length - raw.lastIndexOf(",") - 1;
+            raw = decimals > 0 && decimals <= 2 ? raw.replace(/\./g, "").replace(",", ".") : raw.replace(/,/g, "");
+          } else if (raw.includes(".")) {
+            const decimals = raw.length - raw.lastIndexOf(".") - 1;
+            if (decimals === 3) raw = raw.replace(/\./g, "");
+          }
+          const parsed = Number(raw);
+          if (Number.isFinite(parsed) && parsed > 0 && parsed <= 999999999999.99) {
+            detectedAmount = Math.round(parsed * 100) / 100;
+            break;
+          }
+        }
+        const gameMatch = text.match(/\b(?:JUEGO|PRODUCTO|MODALIDAD)\s*[:=-]?\s*([^\n\r]{3,60})/);
+        if (gameMatch?.[1]) setGameName(gameMatch[1].trim().replace(/\s{2,}/g, " ").slice(0, 120));
+        if (detected) setCouponNumber(detected);
+        if (detectedAmount !== null) setPrizeAmount(String(detectedAmount).replace(".", ","));
+
+        const found = [
+          detected ? "cupón " + detected : "",
+          detectedAmount !== null ? "importe " + new Intl.NumberFormat("es-AR", { style: "currency", currency: currencyCode || "ARS" }).format(detectedAmount) : "",
+        ].filter(Boolean);
+        if (found.length) {
+          setScanMessage("Lectura de foto: " + found.join(" · ") + ". Verificá los datos contra el comprobante original antes de registrar el pago.");
         } else {
-          setScanMessage("La foto se cargó, pero no pudimos identificar con seguridad el número del cupón. Ingresalo manualmente.");
+          setScanMessage("La foto se procesó, pero no identificamos con seguridad el número ni el importe. Completalos manualmente y verificá el premio.");
         }
       } finally {
         await worker.terminate();
@@ -212,10 +253,10 @@ export function PrizePaymentPanel({
               <input name="coupon_number" required maxLength={128} value={couponNumber} onChange={(event) => setCouponNumber(event.target.value)} placeholder="Número impreso o detectado" autoComplete="off" />
             </label>
             <label>Juego (opcional)
-              <input name="game_name" maxLength={120} placeholder="Nombre del juego" />
+              <input name="game_name" maxLength={120} value={gameName} onChange={(event) => setGameName(event.target.value)} placeholder="Nombre del juego" />
             </label>
             <label>Importe del premio
-              <input name="prize_amount" type="text" inputMode="decimal" required placeholder="Ej.: 125000,00" />
+              <input name="prize_amount" type="text" inputMode="decimal" required value={prizeAmount} onChange={(event) => setPrizeAmount(event.target.value)} placeholder="Ej.: 125000,00" />
             </label>
             <label>Observaciones (opcional)
               <input name="notes" maxLength={1000} placeholder="Referencia, validación o nota" />
