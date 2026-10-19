@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { SignOutButton } from "@/components/sign-out-button";
 import {
   reviewPlatformAccessRequest,
   addPlatformAdmin,
@@ -8,6 +9,7 @@ import {
   updatePlatformUserName,
   deletePlatformUser,
   updatePlatformAgencyName,
+  updatePlatformAgencyCity,
   deletePlatformAgency,
   transferPlatformAgencyOwner,
 } from "./actions";
@@ -26,6 +28,8 @@ type AccessRequest = {
 type PlatformAccount = {
   organization_id: string | null;
   organization_name: string;
+  organization_agency_code: string | null;
+  organization_city: string | null;
   organization_created_at: string | null;
   user_id: string | null;
   email: string | null;
@@ -42,6 +46,8 @@ type PlatformAccount = {
 type AgencyGroup = {
   organization_id: string;
   organization_name: string;
+  organization_agency_code: string | null;
+  organization_city: string | null;
   organization_created_at: string | null;
   members: PlatformAccount[];
 };
@@ -91,8 +97,8 @@ function roleLabel(role: string | null) {
   switch (role) {
     case "owner": return "Propietario";
     case "admin": return "Administrador";
-    case "accountant": return "Contador";
-    case "viewer": return "Consulta";
+    case "accountant": return "Empleado";
+    case "viewer": return "Empleado";
     default: return "Sin usuario vinculado";
   }
 }
@@ -103,6 +109,18 @@ function AccountActions({ account }: { account: PlatformAccount }) {
     return <p className="muted small-text">Administrador central · cuenta protegida</p>;
   }
   const currentlyBlocked = ["rejected", "suspended", "revoked"].includes(account.access_status);
+  const isEmployee = account.role === "accountant" || account.role === "viewer";
+  if (isEmployee) {
+    return (
+      <form action={reviewPlatformAccessRequest} className="form-stack platform-access-actions platform-employee-access-actions">
+        <input type="hidden" name="user_id" value={account.user_id} />
+        <p className="muted small-text">El titular administra los permisos diarios del empleado. Acá solo se permite una suspensión general excepcional o reactivar la cuenta.</p>
+        {currentlyBlocked
+          ? <button className="button primary" name="status" value="approved">Reactivar acceso</button>
+          : <button className="button secondary" name="status" value="suspended">Suspender acceso</button>}
+      </form>
+    );
+  }
   return (
     <form action={reviewPlatformAccessRequest} className="form-stack platform-access-actions">
       <input type="hidden" name="user_id" value={account.user_id} />
@@ -120,6 +138,109 @@ function AccountActions({ account }: { account: PlatformAccount }) {
         )}
       </div>
     </form>
+  );
+}
+
+
+function AgencyManagementAccordion({ agency, isOwnAgency = false }: { agency: AgencyGroup; isOwnAgency?: boolean }) {
+  const owners = agency.members.filter((member) => member.user_id && member.role === "owner");
+  const linkedMembers = agency.members.filter((member) => member.user_id);
+  return (
+    <details className={"platform-agency-accordion" + (isOwnAgency ? " is-own-agency" : "")}>
+      <summary className="platform-entity-summary platform-agency-summary">
+        <span className="platform-entity-kind">{isOwnAgency ? "MI AGENCIA" : "AGENCIA"}</span>
+        <span className="platform-entity-copy">
+          <strong>{agency.organization_name}</strong>
+          <small>N.º oficial: {agency.organization_agency_code || "sin configurar"} · {agency.organization_city || "ciudad sin registrar"} · {linkedMembers.length} cuenta(s)</small>
+        </span>
+        <span className="platform-entity-open">Abrir opciones ▾</span>
+      </summary>
+      <div className="platform-agency-content">
+        <div className="platform-agency-facts">
+          <div><span>Número oficial</span><strong>{agency.organization_agency_code || "No configurado"}</strong></div>
+          <div><span>Nombre visible</span><strong>{agency.organization_name}</strong></div>
+          <div><span>Ciudad / localidad</span><strong>{agency.organization_city || "No informada"}</strong></div>
+          <div><span>Correo del titular</span><strong>{owners.map((owner) => owner.email || owner.full_name || "Sin correo").join(", ") || "Sin titular vinculado"}</strong></div>
+        </div>
+
+        <div className="platform-agency-manage-grid">
+          <div className="platform-agency-manage-card">
+            <h4>Nombre visible de la agencia</h4>
+            <form action={updatePlatformAgencyName} className="platform-inline-form">
+              <input type="hidden" name="organization_id" value={agency.organization_id} />
+              <label>Nombre visible
+                <input name="name" required maxLength={120} defaultValue={agency.organization_name} />
+              </label>
+              <button className="button secondary">Guardar nombre</button>
+            </form>
+          </div>
+
+          <div className="platform-agency-manage-card">
+            <h4>Ciudad / localidad</h4>
+            <form action={updatePlatformAgencyCity} className="platform-inline-form">
+              <input type="hidden" name="organization_id" value={agency.organization_id} />
+              <label>Ciudad
+                <input name="city" maxLength={120} defaultValue={agency.organization_city || ""} placeholder="Ciudad o localidad" />
+              </label>
+              <button className="button secondary">Guardar ciudad</button>
+            </form>
+          </div>
+
+          {owners.length > 0 && (
+            <details className="platform-details">
+              <summary>Transferir titularidad de esta agencia</summary>
+              <p className="muted small-text">La nueva persona debe tener una cuenta confirmada y autorizada. La cuenta anterior dejará de pertenecer a esta agencia, pero su permiso de Administrador Central se gestiona por separado.</p>
+              <form action={transferPlatformAgencyOwner} className="form-stack">
+                <input type="hidden" name="organization_id" value={agency.organization_id} />
+                <label>Titular actual que se va a reemplazar
+                  <select name="previous_owner_user_id" required defaultValue="">
+                    <option value="" disabled>Seleccioná el titular actual</option>
+                    {owners.map((owner) => (
+                      <option key={owner.user_id!} value={owner.user_id!}>{owner.email || owner.full_name || owner.user_id}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>Correo de la nueva persona titular
+                  <input type="email" name="new_owner_email" required maxLength={254} placeholder="titular@correo.com" autoComplete="off" />
+                </label>
+                <label>Repetí el nombre actual de la agencia: {agency.organization_name}
+                  <input name="confirm_name" required autoComplete="off" placeholder="Nombre exacto de la agencia" />
+                </label>
+                <button className="button primary">Transferir titularidad</button>
+              </form>
+            </details>
+          )}
+
+          <details className="platform-details danger-details">
+            <summary>Eliminar esta agencia y sus datos</summary>
+            <p className="message error-message">Esta acción elimina la agencia del entorno donde estás trabajando y sus registros operativos asociados. No borra automáticamente los usuarios ni las autorizaciones centrales. Es irreversible.</p>
+            <form action={deletePlatformAgency} className="form-stack">
+              <input type="hidden" name="organization_id" value={agency.organization_id} />
+              <label>Escribí exactamente: {agency.organization_name}
+                <input name="confirm_name" required autoComplete="off" placeholder="Nombre exacto de la agencia" />
+              </label>
+              <label>Escribí ELIMINAR para confirmar
+                <input name="confirmation" required pattern="ELIMINAR" autoComplete="off" placeholder="ELIMINAR" />
+              </label>
+              <button className="button danger">Eliminar agencia y datos asociados</button>
+            </form>
+          </details>
+        </div>
+
+        <section className="platform-agency-linked-accounts">
+          <h4>Cuentas vinculadas a esta agencia</h4>
+          <div className="platform-agency-member-grid">
+            {agency.members.map((member, index) => (
+              <div className="platform-agency-member" key={member.user_id || agency.organization_id + "-" + index}>
+                <strong>{member.full_name || member.email || "Agencia sin usuario vinculado"}</strong>
+                {member.email && <span>{member.email}</span>}
+                <small>{roleLabel(member.role)} · {statusLabel(member.access_status)}</small>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </details>
   );
 }
 
@@ -148,7 +269,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
     { data: userData, error: userListError },
   ] = await Promise.all([
     (supabase as any).rpc("list_platform_access_requests"),
-    (supabase as any).rpc("list_platform_agencies_and_users"),
+    (supabase as any).rpc("list_platform_agencies_and_users_v2"),
     (supabase as any).rpc("list_platform_admins"),
     (supabase as any).rpc("list_platform_users"),
   ]);
@@ -174,20 +295,25 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
       agencyMap.set(account.organization_id, {
         organization_id: account.organization_id,
         organization_name: account.organization_name,
+        organization_agency_code: account.organization_agency_code ?? null,
+        organization_city: account.organization_city ?? null,
         organization_created_at: account.organization_created_at,
         members: [account],
       });
     }
   }
   const agencies = [...agencyMap.values()].sort((a, b) => a.organization_name.localeCompare(b.organization_name, "es"));
-  const unlinkedAccounts = accounts.filter((account) => !account.organization_id && account.user_id);
+  const myAgency = currentMember?.organization_id
+    ? agencies.find((agency) => agency.organization_id === String(currentMember.organization_id)) ?? null
+    : null;
+  const otherAgencies = agencies.filter((agency) => agency.organization_id !== myAgency?.organization_id);
 
   return (
     <main className="auth-page">
       <section className="auth-card wide platform-admin-page">
         <p className="eyebrow">ADMINISTRACIÓN CENTRAL</p>
         <h1>Control de acceso a agencias</h1>
-        <p className="muted">Este es el panel central. Las solicitudes nuevas aparecen arriba; las agencias y cuentas que ya existían se administran en el listado de abajo. Suspender o revocar bloquea el acceso, pero no elimina rendiciones ni movimientos guardados.</p>
+        <p className="muted">Este es el panel central. Las solicitudes nuevas aparecen arriba; las agencias y cuentas existentes se consultan abajo. El titular administra el alta, la baja y los permisos de sus empleados; desde acá solo podés suspender o reactivar globalmente una cuenta, sin borrar rendiciones ni movimientos.</p>
 
         <div className="platform-access-summary platform-access-summary-grid" aria-label="Resumen del acceso">
           <div className="button ghost platform-summary-button"><span>Solicitudes pendientes</span><strong>{requests.length}</strong></div>
@@ -195,10 +321,11 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
           <div className="button ghost platform-summary-button"><span>Cuentas de acceso</span><strong>{users.length}</strong></div>
         </div>
         <div className="platform-access-navigation">
-          <Link className="button ghost platform-summary-button" href="/">Volver a Administración Central</Link>
+          <Link className="button ghost platform-summary-button" href="/">Volver a Control de Agencias</Link>
           {currentMember?.organization_id && <Link className="button ghost platform-summary-button" href="/pagos">Ingresar a mi agencia</Link>}
+          <SignOutButton className="button ghost platform-summary-button platform-logout-button" />
         </div>
-        <p className="muted small-text">Estás viendo la base de datos aislada de Preview. Las agencias que solo existan en Producción no se muestran ni se modifican desde este panel.</p>
+        <p className="muted small-text">Tu agencia aparece separada de las demás. Cada ficha se abre al presionarla; la información y las acciones se muestran dentro de esa ficha para evitar mezclar agencias.</p>
         {agencies.length === 1 && agencies[0]?.members.every((member) => member.is_platform_admin) && (
           <p className="message">La única cuenta listada es también la administradora central, por eso está protegida y no tiene botones de suspensión. Las acciones aparecerán para las demás cuentas y solicitudes cuando existan.</p>
         )}
@@ -208,6 +335,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
             {params.actualizado === "admin_agregado" ? "Administrador central autorizado. Ya puede ingresar con su cuenta confirmada."
               : params.actualizado === "admin_retirado" ? "Se retiró el permiso de administrador central y se cerró esa sesión."
               : params.actualizado === "agencia_editada" ? "Se guardó el nombre de la agencia."
+              : params.actualizado === "ciudad_guardada" ? "Se guardó la ciudad de la agencia."
               : params.actualizado === "titularidad_transferida" ? "Se transfirió la titularidad de la agencia."
               : params.actualizado === "agencia_eliminada" ? "Se eliminó la agencia de Preview y sus datos asociados. Las cuentas de acceso no se borraron."
               : params.actualizado === "nombre_usuario" ? "Se actualizó el nombre de la cuenta."
@@ -221,6 +349,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
               : params.error === "admin_ultimo" ? "No se puede quitar el último administrador central. Primero autorizá y probá otra cuenta."
               : params.error === "admin_retirar" ? "No se pudo retirar el permiso. Verificá la confirmación y que el panel conserve otro administrador autorizado."
               : params.error === "agencia_nombre" ? "No se pudo guardar el nombre. Revisá que no esté vacío y que la agencia siga existiendo."
+              : params.error === "agencia_ciudad" ? "No se pudo guardar la ciudad. Revisá que tenga como máximo 120 caracteres."
               : params.error === "agencia_transferir" ? "No se pudo transferir la agencia. La nueva cuenta debe existir, tener el correo confirmado y estar autorizada; volvé a verificar el nombre de la agencia."
               : params.error === "agencia_eliminar" ? "No se pudo eliminar. Debés escribir exactamente el nombre actual de la agencia y luego ELIMINAR."
               : params.error === "usuario_nombre" ? "No se pudo actualizar el nombre de la cuenta."
@@ -302,153 +431,106 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
         </section>
 
         <section className="platform-access-section">
-          <h2>4. Agencias y sus usuarios</h2>
-          <p className="muted">Acá deben figurar las agencias existentes, sus usuarios y roles. Desde cada cuenta podés suspender el acceso temporalmente, revocarlo o reactivarlo. Los datos de la agencia quedan guardados.</p>
-          {agencies.length === 0 ? (
-            <p className="muted">No se encontraron agencias creadas en la base de datos de este Preview. Este listado es independiente de las solicitudes nuevas.</p>
+          <h2>3. Mi agencia</h2>
+          <p className="muted">Tu propia agencia está aislada de las demás. Presioná el botón para ver su número oficial, nombre visible, ciudad, correo del titular y las acciones de administración.</p>
+          {myAgency ? (
+            <div className="platform-agency-grid">
+              <AgencyManagementAccordion agency={myAgency} isOwnAgency />
+            </div>
           ) : (
-            <div className="form-stack">
-              {agencies.map((agency) => (
-                <article key={agency.organization_id} className="auth-card platform-agency-card">
-                  <div className="platform-agency-heading">
-                    <div>
-                      <h3>{agency.organization_name}</h3>
-                      <p className="muted small-text">Alta: {dateLabel(agency.organization_created_at)} · {agency.members.filter((member) => member.user_id).length} cuenta(s) vinculada(s)</p>
-                    </div>
-                  </div>
-                  <form action={updatePlatformAgencyName} className="platform-inline-form platform-edit-agency-form">
-                    <input type="hidden" name="organization_id" value={agency.organization_id} />
-                    <label>Nombre visible de la agencia
-                      <input name="name" required maxLength={120} defaultValue={agency.organization_name} />
-                    </label>
-                    <button className="button secondary">Guardar nombre</button>
-                  </form>
-                  {agency.members.some((member) => member.user_id && member.role === "owner") && (
-                    <details className="platform-details">
-                      <summary>Transferir titularidad de esta agencia</summary>
-                      <p className="muted small-text">La nueva persona debe tener una cuenta confirmada y autorizada. La cuenta anterior dejará de pertenecer a esta agencia, pero su permiso de Administrador Central, si tiene uno, se gestiona por separado.</p>
-                      <form action={transferPlatformAgencyOwner} className="form-stack">
-                        <input type="hidden" name="organization_id" value={agency.organization_id} />
-                        <label>Titular actual que se va a reemplazar
-                          <select name="previous_owner_user_id" required defaultValue="">
-                            <option value="" disabled>Seleccioná el titular actual</option>
-                            {agency.members.filter((member) => member.user_id && member.role === "owner").map((member) => (
-                              <option key={member.user_id!} value={member.user_id!}>{member.email || member.full_name || member.user_id}</option>
-                            ))}
-                          </select>
-                        </label>
-                        <label>Correo de la nueva persona titular
-                          <input type="email" name="new_owner_email" required maxLength={254} placeholder="titular@correo.com" autoComplete="off" />
-                        </label>
-                        <label>Repetí el nombre actual de la agencia: {agency.organization_name}
-                          <input name="confirm_name" required autoComplete="off" placeholder="Nombre exacto de la agencia" />
-                        </label>
-                        <button className="button primary">Transferir titularidad</button>
-                      </form>
-                    </details>
-                  )}
-                  <details className="platform-details danger-details">
-                    <summary>Eliminar esta agencia y sus datos</summary>
-                    <p className="message error-message">Esta acción elimina la agencia de Preview y sus registros operativos asociados. No borra automáticamente los usuarios ni las autorizaciones centrales. Es irreversible.</p>
-                    <form action={deletePlatformAgency} className="form-stack">
-                      <input type="hidden" name="organization_id" value={agency.organization_id} />
-                      <label>Escribí exactamente: {agency.organization_name}
-                        <input name="confirm_name" required autoComplete="off" placeholder="Nombre exacto de la agencia" />
-                      </label>
-                      <label>Escribí ELIMINAR para confirmar
-                        <input name="confirmation" required pattern="ELIMINAR" autoComplete="off" placeholder="ELIMINAR" />
-                      </label>
-                      <button className="button danger">Eliminar agencia y datos asociados</button>
-                    </form>
-                  </details>
-                  <div className="form-stack">
-                    {agency.members.map((member) => (
-                      <div key={member.user_id || agency.organization_id} className="platform-account-row">
-                        <div className="platform-account-identity">
-                          <strong>{member.full_name || member.email || "Agencia sin usuario vinculado"}</strong>
-                          {member.email && <p>{member.email}</p>}
-                          <p className="muted small-text">{roleLabel(member.role)} · {statusLabel(member.access_status)}</p>
-                          {member.reviewed_at && <p className="muted small-text">Última revisión: {dateLabel(member.reviewed_at)}{member.reviewed_by ? " · " + member.reviewed_by : ""}</p>}
-                        </div>
-                        <AccountActions account={member} />
-                      </div>
-                    ))}
-                  </div>
-                </article>
+            <p className="message">Esta cuenta central no tiene una agencia vinculada como propia. Las demás agencias siguen apareciendo por separado en el listado siguiente.</p>
+          )}
+        </section>
+
+        <section className="platform-access-section">
+          <h2>4. Otras agencias</h2>
+          <p className="muted">Cada agencia es un botón independiente. Al abrirlo, sus datos y sus cuentas quedan dentro de la misma ficha, sin mezclarse con tu agencia.</p>
+          {otherAgencies.length === 0 ? (
+            <p className="muted">No hay otras agencias registradas en este entorno.</p>
+          ) : (
+            <div className="platform-agency-grid">
+              {otherAgencies.map((agency) => (
+                <AgencyManagementAccordion key={agency.organization_id} agency={agency} />
               ))}
             </div>
           )}
         </section>
 
         <section className="platform-access-section">
-          <h2>3. Todas las cuentas de acceso</h2>
-          <p className="muted">Desde acá podés corregir el nombre de cada cuenta o eliminar su usuario de acceso. El correo de inicio de sesión no se modifica directamente desde esta pantalla: para el Administrador Central, agregá primero el correo confirmado nuevo y después retirale el permiso al anterior.</p>
+          <h2>5. Cuentas de acceso</h2>
+          <p className="muted">Las cuentas se muestran en una lista de botones en columnas. Abrí una cuenta para suspender o reactivar su acceso, corregir el nombre o eliminarla cuando corresponda. La eliminación está protegida para no dejar agencias sin titular ni borrar movimientos por accidente.</p>
           <div className="platform-user-list">
-            {users.map((user) => (
-              <article key={user.user_id} className="platform-management-card">
-                <div className="platform-management-identity">
-                  <strong>{user.email || "Cuenta sin correo"}</strong>
-                  <p className="muted small-text">
-                    {user.is_platform_admin ? "Administrador central" : "Usuario de agencia"}
-                    {" · "}
-                    {user.email_confirmed_at ? "Correo confirmado" : "Correo sin confirmar"}
-                  </p>
-                  <p className="muted small-text">Nombre: {user.full_name || "Sin nombre"} · Agencia(s): {user.agency_names}</p>
-                  <p className="muted small-text">Titular de {user.owner_agency_count} agencia(s) · Creó {user.created_agency_count} agencia(s)</p>
-                </div>
-                <form action={updatePlatformUserName} className="platform-inline-form">
-                  <input type="hidden" name="user_id" value={user.user_id} />
-                  <label>Corregir nombre de la cuenta
-                    <input name="full_name" required maxLength={120} defaultValue={user.full_name || ""} placeholder="Nombre completo" />
-                  </label>
-                  <button className="button secondary">Guardar nombre</button>
-                </form>
-                {user.is_platform_admin ? (
-                  <p className="muted small-text">Para eliminar esta cuenta primero retirale su permiso central desde el listado de administradores. No se puede borrar el último administrador.</p>
-                ) : user.user_id === currentUserId ? (
-                  <p className="muted small-text">No podés eliminar desde acá la cuenta con la que estás usando este panel. Ingresá con otro administrador central.</p>
-                ) : (user.owner_agency_count > 0 || user.created_agency_count > 0) ? (
-                  <p className="muted small-text">Para eliminar este usuario primero transferí o eliminá la(s) agencia(s) donde figura como titular o creador. Sus datos operativos no se deben perder por borrar una cuenta.</p>
-                ) : user.email ? (
-                  <details className="platform-details danger-details">
-                    <summary>Eliminar cuenta de usuario</summary>
-                    <p className="message error-message">Esta operación elimina la cuenta de inicio de sesión y sus membresías de agencia. No elimina rendiciones ni movimientos de una agencia; confirmá que esa cuenta ya no debe tener acceso.</p>
-                    <form action={deletePlatformUser} className="form-stack">
+            {users.map((user) => {
+              const userAccessRows = accounts.filter((account) => account.user_id === user.user_id);
+              return (
+                <details key={user.user_id} className="platform-management-card platform-user-accordion">
+                  <summary className="platform-entity-summary platform-user-summary">
+                    <span className="platform-entity-copy">
+                      <strong>{user.email || "Cuenta sin correo"}</strong>
+                      <small>{user.full_name || "Sin nombre"} · {user.agency_names || "Sin agencia vinculada"}</small>
+                    </span>
+                    <span className="platform-user-status">{user.is_platform_admin ? "Administrador central" : "Cuenta de agencia"}</span>
+                    <span className="platform-entity-open">Administrar ▾</span>
+                  </summary>
+                  <div className="platform-user-content">
+                    <div className="platform-management-identity">
+                      <p className="muted small-text">
+                        {user.is_platform_admin ? "Administrador central" : "Usuario de agencia"}
+                        {" · "}
+                        {user.email_confirmed_at ? "Correo confirmado" : "Correo sin confirmar"}
+                      </p>
+                      <p className="muted small-text">Titular de {user.owner_agency_count} agencia(s) · Creó {user.created_agency_count} agencia(s)</p>
+                    </div>
+
+                    <section className="platform-user-access-list">
+                      <h4>Accesos por agencia</h4>
+                      {userAccessRows.length ? userAccessRows.map((account, index) => (
+                        <div className="platform-user-access-row" key={(account.organization_id || "sin-agencia") + "-" + user.user_id + "-" + index}>
+                          <div>
+                            <strong>{account.organization_name}</strong>
+                            <p className="muted small-text">{roleLabel(account.role)} · {statusLabel(account.access_status)}</p>
+                          </div>
+                          <AccountActions account={account} />
+                        </div>
+                      )) : <p className="muted small-text">Esta cuenta todavía no tiene una solicitud autorizada ni una membresía de agencia para administrar.</p>}
+                    </section>
+
+                    <form action={updatePlatformUserName} className="platform-inline-form">
                       <input type="hidden" name="user_id" value={user.user_id} />
-                      <label>Repetí el correo de la cuenta: {user.email}
-                        <input type="email" name="confirm_email" required autoComplete="off" placeholder="Correo exacto de la cuenta" />
+                      <label>Corregir nombre de la cuenta
+                        <input name="full_name" required maxLength={120} defaultValue={user.full_name || ""} placeholder="Nombre completo" />
                       </label>
-                      <label>Escribí ELIMINAR para confirmar
-                        <input name="confirmation" required pattern="ELIMINAR" autoComplete="off" placeholder="ELIMINAR" />
-                      </label>
-                      <button className="button danger">Eliminar usuario definitivamente</button>
+                      <button className="button secondary">Guardar nombre</button>
                     </form>
-                  </details>
-                ) : <p className="muted small-text">Esta cuenta no tiene un correo utilizable para confirmar la eliminación.</p>}
-              </article>
-            ))}
+                    {user.is_platform_admin ? (
+                      <p className="muted small-text">Para eliminar esta cuenta primero retirale su permiso central desde el listado de administradores. No se puede borrar el último administrador.</p>
+                    ) : user.user_id === currentUserId ? (
+                      <p className="muted small-text">No podés eliminar desde acá la cuenta con la que estás usando este panel. Ingresá con otro administrador central.</p>
+                    ) : (user.owner_agency_count > 0 || user.created_agency_count > 0) ? (
+                      <p className="muted small-text">Para eliminar este usuario primero transferí o eliminá la(s) agencia(s) donde figura como titular o creador. Sus datos operativos no se deben perder por borrar una cuenta.</p>
+                    ) : user.email ? (
+                      <details className="platform-details danger-details">
+                        <summary>Eliminar cuenta de usuario</summary>
+                        <p className="message error-message">Esta operación elimina la cuenta de inicio de sesión y sus membresías de agencia. No elimina rendiciones ni movimientos de una agencia; confirmá que esa cuenta ya no debe tener acceso.</p>
+                        <form action={deletePlatformUser} className="form-stack">
+                          <input type="hidden" name="user_id" value={user.user_id} />
+                          <label>Repetí el correo de la cuenta: {user.email}
+                            <input type="email" name="confirm_email" required autoComplete="off" placeholder="Correo exacto de la cuenta" />
+                          </label>
+                          <label>Escribí ELIMINAR para confirmar
+                            <input name="confirmation" required pattern="ELIMINAR" autoComplete="off" placeholder="ELIMINAR" />
+                          </label>
+                          <button className="button danger">Eliminar usuario definitivamente</button>
+                        </form>
+                      </details>
+                    ) : <p className="muted small-text">Esta cuenta no tiene un correo utilizable para confirmar la eliminación.</p>}
+                  </div>
+                </details>
+              );
+            })}
             {users.length === 0 && <p className="muted">No se encontraron cuentas de acceso.</p>}
           </div>
         </section>
-
-        {unlinkedAccounts.length > 0 && (
-          <section className="platform-access-section">
-            <h2>5. Cuentas autorizadas sin agencia vinculada</h2>
-            <p className="muted">Estas cuentas ya recibieron una decisión de acceso, pero todavía no figuran como miembros de una agencia.</p>
-            <div className="form-stack">
-              {unlinkedAccounts.map((account) => (
-                <article key={account.user_id} className="auth-card access-request-card">
-                  <div>
-                    <strong>{account.full_name || account.email || "Cuenta sin nombre"}</strong>
-                    <p>{account.email}</p>
-                    <p className="muted small-text">{statusLabel(account.access_status)}</p>
-                  </div>
-                  <AccountActions account={account} />
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
 
         <div className="platform-access-help">
           <h2>Cómo se usa</h2>
@@ -458,7 +540,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
           <p className="muted small-text">La cuenta administradora central está protegida para evitar que se bloquee a sí misma desde este panel.</p>
         </div>
 
-        <Link href="/">Volver a Administración Central</Link>
+        <Link className="button ghost platform-summary-button platform-back-control-button" href="/">Volver a Control de Agencias</Link>
       </section>
     </main>
   );

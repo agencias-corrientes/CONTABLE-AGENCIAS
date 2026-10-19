@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -86,7 +87,7 @@ export default function RegisterOwnerPage() {
     <main className="auth-page">
       <div className="auth-card">
         <Link href="/" className="back-link">← Volver</Link>
-        <div className="brand-mark small brand-logo-wrap"><img src="/logo-agencias-quiniela.svg" alt="Agencias Corrientes" width="88" height="88" /></div>
+        <div className="brand-logo-wrap brand-logo-top-left auth-page-logo"><Image src="/logo-agencias-corrientes.webp" alt="Agencias Corrientes — Quiniela Oficial" width={76} height={76} priority /></div>
         <p className="eyebrow">ALTA DEL TITULAR</p>
         <h1>Crear cuenta de propietario</h1>
         <p className="muted">Usá el correo que querés emplear para ingresar. Cada titular tendrá su propia agencia, separada de las demás.</p>

@@ -112,6 +112,22 @@ export async function updatePlatformAgencyName(formData: FormData) {
   revalidatePath("/");
   redirect("/plataforma/accesos?actualizado=agencia_editada");
 }
+export async function updatePlatformAgencyCity(formData: FormData) {
+  const supabase = await createClient();
+  const { data: authData } = await supabase.auth.getClaims();
+  if (!authData?.claims?.sub) redirect("/login");
+  const organizationId = String(formData.get("organization_id") ?? "").trim();
+  const city = String(formData.get("city") ?? "").trim();
+  if (!organizationId || city.length > 120) redirect("/plataforma/accesos?error=agencia_ciudad");
+  const { error } = await (supabase as any).rpc("update_platform_agency_city", {
+    p_organization_id: organizationId,
+    p_city: city,
+  });
+  if (error) redirect("/plataforma/accesos?error=agencia_ciudad");
+  revalidatePath("/plataforma/accesos");
+  revalidatePath("/");
+  redirect("/plataforma/accesos?actualizado=ciudad_guardada");
+}
 export async function transferPlatformAgencyOwner(formData: FormData) {
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getClaims();

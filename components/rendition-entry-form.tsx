@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import jsQR from "jsqr";
-import { createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
+import { attachAgencyRenditionTicketReceiptDataToExisting, createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
 import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod } from "@/lib/agency-draw-schedule";
 import { extractTicketPeriodNumber, mapTicketClosureAmounts, parseTicketClosure, type TicketClosureData } from "@/lib/agency-ticket-closure";
 import { TicketClosureReceipt } from "@/components/ticket-closure-receipt";
@@ -24,6 +24,14 @@ type InitialRendition = {
 
 function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+}
+
+function closureBatchKey(ticket: TicketClosureData): string {
+  const agency = String(ticket.agencyCode ?? "").replace(/\D/g, "");
+  const subagent = String(ticket.subagentCode ?? "").replace(/\D/g, "");
+  const period = String(ticket.periodNumber ?? "").replace(/\s+/g, "");
+  const date = String(ticket.closedAt?.date ?? ticket.printedAt?.date ?? ticket.openedAt?.date ?? "");
+  return agency + "|" + subagent + "|" + period + "|" + date;
 }
 
 function extractTicketNumber(text: string): string {
@@ -754,8 +762,8 @@ function readPeriodTail(values:string[]):string|null {
   if(ranked[1]&&ranked[0][1]===ranked[1][1])return null;
   return ranked[0][0];
 }
-export function RenditionEntryForm({ agentId, games, today, periods, allPeriods, defaultPeriod, initialRendition, dailyMode = false, dailyCloseAllowed = true }: { agentId: string; games: Game[]; today: string; periods: OfficialDrawPeriod[]; allPeriods?: OfficialDrawPeriod[]; defaultPeriod?: string; initialRendition?: InitialRendition; dailyMode?: boolean; dailyCloseAllowed?: boolean }) {
-  const [mode, setMode] = useState<"photo" | "manual">(initialRendition?.captureMethod === "manual" ? "manual" : "photo");
+export function RenditionEntryForm({ agentId, games, today, periods, allPeriods, defaultPeriod, initialRendition, dailyMode = false, dailyCloseAllowed = true, receiptOnlyMode = false, batchMode = false }: { agentId: string; games: Game[]; today: string; periods: OfficialDrawPeriod[]; allPeriods?: OfficialDrawPeriod[]; defaultPeriod?: string; initialRendition?: InitialRendition; dailyMode?: boolean; dailyCloseAllowed?: boolean; receiptOnlyMode?: boolean; batchMode?: boolean }) {
+  const [mode, setMode] = useState<"photo" | "manual">(receiptOnlyMode ? "photo" : initialRendition?.captureMethod === "manual" ? "manual" : "photo");
   const [date, setDate] = useState(initialRendition?.renditionDate ?? today);
   const [period, setPeriod] = useState(initialRendition?.period ?? (dailyMode ? "Cierre diario" : defaultPeriod ?? periods[0]?.label ?? ""));
   const [periodManuallySelected, setPeriodManuallySelected] = useState(Boolean(initialRendition));
@@ -769,8 +777,13 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [reference, setReference] = useState(initialRendition?.reference ?? "");
   const [notes, setNotes] = useState(initialRendition?.notes ?? "");
   const [receiptData, setReceiptData] = useState<TicketClosureData | null>(initialRendition?.receiptData ?? null);
+  const [batchTickets, setBatchTickets] = useState<TicketClosureData[]>(() => {
+    const saved: any = initialRendition?.receiptData;
+    return saved?.type === "loteria-corrientes-end-of-day-batch-v1" && Array.isArray(saved.tickets) ? saved.tickets : [];
+  });
+  const batchTicketsRef = useRef<TicketClosureData[]>(batchTickets);
   const [gameListExpanded, setGameListExpanded] = useState(false);
-  const [receiptReviewed, setReceiptReviewed] = useState(Boolean(initialRendition?.receiptData?.userConfirmedReview));
+  const [receiptReviewed, setReceiptReviewed] = useState(Boolean((initialRendition?.receiptData as any)?.userConfirmedReview));
   const [ocrText, setOcrText] = useState("");
   const [fileName, setFileName] = useState("");
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
@@ -783,9 +796,38 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [confirmationError, setConfirmationError] = useState("");
   const confirmationId = useId();
   const ticketPhotoInputId = useId();
+  const [ticketCaptureChoiceOpen, setTicketCaptureChoiceOpen] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraStarting, setCameraStarting] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<"environment" | "user">("environment");
+  const [cameraStreamVersion, setCameraStreamVersion] = useState(0);
+  const [cameraError, setCameraError] = useState("");
+  const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">(dailyMode && !dailyCloseAllowed ? "incomplete" : "complete");
-  const [reportedAmount, setReportedAmount] = useState("");
+  const [pendingAmount, setPendingAmount] = useState("");
+
+  useEffect(() => {
+    if (!cameraOpen) return;
+    const video = cameraVideoRef.current;
+    const stream = cameraStreamRef.current;
+    if (!video || !stream) return;
+    video.srcObject = stream;
+    void video.play().catch(() => {
+      setCameraError("No se pudo iniciar la vista de la cámara. Cerrá y volvé a abrirla; también podés elegir una foto o archivo.");
+    });
+    return () => {
+      if (video.srcObject === stream) video.srcObject = null;
+    };
+  }, [cameraOpen, cameraStreamVersion]);
+
+  useEffect(() => () => {
+    const stream = cameraStreamRef.current;
+    if (stream) stream.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+  }, []);
 
   const total = useMemo(() =>
     Object.values(amounts).reduce((sum, value) => sum + (Number(value) > 0 ? Number(value) : 0), 0),
@@ -805,7 +847,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const canConfirmClosedTicket = Boolean(
     receiptHasConfirmedClosure && receiptReviewed && receiptData?.userConfirmedReview === true
   );
-  const canConfirmDaily = dailyCloseAllowed || canConfirmClosedTicket;
+  const canConfirmDaily = batchMode ? batchTickets.length > 0 && receiptReviewed : dailyCloseAllowed || canConfirmClosedTicket;
 
   // Refresh the proposed period at draw boundaries only while the form is untouched.
   useEffect(() => {
@@ -865,6 +907,170 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     }
     context.putImageData(image, 0, 0);
     return canvas;
+  }
+
+  function processSelectedTicketFile(file: File) {
+    const declaredType = String(file.type ?? "").toLowerCase();
+    const isDefinitelyVideo =
+      declaredType.startsWith("video/") ||
+      /\.(mp4|mov|m4v|avi|webm|3gp|3g2|mpeg|mpg|mkv|wmv)$/i.test(file.name);
+
+    if (isDefinitelyVideo) {
+      setError("El comprobante debe ser una foto fija, no un video. Elegí la cámara fotográfica o una imagen desde Archivos.");
+      setNotice("");
+      return;
+    }
+
+    // Algunos selectores/cámaras móviles devuelven type vacío o application/octet-stream.
+    // Se permite que el decodificador de imágenes compruebe el archivo en lugar de descartarlo aquí.
+    void processTicket(file);
+  }
+
+
+  async function startTicketCamera(facing: "environment" | "user") {
+    setCameraError("");
+    setCameraReady(false);
+    setCameraStarting(true);
+    const previousStream = cameraStreamRef.current;
+    if (previousStream) previousStream.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+
+    try {
+      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
+        throw new Error("camera-unsupported");
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+      });
+      cameraStreamRef.current = stream;
+      setCameraFacing(facing);
+      setCameraStreamVersion((version) => version + 1);
+      setCameraOpen(true);
+      setTicketCaptureChoiceOpen(false);
+    } catch (cause) {
+      const errorName = cause && typeof cause === "object" && "name" in cause
+        ? String((cause as { name?: unknown }).name ?? "")
+        : "";
+      const message = errorName === "NotAllowedError" || errorName === "PermissionDeniedError"
+        ? "El navegador bloqueó el acceso a la cámara. Permití el uso de Cámara para este sitio y volvé a intentarlo. La carga de archivos sigue disponible."
+        : errorName === "NotFoundError" || errorName === "DevicesNotFoundError"
+          ? "No se encontró una cámara disponible en este dispositivo. Podés elegir una foto o archivo."
+          : errorName === "NotReadableError" || errorName === "TrackStartError"
+            ? "La cámara está ocupada por otra aplicación. Cerrá la otra aplicación y volvé a intentarlo."
+            : "No se pudo iniciar la cámara. Revisá los permisos del navegador; también podés elegir una foto o archivo.";
+      setCameraError(message);
+      setCameraOpen(false);
+      setTicketCaptureChoiceOpen(true);
+    } finally {
+      setCameraStarting(false);
+    }
+  }
+
+  function closeTicketCamera() {
+    const stream = cameraStreamRef.current;
+    if (stream) stream.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    if (cameraVideoRef.current) cameraVideoRef.current.srcObject = null;
+    setCameraOpen(false);
+    setCameraReady(false);
+    setCameraError("");
+  }
+
+  async function captureTicketCameraPhoto() {
+    const video = cameraVideoRef.current;
+    if (!video || !video.videoWidth || !video.videoHeight) {
+      setCameraError("La cámara todavía se está iniciando. Esperá un momento y volvé a tomar la foto.");
+      return;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      setCameraError("No se pudo preparar la foto. Cerrá la cámara y volvé a abrirla.");
+      return;
+    }
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.94));
+    if (!blob) {
+      setCameraError("No se pudo generar la foto. Volvé a intentarlo.");
+      return;
+    }
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const file = new File([blob], "ticket-camara-" + stamp + ".jpg", {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
+    closeTicketCamera();
+    setTicketCaptureChoiceOpen(false);
+    processSelectedTicketFile(file);
+  }
+
+  function renderTicketCaptureDialogs() {
+    return (
+      <>
+        {ticketCaptureChoiceOpen && (
+          <div className="ticket-capture-dialog-backdrop" role="presentation" onClick={() => setTicketCaptureChoiceOpen(false)}>
+            <section className="ticket-capture-dialog" role="dialog" aria-modal="true" aria-labelledby={ticketPhotoInputId + "-capture-title"} onClick={(event) => event.stopPropagation()}>
+              <div className="ticket-capture-dialog-heading">
+                <h3 id={ticketPhotoInputId + "-capture-title"}>Elegí cómo cargar el ticket</h3>
+                <p>La foto tomada con cámara y los archivos pasan por el mismo lector OCR.</p>
+              </div>
+              {cameraError && <p className="ticket-read-error" role="alert">{cameraError}</p>}
+              {cameraStarting && <p className="ticket-read-notice" role="status">Solicitando acceso a la cámara…</p>}
+              <div className="ticket-capture-dialog-actions">
+                <button type="button" className="button primary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("environment")}>Usar cámara trasera</button>
+                <button type="button" className="button secondary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("user")}>Usar cámara frontal</button>
+                <button type="button" className="button ghost" disabled={busy} onClick={() => {
+                  setTicketCaptureChoiceOpen(false);
+                  setCameraError("");
+                  const input = document.getElementById(ticketPhotoInputId) as HTMLInputElement | null;
+                  input?.click();
+                }}>Elegir foto o archivo</button>
+              </div>
+              <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
+                setTicketCaptureChoiceOpen(false);
+                setCameraError("");
+              }}>Cancelar</button>
+            </section>
+          </div>
+        )}
+        {cameraOpen && (
+          <div className="ticket-capture-dialog-backdrop" role="presentation" onClick={closeTicketCamera}>
+            <section className="ticket-capture-dialog ticket-live-camera-dialog" role="dialog" aria-modal="true" aria-labelledby={ticketPhotoInputId + "-camera-title"} onClick={(event) => event.stopPropagation()}>
+              <div className="ticket-capture-dialog-heading">
+                <h3 id={ticketPhotoInputId + "-camera-title"}>Tomar foto del ticket</h3>
+                <p>{cameraFacing === "environment" ? "Cámara trasera" : "Cámara frontal"} · Centrá el cupón completo en la imagen.</p>
+              </div>
+              <video
+                ref={cameraVideoRef}
+                className="ticket-live-camera-video"
+                autoPlay
+                playsInline
+                muted
+                onCanPlay={() => setCameraReady(true)}
+                aria-label="Vista en vivo de la cámara para capturar el ticket"
+              />
+              {cameraError && <p className="ticket-read-error" role="alert">{cameraError}</p>}
+              <div className="ticket-capture-dialog-actions">
+                <button type="button" className="button secondary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera(cameraFacing === "environment" ? "user" : "environment")}>
+                  Cambiar a cámara {cameraFacing === "environment" ? "frontal" : "trasera"}
+                </button>
+                <button type="button" className="button primary" disabled={!cameraReady || cameraStarting || busy} onClick={() => void captureTicketCameraPhoto()}>
+                  Tomar foto y leer ticket
+                </button>
+                <button type="button" className="button ghost" onClick={closeTicketCamera}>Cancelar</button>
+              </div>
+            </section>
+          </div>
+        )}
+      </>
+    );
   }
 
   async function processTicket(file: File) {
@@ -1102,6 +1308,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       setOcrText([recognizedText, focusedOcrDebugText].filter(Boolean).join("\n\n"));
       const activeGames = games.filter((game) => game.enabled !== false);
       const parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber);
+      if (batchMode && !parsed.receiptData) {
+        setError("Esta modalidad acepta comprobantes oficiales FIN DE JORNADA. El cupón no se agregó al lote.");
+        setProgress("No se incorporó el archivo. Elegí un cierre oficial o continuá con otro cupón.");
+        setProgressPercent(0);
+        return;
+      }
       const detectedPeriod = parsed.period || qrPeriodCandidate;
       let autoDetectedPeriodChanged = false;
       let detectedPeriodDefinition: OfficialDrawPeriod | null = null;
@@ -1162,10 +1374,41 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         };
         // The printed date stays in receipt metadata; the financial entry stays on today's operational day.
         setDate(initialRendition?.renditionDate ?? today);
+        if (batchMode) {
+          const ticketPeriod = String(closureReceipt.periodNumber ?? "").replace(/\s+/g, "");
+          const ticketDate = String(closureReceipt.closedAt?.date ?? closureReceipt.printedAt?.date ?? closureReceipt.openedAt?.date ?? "");
+          const ticketKey = closureBatchKey(closureReceipt);
+          const validPrintedDate = /^\d{4}-\d{2}-\d{2}$/.test(ticketDate) || /^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$/.test(ticketDate);
+          if (!/^\d{7}$/.test(ticketPeriod) || !validPrintedDate) {
+            setError("No pude confirmar el Período N.º de 7 dígitos y la fecha impresa del cupón. Revisá el ticket antes de agregarlo al lote.");
+            setProgress("Cupón no incorporado: falta identificar correctamente su período o fecha.");
+            setProgressPercent(0);
+            return;
+          }
+          if (batchTicketsRef.current.some((item) => closureBatchKey(item) === ticketKey)) {
+            setError("Este cupón ya fue agregado al lote. No se volvió a sumar.");
+            setProgress("Cupón duplicado detectado; los importes del lote se mantienen sin cambios.");
+            setProgressPercent(0);
+            return;
+          }
+          const nextBatch = [...batchTicketsRef.current, closureReceipt];
+          batchTicketsRef.current = nextBatch;
+          setBatchTickets(nextBatch);
+        }
         setReceiptData(closureReceipt);
         setGameListExpanded(true);
         setReceiptReviewed(false);
-        setAmounts(mapTicketClosureAmounts(closureReceipt, periodGames));
+        setAmounts((previous) => {
+          const incoming = mapTicketClosureAmounts(closureReceipt, periodGames);
+          if (!batchMode) return incoming;
+          const combined = { ...previous };
+          for (const [gameId, rawAmount] of Object.entries(incoming)) {
+            const add = parseMoney(String(rawAmount ?? "")) ?? 0;
+            if (add <= 0) continue;
+            combined[gameId] = ((parseMoney(String(previous[gameId] ?? "")) ?? 0) + add).toFixed(2);
+          }
+          return combined;
+        });
         if (!dailyMode) {
           setDetectedPeriodMismatch("__DAILY_CLOSURE__");
           setNotice("Este comprobante es un FIN DE JORNADA completo. Para registrarlo, configurá este operador con modalidad Rendición diaria / cierre diario; no corresponde a un único sorteo.");
@@ -1234,6 +1477,73 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     }
   }
 
+  if (receiptOnlyMode) {
+    return (
+      <form
+        action={attachAgencyRenditionTicketReceiptDataToExisting}
+        className="form-stack rendition-entry-form"
+        noValidate
+        onSubmit={(event) => {
+          if (!receiptData || receiptData.type !== "loteria-corrientes-end-of-day-v1" || !receiptReviewed) {
+            event.preventDefault();
+            setError("Leé el ticket oficial de fin de jornada y marcá que revisaste el detalle antes de adjuntarlo.");
+          }
+        }}
+      >
+        <input type="hidden" name="agent_id" value={agentId} />
+        <input type="hidden" name="rendition_id" value={initialRendition?.id ?? ""} />
+        <input type="hidden" name="ticket_receipt_data" value={receiptData ? JSON.stringify({ ...receiptData, userConfirmedReview: receiptReviewed }) : ""} />
+        <section className="ticket-capture-panel">
+          <div className="ticket-photo-picker">
+            <span className="ticket-photo-icon" aria-hidden="true">▧</span>
+            <strong>Adjuntar detalle OCR al cierre existente</strong>
+            <span>Seleccioná la foto original del FIN DE JORNADA o una copia guardada. Esto no vuelve a registrar importes ni cobros.</span>
+            <button type="button" className="ticket-photo-picker-cta" disabled={busy} onClick={() => { setCameraError(""); setTicketCaptureChoiceOpen(true); }}>Elegir foto o archivo</button>
+            <input
+              id={ticketPhotoInputId}
+              className="ticket-photo-native-input ticket-photo-operational-input"
+              type="file"
+              accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+              aria-label="Elegir foto del ticket para recuperar el detalle OCR"
+              disabled={busy}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                if (file) {
+                  processSelectedTicketFile(file);
+                }
+                event.currentTarget.value = "";
+              }}
+            />
+          </div>
+          {renderTicketCaptureDialogs()}
+          {photoPreviewUrl && <div className="ticket-photo-preview"><img src={photoPreviewUrl} alt="Vista previa del ticket para recuperar su detalle OCR" /></div>}
+          {progress && <p className="ticket-read-notice">{progress}{progressPercent > 0 ? " (" + progressPercent + "%)" : ""}</p>}
+          {error && <p className="ticket-read-error" role="alert">{error}</p>}
+          {notice && !error && <p className="ticket-read-notice">{notice}</p>}
+          {ocrText && <details className="ticket-ocr-text"><summary>Ver texto reconocido</summary><pre>{ocrText}</pre></details>}
+        </section>
+        {receiptData && <TicketClosureReceipt data={receiptData} compact />}
+        {receiptData && (
+          <label className="ticket-input-block">
+            <span><input
+              type="checkbox"
+              checked={receiptReviewed}
+              onChange={(event) => {
+                const checked = event.currentTarget.checked;
+                setReceiptReviewed(checked);
+                setReceiptData((previous) => previous ? { ...previous, userConfirmedReview: checked } : previous);
+              }}
+            /> Confirmo que revisé los datos OCR del ticket oficial.</span>
+          </label>
+        )}
+        <button className="button primary" type="submit" disabled={!receiptData || !receiptReviewed || busy}>
+          {busy ? "Leyendo ticket…" : "Adjuntar OCR a esta rendición existente"}
+        </button>
+        <p className="muted small-text">Esta acción solo guarda el detalle del comprobante en el registro seleccionado. No crea otra rendición, no modifica ventas o importes y no registra movimientos en Caja.</p>
+      </form>
+    );
+  }
+
   return (
     <form
       action={initialRendition ? updateAgencyRendition : createAgencyRendition}
@@ -1253,10 +1563,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           return;
         }
         if (dailyStatusChoice === "incomplete") {
-          const value = Number(reportedAmount.replace(",", "."));
-          if (!reportedAmount.trim() || !Number.isFinite(value) || value <= 0 || value > netToRemit || value > 999999999999.99) {
+          const pendingValue = Number(pendingAmount.replace(",", "."));
+          if (!pendingAmount.trim() || !Number.isFinite(pendingValue) || pendingValue <= 0 || pendingValue >= netToRemit || pendingValue > 999999999999.99) {
             event.preventDefault();
-            setConfirmationError("Ingresá un importe mayor que cero y no superior al efectivo neto después de descontar la comisión.");
+            setConfirmationError("Ingresá la deuda que queda pendiente, mayor que cero y menor que el efectivo neto. El sistema calculará lo que efectivamente se entregó.");
             return;
           }
         }
@@ -1266,7 +1576,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       <input type="hidden" name="agent_id" value={agentId} />
       <input type="hidden" name="rendition_id" value={initialRendition?.id ?? ""} />
       <input type="hidden" name="ticket_qr_payload" value={qrPayload} />
-      <input type="hidden" name="ticket_receipt_data" value={receiptData ? JSON.stringify(receiptData) : ""} />
+      <input type="hidden" name="ticket_receipt_data" value={batchMode
+        ? (batchTickets.length ? JSON.stringify({
+            type: "loteria-corrientes-end-of-day-batch-v1",
+            userConfirmedReview: receiptReviewed,
+            agencyCode: batchTickets[0]?.agencyCode ?? null,
+            subagentCode: batchTickets[0]?.subagentCode ?? null,
+            tickets: batchTickets.map((ticket) => ({ ...ticket, userConfirmedReview: receiptReviewed })),
+          }) : "")
+        : (receiptData ? JSON.stringify(receiptData) : "")} />
       <input type="hidden" name="game_period" value={period} />
       <input type="hidden" name="draw_period" value={period} />
       <input type="hidden" name="draw_number" value={drawNumber} />
@@ -1275,7 +1593,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <>
           <input type="hidden" name="operational_date" value={today} />
           <input type="hidden" name="draw_status" value={dailyStatusChoice} />
-          <input type="hidden" name="reported_amount" value={dailyStatusChoice === "incomplete" ? reportedAmount : netToRemit.toFixed(2)} />
+          <input type="hidden" name="reported_amount" value={dailyStatusChoice === "incomplete" ? Math.max(0, Math.round((netToRemit - Number(pendingAmount.replace(",", ".")) + Number.EPSILON) * 100) / 100).toFixed(2) : netToRemit.toFixed(2)} />
         </>
       )}
 
@@ -1344,10 +1662,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             <span className="ticket-photo-icon" aria-hidden="true">▧</span>
             <strong>Comprobante del ticket</strong>
             <span>Seleccioná una foto guardada en el teléfono o sacá una nueva.</span>
-            <span className="ticket-photo-picker-cta" aria-hidden="true">Elegir foto o archivo</span>
+            <button type="button" className="ticket-photo-picker-cta" disabled={busy} onClick={() => { setCameraError(""); setTicketCaptureChoiceOpen(true); }}>Elegir foto o archivo</button>
             <input
               id={ticketPhotoInputId}
-              className="ticket-photo-native-input"
+              className="ticket-photo-native-input ticket-photo-operational-input"
               type="file"
               name="ticket_photo"
               aria-label="Elegir foto o archivo del comprobante del ticket"
@@ -1355,18 +1673,26 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               onChange={(event) => {
                 const file = event.currentTarget.files?.[0];
                 if (file) {
-                  const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
-                  if (isImage) {
-                    void processTicket(file);
-                  } else {
-                    setError("El archivo elegido no parece ser una imagen. Seleccioná una foto del ticket en Fotos, Galería o Archivos.");
-                    setNotice("");
-                  }
+                  processSelectedTicketFile(file);
                 }
                 event.currentTarget.value = "";
               }}
             />
           </div>
+          {renderTicketCaptureDialogs()}
+          {batchMode && (
+            <div className="weekly-ticket-batch-upload-help">
+              <div>
+                <strong>{batchTickets.length === 0 ? "Carga acumulada de FIN DE JORNADA" : `${batchTickets.length} cupón${batchTickets.length === 1 ? "" : "es"} agregado${batchTickets.length === 1 ? "" : "s"}`}</strong>
+                <p>{batchTickets.length === 0 ? "Elegí el primer comprobante. Después podés agregar los demás, uno por uno, sin registrar una rendición todavía." : "El cupón ya está en este lote. Volvé a elegir otro archivo para sumar el siguiente comprobante a la misma rendición."}</p>
+              </div>
+              <button type="button" className="button ghost small" disabled={busy || batchTickets.length >= 12} onClick={() => {
+                setCameraError("");
+                setTicketCaptureChoiceOpen(true);
+              }}>{batchTickets.length === 0 ? "Elegir primer FIN DE JORNADA" : "Agregar otro FIN DE JORNADA"}</button>
+              <small>Repetí esta operación por cada cupón. Revisá la lista y marcá la revisión antes de tocar “Confirmar rendición acumulada”. Máximo 12 cupones por lote.</small>
+            </div>
+          )}
           {photoPreviewUrl && <div className="ticket-photo-preview"><button type="button" className="ticket-photo-preview-button" onClick={() => setPhotoExpanded(true)} aria-label="Ampliar foto del ticket"><img src={photoPreviewUrl} alt="Vista previa del ticket cargado" /><span>Ampliar foto</span></button></div>}
           {photoExpanded && photoPreviewUrl && <div className="ticket-photo-lightbox" role="dialog" aria-modal="true" aria-label="Foto del ticket ampliada" onClick={() => setPhotoExpanded(false)}><button type="button" className="ticket-photo-lightbox-close" onClick={() => setPhotoExpanded(false)}>Cerrar ✕</button><img src={photoPreviewUrl} alt="Foto del ticket ampliada" onClick={(event) => event.stopPropagation()} /></div>}
           <p className="muted small-text">También podés subir una foto guardada. La lectura se procesa en el navegador y la imagen se adjunta a la rendición para auditoría.</p>
@@ -1461,7 +1787,63 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           </div>
         </div>
         {gameListExpanded ? (
-          receiptData ? (
+          batchMode ? (
+            <div className="weekly-ticket-batch-panel">
+              <div className="panel-head">
+                <div><h3>Cupones incluidos en esta rendición</h3><p className="muted">Los cupones quedan separados por fecha; los importes de abajo son el total acumulado del lote.</p></div>
+                <span className="badge">{batchTickets.length} cupones</span>
+              </div>
+              {batchTickets.map((ticket, index) => <details className="weekly-ticket-batch-row" key={String(ticket.periodNumber ?? "sin-periodo") + "-" + index}>
+                <summary><strong>Cupón {index + 1} · Período {ticket.periodNumber || "no detectado"}</strong><small>{ticket.closedAt?.date ?? ticket.printedAt?.date ?? ticket.openedAt?.date ?? "Fecha impresa no detectada"}</small></summary>
+                <TicketClosureReceipt data={ticket} compact editable onChange={(next) => {
+                  const nextKey = closureBatchKey(next);
+                  if (batchTicketsRef.current.some((item, itemIndex) => itemIndex !== index && closureBatchKey(item) === nextKey)) {
+                    setError("Ese período y fecha ya están en otro cupón del lote. No se guardó la corrección duplicada.");
+                    return;
+                  }
+                  const editableTicket = { ...next, userConfirmedReview: false };
+                  const priorAmounts = mapTicketClosureAmounts(ticket, periodGames);
+                  const nextAmounts = mapTicketClosureAmounts(editableTicket, periodGames);
+                  setAmounts((previous) => {
+                    const combined = { ...previous };
+                    for (const game of periodGames) {
+                      const current = parseMoney(String(previous[game.id] ?? "")) ?? 0;
+                      const oldValue = parseMoney(String(priorAmounts[game.id] ?? "")) ?? 0;
+                      const newValue = parseMoney(String(nextAmounts[game.id] ?? "")) ?? 0;
+                      combined[game.id] = Math.max(0, current - oldValue + newValue).toFixed(2);
+                    }
+                    return combined;
+                  });
+                  const updated = batchTicketsRef.current.map((item, itemIndex) => itemIndex === index ? editableTicket : item);
+                  batchTicketsRef.current = updated;
+                  setBatchTickets(updated);
+                  setReceiptData(updated[updated.length - 1] ?? null);
+                  setReceiptReviewed(false);
+                  setError("");
+                }} />
+              </details>)}
+              <label className="ticket-input-block weekly-ticket-batch-review">
+                <span><input type="checkbox" checked={receiptReviewed} onChange={(event) => setReceiptReviewed(event.currentTarget.checked)} />
+                  Confirmo que revisé todos los cupones OCR de este lote.</span>
+              </label>
+              <div className="game-rendition-list">
+                {periodGames.map((game) => <label className="game-rendition-row" key={game.id}>
+                  <span><strong>{game.name}</strong><small>{game.category} · total de todos los cupones</small></span>
+                  <input type="number" name={"game_" + game.id} min="0" step="0.01" inputMode="decimal" placeholder="0,00" value={amounts[game.id] ?? ""} onChange={(event) => setAmounts((previous) => ({ ...previous, [game.id]: event.target.value }))} />
+                </label>)}
+              </div>
+              <button type="button" className="button ghost small" disabled={!batchTickets.length || busy} onClick={() => {
+                batchTicketsRef.current = [];
+                setBatchTickets([]);
+                setReceiptData(null);
+                setReceiptReviewed(false);
+                setAmounts(Object.fromEntries(games.map((game) => [game.id, ""])));
+                setTicketNumbers("");
+                setError("");
+                setNotice("");
+              }}>Vaciar lote y empezar de nuevo</button>
+            </div>
+          ) : receiptData ? (
             <>
               <TicketClosureReceipt data={receiptData} editable onChange={(next) => {
                 setReceiptData({ ...next, userConfirmedReview: false });
@@ -1504,8 +1886,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             <div className="game-rendition-collapsed" role="status">
               <span className="game-rendition-collapsed-mark" aria-hidden="true">{receiptData ? "✓" : "…"}</span>
               <div>
-                <strong>{receiptData ? "Ticket de fin de jornada leído" : total > 0 ? "Importes reconocidos y listos para revisar" : "Lista de juegos contraída"}</strong>
-                <p>{receiptData
+                <strong>{batchMode && batchTickets.length ? batchTickets.length + " cupones de fin de jornada listos" : receiptData ? "Ticket de fin de jornada leído" : total > 0 ? "Importes reconocidos y listos para revisar" : "Lista de juegos contraída"}</strong>
+                <p>{batchMode && batchTickets.length
+                  ? "Se acumularon " + batchTickets.length + " cupones. Abrí la lista completa para revisar cada fecha y los importes consolidados antes de guardar."
+                  : receiptData
                   ? "Los datos detectados se conservaron. Abrí la lista completa para revisar juegos, sorteos, importes y totales antes de guardar."
                   : total > 0
                     ? "Se detectaron importes por " + new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(total) + ". Abrí la lista para verificar o corregir cada valor."
@@ -1516,7 +1900,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         )}
       </div>
 
-      <label className="ticket-input-block"><span>Número(s) de ticket / cupón</span><textarea name="ticket_numbers" rows={2} value={ticketNumbers} onChange={(event) => setTicketNumbers(event.target.value)} placeholder="Se completa desde la lectura o ingresalo manualmente." /></label>
+      <label className="ticket-input-block"><span>Número(s) de ticket / cupón</span><textarea name="ticket_numbers" rows={2} value={ticketNumbers} onChange={(event) => setTicketNumbers(event.target.value)} readOnly={batchMode} placeholder={batchMode ? "El detalle de cada cupón queda en el lote." : "Se completa desde la lectura o ingresalo manualmente."} /></label>
       <label className="ticket-input-block"><span>Observaciones</span><textarea name="notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Opcional." /></label>
       <div className="rendition-settlement-bar">
         <div className="rendition-settlement-values">
@@ -1528,15 +1912,22 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <button className="button primary" type={initialRendition ? "submit" : "button"}
           onClick={initialRendition ? undefined : () => {
             setConfirmationError("");
-            if (receiptData) {
+            if (batchMode) {
+              if (!batchTickets.length || !receiptReviewed) {
+                setConfirmationError("Agregá los cupones oficiales, revisá todos y marcá la confirmación antes de continuar.");
+                setConfirmationOpen(true);
+                return;
+              }
+              setDailyStatusChoice("complete");
+            } else if (receiptData) {
               setReceiptReviewed(true);
               setReceiptData((previous) => previous ? { ...previous, userConfirmedReview: true } : previous);
               setDailyStatusChoice("complete");
             }
             setConfirmationOpen(true);
           }}
-          disabled={!periodGames.length || !period || busy || total <= 0 || netToRemit <= 0 || Boolean(detectedPeriodMismatch)}>
-          {busy ? "Leyendo ticket…" : initialRendition ? "Guardar cambios de la rendición" : "Confirmar y guardar rendición"}
+          disabled={!periodGames.length || !period || busy || total <= 0 || netToRemit <= 0 || Boolean(detectedPeriodMismatch) || (batchMode && (!batchTickets.length || !receiptReviewed))}>
+          {busy ? "Leyendo ticket…" : initialRendition ? "Guardar cambios de la rendición" : batchMode ? "Confirmar rendición acumulada" : "Confirmar y guardar rendición"}
         </button>
       </div>
 
@@ -1579,7 +1970,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                 />
                 <span>
                   <strong>Guardar como incompleta</strong>
-                  <small>Indicá cuánto efectivo entregó hasta el momento, sin superar el neto después de comisión.</small>
+                  <small>Indicá cuánto queda debiendo. Caja registrará como cobrado el efectivo neto menos esa deuda.</small>
                 </span>
               </label>
             </div>
@@ -1587,15 +1978,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             {dailyStatusChoice === "incomplete" && (
               <div className="rendition-confirmation-fields">
                 <label className="rendition-confirm-amount-label">
-                  Monto rendido hasta el momento
+                  Monto pendiente por rendir
                   <input
                     type="number"
                     min="0.01"
-                    max={netToRemit}
+                    max={Math.max(0, netToRemit - 0.01)}
                     step="0.01"
                     inputMode="decimal"
-                    value={reportedAmount}
-                    onChange={(event) => { setReportedAmount(event.target.value); setConfirmationError(""); }}
+                    value={pendingAmount}
+                    onChange={(event) => { setPendingAmount(event.target.value); setConfirmationError(""); }}
                     placeholder="Ej.: 12500.00"
                   />
                 </label>

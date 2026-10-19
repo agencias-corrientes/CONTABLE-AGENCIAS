@@ -20,11 +20,13 @@ export function AppShell({
   organizationName,
   userEmail,
   userRole,
+  isPlatformAdmin,
 }: {
   children: React.ReactNode;
   organizationName: string;
   userEmail: string;
   userRole: string;
+  isPlatformAdmin: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -51,7 +53,7 @@ export function AppShell({
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <div className="brand-mark small brand-logo-wrap"><Image src="/logo-agencias-quiniela.svg" alt="Agencias de Quiniela" width={44} height={44} priority /></div>
+          <div className="brand-logo-wrap sidebar-logo"><Image src="/logo-agencias-corrientes.webp" alt="Agencias Corrientes — Quiniela Oficial" width={48} height={48} priority /></div>
           <div className="brand-copy">
             <div className="brand-title-row"><strong>Agencias</strong>{officialAgencyNumber && <span className="official-agency-number" aria-label={"Agencia oficial " + officialAgencyNumber}>{officialAgencyNumber}</span>}</div>
             <span className="brand-subtitle">Subagentes · Ambulantes</span>
@@ -81,6 +83,7 @@ export function AppShell({
             <span className="user-role-pill">{displayRole}</span>
             <span className="user-line" title={userEmail}>{userEmail}</span>
           </div>
+          {isPlatformAdmin && <Link href="/plataforma/accesos" className="button ghost full central-return-button">↩ Volver a control de agencia</Link>}
           <button className="button ghost full" onClick={signOut}>Cerrar sesión</button>
         </div>
       </aside>
@@ -100,6 +103,7 @@ export function AppShell({
         .sidebar .nav-list .nav-item.active:hover { background: #fff !important; color: #64283a !important; }
         .sidebar .user-role-pill { font-size: 11px; font-weight: 800; letter-spacing: .025em; }
         .sidebar .user-line { font-size: 11px; line-height: 1.4; }
+        .sidebar .central-return-button { display: flex; margin-top: 6px; margin-bottom: 22px; min-height: 48px; padding: 9px 10px; border-color: rgba(255,255,255,.35); line-height: 1.25; white-space: normal; text-align: center; font-size: 12px; font-weight: 800; }
         .sidebar .sidebar-footer .button { min-height: 40px; border-color: rgba(255,255,255,.3); font-size: 12px; font-weight: 750; }
         @media (max-width: 1000px) {
           .sidebar { padding: 15px 12px 13px; }

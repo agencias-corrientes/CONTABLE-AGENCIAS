@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
 type RecoveryStep = "request" | "code" | "password" | "updated";
@@ -113,7 +114,7 @@ export default function RecoverPasswordPage() {
     <main className="auth-page">
       <section className="auth-card">
         <Link href="/login?perfil=administrador" className="back-link">← Volver al ingreso</Link>
-        <div className="brand-mark small brand-logo-wrap"><img src="/logo-agencias-quiniela.svg" alt="Agencias Corrientes" width="88" height="88" /></div>
+        <div className="brand-logo-wrap brand-logo-top-left auth-page-logo"><Image src="/icon" alt="Agencias Corrientes — Quiniela Oficial" width={76} height={76} priority /></div>
         <p className="eyebrow">RECUPERACIÓN DE ACCESO</p>
         <h1>{step === "updated" ? "Contraseña actualizada" : step === "password" ? "Elegir contraseña nueva" : step === "code" ? "Ingresar código de recuperación" : "Recuperar contraseña"}</h1>
 

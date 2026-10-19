@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createPublicAuthClient } from "@supabase/supabase-js";
 
@@ -25,6 +26,39 @@ async function getOwnerContext() {
 
 function checked(formData: FormData, name: string) {
   return formData.get(name) === "on";
+}
+
+async function employeeConfirmationRedirectUrl(): Promise<string | undefined> {
+  const requestHeaders = await headers();
+  const originHeader = requestHeaders.get("origin");
+  let appOrigin: string | undefined;
+
+  if (originHeader) {
+    try {
+      const parsedOrigin = new URL(originHeader);
+      if (parsedOrigin.protocol === "https:" || parsedOrigin.hostname === "localhost") {
+        appOrigin = parsedOrigin.origin;
+      }
+    } catch {
+      // If Origin is not usable, try the reverse-proxy host below.
+    }
+  }
+
+  if (!appOrigin) {
+    const host = (requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "")
+      .split(",")[0].trim();
+    if (host && /^[a-z0-9.-]+(?::\\d+)?$/i.test(host)) {
+      const forwardedProtocol = (requestHeaders.get("x-forwarded-proto") ?? "")
+        .split(",")[0].trim().toLowerCase();
+      const protocol = host.startsWith("localhost") ? "http" : forwardedProtocol === "http" ? "http" : "https";
+      appOrigin = protocol + "://" + host;
+    }
+  }
+
+  if (!appOrigin) return undefined;
+  const callback = new URL("/auth/callback", appOrigin);
+  callback.searchParams.set("next", "employee");
+  return callback.toString();
 }
 
 export async function saveAgencySchedules(formData: FormData) {
@@ -67,9 +101,9 @@ export async function addEmployeeByEmail(formData: FormData) {
   const { supabase, organizationId, userId } = await getOwnerContext();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const role = String(formData.get("role") ?? "accountant").trim() as "owner" | "admin" | "accountant" | "viewer";
+  const role = String(formData.get("role") ?? "accountant").trim() as "owner" | "accountant";
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) redirect("/equipo?error=email-invalido");
-  if (!["owner", "admin", "accountant", "viewer"].includes(role)) redirect("/equipo?error=datos-rol-invalidos");
+  if (!["owner", "accountant"].includes(role)) redirect("/equipo?error=datos-rol-invalidos");
 
   // Primero intentamos vincular el correo existente. Así no se bloquea el alta
   // si el usuario ya existe en Supabase Auth pero todavía no pertenece a esta agencia.
@@ -98,7 +132,12 @@ export async function addEmployeeByEmail(formData: FormData) {
     const authClient = createPublicAuthClient(url, publishableKey, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
-    const { data, error } = await authClient.auth.signUp({ email, password });
+    const emailRedirectTo = await employeeConfirmationRedirectUrl();
+    const { data, error } = await authClient.auth.signUp({
+      email,
+      password,
+      options: emailRedirectTo ? { emailRedirectTo } : {},
+    });
     if (error) {
       const authMessage = error.message.toLowerCase();
       const looksExisting = authMessage.includes("already") || authMessage.includes("registered") || authMessage.includes("exists");
@@ -126,14 +165,32 @@ export async function addEmployeeByEmail(formData: FormData) {
 
   if (!memberUserId) redirect("/equipo?error=alta-empleado-fallida");
 
-  // Las cuentas nuevas o existentes comienzan con los permisos mínimos.
-  if (role !== "accountant") {
+  // La nueva cuenta solo puede empezar como Propietario o Empleado.
+  if (role === "owner") {
     const { error: roleError } = await supabase.rpc("set_member_role", {
       p_organization_id: organizationId,
       p_user_id: memberUserId,
       p_role: role,
     });
     if (roleError) redirect("/equipo?error=empleado-creado-rol-pendiente");
+  } else {
+    const permissions = {
+      organization_id: organizationId,
+      user_id: memberUserId,
+      can_create_agents: checked(formData, "can_create_agents"),
+      can_delete_agents: checked(formData, "can_delete_agents"),
+      can_create_renditions: checked(formData, "can_create_renditions"),
+      can_edit_renditions: checked(formData, "can_edit_renditions"),
+      can_delete_renditions: checked(formData, "can_delete_renditions"),
+      can_register_payments: checked(formData, "can_register_payments"),
+      can_manage_backups: checked(formData, "can_manage_backups"),
+      created_by: userId,
+      updated_at: new Date().toISOString(),
+    };
+    const { error: permissionsError } = await supabase
+      .from("organization_member_permissions")
+      .upsert(permissions, { onConflict: "organization_id,user_id" });
+    if (permissionsError) redirect("/equipo?error=permisos-no-guardados");
   }
 
   await supabase.from("audit_log").insert({
@@ -152,8 +209,8 @@ export async function addEmployeeByEmail(formData: FormData) {
 export async function saveEmployeeRole(formData: FormData) {
   const { supabase, organizationId, userId } = await getOwnerContext();
   const targetUserId = String(formData.get("user_id") ?? "").trim();
-  const role = String(formData.get("role") ?? "").trim() as "owner" | "admin" | "accountant" | "viewer";
-  if (!targetUserId || !["owner", "admin", "accountant", "viewer"].includes(role)) {
+  const role = String(formData.get("role") ?? "").trim() as "owner" | "accountant";
+  if (!targetUserId || !["owner", "accountant"].includes(role)) {
     redirect("/equipo?error=datos-rol-invalidos");
   }
   if (targetUserId === userId) redirect("/equipo?error=no-cambiar-rol-propio");
@@ -377,6 +434,7 @@ export async function deleteUnlinkedAuthAccount(formData: FormData) {
     if (code === "account_still_linked") redirect("/equipo?error=cuenta-vinculada");
     if (code === "account_owner_of_other_agency") redirect("/equipo?error=cuenta-titular-otra-agencia");
     if (code === "account_linked_to_other_agency") redirect("/equipo?error=cuenta-vinculada-otra-agencia");
+    if (code === "account_member_is_owner") redirect("/equipo?error=cuenta-es-propietario");
     if (code === "confirmation_mismatch") redirect("/equipo?error=confirmacion-cuenta-no-valida");
     if (code === "owner_required") redirect("/equipo?error=solo-titular");
     if (code === "cannot_delete_current_owner") redirect("/equipo?error=no-borrar-usuario-actual");
@@ -419,6 +477,26 @@ export async function saveBackupEmail(formData: FormData) {
   });
   revalidatePath("/equipo");
   redirect("/equipo?resultado=backup-email-guardado");
+}
+
+export async function generateHistoricalRenditionBackups() {
+  const { supabase, organizationId } = await getOwnerContext();
+  const { data, error } = await supabase.functions.invoke("send-rendition-backup", {
+    body: { regenerate_historical: true, organization_id: organizationId },
+  });
+
+  if (error || !["historical_backups_queued", "historical_backups_already_generated", "no_historical_renditions"].includes(String(data?.status ?? ""))) {
+    const code = String(data?.error ?? "");
+    if (code === "historical_backup_recipient_missing") redirect("/equipo?error=backup-destinatario");
+    if (code === "historical_backup_owner_only") redirect("/equipo?error=solo-titular");
+    redirect("/equipo?error=backup-historico-fallido");
+  }
+
+  revalidatePath("/equipo");
+  revalidatePath("/pagos");
+  const queued = Math.max(0, Number(data?.queued ?? 0));
+  const skipped = Math.max(0, Number(data?.skipped ?? 0));
+  redirect("/equipo?resultado=respaldos-historicos-generados&cantidad=" + queued + "&omitidos=" + skipped);
 }
 
 export async function retryRenditionBackup(formData: FormData) {

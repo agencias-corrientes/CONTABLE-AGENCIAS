@@ -5,9 +5,9 @@ export default function RegistrationConfirmedPage() {
   return (
     <main className="auth-page">
       <section className="auth-card" aria-labelledby="confirmed-title">
-        <div className="brand-mark small brand-logo-wrap">
+        <div className="brand-logo-wrap brand-logo-top-left auth-page-logo">
           <Image
-            src="/logo-agencias-quiniela.svg"
+            src="/logo-agencias-corrientes.webp"
             alt="Agencias de Quiniela Corrientes"
             width={44}
             height={44}

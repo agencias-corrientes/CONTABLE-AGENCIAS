@@ -16,7 +16,7 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
   const isOwner = member.role === "owner";
 
   const [{ data: agent }, { data: renditions }, { data: gameTypes }, { data: commissionRows }, { data: defaultCommissionRows }, { data: operationalSettings }] = await Promise.all([
-    supabase.from("agency_agents").select("id,kind,code,full_name,dni,email,phone,whatsapp,address,notes,is_active,created_at,rendition_policy,rendition_periods").eq("id", id).eq("organization_id", organization.id).maybeSingle(),
+    supabase.from("agency_agents").select("id,kind,code,full_name,dni,email,phone,whatsapp,address,notes,is_active,created_at,rendition_policy,rendition_periods,rendition_frequency,rendition_weekdays").eq("id", id).eq("organization_id", organization.id).maybeSingle(),
     supabase.from("agency_renditions").select("id,rendition_date,created_at,game_period,draw_number,capture_method,period_start,period_end,amount_due,status,reference,notes,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference,cash_account_id,cash_accounts(name)),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)").eq("agent_id", id).eq("organization_id", organization.id).neq("status", "void").order("created_at", { ascending: false }),
     supabase.from("agency_game_types").select("id,name,category,enabled").eq("organization_id", organization.id).order("sort_order").order("name"),
     supabase.from("agency_agent_game_commissions").select("game_type_id,commission_percent").eq("organization_id", organization.id).eq("agent_id", id),
@@ -42,6 +42,8 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
   const currentDrawPeriods = getOfficialDrawPeriodsForDate(today);
   const drawNow = new Date();
   const renditionPolicy = String(agent.rendition_policy ?? "daily");
+  const renditionFrequency = String((agent as any).rendition_frequency ?? "daily");
+  const configuredWeekdays = Array.isArray((agent as any).rendition_weekdays) ? (agent as any).rendition_weekdays.map(String) : ["mon","tue","wed","thu","fri","sat"];
   const configuredRenditionPeriods = Array.isArray(agent.rendition_periods) ? agent.rendition_periods.map(String) : [];
   const dailyClosurePeriod = { label: "Cierre diario", shortLabel: "Cierre diario", time: null, gameName: "Cierre diario", kind: "daily" as const };
   const lastScheduledDraw = currentDrawPeriods.filter((period) => period.time).sort((left, right) => String(left.time).localeCompare(String(right.time))).at(-1);
@@ -104,14 +106,30 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
       {pageParams.error === "solo-titular-editar-agente" && <p className="message error-message">Solo el titular puede editar los datos de los subagentes y ambulantes.</p>}
       {pageParams.error === "agente-datos-no-guardados" && <p className="message error-message">No se pudieron guardar los datos del operador. No se aplicaron cambios.</p>}
       {pageParams.resultado === "comisiones-guardadas" && <p className="message success-message">Comisiones guardadas. Se aplicarán automáticamente a las próximas rendiciones de este operador.</p>}
-      {pageParams.resultado === "modalidad-guardada" && <p className="message success-message">Modalidad guardada. Se aplicará desde la próxima jornada sin alterar el historial existente.</p>}
+      {pageParams.resultado === "modalidad-guardada" && <p className="message success-message">Frecuencia y modalidad guardadas. Se aplicarán a las próximas rendiciones sin alterar el historial existente.</p>}
       {pageParams.error === "comision-invalida" && <p className="message error-message">Cada comisión debe estar entre 0 y 100 %.</p>}
-      {pageParams.error && !["comision-invalida", "codigo-invalido", "codigo-duplicado", "agente-codigo-ajeno", "solo-titular-editar-agente", "agente-datos-no-guardados"].includes(pageParams.error) && <p className="message error-message">{pageParams.error === "modalidad-bloqueada-jornada" ? "Hoy ya hay rendiciones registradas para este operador. Podés cambiar la modalidad al comenzar una nueva jornada." : pageParams.error === "solo-titular-modalidad" ? "Solo el titular puede modificar la modalidad de rendición." : pageParams.error === "modalidad-invalida" ? "Elegí una modalidad válida y, si seleccionás sorteos, marcá al menos uno." : pageParams.error === "cierre-diario-antes-de-hora" ? "El cierre único se habilita después del último sorteo programado de la jornada." : "No se pudo guardar la configuración. Revisá los datos e intentá nuevamente."}</p>}
+      {pageParams.error && !["comision-invalida", "codigo-invalido", "codigo-duplicado", "agente-codigo-ajeno", "solo-titular-editar-agente", "agente-datos-no-guardados"].includes(pageParams.error) && <p className="message error-message">{pageParams.error === "modalidad-bloqueada-jornada" ? "Hoy ya hay rendiciones registradas para este operador. Podés cambiar la modalidad al comenzar una nueva jornada." : pageParams.error === "solo-titular-modalidad" ? "Solo el titular puede modificar la modalidad de rendición." : pageParams.error === "modalidad-invalida" ? "Elegí una modalidad válida, marcá los sorteos correspondientes y al menos un día si usás frecuencia semanal." : pageParams.error === "cierre-diario-antes-de-hora" ? "El cierre único se habilita después del último sorteo programado de la jornada." : "No se pudo guardar la configuración. Revisá los datos e intentá nuevamente."}</p>}
       {isOwner && (
         <section className="panel agent-rendition-policy-panel">
           <div className="panel-head"><div><h2>Modalidad de rendición</h2><p className="muted">Configuración individual para {typeLabel.toLowerCase()} {code}. Si hoy ya tiene rendiciones, la modificación se bloquea para no mezclar modalidades en la misma jornada.</p></div><span className="badge success">Solo titular</span></div>
           <form action={saveAgentRenditionPolicy} className="agent-rendition-policy-form">
             <input type="hidden" name="agent_id" value={agent.id} />
+            <label className="agent-rendition-policy-mode">¿Con qué frecuencia rinde?
+              <select name="rendition_frequency" defaultValue={renditionFrequency}>
+                <option value="daily">Todos los días: un cierre por jornada</option>
+                <option value="weekly">Acumular varios FIN DE JORNADA en una rendición</option>
+              </select>
+            </label>
+            <div>
+              <strong>Días habilitados para confirmar el lote (solo modo acumulado)</strong>
+              <p className="muted small-text">Estas casillas solo se aplican al modo acumulado. Si debe poder rendir cualquier día, marcá lunes a domingo. En Rendiciones, agregá todos los cupones antes de confirmar: cada lote crea una sola rendición y un solo movimiento de Caja. El modo “Todos los días” es un cierre por jornada y no acumula varios cupones.</p>
+              <div className="agent-rendition-policy-periods agent-rendition-weekdays">
+                {([{key:"mon",label:"Lunes"},{key:"tue",label:"Martes"},{key:"wed",label:"Miércoles"},{key:"thu",label:"Jueves"},{key:"fri",label:"Viernes"},{key:"sat",label:"Sábado"},{key:"sun",label:"Domingo"}] as const).map((day) => <label key={day.key}>
+                  <input type="checkbox" name="rendition_weekdays" value={day.key} defaultChecked={configuredWeekdays.includes(day.key)} />
+                  <span><strong>{day.label}</strong><small>{configuredWeekdays.includes(day.key) ? "Seleccionado" : "No seleccionado"}</small></span>
+                </label>)}
+              </div>
+            </div>
             <label className="agent-rendition-policy-mode">¿Cómo debe rendir este operador?
               <select name="rendition_policy" defaultValue={renditionPolicy}>
                 <option value="per_draw">Por cada sorteo</option>

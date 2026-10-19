@@ -1,10 +1,18 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import "./globals.css";
 import "./agency-ops.css";
 
-const siteUrl = "https://contable-agencias.vercel.app";
+const productionSiteUrl = "https://contable-agencias.vercel.app";
+const previewHost = process.env.VERCEL_URL;
+const siteUrl =
+  process.env.VERCEL_ENV === "preview" && previewHost
+    ? `https://${previewHost}`
+    : productionSiteUrl;
 const siteTitle = "Agencias Corrientes";
-const siteDescription = "Agencias Corrientes — Quiniela Oficial.";
+const siteDescription =
+  "Gestión diaria de agencias de quiniela, rendiciones y cobranzas.";
+const brandLogo = "/logo-agencias-corrientes-v2.webp";
+const shareCard = brandLogo;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -16,8 +24,9 @@ export const metadata: Metadata = {
   description: siteDescription,
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/logo-agencias-quiniela.svg", type: "image/svg+xml", sizes: "any" }],
-    apple: [{ url: "/logo-agencias-quiniela.svg", type: "image/svg+xml" }],
+    icon: [{ url: brandLogo, type: "image/webp" }],
+    shortcut: [{ url: brandLogo, type: "image/webp" }],
+    apple: [{ url: brandLogo, type: "image/webp" }],
   },
   appleWebApp: {
     capable: true,
@@ -31,20 +40,27 @@ export const metadata: Metadata = {
     title: siteTitle,
     description: siteDescription,
     url: siteUrl,
+    images: [
+      {
+        url: shareCard,
+        width: 512,
+        height: 512,
+        type: "image/webp",
+        alt: "Agencias Corrientes — Quiniela Oficial",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: siteTitle,
     description: siteDescription,
+    images: [shareCard],
   },
 };
 
-export const viewport: Viewport = {
-  themeColor: "#71001f",
-  colorScheme: "light",
-};
-
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es">
       <body>{children}</body>

@@ -99,5 +99,6 @@ export function TicketClosureReceipt({data,compact=false,editable=false,onChange
    <TextField label="Descarga" value={data.downloadStatus} editable={editable} onChange={v=>update({...data,downloadStatus:v||null})}/>
   </div>
   <p className={"ticket-closure-validation"+(salesOk&&prizesOk?" is-valid":" is-review")}>{salesOk&&prizesOk?"Control automático: ventas y premios coinciden con sus renglones.":"Compará cada dato con la foto. Los campos sin lectura quedan editables y no se inventan importes."}</p>
+  {data.rawText?.trim() && <details className="ticket-ocr-text ticket-closure-raw-ocr"><summary>Ver texto OCR original de este ticket</summary><pre>{data.rawText}</pre></details>}
  </section>;
 }

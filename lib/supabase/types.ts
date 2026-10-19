@@ -135,8 +135,10 @@ export type Database = {
           notes: string | null
           organization_id: string
           phone: string | null
+          rendition_frequency: string
           rendition_periods: string[]
           rendition_policy: string
+          rendition_weekdays: string[]
           updated_at: string
           whatsapp: string | null
         }
@@ -154,8 +156,10 @@ export type Database = {
           notes?: string | null
           organization_id: string
           phone?: string | null
+          rendition_frequency?: string
           rendition_periods?: string[]
           rendition_policy?: string
+          rendition_weekdays?: string[]
           updated_at?: string
           whatsapp?: string | null
         }
@@ -173,8 +177,10 @@ export type Database = {
           notes?: string | null
           organization_id?: string
           phone?: string | null
+          rendition_frequency?: string
           rendition_periods?: string[]
           rendition_policy?: string
+          rendition_weekdays?: string[]
           updated_at?: string
           whatsapp?: string | null
         }
@@ -686,6 +692,7 @@ export type Database = {
           created_by: string
           game_name: string | null
           id: string
+          included_in_ticket_ocr: boolean
           normalized_coupon_number: string
           notes: string | null
           organization_id: string
@@ -703,6 +710,7 @@ export type Database = {
           created_by?: string
           game_name?: string | null
           id?: string
+          included_in_ticket_ocr?: boolean
           normalized_coupon_number?: never
           notes?: string | null
           organization_id: string
@@ -720,6 +728,7 @@ export type Database = {
           created_by?: string
           game_name?: string | null
           id?: string
+          included_in_ticket_ocr?: boolean
           normalized_coupon_number?: never
           notes?: string | null
           organization_id?: string
@@ -815,6 +824,7 @@ export type Database = {
           reference: string | null
           rendition_date: string
           status: Database["public"]["Enums"]["agency_rendition_status"]
+          ticket_receipt_data: Json | null
           updated_at: string
         }
         Insert: {
@@ -834,6 +844,7 @@ export type Database = {
           reference?: string | null
           rendition_date?: string
           status?: Database["public"]["Enums"]["agency_rendition_status"]
+          ticket_receipt_data?: Json | null
           updated_at?: string
         }
         Update: {
@@ -853,6 +864,7 @@ export type Database = {
           reference?: string | null
           rendition_date?: string
           status?: Database["public"]["Enums"]["agency_rendition_status"]
+          ticket_receipt_data?: Json | null
           updated_at?: string
         }
         Relationships: [
@@ -2139,6 +2151,39 @@ export type Database = {
         }
         Returns: string
       }
+      register_agency_prize_payment_with_ocr_status: {
+        Args: {
+          p_capture_method: string
+          p_cash_account_id: string
+          p_coupon_number: string
+          p_game_name?: string
+          p_included_in_ticket_ocr?: boolean
+          p_notes?: string
+          p_organization_id: string
+          p_payment_date: string
+          p_photo_path?: string
+          p_prize_amount: number
+          p_qr_payload?: string
+        }
+        Returns: string
+      }
+      update_agency_prize_payment: {
+        Args: {
+          p_coupon_number: string
+          p_game_name?: string
+          p_included_in_ticket_ocr?: boolean
+          p_notes?: string
+          p_organization_id: string
+          p_payment_date: string
+          p_prize_amount: number
+          p_prize_payment_id: string
+        }
+        Returns: undefined
+      }
+      delete_agency_prize_payment: {
+        Args: { p_organization_id: string; p_prize_payment_id: string }
+        Returns: undefined
+      }
       remove_organization_member: {
         Args: { p_organization_id: string; p_user_id: string }
         Returns: undefined
@@ -2213,6 +2258,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_agency_agent_rendition_schedule: {
+        Args: {
+          p_agent_id: string
+          p_frequency: string
+          p_organization_id: string
+          p_weekdays?: string[]
+        }
+        Returns: undefined
+      }
       update_agency_rendition_with_capture: {
         Args: {
           p_amount_due: number
@@ -2229,6 +2283,23 @@ export type Database = {
           p_ticket_qr_payload?: string
         }
         Returns: string
+      }
+      annul_agency_daily_rendition: {
+        Args: {
+          p_organization_id: string
+          p_rendition_id: string
+          p_reason: string
+        }
+        Returns: undefined
+      }
+      correct_agency_daily_rendition_net_amount: {
+        Args: {
+          p_organization_id: string
+          p_rendition_id: string
+          p_new_net_amount: number
+          p_reason?: string
+        }
+        Returns: undefined
       }
       void_agency_rendition: {
         Args: {
