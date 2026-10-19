@@ -7,7 +7,7 @@ export default function RegistrationConfirmationErrorPage() {
       <section className="auth-card" aria-labelledby="confirmation-error-title">
         <div className="brand-logo-wrap brand-logo-top-left auth-page-logo">
           <Image
-            src="/icon"
+            src="/logo-agencias-corrientes.webp"
             alt="Agencias de Quiniela Corrientes"
             width={44}
             height={44}
