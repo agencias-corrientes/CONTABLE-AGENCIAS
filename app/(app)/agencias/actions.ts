@@ -603,7 +603,10 @@ export async function receiveAgencyRendition(formData: FormData) {
     .eq("is_active", true)
     .eq("name", "Caja")
     .maybeSingle();
-  if (cashLookupError) throw new Error(cashLookupError.message);
+  if (cashLookupError) {
+    console.error("[receiveAgencyRendition] Caja lookup failed", { code: cashLookupError.code, message: cashLookupError.message, organizationId });
+    redirect("/pagos?error=cobro-caja-no-disponible&agent=" + encodeURIComponent(agentId));
+  }
 
   let cajaId = cashAccount?.id ?? null;
   if (!cajaId) {
@@ -614,7 +617,10 @@ export async function receiveAgencyRendition(formData: FormData) {
       .eq("is_active", true)
       .eq("name", "Caja principal")
       .maybeSingle();
-    if (fallbackError) throw new Error(fallbackError.message);
+    if (fallbackError) {
+      console.error("[receiveAgencyRendition] fallback Caja lookup failed", { code: fallbackError.code, message: fallbackError.message, organizationId });
+      redirect("/pagos?error=cobro-caja-no-disponible&agent=" + encodeURIComponent(agentId));
+    }
     cajaId = fallbackCash?.id ?? null;
   }
   if (!cajaId) throw new Error("No hay una cuenta Caja configurada.");
@@ -629,7 +635,20 @@ export async function receiveAgencyRendition(formData: FormData) {
     p_notes: String(formData.get("notes") ?? "").trim() || undefined,
   });
   if (error) {
-    if (error.message.toLowerCase().includes("permiso")) redirect("/pagos?error=sin-permiso-cobro");
+    console.error("[receiveAgencyRendition] RPC failed", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      organizationId,
+      renditionId,
+      agentId,
+    });
+    const message = String(error.message ?? "").toLowerCase();
+    if (message.includes("permiso")) redirect("/pagos?error=sin-permiso-cobro");
+    if (message.includes("supera") || message.includes("saldo pendiente")) redirect("/pagos?error=cobro-supera-saldo&agent=" + encodeURIComponent(agentId));
+    if (message.includes("caja") || message.includes("cuenta")) redirect("/pagos?error=cobro-caja-no-disponible&agent=" + encodeURIComponent(agentId));
+    if (message.includes("rendición vigente") || message.includes("rendicion vigente") || message.includes("rendición") || message.includes("rendicion")) redirect("/pagos?error=cobro-rendicion-no-disponible&agent=" + encodeURIComponent(agentId));
     redirect("/pagos?error=cobro-fallido&agent=" + encodeURIComponent(agentId));
   }
   revalidatePath("/agencias");
