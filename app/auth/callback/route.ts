@@ -57,6 +57,25 @@ export async function GET(request: NextRequest) {
     confirmed = false;
   }
 
+  // If this link was already consumed but the browser has the confirmed session,
+  // treat the callback as successful instead of showing a misleading expired-link error.
+  // This does not bypass verification: getUser() must return a server-validated session
+  // and Supabase must report that the email is confirmed.
+  if (!confirmed) {
+    try {
+      const supabase = await createClient();
+      const { data, error } = await supabase.auth.getUser();
+      const user = data.user;
+      if (!error && user?.email_confirmed_at) {
+        confirmed = true;
+        registrationType = String(user.user_metadata?.registration_type ?? "");
+        verifiedEmail = String(user.email ?? "");
+      }
+    } catch {
+      // Keep the invalid-link path when no confirmed server session exists.
+    }
+  }
+
   // Prefer the account's server-returned metadata over a stale employee redirect
   // parameter: owner signup links must always return to the owner confirmation page.
   const isOwnerConfirmation =
