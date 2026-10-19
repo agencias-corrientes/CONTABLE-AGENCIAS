@@ -1303,10 +1303,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <section className="ticket-capture-status">
           <div className="rendition-mode-toolbar">
           <div className="rendition-mode-switch" role="group" aria-label="Método de carga del ticket">
-            <button type="button" className="active" disabled={busy} onClick={() => {
-              const input = document.getElementById(ticketPhotoInputId) as HTMLInputElement | null;
-              input?.click();
-            }}>Foto automático</button>
+            <label
+              htmlFor={ticketPhotoInputId}
+              className="active ticket-photo-source-label"
+              aria-disabled={busy}
+            >Foto automático</label>
           </div>
           <input
             id={ticketPhotoInputId}
@@ -1430,14 +1431,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       />
       <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
-          <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => {
-            setMode("photo");
-            setError("");
-            if (!busy) {
-              const input = document.getElementById(ticketPhotoInputId) as HTMLInputElement | null;
-              input?.click();
-            }
-          }}>Foto automático</button>
+          <label
+            htmlFor={ticketPhotoInputId}
+            className={(mode === "photo" ? "active " : "") + "ticket-photo-source-label"}
+            aria-disabled={busy}
+            onClick={() => {
+              setMode("photo");
+              setError("");
+            }}
+          >Foto automático</label>
           <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
             setMode("manual");
             if (!receiptData && !initialRendition) {
