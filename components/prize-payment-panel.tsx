@@ -88,12 +88,15 @@ export function PrizePaymentPanel({
     // remains part of the form submission; photo mode remains selected otherwise.
     if (captureMode !== "qr") setCaptureMode("photo");
     setScanMessage("");
-    if (!file.type.startsWith("image/")) {
-      setScanMessage("Elegí una imagen del cupón.");
+    const declaredType = String(file.type ?? "").toLowerCase();
+    const looksLikeImage = declaredType.startsWith("image/") || /\.(jpe?g|png|webp|gif|bmp|tiff?|heic|heif|avif)$/i.test(file.name);
+    const isVideo = declaredType.startsWith("video/") || /\.(mp4|mov|m4v|avi|webm|3gp|mpeg|mpg|mkv|wmv)$/i.test(file.name);
+    if (isVideo || (!looksLikeImage && declaredType && declaredType !== "application/octet-stream")) {
+      setScanMessage("Elegí una foto fija del cupón desde Archivos o la cámara. Si el dispositivo no informa el tipo de archivo, igualmente intentaremos abrir la imagen.");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setScanMessage("La imagen supera 5 MB. Sacá otra foto más liviana.");
+    if (file.size > 12 * 1024 * 1024) {
+      setScanMessage("La imagen supera 12 MB. Elegí una foto más liviana.");
       return;
     }
     setReadingPhoto(true);
@@ -135,11 +138,58 @@ export function PrizePaymentPanel({
         return;
       }
 
-      const { createWorker } = await import("tesseract.js");
-      const worker = await createWorker("spa+eng", 1);
+      // Reutiliza el mismo preprocesamiento del lector oficial de tickets:
+      // imagen ampliada, escala de grises y contraste moderado para papel térmico.
+      let enhancedImage: HTMLCanvasElement | File = file;
       try {
-        const result = await worker.recognize(file);
-        const text = String(result.data.text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+        const bitmap = await createImageBitmap(file);
+        try {
+          const longestSide = Math.max(bitmap.width, bitmap.height);
+          const scale = Math.max(1, Math.min(2, 3000 / longestSide));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+          canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+          const context = canvas.getContext("2d", { willReadFrequently: true });
+          if (context) {
+            context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            const image = context.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = image.data;
+            for (let i = 0; i < pixels.length; i += 4) {
+              const gray = 0.299 * pixels[i]! + 0.587 * pixels[i + 1]! + 0.114 * pixels[i + 2]!;
+              const contrasted = Math.max(0, Math.min(255, (gray - 128) * 1.55 + 128));
+              pixels[i] = contrasted;
+              pixels[i + 1] = contrasted;
+              pixels[i + 2] = contrasted;
+            }
+            context.putImageData(image, 0, 0);
+            enhancedImage = canvas;
+          }
+        } finally {
+          bitmap.close();
+        }
+      } catch {
+        // Si el navegador no decodifica el formato (p. ej. HEIC), probar el archivo original.
+      }
+
+      const { createWorker } = await import("tesseract.js");
+      const worker = await createWorker("spa+eng", 1, {
+        logger: (message) => {
+          if (message.status === "recognizing text" && typeof message.progress === "number") {
+            setScanMessage("Leyendo la foto del cupón… " + Math.round(message.progress * 100) + "%");
+          }
+        },
+      });
+      try {
+        const firstResult = await worker.recognize(enhancedImage);
+        let recognized = String(firstResult.data.text ?? "");
+        // Segunda pasada con el original si el texto de la imagen mejorada quedó vacío o muy corto.
+        if (recognized.trim().length < 8 && enhancedImage !== file) {
+          const originalResult = await worker.recognize(file);
+          if (String(originalResult.data.text ?? "").trim().length > recognized.trim().length) {
+            recognized = String(originalResult.data.text ?? "");
+          }
+        }
+        const text = recognized.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
         const couponPatterns = [
           /\b(?:CUPON|TICKET|TKT|COMPROBANTE)\s*(?:(?:NRO|NUM(?:ERO)?|N[º°]|N|#)\s*)?[:.#º°-]?\s*([A-Z0-9][A-Z0-9-]{1,63})\b/,
           /\b(?:NRO|NUM(?:ERO)?|N[º°]|#)\s*(?:DE\s*)?(?:CUPON|TICKET|COMPROBANTE)\s*[:.#º°-]?\s*([A-Z0-9][A-Z0-9-]{1,63})\b/,
