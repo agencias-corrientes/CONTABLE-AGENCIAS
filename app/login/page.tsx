@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { PasswordInput } from "@/components/password-input";
 
 function LoginForm() {
   const router = useRouter();
@@ -143,7 +144,7 @@ function LoginForm() {
         <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="username" />
       </label>
       <label>Contraseña
-        <input type="password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" />
+        <PasswordInput value={password} onChange={setPassword} minLength={8} required autoComplete="current-password" />
       </label>
       {message && <div className="message error-message" role="alert">{message}</div>}
       <button className="button primary full" disabled={loading}>{loading ? "Ingresando..." : "Ingresar"}</button>
