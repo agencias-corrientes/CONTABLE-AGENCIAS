@@ -1493,6 +1493,66 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               }}
             />
           </div>
+          <label
+            aria-disabled={busy}
+            style={{
+              position: "relative",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              alignSelf: "flex-start",
+              minHeight: 48,
+              marginTop: 10,
+              padding: "12px 18px",
+              borderRadius: 9,
+              background: "#7c3347",
+              color: "#fff",
+              fontWeight: 800,
+              cursor: busy ? "wait" : "pointer",
+              overflow: "hidden",
+              touchAction: "manipulation",
+              WebkitTapHighlightColor: "transparent",
+              opacity: busy ? 0.7 : 1,
+            }}
+          >
+            📷 Sacar foto con cámara
+            <input
+              type="file"
+              accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+              capture="environment"
+              aria-label="Sacar foto del ticket con la cámara trasera"
+              disabled={busy}
+              style={{
+                position: "absolute",
+                inset: 0,
+                zIndex: 2,
+                display: "block",
+                width: "100%",
+                height: "100%",
+                margin: 0,
+                padding: 0,
+                border: 0,
+                opacity: 0,
+                background: "transparent",
+                cursor: "pointer",
+                touchAction: "manipulation",
+              }}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                if (file) {
+                  const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?)$/i.test(file.name);
+                  if (isImage) {
+                    setError("");
+                    void processTicket(file);
+                  } else {
+                    setError("El archivo elegido no parece ser una imagen. Sacá una foto del ticket o elegí una imagen en Fotos, Galería o Archivos.");
+                    setNotice("");
+                  }
+                }
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
           {batchMode && (
             <div className="weekly-ticket-batch-upload-help">
               <div>
