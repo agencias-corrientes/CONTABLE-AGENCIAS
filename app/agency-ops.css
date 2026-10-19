@@ -1566,3 +1566,196 @@ input[type="time"]{font-variant-numeric:tabular-nums}
     line-height:1.2;
   }
 }
+
+
+/* Agencias Corrientes — paneles de configuración cuadrados, alternancia amarillo/blanco. */
+.team-permissions-page > .panel,
+.agency-settings-page > section.panel,
+.cash-movements-page > section.panel,
+.rendition-page-clean .rendition-general-history {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: 1px solid #c8b257 !important;
+  border-top: 5px solid #7c3347 !important;
+}
+.team-permissions-page > .operational-schedule-panel,
+.team-permissions-page > .team-backup-panel,
+.team-permissions-page > .panel:last-of-type,
+.agency-settings-page > section.panel:nth-of-type(odd),
+.cash-movements-page > section.panel:first-of-type {
+  background: #fff2ad !important;
+}
+.team-permissions-page > .team-permissions-panel,
+.team-permissions-page > .team-cleanup-panel,
+.agency-settings-page > section.panel:nth-of-type(even),
+.cash-movements-page > section.panel:nth-of-type(2) {
+  background: #ffffff !important;
+}
+.team-permissions-page > .team-permissions-panel { border-top-color: #7c3347 !important; }
+.agency-settings-page .settings-card {
+  border-radius: 0 !important;
+  border: 1px solid #c8b257 !important;
+  box-shadow: none !important;
+}
+.agency-settings-page .settings-card:nth-child(odd) { background: #fff2ad !important; }
+.agency-settings-page .settings-card:nth-child(even) { background: #ffffff !important; }
+
+.team-permissions-page .team-account-management {
+  margin: 12px 0 18px;
+  padding: 12px;
+  border: 1px solid #c8b257;
+  border-radius: 0;
+  background: #fffdf6;
+}
+.team-account-switch { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0; }
+.team-account-switch > input[type="radio"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+.team-account-switch > label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #c8b257;
+  background: #fff2ad;
+  color: #5a2636;
+  font-size: 13px;
+  font-weight: 850;
+  text-align: center;
+  cursor: pointer;
+}
+.team-account-switch > input:checked + label {
+  background: #7c3347;
+  border-color: #7c3347;
+  color: #ffffff;
+}
+.team-account-switch > input:focus-visible + label {
+  outline: 3px solid #d5b943;
+  outline-offset: 2px;
+}
+.team-account-forms { grid-column: 1 / -1; min-width: 0; margin-top: 12px; }
+.team-account-mode-panel {
+  padding: 14px;
+  border: 1px solid #c8b257;
+  border-radius: 0;
+  background: #ffffff;
+}
+.team-account-mode-delete { background: #fff2ad; }
+.team-account-switch > #team-account-mode-delete:checked ~ .team-account-forms .team-account-mode-add { display: none; }
+.team-account-switch > #team-account-mode-add:checked ~ .team-account-forms .team-account-mode-delete { display: none; }
+.team-account-mode-panel .panel-head { align-items: flex-start; margin-bottom: 12px; }
+.team-account-mode-panel h3 { margin: 0 0 5px; color: #5a2636; }
+.team-permissions-page .team-add-form,
+.team-permissions-page .team-auth-delete-form {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  align-items: end;
+  gap: 12px;
+  max-width: none;
+}
+.team-permissions-page .team-add-form > label,
+.team-permissions-page .team-auth-delete-form > label,
+.team-permissions-page .operational-schedule-form label,
+.team-permissions-page .team-cleanup-form > label {
+  min-width: 0;
+  font-weight: 800;
+}
+.team-permissions-page .team-add-form input,
+.team-permissions-page .team-add-form select,
+.team-permissions-page .team-auth-delete-form input:not([type="checkbox"]),
+.team-permissions-page .operational-schedule-form input,
+.team-permissions-page .team-cleanup-form input[type="text"] {
+  width: 100%;
+  min-width: 0;
+  border-radius: 0 !important;
+  border: 1px solid #bbaa61;
+  background: #ffffff;
+}
+.team-permissions-page .team-add-form .button,
+.team-permissions-page .team-auth-delete-form .button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-width: 190px;
+}
+.team-permissions-page .team-member-card,
+.team-permissions-page .team-backup-record,
+.team-permissions-page .team-cleanup-form,
+.team-permissions-page .team-cleanup-count {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+.team-permissions-page .team-member-card:nth-child(odd) { background: #fff2ad !important; border-color: #c8b257 !important; }
+.team-permissions-page .team-member-card:nth-child(even) { background: #ffffff !important; border-color: #c8b257 !important; }
+.team-permissions-page .team-backup-record { background: #ffffff !important; border-color: #c8b257 !important; }
+.team-permissions-page .team-backup-record:nth-child(even) { background: #fff2ad !important; }
+.team-permissions-page .team-backup-record > summary { border-radius: 0 !important; }
+.team-permissions-page .team-cleanup-count:nth-child(odd) { background: #fff2ad !important; border-radius: 0 !important; }
+.team-permissions-page .team-cleanup-count:nth-child(even) { background: #ffffff !important; border-radius: 0 !important; }
+.team-permissions-page .team-cleanup-form { background: #ffffff !important; border-radius: 0 !important; }
+.team-permissions-page .team-role-form,
+.team-permissions-page .team-permissions-form,
+.team-permissions-page .team-remove-access-visible {
+  border-radius: 0 !important;
+}
+.team-permissions-page .button,
+.team-permissions-page button.button,
+.team-permissions-page a.button,
+.cash-movements-page .button,
+.cash-movements-page button.button,
+.agency-settings-page .button,
+.rendition-page-clean .rendition-general-history .button {
+  border-radius: 0 !important;
+  background: #7c3347 !important;
+  border: 1px solid #64283a !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.team-permissions-page .button:hover,
+.cash-movements-page .button:hover,
+.agency-settings-page .button:hover,
+.rendition-page-clean .rendition-general-history .button:hover {
+  background: #64283a !important;
+}
+.team-permissions-page input,
+.team-permissions-page select,
+.team-permissions-page textarea,
+.cash-movements-page input,
+.cash-movements-page select {
+  border-radius: 0 !important;
+}
+.cash-movements-page .table-wrap table { background: transparent; }
+.rendition-page-clean .rendition-general-history { background: #fff2ad !important; }
+.rendition-page-clean .rendition-archive-day,
+.rendition-page-clean .rendition-archive-agent {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: 1px solid #c8b257 !important;
+}
+.rendition-page-clean .rendition-archive-day { background: #ffffff !important; }
+.rendition-page-clean .rendition-archive-day:nth-child(even) { background: #fff2ad !important; }
+.rendition-page-clean .rendition-archive-day > summary {
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  border-left: 0 !important;
+  border-bottom: 1px solid #c8b257 !important;
+}
+.rendition-page-clean .rendition-archive-day:nth-child(odd) > summary { background: #fff2ad !important; }
+.rendition-page-clean .rendition-archive-agent > summary { border-radius: 0 !important; }
+.rendition-page-clean .rendition-archive-agents { background: #ffffff !important; }
+@media(max-width:700px) {
+  .team-permissions-page .team-add-form,
+  .team-permissions-page .team-auth-delete-form { grid-template-columns: 1fr; }
+  .team-permissions-page .team-add-form .button,
+  .team-permissions-page .team-auth-delete-form .button { width: 100%; min-width: 0; }
+  .team-account-mode-panel { padding: 10px; }
+}

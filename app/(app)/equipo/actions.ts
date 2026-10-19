@@ -67,9 +67,9 @@ export async function addEmployeeByEmail(formData: FormData) {
   const { supabase, organizationId, userId } = await getOwnerContext();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const role = String(formData.get("role") ?? "accountant").trim() as "owner" | "admin" | "accountant" | "viewer";
+  const role = String(formData.get("role") ?? "accountant").trim() as "admin" | "accountant";
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) redirect("/equipo?error=email-invalido");
-  if (!["owner", "admin", "accountant", "viewer"].includes(role)) redirect("/equipo?error=datos-rol-invalidos");
+  if (!["admin", "accountant"].includes(role)) redirect("/equipo?error=datos-rol-invalidos");
 
   // Primero intentamos vincular el correo existente. Así no se bloquea el alta
   // si el usuario ya existe en Supabase Auth pero todavía no pertenece a esta agencia.
@@ -324,7 +324,7 @@ export async function removeEmployeeAccess(formData: FormData) {
 
 
 export async function deleteUnlinkedAuthAccount(formData: FormData) {
-  const { supabase, organizationId } = await getOwnerContext();
+  const { supabase, organizationId, userId } = await getOwnerContext();
   const email = String(formData.get("target_email") ?? "").trim().toLowerCase();
   const password = String(formData.get("owner_password") ?? "");
   const confirmed = formData.get("delete_account_confirmed") === "yes";
@@ -352,8 +352,55 @@ export async function deleteUnlinkedAuthAccount(formData: FormData) {
   });
   if (authError) redirect("/equipo?error=contrasena-incorrecta");
 
-  // The single browser confirmation is already complete; the server supplies
-  // the exact backend token so the user never has to type an extra phrase.
+  const { data: members, error: membersError } = await supabase.rpc(
+    "list_organization_members_for_owner",
+    { p_organization_id: organizationId },
+  );
+  if (membersError) redirect("/equipo?error=busqueda-cuenta-fallida");
+
+  const targetMember = (members ?? []).find(
+    (person: any) => String(person.email ?? "").trim().toLowerCase() === email,
+  );
+
+  let removedFromCurrentAgency = false;
+  if (targetMember) {
+    const targetUserId = String(targetMember.user_id ?? "").trim();
+    if (!targetUserId) redirect("/equipo?error=usuario-no-encontrado");
+    if (targetUserId === userId || email === ownerEmail.toLowerCase()) {
+      redirect("/equipo?error=no-borrar-usuario-actual");
+    }
+    if (targetMember.role === "owner") {
+      redirect("/equipo?error=cuenta-es-titular");
+    }
+
+    const { error: revokeError } = await supabase.rpc("remove_organization_member", {
+      p_organization_id: organizationId,
+      p_user_id: targetUserId,
+    });
+    if (revokeError) {
+      const message = revokeError.message.toLowerCase();
+      if (message.includes("could not find the function") || revokeError.code === "42883" || revokeError.code === "PGRST202") {
+        redirect("/equipo?error=funcion-remocion-pendiente");
+      }
+      if (revokeError.code === "42501") redirect("/equipo?error=sin-permiso-eliminar");
+      redirect("/equipo?error=acceso-no-revocado");
+    }
+
+    removedFromCurrentAgency = true;
+    await supabase.from("audit_log").insert({
+      organization_id: organizationId,
+      user_id: userId,
+      action: "remove_employee_access",
+      entity: "organization_member",
+      entity_id: targetUserId,
+      payload: { revoked: true, reason: "delete_account_from_team_panel" },
+    });
+    revalidatePath("/equipo");
+    revalidatePath("/configuracion/usuarios");
+    revalidatePath("/agencias");
+    revalidatePath("/pagos");
+  }
+
   const { data, error } = await supabase.functions.invoke("delete-unlinked-auth-account", {
     body: {
       organization_id: organizationId,
@@ -371,12 +418,16 @@ export async function deleteUnlinkedAuthAccount(formData: FormData) {
         code = String(payload?.code ?? "");
       }
     } catch {
-      // The friendly UI below still gives a useful fallback if no code was returned.
+      // No se registran datos del usuario si la respuesta no se puede leer.
     }
     if (code === "account_not_found") redirect("/equipo?error=cuenta-no-encontrada");
     if (code === "account_still_linked") redirect("/equipo?error=cuenta-vinculada");
-    if (code === "account_owner_of_other_agency") redirect("/equipo?error=cuenta-titular-otra-agencia");
-    if (code === "account_linked_to_other_agency") redirect("/equipo?error=cuenta-vinculada-otra-agencia");
+    if (code === "account_owner_of_other_agency") {
+      redirect("/equipo?error=" + (removedFromCurrentAgency ? "cuenta-retirada-otros-accesos" : "cuenta-titular-otra-agencia"));
+    }
+    if (code === "account_linked_to_other_agency") {
+      redirect("/equipo?error=" + (removedFromCurrentAgency ? "cuenta-retirada-otros-accesos" : "cuenta-vinculada-otra-agencia"));
+    }
     if (code === "confirmation_mismatch") redirect("/equipo?error=confirmacion-cuenta-no-valida");
     if (code === "owner_required") redirect("/equipo?error=solo-titular");
     if (code === "cannot_delete_current_owner") redirect("/equipo?error=no-borrar-usuario-actual");
@@ -389,6 +440,9 @@ export async function deleteUnlinkedAuthAccount(formData: FormData) {
   if (!data?.ok) redirect("/equipo?error=cuenta-no-eliminada");
 
   revalidatePath("/equipo");
+  revalidatePath("/configuracion/usuarios");
+  revalidatePath("/agencias");
+  revalidatePath("/pagos");
   redirect("/equipo?resultado=cuenta-eliminada");
 }
 

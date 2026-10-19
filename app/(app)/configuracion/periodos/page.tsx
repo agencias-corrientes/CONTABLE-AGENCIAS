@@ -7,7 +7,7 @@ export default async function PeriodosPage({searchParams}:{searchParams?:Promise
   const {supabase,organization}=await getCurrentContext();
   if(!organization) return null;
   const {data:periods}=await supabase.from("fiscal_periods").select("id,name,start_date,end_date,status").eq("organization_id",organization.id).order("start_date",{ascending:false});
-  return <div className="page">
+  return <div className="page agency-settings-page">
     <div className="topbar"><div><p className="eyebrow">CONFIGURACIÓN</p><h1>Períodos fiscales</h1><p className="muted">Administrá los períodos contables de {organization.name}.</p></div></div>
     {params.error==="fecha-invalida" && <p className="message error-message">Ingresá ambas fechas como DD/MM/AAAA y verificá que Inicio no sea posterior a Fin.</p>}
     <section className="panel"><div className="panel-head"><h2>Nuevo período</h2></div>

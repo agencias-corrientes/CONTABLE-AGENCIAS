@@ -8,7 +8,7 @@ export default async function ConfiguracionPage() {
   if (member.role !== "owner") redirect("/pagos?error=solo-titular-configuracion");
 
   return (
-    <div className="page">
+    <div className="page agency-settings-page">
       <div className="topbar">
         <div>
           <p className="eyebrow">SISTEMA</p>

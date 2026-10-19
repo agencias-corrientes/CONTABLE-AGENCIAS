@@ -17,7 +17,7 @@ export default async function MovimientosPage() {
   }
 
   return (
-    <div className="page">
+    <div className="page cash-movements-page">
       <div className="topbar"><div><p className="eyebrow">TESORERÍA</p><h1>Caja y bancos</h1><p className="muted">Control de cuentas y movimientos de fondos.</p></div></div>
 
       <section className="panel">

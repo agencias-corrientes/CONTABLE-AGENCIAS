@@ -13,12 +13,12 @@ export default async function OrganizacionPage({
   if (!organization || !member) redirect("/setup");
 
   if (member.role !== "owner") {
-    return <div className="page"><div className="topbar"><div><p className="eyebrow">CONFIGURACIÓN</p><h1>Datos de la agencia</h1><p className="muted">Datos generales de la organización.</p></div><Link href="/configuracion" className="button ghost">Volver a Configuración</Link></div>
+    return <div className="page agency-settings-page"><div className="topbar"><div><p className="eyebrow">CONFIGURACIÓN</p><h1>Datos de la agencia</h1><p className="muted">Datos generales de la organización.</p></div><Link href="/configuracion" className="button ghost">Volver a Configuración</Link></div>
       <section className="panel"><div className="detail-grid"><div><span className="muted">Número oficial</span><strong>{organization.agency_code || "No configurado"}</strong></div><div><span className="muted">Razón social</span><strong>{organization.legal_name || "No definida"}</strong></div><div><span className="muted">CUIT / identificación</span><strong>{organization.tax_id || "No definido"}</strong></div><div><span className="muted">Moneda</span><strong>{organization.currency_code || "ARS"}</strong></div></div><p className="muted">Solo el titular puede modificar o eliminar los datos de la agencia.</p></section>
     </div>;
   }
 
-  return <div className="page">
+  return <div className="page agency-settings-page">
     <div className="topbar"><div><p className="eyebrow">CONFIGURACIÓN</p><h1>Datos de la agencia</h1><p className="muted">Modificá el número oficial, la razón social, la identificación y la moneda de la agencia.</p></div><Link href="/configuracion" className="button ghost">Volver a Configuración</Link></div>
     {params.resultado === "datos-guardados" && <p className="message success-message">Los datos de la agencia se guardaron correctamente.</p>}
     {params.error && <p className="message error-message">{({
