@@ -277,7 +277,7 @@ export function PrizePaymentPanel({
             <label className="ticket-photo-picker prize-photo-picker">
               <strong>Fotografiar o adjuntar cupón</strong>
               <span>Elegí la imagen del cupón directamente desde el selector del dispositivo.</span>
-              <input className="prize-photo-file-input" type="file" name="prize_photo" accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff" capture="environment" onChange={handlePhoto} disabled={readingPhoto} />
+              <input className="prize-photo-file-input" type="file" name="prize_photo" accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff" onChange={handlePhoto} disabled={readingPhoto} />
               <small className="muted">Revisá el número detectado y el importe antes de registrar el premio.</small>
             </label>
           )}
