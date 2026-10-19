@@ -889,8 +889,8 @@ export async function correctAgencyDailyRenditionAmount(formData: FormData) {
   });
   if (error) {
     const message = String(error.message ?? "").toLowerCase();
-    if (message.includes("permiso")) fail("sin-permiso-editar");
-    if (message.includes("caja") || message.includes("movimiento") || message.includes("cobro vinculado")) fail("cierre-diario-caja-inconsistente");
+    if (message.includes("permiso") || message.includes("permission denied") || message.includes("row-level security")) fail("sin-permiso-editar");
+    if (message.includes("caja") || message.includes("movimiento") || message.includes("cobro vinculado") || message.includes("pagos vinculados") || message.includes("importe del cierre")) fail("cierre-diario-caja-inconsistente");
     if (message.includes("solo se puede corregir") || message.includes("no se puede corregir") || message.includes("cerrado")) fail("cierre-diario-no-se-puede-corregir");
     fail("cierre-diario-correccion-fallida");
   }
@@ -965,8 +965,8 @@ export async function setAgencyDailyRenditionStatus(formData: FormData) {
     });
     if (error) {
       const message = String(error.message ?? "").toLowerCase();
-      if (message.includes("permiso")) redirect("/pagos?error=sin-permiso-cobro&agent=" + encodeURIComponent(agentId));
-      if (message.includes("caja")) redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
+      if (message.includes("permiso") || message.includes("permission denied") || message.includes("row-level security")) redirect("/pagos?error=sin-permiso-cobro&agent=" + encodeURIComponent(agentId));
+      if (message.includes("caja") || message.includes("cash account")) redirect("/pagos?error=caja-no-configurada&agent=" + encodeURIComponent(agentId));
       if (message.includes("jornada operativa cambió")) redirect("/pagos?error=jornada-cambio&agent=" + encodeURIComponent(agentId));
       if (message.includes("no hay una rendición diaria")) redirect("/pagos?error=sin-rendicion-para-confirmar&agent=" + encodeURIComponent(agentId));
       redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
