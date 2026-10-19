@@ -20,11 +20,13 @@ export function AppShell({
   organizationName,
   userEmail,
   userRole,
+  isPlatformAdmin,
 }: {
   children: React.ReactNode;
   organizationName: string;
   userEmail: string;
   userRole: string;
+  isPlatformAdmin: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -81,6 +83,7 @@ export function AppShell({
             <span className="user-role-pill">{displayRole}</span>
             <span className="user-line" title={userEmail}>{userEmail}</span>
           </div>
+          {isPlatformAdmin && <Link href="/plataforma/accesos" className="button ghost full central-return-button">↩ Volver a Control de acceso a agencias</Link>}
           <button className="button ghost full" onClick={signOut}>Cerrar sesión</button>
         </div>
       </aside>
@@ -100,6 +103,7 @@ export function AppShell({
         .sidebar .nav-list .nav-item.active:hover { background: #fff !important; color: #64283a !important; }
         .sidebar .user-role-pill { font-size: 11px; font-weight: 800; letter-spacing: .025em; }
         .sidebar .user-line { font-size: 11px; line-height: 1.4; }
+        .sidebar .central-return-button { margin-bottom: 8px; min-height: 48px; padding: 9px 10px; border-color: rgba(255,255,255,.35); line-height: 1.25; white-space: normal; text-align: center; font-size: 12px; font-weight: 800; }
         .sidebar .sidebar-footer .button { min-height: 40px; border-color: rgba(255,255,255,.3); font-size: 12px; font-weight: 750; }
         @media (max-width: 1000px) {
           .sidebar { padding: 15px 12px 13px; }
