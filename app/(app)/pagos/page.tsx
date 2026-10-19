@@ -601,9 +601,9 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       <div className="stats-grid compact rendition-stats">
         <div className="stat-card rendition-total-card"><span>TOTAL RENDIDO</span><strong>{money(todayTotalRendido, activeOrganization.currency_code)}</strong><small>neto después de comisiones y premios · premios descontados: {money(todayPrizeTotal, activeOrganization.currency_code)}</small></div>
         <div className="stat-card"><span>Ventas brutas</span><strong>{money(todayRendidoBruto, activeOrganization.currency_code)}</strong><small>{todayRows.length} registros · antes de comisiones y premios</small></div>
-        <div className="stat-card"><span>Pendiente hoy</span><strong>{money(todayPendiente, activeOrganization.currency_code)}</strong><small>efectivo neto pendiente después de comisión</small></div>
         <div className="stat-card"><span>Comisiones rendidas</span><strong>{money(todayComisiones, activeOrganization.currency_code)}</strong><small>comisiones reconocidas en las rendiciones del día</small></div>
         <div className="stat-card"><span>Premios pagados</span><strong>{money(todayPrizeTotal, activeOrganization.currency_code)}</strong><small>OCR: {money(todayOcrPrizeTotal, activeOrganization.currency_code)} · Caja fuera de OCR: {money(todayCashPrizeTotal, activeOrganization.currency_code)}</small></div>
+        <div className="stat-card"><span>Pendiente hoy</span><strong>{money(todayPendiente, activeOrganization.currency_code)}</strong><small>efectivo neto pendiente después de comisión</small></div>
       </div>
       {params.ticket === "guardado" && <p className="message success-message">Se guardó el detalle completo del ticket de fin de jornada junto con la rendición.</p>}
       {params.ticket === "error" && <p className="message error-message">La rendición financiera ya se guardó, pero el detalle OCR del ticket no pudo adjuntarse. No vuelvas a registrar la rendición para corregir esto; abrí el registro existente.</p>}
