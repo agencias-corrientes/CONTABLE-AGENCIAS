@@ -28,8 +28,6 @@ export default function RegisterOwnerPage() {
     }
     setLoading(true);
     const supabase = createClient();
-    // El enlace de confirmación vuelve al mismo entorno desde el que se creó la cuenta.
-    // La URL de Preview correspondiente debe estar autorizada en Authentication → URL Configuration.
     const emailRedirectTo = new URL("/auth/callback", window.location.origin).toString();
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
@@ -45,19 +43,19 @@ export default function RegisterOwnerPage() {
         ["user_already_exists", "email_exists"].includes(code)
       ) {
         setAccountExists(true);
-        setMessage("Ese correo ya tiene una cuenta. No hace falta crear otra: ingresá como titular o recuperá la contraseña si no la recordás.");
+        setMessage("Ese correo ya está registrado. No se envió un nuevo correo de alta. Ingresá con la cuenta existente; no hace falta crear otra.");
       } else if (detail.includes("redirect") || detail.includes("allow list")) {
-        setMessage("Supabase rechazó la URL de confirmación de este Preview. Hay que autorizar esta URL en Authentication → URL Configuration del proyecto Preview.");
+        setMessage("El servicio rechazó la dirección de confirmación. Revisá la URL autorizada en Authentication → URL Configuration.");
       } else if (status === 429 || detail.includes("rate limit") || detail.includes("too many requests")) {
-        setMessage("Se alcanzó el límite de intentos de registro. No vuelvas a enviar el formulario repetidamente; esperá y probá una sola vez más tarde.");
+        setMessage("Se alcanzó el límite de intentos de registro. Esperá antes de volver a intentarlo.");
       } else if (detail.includes("signup is disabled") || detail.includes("signups not allowed") || detail.includes("sign up is disabled")) {
-        setMessage("El servicio de autenticación tiene deshabilitada la creación de cuentas. Hay que revisar la configuración de registros del proyecto Preview.");
+        setMessage("La creación de cuentas está deshabilitada en el servicio de autenticación. Hay que revisar su configuración.");
       } else if (detail.includes("invalid email") || detail.includes("email address is invalid")) {
         setMessage("El correo no tiene un formato válido. Revisalo y volvé a intentarlo.");
       } else if (detail.includes("password") && (detail.includes("weak") || detail.includes("short") || detail.includes("characters") || detail.includes("length"))) {
         setMessage("La contraseña no cumple los requisitos del servicio. Usá una contraseña más segura de al menos 8 caracteres.");
       } else if (detail.includes("database error saving new user")) {
-        setMessage("El servicio de autenticación no pudo guardar la cuenta. No repitas el alta varias veces; hay que revisar el error interno antes de volver a intentarlo.");
+        setMessage("El servicio de autenticación no pudo guardar la cuenta. No repitas el alta; hay que revisar el error interno.");
       } else {
         setMessage("No se pudo crear la cuenta por un error de autenticación" + (code || status ? " (código: " + (code || status) + ")" : "") + ". Verificá el correo y la conexión; si persiste, compartí este mensaje.");
       }
@@ -65,11 +63,9 @@ export default function RegisterOwnerPage() {
       return;
     }
 
-    // Supabase intentionally returns an empty identities array for an already-registered email.
-    // In this case no new confirmation email is sent; guide the user to sign in instead.
     if (data.user && !data.session && (data.user.identities?.length ?? 0) === 0) {
       setAccountExists(true);
-      setMessage("Ese correo ya tiene una cuenta. No se envió otro correo de alta; ingresá con esa cuenta para continuar.");
+      setMessage("Ese correo ya está registrado. No se envió un nuevo correo de alta. Ingresá con la cuenta existente; no hace falta crear otra.");
       setLoading(false);
       return;
     }
@@ -80,7 +76,7 @@ export default function RegisterOwnerPage() {
       return;
     }
     setWaiting(true);
-    setMessage("Te enviamos un correo de confirmación. Después de confirmar la dirección, el administrador maestro debe aprobar el alta antes de que puedas crear la agencia.");
+    setMessage("Te enviamos un correo de confirmación. Después de confirmar la dirección, la solicitud aparecerá en Administración Central para que el administrador maestro apruebe el alta.");
     setLoading(false);
   }
 
@@ -99,9 +95,9 @@ export default function RegisterOwnerPage() {
             <label>Crear contraseña<PasswordInput value={password} onChange={setPassword} required minLength={8} autoComplete="new-password" /></label>
             <label>Repetir contraseña<PasswordInput value={confirmation} onChange={setConfirmation} required minLength={8} autoComplete="new-password" /></label>
             {message && (
-              <div className="message error-message" role="alert">
+              <div className={"message " + (accountExists ? "error-message" : "")} role={accountExists ? "alert" : "status"}>
                 {message}
-                {accountExists && <> <Link href="/login?perfil=administrador">Ingresar como titular</Link> o <Link href="/recuperar-clave">recuperar la contraseña</Link>.</>}
+                {accountExists && <> <Link href="/login?perfil=administrador">Ingresar como titular</Link>.</>}
               </div>
             )}
             <button className="button primary full" disabled={loading}>{loading ? "Creando cuenta..." : "Crear cuenta y continuar"}</button>
