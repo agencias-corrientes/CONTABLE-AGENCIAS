@@ -395,6 +395,7 @@ export async function deleteUnlinkedAuthAccount(formData: FormData) {
     if (code === "account_still_linked") redirect("/equipo?error=cuenta-vinculada");
     if (code === "account_owner_of_other_agency") redirect("/equipo?error=cuenta-titular-otra-agencia");
     if (code === "account_linked_to_other_agency") redirect("/equipo?error=cuenta-vinculada-otra-agencia");
+    if (code === "account_member_is_owner") redirect("/equipo?error=cuenta-es-propietario");
     if (code === "confirmation_mismatch") redirect("/equipo?error=confirmacion-cuenta-no-valida");
     if (code === "owner_required") redirect("/equipo?error=solo-titular");
     if (code === "cannot_delete_current_owner") redirect("/equipo?error=no-borrar-usuario-actual");
