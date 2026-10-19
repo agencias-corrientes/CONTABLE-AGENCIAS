@@ -18,32 +18,53 @@ export async function GET(request: NextRequest) {
   const rawType = url.searchParams.get("type");
   const requestedNext = url.searchParams.get("next");
   const isPasswordRecovery = requestedNext === "/cambiar-clave";
-  const isEmployeeConfirmation = requestedNext === "employee";
+  const requestedEmployeeConfirmation = requestedNext === "employee";
   let confirmed = false;
+  let registrationType = "";
+  let verifiedEmail = "";
 
   try {
     const supabase = await createClient();
 
     if (code) {
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
-      confirmed = !error;
-    } else if (
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (!error) {
+        confirmed = true;
+        registrationType = String(data.session?.user?.user_metadata?.registration_type ?? "");
+        verifiedEmail = String(data.session?.user?.email ?? "");
+      }
+    }
+
+    // Some email templates provide a token hash directly. Try it if the code
+    // exchange did not establish a session, rather than failing immediately.
+    if (
+      !confirmed &&
       tokenHash &&
       rawType &&
       supportedOtpTypes.includes(rawType as EmailOtpType)
     ) {
-      const { error } = await supabase.auth.verifyOtp({
+      const { data, error } = await (await createClient()).auth.verifyOtp({
         token_hash: tokenHash,
         type: rawType as EmailOtpType,
       });
-      confirmed = !error;
+      if (!error) {
+        confirmed = true;
+        registrationType = String(data.user?.user_metadata?.registration_type ?? "");
+        verifiedEmail = String(data.user?.email ?? "");
+      }
     }
   } catch {
     confirmed = false;
   }
 
+  // Prefer the account's server-returned metadata over a stale employee redirect
+  // parameter: owner signup links must always return to the owner confirmation page.
+  const isOwnerConfirmation =
+    registrationType === "agency_owner" ||
+    (verifiedEmail.length > 0 && !requestedEmployeeConfirmation);
+  const isEmployeeConfirmation = requestedEmployeeConfirmation && !isOwnerConfirmation;
+
   // Only a short allow-list of internal routes may be used after an email link.
-  // Employee confirmation must return to the employee login, not the owner setup flow.
   let destination: string;
   if (isPasswordRecovery) {
     destination = confirmed ? "/cambiar-clave" : "/cambiar-clave?enlace=invalid";
