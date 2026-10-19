@@ -795,7 +795,19 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [error, setError] = useState("");
   const [confirmationError, setConfirmationError] = useState("");
   const confirmationId = useId();
-  const ticketPhotoInputId = useId();
+  const ticketPhotoInputRef = useRef<HTMLInputElement>(null);
+  const openTicketPhotoPicker = () => {
+    if (busy) return;
+    const input = ticketPhotoInputRef.current;
+    if (!input) return;
+    try {
+      const showPicker = (input as HTMLInputElement & { showPicker?: () => void }).showPicker;
+      if (typeof showPicker === "function") showPicker.call(input);
+      else input.click();
+    } catch {
+      input.click();
+    }
+  };
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">(dailyMode && !dailyCloseAllowed ? "incomplete" : "complete");
   const [reportedAmount, setReportedAmount] = useState("");
@@ -1303,15 +1315,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <section className="ticket-capture-status">
           <div className="rendition-mode-toolbar">
           <div className="rendition-mode-switch" role="group" aria-label="Método de carga del ticket">
-            <label
-              htmlFor={ticketPhotoInputId}
-              className="active ticket-photo-source-label"
-              aria-disabled={busy}
-            >Foto automático</label>
+            <button type="button" className="active ticket-photo-source-label" disabled={busy} onClick={openTicketPhotoPicker}>Foto automático</button>
           </div>
           <input
-            id={ticketPhotoInputId}
-            className="ticket-photo-native-input"
+            ref={ticketPhotoInputRef}
+            className="rendition-ticket-photo-input"
             type="file"
             accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
             aria-label="Seleccionar una foto o archivo para leer el ticket"
@@ -1409,8 +1417,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       )}
 
       <input
-        id={ticketPhotoInputId}
-        className="ticket-photo-native-input"
+        ref={ticketPhotoInputRef}
+        className="rendition-ticket-photo-input"
         type="file"
         name="ticket_photo"
         accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
@@ -1431,15 +1439,16 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       />
       <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
-          <label
-            htmlFor={ticketPhotoInputId}
+          <button
+            type="button"
             className={(mode === "photo" ? "active " : "") + "ticket-photo-source-label"}
-            aria-disabled={busy}
+            disabled={busy}
             onClick={() => {
               setMode("photo");
               setError("");
+              openTicketPhotoPicker();
             }}
-          >Foto automático</label>
+          >Foto automático</button>
           <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
             setMode("manual");
             if (!receiptData && !initialRendition) {
