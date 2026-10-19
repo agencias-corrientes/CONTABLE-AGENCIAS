@@ -525,14 +525,12 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       <div className={"rendition-agent-accordion " + (subagent ? "rendition-subagent" : "rendition-ambulant")}>
         <div className="rendition-agent-expanded">
           <div className="rendition-agent-expanded-head">
-            <div><span className="eyebrow">{renditionFrequency === "weekly" ? "RENDICIÓN ACUMULADA" : renditionPolicy === "daily" ? "RENDICIÓN DEL DÍA" : renditionPolicy === "selected_draws" ? "SORTEOS SELECCIONADOS" : "RENDICIONES POR SORTEO"}</span><h3>{agentLabel(agent)} {agent.code} · {agent.full_name}</h3><p className="muted">{renditionFrequency === "weekly" ? "Acumula cupones oficiales de FIN DE JORNADA y registra una sola entrega en Caja el día habilitado." : renditionPolicy === "daily" ? "Una sola rendición reúne los importes de todos los juegos del día." : renditionPolicy === "selected_draws" ? "Solo se controlan los sorteos habilitados para este operador." : "Cada sorteo tiene su rendición independiente."} Comisión acumulada: <strong>{money(commission, activeOrganization.currency_code)}</strong> · Neto estimado: <strong>{money(netDue, activeOrganization.currency_code)}</strong>.</p></div>
+            <div><span className="eyebrow">{renditionFrequency === "weekly" ? "RENDICIÓN ACUMULADA" : renditionPolicy === "daily" ? "RENDICIÓN DEL DÍA" : renditionPolicy === "selected_draws" ? "SORTEOS SELECCIONADOS" : "RENDICIONES POR SORTEO"}</span><h3>{agentLabel(agent)} {agent.code} · {agent.full_name}</h3>{renditionPolicy === "daily" && <p className={"daily-review-inline status-" + dailyStatusKind}><strong>Revisión del día operativo:</strong> {dailyStatusLabel}</p>}<p className="muted">{renditionFrequency === "weekly" ? "Acumula cupones oficiales de FIN DE JORNADA y registra una sola entrega en Caja el día habilitado." : renditionPolicy === "daily" ? "Una sola rendición reúne los importes de todos los juegos del día." : renditionPolicy === "selected_draws" ? "Solo se controlan los sorteos habilitados para este operador." : "Cada sorteo tiene su rendición independiente."} Comisión acumulada: <strong>{money(commission, activeOrganization.currency_code)}</strong> · Neto estimado: <strong>{money(netDue, activeOrganization.currency_code)}</strong>.</p></div>
             <Link href={"/agencias/" + agent.id} className="button ghost">Configurar</Link>
           </div>
-          <div className="draw-period-chip-list expanded-draw-period-list" aria-label={"Estados de rendición de " + agent.code}>
-            {renditionPolicy === "daily"
-              ? <span className={"draw-period-chip status-" + dailyStatusKind}>{dailyStatusLabel}</span>
-              : agentPeriodStates.map((entry) => <span key={entry.period.label} className={"draw-period-chip status-" + entry.status} title={entry.description}>{entry.label}</span>)}
-          </div>
+          {renditionPolicy !== "daily" && <div className="draw-period-chip-list expanded-draw-period-list" aria-label={"Estados de rendición de " + agent.code}>
+            {agentPeriodStates.map((entry) => <span key={entry.period.label} className={"draw-period-chip status-" + entry.status} title={entry.description}>{entry.label}</span>)}
+          </div>}
           {canCreateRenditions && incompleteDraws.length > 0 && <div className="draw-period-status-actions">
             {incompleteDraws.map((entry) => <form key={entry.period.label} action={setAgencyDrawRenditionStatus}>
               <input type="hidden" name="agent_id" value={agent.id} />
@@ -542,10 +540,6 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
               <button className="button ghost" type="submit">Confirmar {entry.period.shortLabel} como rendida</button>
             </form>)}
           </div>}
-          {renditionPolicy === "daily" && dailyRendition && dailyStatusKind === "incomplete" && canCreateRenditions && <form action={setAgencyDailyRenditionStatus} className="draw-period-status-actions">
-            <input type="hidden" name="agent_id" value={agent.id} /><input type="hidden" name="operational_date" value={today} /><input type="hidden" name="status" value="complete" />
-            <button className="button primary" type="submit">Confirmar rendición del día</button>
-          </form>}
           {canCreateRenditions
             ? renditionPolicy === "daily"
               ? dailyRendition
