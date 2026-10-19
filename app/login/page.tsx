@@ -30,7 +30,12 @@ function LoginForm() {
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.user) {
-      setMessage("No se pudo iniciar sesión. Revisá el correo y la contraseña.");
+      const authMessage = String(error?.message ?? "").toLowerCase();
+      if (authMessage.includes("email not confirmed") || authMessage.includes("email_not_confirmed") || authMessage.includes("email address not confirmed")) {
+        setMessage("El correo todavía no está confirmado. Abrí el último mensaje de confirmación y completá ese paso antes de ingresar.");
+      } else {
+        setMessage("No se pudo iniciar sesión. Revisá el correo y la contraseña.");
+      }
       setLoading(false);
       return;
     }
@@ -132,6 +137,8 @@ function LoginForm() {
         <span className="user-role-pill">{profile === "administrador" ? "Agenciero" : "Empleado"}</span>
         <Link href="/login">Cambiar perfil</Link>
       </div>
+      {searchParams.get("confirmado") === "1" && <p className="message success-message">Correo confirmado. Ingresá con el correo del empleado y la contraseña inicial que le asignó el titular.</p>}
+      {searchParams.get("confirmacion") === "error" && <p className="message error-message">No pudimos completar la confirmación en este entorno. Volvé a abrir el último correo que recibiste y verificá que corresponda al mismo Preview donde se creó la cuenta.</p>}
       <label>Correo electrónico
         <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="username" />
       </label>

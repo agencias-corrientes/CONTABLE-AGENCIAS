@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
   const rawType = url.searchParams.get("type");
   const requestedNext = url.searchParams.get("next");
   const isPasswordRecovery = requestedNext === "/cambiar-clave";
+  const isEmployeeConfirmation = requestedNext === "employee";
   let confirmed = false;
 
   try {
@@ -41,11 +42,18 @@ export async function GET(request: NextRequest) {
     confirmed = false;
   }
 
-  // Only allow the password-recovery route as an alternate destination.
-  // Never redirect to arbitrary paths supplied through an email URL.
-  const destination = confirmed
-    ? isPasswordRecovery ? "/cambiar-clave" : "/registro/confirmado"
-    : isPasswordRecovery ? "/cambiar-clave?enlace=invalid" : "/registro/confirmacion-error";
+  // Only a short allow-list of internal routes may be used after an email link.
+  // Employee confirmation must return to the employee login, not the owner setup flow.
+  let destination: string;
+  if (isPasswordRecovery) {
+    destination = confirmed ? "/cambiar-clave" : "/cambiar-clave?enlace=invalid";
+  } else if (isEmployeeConfirmation) {
+    destination = confirmed
+      ? "/login?perfil=empleado&confirmado=1"
+      : "/login?perfil=empleado&confirmacion=error";
+  } else {
+    destination = confirmed ? "/registro/confirmado" : "/registro/confirmacion-error";
+  }
 
   return NextResponse.redirect(new URL(destination, url.origin));
 }

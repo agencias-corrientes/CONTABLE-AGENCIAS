@@ -807,3 +807,9 @@ input:focus,select:focus,textarea:focus{
 .weekly-ticket-batch-upload-help strong{display:block;font-size:15px;font-weight:800}
 .weekly-ticket-batch-upload-help p{margin:5px 0 0;font-size:13px;line-height:1.45}
 .weekly-ticket-batch-upload-help>small{flex-basis:100%;color:#67585b;font-size:12px;line-height:1.45}
+
+
+/* Administración Central: salida visible y control de empleado limitado a suspensión/reactivación. */
+.platform-admin-page .platform-logout-button{grid-column:1 / -1}
+.platform-admin-page .platform-employee-access-actions{gap:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface2)}
+.platform-admin-page .platform-employee-access-actions .button{width:100%;white-space:normal}

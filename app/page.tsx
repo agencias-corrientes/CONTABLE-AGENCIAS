@@ -3,6 +3,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LandingSplash } from "@/components/landing-splash";
+import { SignOutButton } from "@/components/sign-out-button";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -30,6 +31,7 @@ export default async function HomePage() {
             <div className="landing-actions landing-central-actions">
               <Link className="button primary full" href="/plataforma/accesos">Administración Central</Link>
               {member?.organization_id && <Link className="button ghost full" href="/pagos">Ingresar a mi agencia</Link>}
+              <SignOutButton className="button ghost full" />
             </div>
             <p className="muted small-text">El panel central vuelve a verificar tu autorización en el servidor. Las cuentas de agencia no pueden abrirlo por su cuenta.</p>
           </section>

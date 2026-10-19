@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { SignOutButton } from "@/components/sign-out-button";
 import {
   reviewPlatformAccessRequest,
   addPlatformAdmin,
@@ -91,8 +92,8 @@ function roleLabel(role: string | null) {
   switch (role) {
     case "owner": return "Propietario";
     case "admin": return "Administrador";
-    case "accountant": return "Contador";
-    case "viewer": return "Consulta";
+    case "accountant": return "Empleado";
+    case "viewer": return "Empleado";
     default: return "Sin usuario vinculado";
   }
 }
@@ -103,6 +104,18 @@ function AccountActions({ account }: { account: PlatformAccount }) {
     return <p className="muted small-text">Administrador central · cuenta protegida</p>;
   }
   const currentlyBlocked = ["rejected", "suspended", "revoked"].includes(account.access_status);
+  const isEmployee = account.role === "accountant" || account.role === "viewer";
+  if (isEmployee) {
+    return (
+      <form action={reviewPlatformAccessRequest} className="form-stack platform-access-actions platform-employee-access-actions">
+        <input type="hidden" name="user_id" value={account.user_id} />
+        <p className="muted small-text">El titular administra los permisos diarios del empleado. Acá solo se permite una suspensión general excepcional o reactivar la cuenta.</p>
+        {currentlyBlocked
+          ? <button className="button primary" name="status" value="approved">Reactivar acceso</button>
+          : <button className="button secondary" name="status" value="suspended">Suspender acceso</button>}
+      </form>
+    );
+  }
   return (
     <form action={reviewPlatformAccessRequest} className="form-stack platform-access-actions">
       <input type="hidden" name="user_id" value={account.user_id} />
@@ -187,7 +200,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
       <section className="auth-card wide platform-admin-page">
         <p className="eyebrow">ADMINISTRACIÓN CENTRAL</p>
         <h1>Control de acceso a agencias</h1>
-        <p className="muted">Este es el panel central. Las solicitudes nuevas aparecen arriba; las agencias y cuentas que ya existían se administran en el listado de abajo. Suspender o revocar bloquea el acceso, pero no elimina rendiciones ni movimientos guardados.</p>
+        <p className="muted">Este es el panel central. Las solicitudes nuevas aparecen arriba; las agencias y cuentas existentes se consultan abajo. El titular administra el alta, la baja y los permisos de sus empleados; desde acá solo podés suspender o reactivar globalmente una cuenta, sin borrar rendiciones ni movimientos.</p>
 
         <div className="platform-access-summary platform-access-summary-grid" aria-label="Resumen del acceso">
           <div className="button ghost platform-summary-button"><span>Solicitudes pendientes</span><strong>{requests.length}</strong></div>
@@ -197,6 +210,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
         <div className="platform-access-navigation">
           <Link className="button ghost platform-summary-button" href="/">Volver a Administración Central</Link>
           {currentMember?.organization_id && <Link className="button ghost platform-summary-button" href="/pagos">Ingresar a mi agencia</Link>}
+          <SignOutButton className="button ghost platform-summary-button platform-logout-button" />
         </div>
         <p className="muted small-text">Estás viendo la base de datos aislada de Preview. Las agencias que solo existan en Producción no se muestran ni se modifican desde este panel.</p>
         {agencies.length === 1 && agencies[0]?.members.every((member) => member.is_platform_admin) && (

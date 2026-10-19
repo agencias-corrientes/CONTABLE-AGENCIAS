@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createPublicAuthClient } from "@supabase/supabase-js";
 
@@ -25,6 +26,39 @@ async function getOwnerContext() {
 
 function checked(formData: FormData, name: string) {
   return formData.get(name) === "on";
+}
+
+async function employeeConfirmationRedirectUrl(): Promise<string | undefined> {
+  const requestHeaders = await headers();
+  const originHeader = requestHeaders.get("origin");
+  let appOrigin: string | undefined;
+
+  if (originHeader) {
+    try {
+      const parsedOrigin = new URL(originHeader);
+      if (parsedOrigin.protocol === "https:" || parsedOrigin.hostname === "localhost") {
+        appOrigin = parsedOrigin.origin;
+      }
+    } catch {
+      // If Origin is not usable, try the reverse-proxy host below.
+    }
+  }
+
+  if (!appOrigin) {
+    const host = (requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "")
+      .split(",")[0].trim();
+    if (host && /^[a-z0-9.-]+(?::\\d+)?$/i.test(host)) {
+      const forwardedProtocol = (requestHeaders.get("x-forwarded-proto") ?? "")
+        .split(",")[0].trim().toLowerCase();
+      const protocol = host.startsWith("localhost") ? "http" : forwardedProtocol === "http" ? "http" : "https";
+      appOrigin = protocol + "://" + host;
+    }
+  }
+
+  if (!appOrigin) return undefined;
+  const callback = new URL("/auth/callback", appOrigin);
+  callback.searchParams.set("next", "employee");
+  return callback.toString();
 }
 
 export async function saveAgencySchedules(formData: FormData) {
@@ -98,7 +132,12 @@ export async function addEmployeeByEmail(formData: FormData) {
     const authClient = createPublicAuthClient(url, publishableKey, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
-    const { data, error } = await authClient.auth.signUp({ email, password });
+    const emailRedirectTo = await employeeConfirmationRedirectUrl();
+    const { data, error } = await authClient.auth.signUp({
+      email,
+      password,
+      options: emailRedirectTo ? { emailRedirectTo } : {},
+    });
     if (error) {
       const authMessage = error.message.toLowerCase();
       const looksExisting = authMessage.includes("already") || authMessage.includes("registered") || authMessage.includes("exists");
