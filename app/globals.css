@@ -296,28 +296,22 @@ html,body{background:var(--bg);color:var(--text)}
 .rendition-mode-switch{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;min-width:0}
 .rendition-mode-switch button{flex:1 1 140px;min-height:64px;border:1px solid var(--line);border-radius:12px;padding:12px 16px;background:var(--surface2);color:var(--text);font-weight:800;text-align:center;cursor:pointer}
 .rendition-mode-switch button.active{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(124,51,71,.2)}
-/* Native mobile picker: visible labels activate their own input without a JS click handler. */
+/* Cross-browser native file picker: tapping the label opens its associated input. */
 .rendition-mode-switch .ticket-photo-source-label{
-  position:relative;overflow:hidden;display:flex;flex:1 1 140px;align-items:center;justify-content:center;
+  position:relative;display:flex;flex:1 1 140px;align-items:center;justify-content:center;
   min-width:0;min-height:64px;padding:12px 16px;border:1px solid var(--line);border-radius:12px;
   background:var(--surface2);color:var(--text);font-weight:800;text-align:center;cursor:pointer;
-  touch-action:manipulation;-webkit-tap-highlight-color:transparent;gap:4px;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
 }
 .rendition-mode-switch .ticket-photo-source-label.active{
   background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(124,51,71,.2);
 }
-.rendition-mode-switch .ticket-photo-library-label{
-  background:linear-gradient(180deg,#fffdf7 0%,#f7efd9 100%);color:#572634;border-color:#dfcfaa;
-}
-.rendition-mode-switch .ticket-photo-library-label.active{
-  background:var(--primary);border-color:var(--primary);color:#fff;
-}
 .rendition-mode-switch .ticket-photo-source-label[aria-disabled="true"]{opacity:.7;cursor:wait}
-.rendition-mode-switch.ticket-photo-source-options{gap:8px}
+/* Visually hidden but label-associated input; unlike a transparent overlay, the label receives the tap. */
 .ticket-photo-native-input{
   position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;
-  overflow:hidden!important;clip:rect(0,0,0,0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;
-  border:0!important;opacity:0!important;
+  overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;
+  opacity:0!important;
 }
 .rendition-mode-switch .ticket-photo-source-label:focus-within{
   outline:3px solid rgba(215,182,79,.9);outline-offset:2px;
