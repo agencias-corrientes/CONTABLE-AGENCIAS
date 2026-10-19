@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import jsQR from "jsqr";
 import { createAgencyPrizePayment, deleteAgencyPrizePayment, updateAgencyPrizePayment } from "@/app/(app)/agencias/actions";
 
@@ -69,6 +69,7 @@ export function PrizePaymentPanel({
   const [scanMessage, setScanMessage] = useState("");
   const [readingPhoto, setReadingPhoto] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState("");
+  const prizePhotoInputRef = useRef<HTMLInputElement>(null);
 
   function handleQrPayload(value: string) {
     setQrPayload(value);
@@ -183,17 +184,22 @@ export function PrizePaymentPanel({
           </div>
 
           {captureMode === "photo" && (
-            <label>Fotografiar o adjuntar cupón
-              <input type="file" name="prize_photo" accept="image/*" onChange={handlePhoto} />
-              <small className="muted">La lectura intenta identificar el número. Revisalo antes de registrar el pago; el importe se ingresa y verifica manualmente.</small>
-            </label>
+            <div className="ticket-photo-picker prize-photo-picker">
+              <strong>Fotografiar o adjuntar cupón</strong>
+              <span>Usá la cámara o elegí una imagen/archivo guardado. Después revisá el número detectado antes de registrar el premio.</span>
+              <button type="button" className="ticket-photo-picker-cta" onClick={() => prizePhotoInputRef.current?.click()} disabled={readingPhoto}>Elegir foto o archivo</button>
+              <input ref={prizePhotoInputRef} className="prize-photo-native-input" type="file" name="prize_photo" accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff" capture="environment" onChange={handlePhoto} />
+              <small className="muted">El importe se ingresa y verifica manualmente.</small>
+            </div>
           )}
 
           {captureMode === "qr" && (
             <>
-              <label>Foto del QR (opcional)
-                <input type="file" name="prize_photo" accept="image/*" onChange={handlePhoto} />
-              </label>
+              <div className="ticket-photo-picker prize-photo-picker">
+                <strong>Adjuntar imagen del QR (opcional)</strong>
+                <button type="button" className="ticket-photo-picker-cta" onClick={() => prizePhotoInputRef.current?.click()} disabled={readingPhoto}>Elegir foto o archivo</button>
+                <input ref={prizePhotoInputRef} className="prize-photo-native-input" type="file" name="prize_photo" accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff" onChange={handlePhoto} />
+              </div>
               <label>Contenido del QR
                 <textarea name="qr_payload" rows={2} value={qrPayload} onChange={(event) => handleQrPayload(event.target.value)} placeholder="Pegá el contenido del QR si ya lo escaneaste." />
               </label>
