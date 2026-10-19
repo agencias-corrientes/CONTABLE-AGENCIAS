@@ -184,7 +184,7 @@ export function PrizePaymentPanel({
 
           {captureMode === "photo" && (
             <label>Fotografiar o adjuntar cupón
-              <input type="file" name="prize_photo" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={handlePhoto} />
+              <input type="file" name="prize_photo" accept="image/*" onChange={handlePhoto" />
               <small className="muted">La lectura intenta identificar el número. Revisalo antes de registrar el pago; el importe se ingresa y verifica manualmente.</small>
             </label>
           )}
@@ -192,7 +192,7 @@ export function PrizePaymentPanel({
           {captureMode === "qr" && (
             <>
               <label>Foto del QR (opcional)
-                <input type="file" name="prize_photo" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={handlePhoto} />
+                <input type="file" name="prize_photo" accept="image/*" onChange={handlePhoto} />
               </label>
               <label>Contenido del QR
                 <textarea name="qr_payload" rows={2} value={qrPayload} onChange={(event) => handleQrPayload(event.target.value)} placeholder="Pegá el contenido del QR si ya lo escaneaste." />
