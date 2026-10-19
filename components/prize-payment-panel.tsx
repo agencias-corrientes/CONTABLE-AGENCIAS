@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import jsQR from "jsqr";
 import { createAgencyPrizePayment, deleteAgencyPrizePayment, updateAgencyPrizePayment } from "@/app/(app)/agencias/actions";
 
@@ -71,6 +71,155 @@ export function PrizePaymentPanel({
   const [scanMessage, setScanMessage] = useState("");
   const [readingPhoto, setReadingPhoto] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState("");
+  const [ticketCaptureChoiceOpen, setTicketCaptureChoiceOpen] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraStarting, setCameraStarting] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<"environment" | "user">("environment");
+  const [cameraStreamVersion, setCameraStreamVersion] = useState(0);
+  const [cameraError, setCameraError] = useState("");
+  const [selectedPhotoName, setSelectedPhotoName] = useState("");
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    if (!cameraOpen) return;
+    const video = cameraVideoRef.current;
+    const stream = cameraStreamRef.current;
+    if (!video || !stream) return;
+    video.srcObject = stream;
+    void video.play().catch(() => setCameraError("No se pudo iniciar la vista de la cámara. Cerrá y volvé a abrirla; también podés elegir una foto o archivo."));
+    return () => { if (video.srcObject === stream) video.srcObject = null; };
+  }, [cameraOpen, cameraStreamVersion]);
+
+  useEffect(() => () => {
+    const stream = cameraStreamRef.current;
+    if (stream) stream.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+  }, []);
+
+  async function startPrizeCamera(facing: "environment" | "user") {
+    setCameraError("");
+    setCameraReady(false);
+    setCameraStarting(true);
+    const previous = cameraStreamRef.current;
+    if (previous) previous.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    try {
+      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") throw new Error("camera-unsupported");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: { ideal: facing }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      });
+      cameraStreamRef.current = stream;
+      setCameraFacing(facing);
+      setCameraStreamVersion((version) => version + 1);
+      setCameraOpen(true);
+      setTicketCaptureChoiceOpen(false);
+    } catch (cause) {
+      const errorName = cause && typeof cause === "object" && "name" in cause ? String((cause as { name?: unknown }).name ?? "") : "";
+      const message = errorName === "NotAllowedError" || errorName === "PermissionDeniedError"
+        ? "El navegador bloqueó el acceso a la cámara. Permití el uso de Cámara para este sitio y volvé a intentarlo. La carga de archivos sigue disponible."
+        : errorName === "NotFoundError" || errorName === "DevicesNotFoundError"
+          ? "No se encontró una cámara disponible en este dispositivo. Podés elegir una foto o archivo."
+          : errorName === "NotReadableError" || errorName === "TrackStartError"
+            ? "La cámara está ocupada por otra aplicación. Cerrá la otra aplicación y volvé a intentarlo."
+            : "No se pudo iniciar la cámara. Revisá los permisos del navegador; también podés elegir una foto o archivo.";
+      setCameraError(message);
+      setCameraOpen(false);
+      setTicketCaptureChoiceOpen(true);
+    } finally { setCameraStarting(false); }
+  }
+
+  function closePrizeCamera() {
+    const stream = cameraStreamRef.current;
+    if (stream) stream.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    if (cameraVideoRef.current) cameraVideoRef.current.srcObject = null;
+    setCameraOpen(false);
+    setCameraReady(false);
+    setCameraError("");
+  }
+
+  async function capturePrizeCameraPhoto() {
+    const video = cameraVideoRef.current;
+    if (!video || !video.videoWidth || !video.videoHeight) {
+      setCameraError("La cámara todavía se está iniciando. Esperá un momento y volvé a tomar la foto.");
+      return;
+    }
+    const scale = Math.min(1, 1600 / Math.max(video.videoWidth, video.videoHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+    canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+    const context = canvas.getContext("2d");
+    if (!context) { setCameraError("No se pudo preparar la foto. Cerrá la cámara y volvé a abrirla."); return; }
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.84));
+    if (!blob) { setCameraError("No se pudo generar la foto. Volvé a intentarlo."); return; }
+    const file = new File([blob], "comprobante-premio-" + new Date().toISOString().replace(/[:.]/g, "-") + ".jpg", { type: "image/jpeg", lastModified: Date.now() });
+    try {
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      if (photoInputRef.current) photoInputRef.current.files = transfer.files;
+    } catch {
+      setCameraError("No se pudo adjuntar la foto al formulario. Elegí una foto o archivo desde el dispositivo.");
+      return;
+    }
+    setSelectedPhotoName(file.name);
+    closePrizeCamera();
+    setTicketCaptureChoiceOpen(false);
+    void processPhoto(file);
+  }
+
+  function renderPrizeCaptureDialogs() {
+    return (
+      <>
+        {ticketCaptureChoiceOpen && (
+          <div className="ticket-capture-dialog-backdrop" role="presentation" onClick={() => setTicketCaptureChoiceOpen(false)}>
+            <section className="ticket-capture-dialog" role="dialog" aria-modal="true" aria-label="Elegí cómo cargar el ticket" onClick={(event) => event.stopPropagation()}>
+              <div className="ticket-capture-dialog-heading">
+                <h3>Elegí cómo cargar el ticket</h3>
+                <p>Podés sacar una foto o elegir una imagen guardada. Todos los métodos usan el mismo lector del comprobante.</p>
+              </div>
+              {cameraError && <p className="ticket-read-error" role="alert">{cameraError}</p>}
+              {cameraStarting && <p className="ticket-read-notice" role="status">Solicitando acceso a la cámara…</p>}
+              <div className="ticket-capture-dialog-actions">
+                <button type="button" className="button primary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("environment")}>Usar cámara trasera</button>
+                <button type="button" className="button secondary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("user")}>Usar cámara frontal</button>
+                <button type="button" className="button ghost" disabled={readingPhoto} onClick={() => {
+                  setTicketCaptureChoiceOpen(false);
+                  setCameraError("");
+                  photoInputRef.current?.click();
+                }}>Elegir foto o archivo</button>
+              </div>
+              <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
+                setTicketCaptureChoiceOpen(false);
+                setCameraError("");
+              }}>Cancelar</button>
+            </section>
+          </div>
+        )}
+        {cameraOpen && (
+          <div className="ticket-capture-dialog-backdrop" role="presentation" onClick={closePrizeCamera}>
+            <section className="ticket-capture-dialog ticket-live-camera-dialog" role="dialog" aria-modal="true" aria-label="Tomar foto del comprobante de premio" onClick={(event) => event.stopPropagation()}>
+              <div className="ticket-capture-dialog-heading">
+                <h3>Tomar foto del comprobante</h3>
+                <p>{cameraFacing === "environment" ? "Cámara trasera" : "Cámara frontal"} · Centrá el cupón completo en la imagen.</p>
+              </div>
+              <video ref={cameraVideoRef} className="ticket-live-camera-video" autoPlay playsInline muted onCanPlay={() => setCameraReady(true)} aria-label="Vista en vivo de la cámara para capturar el comprobante" />
+              {cameraError && <p className="ticket-read-error" role="alert">{cameraError}</p>}
+              <div className="ticket-capture-dialog-actions">
+                <button type="button" className="button secondary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera(cameraFacing === "environment" ? "user" : "environment")}>Cambiar a cámara {cameraFacing === "environment" ? "frontal" : "trasera"}</button>
+                <button type="button" className="button primary" disabled={!cameraReady || cameraStarting || readingPhoto} onClick={() => void capturePrizeCameraPhoto()}>Tomar foto y leer ticket</button>
+                <button type="button" className="button ghost" onClick={closePrizeCamera}>Cancelar</button>
+              </div>
+            </section>
+          </div>
+        )}
+      </>
+    );
+  }
 
   function handleQrPayload(value: string) {
     setQrPayload(value);
@@ -81,9 +230,14 @@ export function PrizePaymentPanel({
     }
   }
 
-  async function handlePhoto(event: ChangeEvent<HTMLInputElement>) {
+  function handlePhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+    setSelectedPhotoName(file.name);
+    void processPhoto(file);
+  }
+
+  async function processPhoto(file: File) {
     // Keep QR mode mounted when a QR image is scanned so the decoded payload
     // remains part of the form submission; photo mode remains selected otherwise.
     if (captureMode !== "qr") setCaptureMode("photo");
@@ -269,25 +423,29 @@ export function PrizePaymentPanel({
           <input type="hidden" name="capture_method" value={captureMode} />
           <div className="prize-capture-options" role="group" aria-label="Método para identificar el cupón">
             <button type="button" className={captureMode === "manual" ? "button primary" : "button ghost"} aria-pressed={captureMode === "manual"} onClick={() => { setCaptureMode("manual"); setScanMessage(""); }}>Número de cupón</button>
-            <button type="button" className={captureMode === "photo" ? "button primary" : "button ghost"} aria-pressed={captureMode === "photo"} onClick={() => { setCaptureMode("photo"); setScanMessage(""); }}>Foto del cupón</button>
+            <button type="button" className={captureMode === "photo" ? "button primary" : "button ghost"} aria-pressed={captureMode === "photo"} onClick={() => { setCaptureMode("photo"); setScanMessage(""); setCameraError(""); setTicketCaptureChoiceOpen(true); }}>Foto del cupón</button>
             <button type="button" className={captureMode === "qr" ? "button primary" : "button ghost"} aria-pressed={captureMode === "qr"} onClick={() => { setCaptureMode("qr"); setScanMessage(""); }}>QR</button>
           </div>
 
+          <input ref={photoInputRef} className="prize-photo-file-input" type="file" name="prize_photo" accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff" onChange={handlePhoto} disabled={readingPhoto} style={{ display: "none" }} />
+          {renderPrizeCaptureDialogs()}
+
           {captureMode === "photo" && (
-            <label className="ticket-photo-picker prize-photo-picker">
-              <strong>Fotografiar o adjuntar cupón</strong>
-              <span>Elegí la imagen del cupón directamente desde el selector del dispositivo.</span>
-              <input className="prize-photo-file-input" type="file" name="prize_photo" accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff" onChange={handlePhoto} disabled={readingPhoto} />
+            <div className="ticket-photo-picker prize-photo-picker">
+              <strong>Comprobante del premio</strong>
+              <span>{selectedPhotoName || "Elegí cómo tomar o adjuntar la foto del cupón."}</span>
+              <button type="button" className="ticket-photo-picker-cta" disabled={readingPhoto} onClick={() => { setCameraError(""); setTicketCaptureChoiceOpen(true); }}>Elegir foto o archivo</button>
               <small className="muted">Revisá el número detectado y el importe antes de registrar el premio.</small>
-            </label>
+            </div>
           )}
 
           {captureMode === "qr" && (
             <>
-              <label className="ticket-photo-picker prize-photo-picker">
+              <div className="ticket-photo-picker prize-photo-picker">
                 <strong>Adjuntar imagen del QR (opcional)</strong>
-                <input className="prize-photo-file-input" type="file" name="prize_photo" accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff" onChange={handlePhoto} disabled={readingPhoto} />
-              </label>
+                <span>{selectedPhotoName || "También podés elegir una foto o archivo."}</span>
+                <button type="button" className="ticket-photo-picker-cta" disabled={readingPhoto} onClick={() => { setCameraError(""); setTicketCaptureChoiceOpen(true); }}>Elegir foto o archivo</button>
+              </div>
               <label>Contenido del QR
                 <textarea name="qr_payload" rows={2} value={qrPayload} onChange={(event) => handleQrPayload(event.target.value)} placeholder="Pegá el contenido del QR si ya lo escaneaste." />
               </label>

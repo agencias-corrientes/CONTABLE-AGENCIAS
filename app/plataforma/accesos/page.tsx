@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/sign-out-button";
+import { ConfirmPlatformDeleteButton } from "@/components/confirm-platform-delete-button";
 import {
   reviewPlatformAccessRequest,
   addPlatformAdmin,
@@ -213,16 +214,12 @@ function AgencyManagementAccordion({ agency, isOwnAgency = false }: { agency: Ag
 
           <details className="platform-details danger-details">
             <summary>Eliminar esta agencia y sus datos</summary>
-            <p className="message error-message">Esta acción elimina la agencia del entorno donde estás trabajando y sus registros operativos asociados. No borra automáticamente los usuarios ni las autorizaciones centrales. Es irreversible.</p>
+            <p className="message error-message">Se eliminarán esta agencia, sus rendiciones, pagos, movimientos, comprobantes y demás datos asociados. Si el titular no tiene otra agencia ni otro acceso, también se eliminará su cuenta. Esta acción es irreversible.</p>
             <form action={deletePlatformAgency} className="form-stack">
               <input type="hidden" name="organization_id" value={agency.organization_id} />
-              <label>Escribí exactamente: {agency.organization_name}
-                <input name="confirm_name" required autoComplete="off" placeholder="Nombre exacto de la agencia" />
-              </label>
-              <label>Escribí ELIMINAR para confirmar
-                <input name="confirmation" required pattern="ELIMINAR" autoComplete="off" placeholder="ELIMINAR" />
-              </label>
-              <button className="button danger">Eliminar agencia y datos asociados</button>
+              <input type="hidden" name="confirm_name" value={agency.organization_name} />
+              <input type="hidden" name="confirmation" value="ELIMINAR" />
+              <ConfirmPlatformDeleteButton className="button danger" message={`¿Eliminar definitivamente la agencia "${agency.organization_name}" y todos sus datos asociados? Si su titular no tiene otros accesos, también se eliminará su cuenta.`}>Eliminar agencia y datos asociados</ConfirmPlatformDeleteButton>
             </form>
           </details>
         </div>
@@ -337,7 +334,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
               : params.actualizado === "agencia_editada" ? "Se guardó el nombre de la agencia."
               : params.actualizado === "ciudad_guardada" ? "Se guardó la ciudad de la agencia."
               : params.actualizado === "titularidad_transferida" ? "Se transfirió la titularidad de la agencia."
-              : params.actualizado === "agencia_eliminada" ? "Se eliminó la agencia de Preview y sus datos asociados. Las cuentas de acceso no se borraron."
+              : params.actualizado === "agencia_eliminada" ? "Se eliminó la agencia y sus datos asociados. La cuenta titular también se eliminó si no tenía otros accesos."
               : params.actualizado === "nombre_usuario" ? "Se actualizó el nombre de la cuenta."
               : params.actualizado === "usuario_eliminado" ? "Se eliminó la cuenta de acceso."
               : "Se actualizó el estado de acceso."}
@@ -402,7 +399,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
 
         <section className="platform-access-section">
           <h2>2. Solicitudes de alta pendientes</h2>
-          <p className="muted">Cuando una persona usa «Crear cuenta de propietario» en el registro, su solicitud aparece aquí. Aprobala para que pueda configurar su agencia; rechazala si no corresponde.</p>
+          <p className="muted">Cuando el titular completa el registro y confirma el correo, la solicitud aparece aquí. Aprobala para que pueda continuar y configurar su agencia; rechazala si no corresponde.</p>
           {requests.length === 0 ? (
             <p className="muted">No hay altas nuevas esperando aprobación en este momento.</p>
           ) : (
@@ -458,7 +455,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
 
         <section className="platform-access-section">
           <h2>5. Cuentas de acceso</h2>
-          <p className="muted">Las cuentas se muestran en una lista de botones en columnas. Abrí una cuenta para suspender o reactivar su acceso, corregir el nombre o eliminarla cuando corresponda. La eliminación está protegida para no dejar agencias sin titular ni borrar movimientos por accidente.</p>
+          <p className="muted">Las cuentas se muestran en una lista de botones en columnas. Abrí una cuenta para suspender o reactivar el acceso, corregir el nombre o eliminar directamente un titular junto con sus agencias y datos asociados.</p>
           <div className="platform-user-list">
             {users.map((user) => {
               const userAccessRows = accounts.filter((account) => account.user_id === user.user_id);
@@ -503,27 +500,21 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
                       <button className="button secondary">Guardar nombre</button>
                     </form>
                     {user.is_platform_admin ? (
-                      <p className="muted small-text">Para eliminar esta cuenta primero retirale su permiso central desde el listado de administradores. No se puede borrar el último administrador.</p>
+                      <p className="muted small-text">La cuenta administradora central está protegida y no se puede eliminar desde esta lista.</p>
                     ) : user.user_id === currentUserId ? (
-                      <p className="muted small-text">No podés eliminar desde acá la cuenta con la que estás usando este panel. Ingresá con otro administrador central.</p>
-                    ) : (user.owner_agency_count > 0 || user.created_agency_count > 0) ? (
-                      <p className="muted small-text">Para eliminar este usuario primero transferí o eliminá la(s) agencia(s) donde figura como titular o creador. Sus datos operativos no se deben perder por borrar una cuenta.</p>
+                      <p className="muted small-text">No podés eliminar la cuenta con la que estás usando Administración Central.</p>
                     ) : user.email ? (
                       <details className="platform-details danger-details">
-                        <summary>Eliminar cuenta de usuario</summary>
-                        <p className="message error-message">Esta operación elimina la cuenta de inicio de sesión y sus membresías de agencia. No elimina rendiciones ni movimientos de una agencia; confirmá que esa cuenta ya no debe tener acceso.</p>
+                        <summary>Eliminar titular y todo lo asociado</summary>
+                        <p className="message error-message">Se eliminarán la cuenta de acceso, sus agencias propias y todos los datos operativos vinculados a esas agencias, incluidos rendiciones, pagos, movimientos y comprobantes. Los datos de otras agencias donde solo sea empleado no se borrarán; se quitará su acceso. Esta acción es irreversible.</p>
                         <form action={deletePlatformUser} className="form-stack">
                           <input type="hidden" name="user_id" value={user.user_id} />
-                          <label>Repetí el correo de la cuenta: {user.email}
-                            <input type="email" name="confirm_email" required autoComplete="off" placeholder="Correo exacto de la cuenta" />
-                          </label>
-                          <label>Escribí ELIMINAR para confirmar
-                            <input name="confirmation" required pattern="ELIMINAR" autoComplete="off" placeholder="ELIMINAR" />
-                          </label>
-                          <button className="button danger">Eliminar usuario definitivamente</button>
+                          <input type="hidden" name="confirm_email" value={user.email} />
+                          <input type="hidden" name="confirmation" value="ELIMINAR" />
+                          <ConfirmPlatformDeleteButton className="button danger" message={`¿Eliminar definitivamente la cuenta de ${user.email}, sus agencias propias y todos los datos asociados? Esta acción no se puede deshacer.`}>Eliminar titular y datos asociados</ConfirmPlatformDeleteButton>
                         </form>
                       </details>
-                    ) : <p className="muted small-text">Esta cuenta no tiene un correo utilizable para confirmar la eliminación.</p>}
+                    ) : <p className="muted small-text">No se puede eliminar una cuenta sin correo asociado.</p>}
                   </div>
                 </details>
               );
@@ -535,7 +526,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
         <div className="platform-access-help">
           <h2>Cómo se usa</h2>
           <p>1. El futuro titular se registra desde <Link href="/registro">Crear cuenta de propietario</Link>.</p>
-          <p>2. Confirmada la cuenta, revisás su solicitud aquí y elegís Aprobar o Rechazar.</p>
+          <p>2. Al confirmar el correo, la persona ve que su solicitud fue recibida. Revisás el alta aquí y elegís Aprobar o Rechazar.</p>
           <p>3. Para cuentas existentes, buscá su agencia en el listado y usá Suspender, Revocar acceso o Reactivar acceso.</p>
           <p className="muted small-text">La cuenta administradora central está protegida para evitar que se bloquee a sí misma desde este panel.</p>
         </div>

@@ -15,18 +15,15 @@ export default function RegistrationConfirmedPage() {
           />
         </div>
         <p className="eyebrow">AGENCIAS CORRIENTES</p>
-        <h1 id="confirmed-title">¡Correo confirmado!</h1>
+        <h1 id="confirmed-title">¡Registro recibido!</h1>
         <div className="message success-message" role="status">
-          Tu correo electrónico se confirmó correctamente y tu cuenta quedó activada.
+          Tu correo electrónico se confirmó correctamente y el registro quedó recibido. Todavía falta que Administración Central autorice tu agencia.
         </div>
         <p className="muted">
-          Para empezar a usar el sistema, continuá con la configuración de tu agencia.
+          No necesitás volver a registrarte ni abrir otro enlace. Cuando el administrador apruebe tu solicitud, ingresá con este correo y tu contraseña para continuar con la configuración.
         </p>
         <div className="form-stack">
-          <Link className="button primary full" href="/setup">
-            Continuar y configurar mi agencia
-          </Link>
-          <Link className="button ghost full" href="/login?perfil=administrador">
+          <Link className="button primary full" href="/login?perfil=administrador">
             Ir al inicio de sesión
           </Link>
         </div>
