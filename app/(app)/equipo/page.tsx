@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ConfirmDeleteAccountButton } from "@/components/confirm-delete-account-button";
 import { getCurrentContext } from "@/lib/accounting";
 import { formatAgencyDateTime } from "@/lib/agency-datetime";
-import { addEmployeeByEmail, removeEmployeeAccess, saveBackupEmail, retryRenditionBackup, saveAgencySchedules, saveEmployeePermissions, saveEmployeeRole, cleanupAgencyTestData, deleteUnlinkedAuthAccount } from "./actions";
+import { addEmployeeByEmail, removeEmployeeAccess, saveBackupEmail, retryRenditionBackup, generateHistoricalRenditionBackups, saveAgencySchedules, saveEmployeePermissions, saveEmployeeRole, cleanupAgencyTestData, deleteUnlinkedAuthAccount } from "./actions";
 
 const roleLabels: Record<string, string> = { owner: "Propietario", admin: "Administrador", accountant: "Contador", viewer: "Consulta" };
 
@@ -18,7 +18,7 @@ const permissionLabels = [
 export default async function TeamPermissionsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ error?: string; resultado?: string }>;
+  searchParams?: Promise<{ error?: string; resultado?: string; cantidad?: string; omitidos?: string }>;
 }) {
   const params = searchParams ? await searchParams : {};
   const { supabase, organization, member, userId } = await getCurrentContext();
@@ -98,6 +98,7 @@ export default async function TeamPermissionsPage({
     "horario-configuracion-invalida": "Elegí horarios válidos en formato HH:MM.",
     "horarios-no-guardados": "No se pudieron guardar los horarios. No se aplicaron cambios.",
     "backup-no-enviado": "El respaldo quedó en la cola, pero el correo no pudo enviarse. Revisá la configuración de envío y volvé a intentar.",
+    "backup-historico-fallido": "No se pudieron generar las copias históricas. No se modificaron las rendiciones ni Caja.",
     "limpieza-no-confirmada": "No se hizo ninguna limpieza. Marcá la confirmación y escribí el texto exacto solicitado.",
     "limpieza-fallida": "No se pudieron limpiar los datos de prueba. No inicies la operación oficial hasta revisar el error.",
     "limpieza-relacion": "La limpieza detectó una relación pendiente entre rendiciones y estados por sorteo. Se corrigió el orden del procedimiento; volvé a revisar el inventario antes de reintentar.",
@@ -131,6 +132,7 @@ export default async function TeamPermissionsPage({
       {params.resultado === "horarios-guardados" && <p className="message success-message">Se guardaron los horarios del reinicio diario y del envío automático del backup.</p>}
       {params.resultado === "backup-email-guardado" && <p className="message success-message">Se guardó el correo de respaldo. Las nuevas rendiciones se encolarán para enviarse a esa dirección.</p>}
       {params.resultado === "backup-reintento" && <p className="message success-message">Se solicitó nuevamente el envío del respaldo.</p>}
+      {params.resultado === "respaldos-historicos-generados" && <p className="message success-message">{Number(params.cantidad ?? 0) > 0 ? `Se generaron ${params.cantidad} copias históricas.` : "No había copias históricas faltantes para generar."} {Number(params.omitidos ?? 0) > 0 ? `${params.omitidos} rendiciones ya tenían respaldo y se omitieron.` : ""} Las copias históricas quedan pendientes de envío manual y no alteran rendiciones ni Caja.</p>}
       {params.resultado === "limpieza-completada" && <p className="message success-message">Limpieza finalizada. Se borraron los registros operativos listados y se vació el correo de backup guardado. Se conservaron la agencia, el acceso del titular, el catálogo de juegos y las cuentas de Caja.</p>}
       {params.resultado === "limpieza-completada-fotos-pendientes" && <p className="message error-message">La base quedó limpia, pero no se pudieron quitar todas las fotos privadas de prueba. Revisá el almacenamiento antes del uso oficial.</p>}
       {params.error && <p className="message error-message">{errorMessages[params.error] ?? "No se pudo completar la operación. Revisá los datos e intentá nuevamente."}</p>}
@@ -260,19 +262,23 @@ export default async function TeamPermissionsPage({
       </section>
 
       <section className="panel team-backup-panel">
-        <div className="panel-head"><div><h2>Backup automático de rendiciones</h2><p className="muted">Cada rendición registrada genera un respaldo legible en texto con agencia, subagente/ambulante, fecha, período, sorteo, desglose por juego, total, tickets y observaciones.</p></div><span className={backupSettings?.enabled && backupSettings.recipient_email ? "badge success" : "badge"}>{backupSettings?.enabled && backupSettings.recipient_email ? "Correo configurado" : "Usa correo del titular"}</span></div>
+        <div className="panel-head"><div><h2>Backup de rendiciones</h2><p className="muted">Las nuevas rendiciones generan una copia. También podés preparar las que ya estaban guardadas, con sus tickets, detalle por juego, totales y observaciones.</p></div><span className={backupSettings?.enabled && backupSettings.recipient_email ? "badge success" : "badge"}>{backupSettings?.enabled && backupSettings.recipient_email ? "Correo configurado" : "Usa correo del titular"}</span></div>
         <form action={saveBackupEmail} className="inline-form team-add-form">
           <input type="email" name="recipient_email" defaultValue={backupSettings?.recipient_email ?? ""} placeholder="Dejar vacío para usar el correo de acceso del titular" autoComplete="email" />
           <label className="backup-photo-option"><input type="checkbox" name="include_ticket_photo" defaultChecked={backupSettings?.include_ticket_photo ?? true} /> Adjuntar foto del ticket cuando esté disponible</label>
           <button className="button primary" type="submit">Guardar backup del titular</button>
         </form>
-        <p className="team-security-note">Solo el titular recibe los backups. Cada rendición genera un respaldo de texto; la foto se adjunta si esta opción está marcada y se pudo guardar. El sistema informa “Enviado” únicamente si el proveedor de correo confirma el envío.</p>
+        <p className="team-security-note">Solo el titular recibe los backups. Las copias históricas que generes abajo no se envían automáticamente: quedan en esta cola y podés enviarlas desde cada registro. Generarlas no cambia rendiciones ni movimientos de Caja.</p>
         <div className="team-backup-log">
           <div className="panel-head"><div><h3>Últimos respaldos</h3><p className="muted">Historial de cola, intentos y estado de envío.</p></div><span className="muted">{backupRows?.length ?? 0}</span></div>
+          <form action={generateHistoricalRenditionBackups} className="team-add-form">
+            <p className="muted">Prepara copias para rendiciones anteriores que todavía no tengan respaldo. Incluye las anuladas como parte del historial; el envío es manual.</p>
+            <button className="button ghost" type="submit">Generar copias históricas faltantes</button>
+          </form>
           {backupRowsError && <p className="message error-message">No se pudo leer el historial de respaldos.</p>}
           {!backupRowsError && (!backupRows || !backupRows.length) && <p className="muted">Todavía no se generaron respaldos para las rendiciones. Las que se registren después de configurar un correo se encolarán aquí.</p>}
           {(backupRows ?? []).map((backup) => <details className="team-backup-record" key={backup.id}>
-            <summary><span>{backup.subject}</span><span className={backup.status === "sent" ? "badge success" : backup.status === "failed" ? "badge warning" : "badge"}>{backup.status === "sent" ? "Enviado" : backup.status === "failed" ? "Falló" : backup.status === "sending" ? "Enviando" : "Pendiente"}</span></summary>
+            <summary><span>{String(backup.subject).replace("[HISTÓRICO · ENVÍO MANUAL] ", "")}</span><span>{String(backup.subject).startsWith("[HISTÓRICO · ENVÍO MANUAL] ") && <span className="badge warning">Histórico · manual</span>} <span className={backup.status === "sent" ? "badge success" : backup.status === "failed" ? "badge warning" : "badge"}>{backup.status === "sent" ? "Enviado" : backup.status === "failed" ? "Falló" : backup.status === "sending" ? "Enviando" : "Pendiente"}</span></span></summary>
             <div className="team-backup-record-body"><p><strong>Destino:</strong> {backup.recipient_email} · <strong>Creado:</strong> {formatAgencyDateTime(String(backup.created_at)).replace(" (Buenos Aires, Argentina)", "")}</p>
               {backup.sent_at && <p><strong>Enviado:</strong> {formatAgencyDateTime(String(backup.sent_at)).replace(" (Buenos Aires, Argentina)", "")}</p>}
               {backup.last_error && <p className="message error-message">{(String(backup.last_error).toLowerCase().includes("you can only send testing emails to your own email address") || String(backup.last_error).toLowerCase().includes("verify a domain at resend.com/domains")) ? <>Resend está en modo de prueba y bloquea envíos a otros destinatarios. Conservá esta copia y verificá un dominio propio en <a href="https://resend.com/domains" target="_blank" rel="noreferrer">Resend → Domains</a>. Después configurá <code>RESEND_FROM_EMAIL</code> con una dirección de ese dominio en los secretos de la función de Supabase y volvé a intentar.</> : backup.last_error}</p>}

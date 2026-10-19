@@ -421,6 +421,26 @@ export async function saveBackupEmail(formData: FormData) {
   redirect("/equipo?resultado=backup-email-guardado");
 }
 
+export async function generateHistoricalRenditionBackups() {
+  const { supabase, organizationId } = await getOwnerContext();
+  const { data, error } = await supabase.functions.invoke("send-rendition-backup", {
+    body: { regenerate_historical: true, organization_id: organizationId },
+  });
+
+  if (error || !["historical_backups_queued", "historical_backups_already_generated", "no_historical_renditions"].includes(String(data?.status ?? ""))) {
+    const code = String(data?.error ?? "");
+    if (code === "historical_backup_recipient_missing") redirect("/equipo?error=backup-destinatario");
+    if (code === "historical_backup_owner_only") redirect("/equipo?error=solo-titular");
+    redirect("/equipo?error=backup-historico-fallido");
+  }
+
+  revalidatePath("/equipo");
+  revalidatePath("/pagos");
+  const queued = Math.max(0, Number(data?.queued ?? 0));
+  const skipped = Math.max(0, Number(data?.skipped ?? 0));
+  redirect("/equipo?resultado=respaldos-historicos-generados&cantidad=" + queued + "&omitidos=" + skipped);
+}
+
 export async function retryRenditionBackup(formData: FormData) {
   const { supabase } = await getOwnerContext();
   const backupId = String(formData.get("backup_id") ?? "").trim();

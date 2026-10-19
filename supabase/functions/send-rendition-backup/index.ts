@@ -23,6 +23,216 @@ const DAILY_CLOSE_CRON_SECRET_SHA256 =
 const AGENCY_TIME_ZONE = "America/Argentina/Cordoba";
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbz4sFO9eo0FaCjl76Og5-aYceYzdfyibpDwBnZTNtnvz1Qm_tfjwg0x47Uck4JAzCo-fA/exec";
+const HISTORICAL_BACKUP_SUBJECT_PREFIX = "[HISTÓRICO · ENVÍO MANUAL] ";
+
+function formatBackupAmount(value: unknown): string {
+  return Number(value ?? 0).toLocaleString("es-AR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function relationOne<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
+
+async function queueHistoricalRenditionBackups(
+  admin: any,
+  organizationId: string,
+  userId: string,
+) {
+  const { data: ownerMembership, error: membershipError } = await admin
+    .from("organization_members")
+    .select("role")
+    .eq("organization_id", organizationId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (membershipError || ownerMembership?.role !== "owner") {
+    return reply({ error: "historical_backup_owner_only" }, 403);
+  }
+
+  const [{ data: backupSettings, error: settingsError }, { data: organization, error: organizationError }] = await Promise.all([
+    admin.from("organization_backup_settings")
+      .select("recipient_email,enabled,include_ticket_photo")
+      .eq("organization_id", organizationId)
+      .maybeSingle(),
+    admin.from("organizations")
+      .select("name,timezone")
+      .eq("id", organizationId)
+      .maybeSingle(),
+  ]);
+
+  if (settingsError || organizationError || !organization) {
+    return reply({ error: "historical_backup_settings_lookup_failed" }, 500);
+  }
+
+  let recipient = backupSettings?.enabled
+    ? String(backupSettings.recipient_email ?? "").trim()
+    : "";
+
+  if (!recipient) {
+    const { data: owners, error: ownersError } = await admin
+      .from("organization_members")
+      .select("user_id")
+      .eq("organization_id", organizationId)
+      .eq("role", "owner")
+      .order("created_at", { ascending: true })
+      .limit(1);
+    if (ownersError || !owners?.[0]?.user_id) {
+      return reply({ error: "historical_backup_recipient_missing" }, 409);
+    }
+    const { data: ownerUser, error: ownerUserError } = await admin.auth.admin
+      .getUserById(String(owners[0].user_id));
+    recipient = String(ownerUser?.user?.email ?? "").trim();
+    if (ownerUserError || !recipient) {
+      return reply({ error: "historical_backup_recipient_missing" }, 409);
+    }
+  }
+
+  const { data: renditions, error: renditionsError } = await admin
+    .from("agency_renditions")
+    .select("id,organization_id,agent_id,rendition_date,created_at,game_period,draw_number,capture_method,amount_due,status,reference,notes,agency_agents(id,kind,code,full_name),agency_rendition_game_amounts(amount,commission_percent,commission_amount,agency_game_types(name)),agency_rendition_tickets(ticket_number,ticket_qr_payload)")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: true })
+    .limit(1000);
+
+  if (renditionsError) {
+    return reply({ error: "historical_backup_renditions_lookup_failed" }, 500);
+  }
+
+  if ((renditions ?? []).length >= 1000) {
+    return reply({ error: "historical_backup_history_limit_reached" }, 409);
+  }
+
+  if (!renditions?.length) {
+    return reply({ status: "no_historical_renditions", queued: 0, skipped: 0 });
+  }
+
+  const renditionIds = renditions.map((row: any) => String(row.id));
+  const { data: existingRows, error: existingError } = await admin
+    .from("agency_rendition_backup_outbox")
+    .select("rendition_id")
+    .eq("organization_id", organizationId)
+    .in("rendition_id", renditionIds);
+
+  if (existingError) {
+    return reply({ error: "historical_backup_outbox_lookup_failed" }, 500);
+  }
+
+  const alreadyBackedUp = new Set(
+    (existingRows ?? []).map((row: any) => String(row.rendition_id)),
+  );
+  const missing = renditions.filter((row: any) => !alreadyBackedUp.has(String(row.id)));
+
+  if (!missing.length) {
+    return reply({
+      status: "historical_backups_already_generated",
+      queued: 0,
+      skipped: renditions.length,
+    });
+  }
+
+  const pendingBackups: Record<string, unknown>[] = [];
+  for (const rendition of missing as any[]) {
+    const agent = relationOne(rendition.agency_agents) as any;
+    const gameRows = Array.isArray(rendition.agency_rendition_game_amounts)
+      ? rendition.agency_rendition_game_amounts
+      : [];
+    const gameLines = gameRows.map((gameRow: any) => {
+      const game = relationOne(gameRow.agency_game_types) as any;
+      const amount = Number(gameRow.amount ?? 0);
+      const commission = Number(gameRow.commission_amount ?? 0);
+      const percent = Number(gameRow.commission_percent ?? 0);
+      return "- " + String(game?.name ?? "Juego") + ": vendido $ " + formatBackupAmount(amount) +
+        " · comisión " + formatBackupAmount(percent) + "% ($ " + formatBackupAmount(commission) +
+        ") · neto $ " + formatBackupAmount(amount - commission);
+    });
+    const ticketRows = Array.isArray(rendition.agency_rendition_tickets)
+      ? rendition.agency_rendition_tickets
+      : [];
+    const ticketLines = ticketRows.map((ticket: any) =>
+      "- " + String(ticket.ticket_number ?? "—") +
+      (ticket.ticket_qr_payload ? "\n  QR: " + String(ticket.ticket_qr_payload) : "")
+    );
+    const status = String(rendition.status ?? "");
+    const agentType = agent?.kind === "ambulant" ? "Ambulante" : "Subagente";
+    const subject = HISTORICAL_BACKUP_SUBJECT_PREFIX + "Backup rendición " +
+      String(agent?.code ?? "sin código") + " - " + String(rendition.rendition_date ?? "") +
+      " - revisión histórica";
+    const textBody = [
+      "COPIA HISTÓRICA GENERADA A PEDIDO DEL TITULAR.",
+      "Quedará pendiente para envío manual y no se incluirá en el envío automático.",
+      "Estado: " + (status === "void" ? "ANULADA" : status.toUpperCase()),
+      "Agencia: " + String(organization.name ?? "Agencia"),
+      "Tipo: " + agentType,
+      "Código: " + String(agent?.code ?? "—"),
+      "Nombre: " + String(agent?.full_name ?? "—"),
+      "Fecha del juego: " + String(rendition.rendition_date ?? "—"),
+      "Registrada: " + String(rendition.created_at ?? "—"),
+      "Período/turno: " + String(rendition.game_period ?? "—"),
+      "Número de sorteo: " + String(rendition.draw_number ?? "—"),
+      "Método: " + String(rendition.capture_method ?? "manual"),
+      "Referencia: " + String(rendition.reference ?? "—"),
+      "",
+      "DETALLE POR JUEGO",
+      gameLines.length ? gameLines.join("\n") : "(sin desglose por juego)",
+      "",
+      "TOTAL VENDIDO: $ " + formatBackupAmount(rendition.amount_due),
+      "TOTAL COMISIÓN: $ " + formatBackupAmount(gameRows.reduce((sum: number, row: any) => sum + Number(row.commission_amount ?? 0), 0)),
+      "NETO ESTIMADO: $ " + formatBackupAmount(Number(rendition.amount_due ?? 0) - gameRows.reduce((sum: number, row: any) => sum + Number(row.commission_amount ?? 0), 0)),
+      "",
+      "TICKETS / CUPONES",
+      ticketLines.length ? ticketLines.join("\n") : "(sin tickets cargados)",
+      "",
+      "OBSERVACIONES / MOTIVO: " + String(rendition.notes ?? "—"),
+      "ID DE RENDICIÓN: " + String(rendition.id),
+    ].join("\n");
+
+    let ticketPhotoPath: string | null = null;
+    if (backupSettings?.include_ticket_photo !== false) {
+      const { data: files } = await admin.storage
+        .from("agency-rendition-tickets")
+        .list(organizationId + "/" + String(rendition.id), { limit: 100 });
+      const latestFile = (files ?? [])
+        .filter((file: any) => file.id)
+        .sort((left: any, right: any) =>
+          Date.parse(String(right.created_at ?? "")) - Date.parse(String(left.created_at ?? ""))
+        )[0];
+      if (latestFile?.name) {
+        ticketPhotoPath = organizationId + "/" + String(rendition.id) + "/" + latestFile.name;
+      }
+    }
+
+    pendingBackups.push({
+      organization_id: organizationId,
+      rendition_id: String(rendition.id),
+      revision_no: 1,
+      recipient_email: recipient,
+      subject,
+      text_body: textBody,
+      ...(ticketPhotoPath ? { ticket_photo_path: ticketPhotoPath } : {}),
+    });
+  }
+
+  const { data: insertedRows, error: insertError } = await admin
+    .from("agency_rendition_backup_outbox")
+    .upsert(pendingBackups, {
+      onConflict: "rendition_id,revision_no",
+      ignoreDuplicates: true,
+    })
+    .select("id");
+
+  if (insertError) {
+    return reply({ error: "historical_backup_queue_failed" }, 500);
+  }
+
+  return reply({
+    status: "historical_backups_queued",
+    queued: insertedRows?.length ?? 0,
+    skipped: alreadyBackedUp.size,
+  });
+}
 
 async function matchesDailyCloseSecret(candidate: string): Promise<boolean> {
   if (!candidate) return false;
@@ -294,6 +504,7 @@ async function sendDailyCloseBackups(
   mailToken: string | undefined,
   organizationIdFilter?: string,
   onlyRenditionId?: string,
+  scheduledOnly = false,
 ) {
   if (!mailToken) {
     return reply({
@@ -345,6 +556,9 @@ async function sendDailyCloseBackups(
   const pendingRows = Array.from(latestByRendition.values())
     .filter((row) => {
       if (onlyRenditionId && String(row.rendition_id) !== onlyRenditionId) return false;
+      if (scheduledOnly && String(row.subject ?? "").startsWith(HISTORICAL_BACKUP_SUBJECT_PREFIX)) {
+        return false;
+      }
       if (row.status === "pending" || row.status === "failed") {
         return true;
       }
@@ -661,6 +875,8 @@ async function sendScheduledDailyBackups(
       admin,
       mailToken,
       organizationId,
+      undefined,
+      true,
     );
 
     let result: Record<string, unknown> = {};
@@ -715,6 +931,7 @@ Deno.serve(async (request: Request) => {
     rendition_id?: string;
     daily_close?: boolean;
     manual_close?: boolean;
+    regenerate_historical?: boolean;
     organization_id?: string;
   };
 
@@ -796,6 +1013,14 @@ Deno.serve(async (request: Request) => {
       mailToken,
       manualOrganizationId,
     );
+  }
+
+  if (payload.regenerate_historical === true) {
+    const organizationId = String(payload.organization_id ?? "").trim();
+    if (!organizationId) {
+      return reply({ error: "organization_id_required_for_historical_backup" }, 400);
+    }
+    return await queueHistoricalRenditionBackups(admin, organizationId, userId);
   }
 
   if (!payload.outbox_id && !payload.rendition_id) {
