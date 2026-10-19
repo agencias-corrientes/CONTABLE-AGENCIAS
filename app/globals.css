@@ -133,7 +133,7 @@ html,body{background:var(--bg);color:var(--text)}
 .rendition-selected-view .rendition-agent-expanded-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 .rendition-selected-view .rendition-agent-expanded-head>div{min-width:0}
 .rendition-selected-view .rendition-agent-expanded-head .button{flex:0 0 auto}
-@media(max-width:640px){.rendition-agent-code-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.rendition-agent-code-link{min-height:52px;font-size:15px;padding:10px 6px}.rendition-selected-header h1{font-size:27px}.rendition-selected-view .rendition-agent-expanded-head{flex-direction:column}}
+@media(max-width:640px){.rendition-agent-code-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.rendition-agent-code-link{min-height:52px;font-size:15px;padding:10px 6px}.rendition-selected-header h1{font-size:27px}.rendition-selected-view .rendition-agent-expanded-head{flex-direction:row;align-items:flex-start}}
 
 
 /* Rendiciones: ancho completo, indicadores alineados y selector consistente con Agencias */
