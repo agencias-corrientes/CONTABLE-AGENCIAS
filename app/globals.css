@@ -934,16 +934,25 @@ input[type="reset"],
   border-radius: 8px !important;
 }
 
-/* Selector operativo: el archivo original sigue siendo el mismo; ahora se abre desde el selector común. */
+/* El selector de archivos debe permanecer visible y activable también en móviles.
+   Los navegadores móviles bloquean a menudo inputs de archivo fuera de pantalla. */
 .ticket-photo-picker .ticket-photo-operational-input {
-  position: fixed !important;
+  position: static !important;
   inset: auto !important;
-  left: -10000px !important;
-  top: 0 !important;
-  width: 1px !important;
-  height: 1px !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 48px !important;
+  max-width: 100% !important;
+  margin-top: 8px !important;
+  padding: 10px !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  z-index: auto !important;
+  border: 1px solid #d4c18b !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  color: #40242a !important;
 }
 .ticket-photo-picker-cta {
   border: 0 !important;
