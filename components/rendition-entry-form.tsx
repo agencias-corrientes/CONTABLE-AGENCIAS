@@ -1626,7 +1626,26 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
-          <button type="button" className={(mode === "photo" ? "active " : "") + "ticket-photo-source-label"} disabled={busy} onClick={() => { setMode("photo"); setCameraError(""); setTicketCaptureTarget("main"); setTicketCaptureChoiceOpen(true); }}>Foto automático</button>
+          <label className={(mode === "photo" ? "active " : "") + "button ticket-photo-source-label ticket-photo-file-label"} aria-label="Elegir foto o archivo del ticket">
+            <span>Elegir foto o archivo</span>
+            <input
+              ref={ticketPhotoInputRef}
+              id={ticketPhotoInputId}
+              className="ticket-photo-native-input ticket-photo-overlay-input"
+              type="file"
+              name="ticket_photo"
+              accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+              aria-label="Elegir foto o archivo del ticket"
+              disabled={busy}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                setMode("photo");
+                setCameraError("");
+                if (file) processSelectedTicketFile(file);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
           <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
             setMode("manual");
             if (!receiptData && !initialRendition) {
@@ -1665,24 +1684,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         )}
       </div>
 
-      <input
-        ref={ticketPhotoInputRef}
-        id={ticketPhotoInputId}
-        className="ticket-photo-native-input ticket-photo-operational-input"
-        type="file"
-        name="ticket_photo"
-        accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-        aria-label="Seleccionar una foto o archivo para leer el ticket"
-        disabled={busy}
-        onChange={(event) => {
-          const file = event.currentTarget.files?.[0];
-          if (file) {
-            setTicketCaptureChoiceOpen(false);
-            processSelectedTicketFile(file);
-          }
-          event.currentTarget.value = "";
-        }}
-      />
+
 
       {mode === "manual" && !receiptData && (
         <section className="manual-closure-template-panel" aria-label="Carga manual de FIN DE JORNADA">
