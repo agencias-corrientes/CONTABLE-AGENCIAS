@@ -11,6 +11,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const rawProfile = searchParams.get("perfil");
@@ -143,7 +144,31 @@ function LoginForm() {
         <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="username" />
       </label>
       <label>Contraseña
-        <input type="password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" />
+        <span style={{ position: "relative", display: "block" }}>
+          <input type={showPassword ? "text" : "password"} minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" style={{ paddingRight: "3.25rem" }} />
+          <button
+            type="button"
+            aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+            aria-pressed={showPassword}
+            title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+            onClick={() => setShowPassword((visible) => !visible)}
+            style={{ position: "absolute", right: "0.55rem", top: "50%", transform: "translateY(-50%)", display: "inline-flex", alignItems: "center", justifyContent: "center", width: "2.25rem", height: "2.25rem", padding: 0, border: 0, background: "transparent", color: "inherit", cursor: "pointer" }}
+          >
+            {showPassword ? (
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3 3l18 18" />
+                <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                <path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c5.2 0 8.8 5.1 9.5 6.3a1.3 1.3 0 0 1 0 1.4 16 16 0 0 1-3.1 3.6" />
+                <path d="M6.2 6.2a16.3 16.3 0 0 0-3.7 5.1 1.3 1.3 0 0 0 0 1.4C3.2 13.9 6.8 19 12 19a10.6 10.6 0 0 0 3.1-.5" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M2.5 12s3.4-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.4 6.5-9.5 6.5S2.5 12 2.5 12Z" />
+                <circle cx="12" cy="12" r="2.5" />
+              </svg>
+            )}
+          </button>
+        </span>
       </label>
       {message && <div className="message error-message" role="alert">{message}</div>}
       <button className="button primary full" disabled={loading}>{loading ? "Ingresando..." : "Ingresar"}</button>
