@@ -65,6 +65,12 @@ export function PrizePaymentPanel({
 }) {
   const [captureMode, setCaptureMode] = useState<CaptureMode>("manual");
   const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const prizePhotoPanelRef = useRef<HTMLDivElement | null>(null);
+  const qrPayloadRef = useRef<HTMLTextAreaElement | null>(null);
+  const couponInputRef = useRef<HTMLInputElement | null>(null);
+  const prizeFieldsRef = useRef<HTMLDivElement | null>(null);
+  const scrollAfterModeChangeRef = useRef(false);
+  const wasReadingPhotoRef = useRef(false);
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const [captureChoiceOpen, setCaptureChoiceOpen] = useState(false);
@@ -98,6 +104,41 @@ export function PrizePaymentPanel({
       if (video.srcObject === cameraStreamRef.current) video.srcObject = null;
     };
   }, [cameraOpen, cameraStreamVersion]);
+
+  useEffect(() => {
+    if (!scrollAfterModeChangeRef.current) return;
+    scrollAfterModeChangeRef.current = false;
+    if (!window.matchMedia("(max-width: 700px)").matches) return;
+    window.requestAnimationFrame(() => {
+      const target = captureMode === "manual"
+        ? couponInputRef.current?.closest("label")
+        : captureMode === "qr"
+          ? qrPayloadRef.current?.closest("label") ?? prizePhotoPanelRef.current
+          : prizePhotoPanelRef.current;
+      target?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+  }, [captureMode]);
+
+  useEffect(() => {
+    if (readingPhoto) {
+      wasReadingPhotoRef.current = true;
+      return;
+    }
+    if (!wasReadingPhotoRef.current) return;
+    wasReadingPhotoRef.current = false;
+    if (!window.matchMedia("(max-width: 700px)").matches) return;
+    window.requestAnimationFrame(() => {
+      const target = prizeFieldsRef.current;
+      target?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+      couponInputRef.current?.focus({ preventScroll: true });
+    });
+  }, [readingPhoto]);
 
   function stopPrizeCamera() {
     cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -429,13 +470,13 @@ export function PrizePaymentPanel({
           <input type="hidden" name="return_agent_id" value={returnAgentId} />
           <input type="hidden" name="capture_method" value={captureMode} />
           <div className="prize-capture-options" role="group" aria-label="Método para identificar el cupón">
-            <button type="button" className={captureMode === "manual" ? "button primary" : "button ghost"} aria-pressed={captureMode === "manual"} onClick={() => { setCaptureMode("manual"); setScanMessage(""); }}>Número de cupón</button>
-            <button type="button" className={captureMode === "photo" ? "button primary" : "button ghost"} aria-pressed={captureMode === "photo"} onClick={() => { setCaptureMode("photo"); setScanMessage(""); }}>Foto del cupón</button>
-            <button type="button" className={captureMode === "qr" ? "button primary" : "button ghost"} aria-pressed={captureMode === "qr"} onClick={() => { setCaptureMode("qr"); setScanMessage(""); }}>QR</button>
+            <button type="button" className={captureMode === "manual" ? "button primary" : "button ghost"} aria-pressed={captureMode === "manual"} onClick={() => { scrollAfterModeChangeRef.current = true; setCaptureMode("manual"); setScanMessage(""); }}>Número de cupón</button>
+            <button type="button" className={captureMode === "photo" ? "button primary" : "button ghost"} aria-pressed={captureMode === "photo"} onClick={() => { scrollAfterModeChangeRef.current = true; setCaptureMode("photo"); setScanMessage(""); }}>Foto del cupón</button>
+            <button type="button" className={captureMode === "qr" ? "button primary" : "button ghost"} aria-pressed={captureMode === "qr"} onClick={() => { scrollAfterModeChangeRef.current = true; setCaptureMode("qr"); setScanMessage(""); }}>QR</button>
           </div>
 
           {(captureMode === "photo" || captureMode === "qr") && (
-            <div className="ticket-capture-panel prize-ticket-capture-panel">
+            <div ref={prizePhotoPanelRef} className="ticket-capture-panel prize-ticket-capture-panel">
               <div className="ticket-photo-picker prize-photo-picker">
                 <span className="ticket-photo-icon" aria-hidden="true">▧</span>
                 <strong>{captureMode === "qr" ? "Comprobante del QR" : "Comprobante del premio"}</strong>
@@ -456,7 +497,6 @@ export function PrizePaymentPanel({
                   onChange={handlePhoto}
                   disabled={readingPhoto}
                 />
-                <small className="muted">La foto pasa por el lector de cupón. Revisá el número detectado y el importe antes de registrar el premio.</small>
               </div>
               {renderPrizeCaptureDialogs()}
             </div>
@@ -465,7 +505,7 @@ export function PrizePaymentPanel({
           {captureMode === "qr" && (
             <>
               <label>Contenido del QR
-                <textarea name="qr_payload" rows={2} value={qrPayload} onChange={(event) => handleQrPayload(event.target.value)} placeholder="Pegá el contenido del QR si ya lo escaneaste." />
+                <textarea ref={qrPayloadRef} name="qr_payload" rows={2} value={qrPayload} onChange={(event) => handleQrPayload(event.target.value)} placeholder="Pegá el contenido del QR si ya lo escaneaste." />
               </label>
               <small className="muted">Si el QR proviene de una imagen cargada, el contenido se leerá automáticamente cuando sea posible.</small>
             </>
@@ -474,9 +514,9 @@ export function PrizePaymentPanel({
           {scanMessage && <p className="message" role="status">{readingPhoto ? "Leyendo la imagen…" : scanMessage}</p>}
           {readingPhoto && <p className="muted" role="status">Analizando la foto del cupón…</p>}
 
-          <div className="prize-payment-grid">
+          <div ref={prizeFieldsRef} className="prize-payment-grid">
             <label>Número de cupón
-              <input name="coupon_number" required maxLength={128} value={couponNumber} onChange={(event) => setCouponNumber(event.target.value)} placeholder="Número impreso o detectado" autoComplete="off" />
+              <input ref={couponInputRef} name="coupon_number" required maxLength={128} value={couponNumber} onChange={(event) => setCouponNumber(event.target.value)} placeholder="Número impreso o detectado" autoComplete="off" />
             </label>
             <label>Juego (opcional)
               <input name="game_name" maxLength={120} value={gameName} onChange={(event) => setGameName(event.target.value)} placeholder="Nombre del juego" />

@@ -782,6 +782,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     return saved?.type === "loteria-corrientes-end-of-day-batch-v1" && Array.isArray(saved.tickets) ? saved.tickets : [];
   });
   const batchTicketsRef = useRef<TicketClosureData[]>(batchTickets);
+  const renditionFormRef = useRef<HTMLFormElement | null>(null);
+  const scrollAfterModeChangeRef = useRef(false);
+  const wasReadingTicketRef = useRef(false);
   const [gameListExpanded, setGameListExpanded] = useState(false);
   const [receiptReviewed, setReceiptReviewed] = useState(Boolean((initialRendition?.receiptData as any)?.userConfirmedReview));
   const [ocrText, setOcrText] = useState("");
@@ -830,6 +833,43 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     if (stream) stream.getTracks().forEach((track) => track.stop());
     cameraStreamRef.current = null;
   }, []);
+
+  useEffect(() => {
+    if (!scrollAfterModeChangeRef.current) return;
+    scrollAfterModeChangeRef.current = false;
+    if (!window.matchMedia("(max-width: 760px)").matches) return;
+    window.requestAnimationFrame(() => {
+      const form = renditionFormRef.current;
+      if (!form) return;
+      const target = mode === "photo"
+        ? form.querySelector<HTMLElement>(".ticket-photo-picker-cta") ?? form.querySelector<HTMLElement>(".ticket-capture-panel")
+        : form.querySelector<HTMLElement>(".ticket-closure-receipt.is-editable")
+          ?? form.querySelector<HTMLElement>(".ticket-closure-receipt")
+          ?? form.querySelector<HTMLElement>(".manual-closure-template-panel")
+          ?? form.querySelector<HTMLElement>(".game-rendition-block");
+      target?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+  }, [mode, receiptData]);
+
+  useEffect(() => {
+    if (busy) {
+      wasReadingTicketRef.current = true;
+      return;
+    }
+    if (!wasReadingTicketRef.current) return;
+    wasReadingTicketRef.current = false;
+    if (!window.matchMedia("(max-width: 760px)").matches) return;
+    window.requestAnimationFrame(() => {
+      const target = renditionFormRef.current?.querySelector<HTMLElement>(".game-rendition-block");
+      target?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+  }, [busy]);
 
   const total = useMemo(() =>
     Object.values(amounts).reduce((sum, value) => sum + (Number(value) > 0 ? Number(value) : 0), 0),
@@ -1550,6 +1590,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   return (
     <form
       action={initialRendition ? updateAgencyRendition : createAgencyRendition}
+      ref={renditionFormRef}
       className="form-stack rendition-entry-form"
       noValidate
       onSubmit={(event) => {
@@ -1602,8 +1643,24 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
-          <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => setMode("photo")}>Foto (automático)</button>
+          <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => {
+            scrollAfterModeChangeRef.current = true;
+            if (mode === "photo" && window.matchMedia("(max-width: 760px)").matches) {
+              window.requestAnimationFrame(() => renditionFormRef.current?.querySelector<HTMLElement>(".ticket-photo-picker-cta")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+            }
+            setMode("photo");
+          }}>Foto (automático)</button>
           <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
+            scrollAfterModeChangeRef.current = true;
+            if (mode === "manual" && window.matchMedia("(max-width: 760px)").matches) {
+              window.requestAnimationFrame(() => {
+                const form = renditionFormRef.current;
+                const target = form?.querySelector<HTMLElement>(".ticket-closure-receipt.is-editable")
+                  ?? form?.querySelector<HTMLElement>(".ticket-closure-receipt")
+                  ?? form?.querySelector<HTMLElement>(".manual-closure-template-panel");
+                target?.scrollIntoView({ behavior: "smooth", block: "start" });
+              });
+            }
             setMode("manual");
             if (!receiptData && !initialRendition) {
               const template = createManualClosureTemplate(games);

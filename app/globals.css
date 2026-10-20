@@ -1061,3 +1061,107 @@ input[type="reset"],
     overflow-wrap: anywhere;
   }
 }
+
+
+/* Rediseño táctil de Rendición y Pagar premio: un solo control visual para cargar archivos. */
+.ticket-photo-picker .ticket-photo-operational-input,
+.prize-payment-panel .prize-photo-file-input {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  inset: 0 auto auto 0 !important;
+  display: block !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-height: 1px !important;
+  max-width: 1px !important;
+  min-width: 1px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  border: 0 !important;
+}
+
+/* Los puntos de llegada no quedan escondidos debajo del encabezado al desplazarse. */
+.rendition-entry-form .ticket-capture-panel,
+.rendition-entry-form .ticket-photo-picker,
+.rendition-entry-form .ticket-closure-receipt,
+.rendition-entry-form .game-rendition-block,
+.prize-payment-panel .prize-ticket-capture-panel,
+.prize-payment-panel .prize-payment-grid,
+.prize-payment-panel .prize-payment-grid label {
+  scroll-margin-top: 18px;
+}
+
+@media (max-width: 760px) {
+  .rendition-entry-form { gap: 12px !important; }
+  .rendition-mode-toolbar { gap: 10px !important; }
+  .rendition-mode-switch { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px !important; }
+  .rendition-mode-switch button { min-width: 0; min-height: 60px !important; padding: 12px 8px !important; font-size: 15px !important; line-height: 1.2; }
+  .rendition-entry-form .ticket-photo-picker,
+  .rendition-entry-form .manual-closure-template-panel { padding: 12px !important; gap: 9px !important; }
+  .rendition-entry-form .ticket-photo-picker > span:not(.ticket-photo-icon),
+  .rendition-entry-form .ticket-progress-panel > small,
+  .rendition-entry-form .weekly-ticket-batch-upload-help > div > p,
+  .rendition-entry-form .weekly-ticket-batch-upload-help > small {
+    display: none !important;
+  }
+  .rendition-entry-form .ticket-photo-picker-cta,
+  .rendition-entry-form .manual-closure-template-panel > .button {
+    width: 100% !important;
+    min-height: 56px !important;
+    align-self: stretch !important;
+    font-size: 16px !important;
+  }
+  .rendition-entry-form input:not([type="checkbox"]):not([type="hidden"]),
+  .rendition-entry-form select,
+  .rendition-entry-form textarea {
+    min-height: 50px;
+    font-size: 16px !important;
+  }
+  .rendition-entry-form .ticket-progress-panel { min-height: 0; padding: 10px 12px; }
+  .rendition-entry-form .ticket-progress-heading { gap: 8px; }
+  .rendition-entry-form .ticket-progress-heading strong { overflow-wrap: anywhere; font-size: 14px; }
+  .rendition-entry-form .rendition-settlement-values { gap: 8px; }
+  .rendition-entry-form .rendition-settlement-bar > .button,
+  .rendition-entry-form .rendition-submit-bar > .button { width: 100%; min-height: 56px !important; font-size: 16px !important; }
+
+  .prize-payment-panel { padding: 12px !important; margin: 10px 0 !important; border-radius: 12px !important; }
+  .prize-payment-head { margin-bottom: 8px !important; }
+  .prize-payment-head h2 { margin: 0; font-size: 24px !important; line-height: 1.15; }
+  .prize-payment-head .muted { display: none !important; }
+  .prize-payment-form { margin-top: 10px !important; gap: 12px !important; }
+  .prize-capture-options { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px !important; margin: 0 !important; }
+  .prize-capture-options > .button { min-width: 0; min-height: 56px !important; padding: 8px 4px !important; font-size: 14px !important; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; }
+  .prize-payment-panel .ticket-photo-picker { padding: 12px !important; gap: 9px !important; }
+  .prize-payment-panel .ticket-photo-picker > span:not(.ticket-photo-icon),
+  .prize-payment-panel .ticket-photo-picker > small.muted { display: none !important; }
+  .prize-payment-panel .ticket-photo-picker-cta { width: 100% !important; min-width: 0 !important; min-height: 56px !important; align-self: stretch !important; font-size: 16px !important; }
+  .prize-payment-panel .prize-payment-grid { gap: 10px !important; }
+  .prize-payment-panel .prize-payment-grid input,
+  .prize-payment-panel .prize-payment-grid textarea,
+  .prize-payment-panel .prize-payment-edit-form input,
+  .prize-payment-panel .prize-payment-edit-form textarea {
+    min-height: 52px;
+    padding: 12px !important;
+    font-size: 16px !important;
+  }
+  .prize-payment-panel .prize-included-ocr { gap: 10px !important; padding: 10px; border-radius: 10px; background: var(--surface2); }
+  .prize-payment-panel .prize-included-ocr small { display: block !important; font-size: 12px; line-height: 1.35; }
+  .prize-payment-panel .prize-payment-form > .button[type="submit"] { width: 100%; min-height: 58px !important; font-size: 16px !important; line-height: 1.25; }
+  .prize-payment-panel .prize-payment-recent { margin-top: 14px; padding-top: 12px; }
+  .prize-payment-panel .prize-payment-row-actions > form,
+  .prize-payment-panel .prize-payment-row-actions > form > .button,
+  .prize-payment-panel .prize-payment-row-actions > .button { width: 100%; min-height: 48px; }
+  .prize-payment-panel .prize-payment-row-actions { gap: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rendition-entry-form,
+  .prize-payment-panel { scroll-behavior: auto !important; }
+}
