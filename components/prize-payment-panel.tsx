@@ -367,22 +367,11 @@ export function PrizePaymentPanel({
               <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button primary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("user")}>Usar cámara frontal</button>
-                <button
-                  type="button"
+                <label
+                  htmlFor="prize-photo-file-input"
                   className="ticket-photo-select-button ticket-dialog-file-choice"
-                  disabled={readingPhoto}
-                  onClick={() => {
-                    const input = photoInputRef.current;
-                    if (!input || readingPhoto) return;
-                    try {
-                      const showPicker = (input as HTMLInputElement & { showPicker?: () => void }).showPicker;
-                      if (typeof showPicker === "function") showPicker.call(input);
-                      else input.click();
-                    } catch {
-                      input.click();
-                    }
-                  }}
-                >Elegir foto o archivo</button>
+                  aria-disabled={readingPhoto}
+                >Elegir foto o archivo</label>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
                 setCaptureChoiceOpen(false);
