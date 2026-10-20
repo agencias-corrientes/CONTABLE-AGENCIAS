@@ -11,8 +11,6 @@ export default async function ConfirmEmailPage({
   const tokenHash = String(params.token_hash ?? "");
   const rawType = String(params.type ?? "");
   const type = rawType === "signup" || rawType === "email" ? rawType : null;
-  const valid = tokenHash.length > 0 && type !== null;
-
   return (
     <main className="auth-page">
       <section className="auth-card" aria-labelledby="email-confirmation-title">
@@ -22,7 +20,7 @@ export default async function ConfirmEmailPage({
         </div>
         <p className="eyebrow">AGENCIAS CORRIENTES</p>
         <h1 id="email-confirmation-title">Confirmar correo electrónico</h1>
-        {valid ? (
+        {tokenHash && type ? (
           <EmailConfirmationAction tokenHash={tokenHash} type={type} />
         ) : (
           <div className="form-stack">
