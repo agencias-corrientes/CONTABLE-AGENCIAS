@@ -962,7 +962,8 @@ input[type="reset"],
   min-width: min(100%, 230px);
 }
 /* Selector nativo activado por etiqueta para que Android abra Archivos y no solo la cámara. */
-.ticket-dialog-file-choice{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.ticket-dialog-file-choice{position:relative;overflow:hidden;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.ticket-dialog-file-choice .ticket-dialog-native-file-input{position:absolute!important;inset:0!important;display:block!important;width:100%!important;height:100%!important;min-height:100%!important;margin:0!important;padding:0!important;opacity:0!important;clip:auto!important;clip-path:none!important;overflow:hidden!important;border:0!important;z-index:2!important;cursor:pointer!important;pointer-events:auto!important}
 .ticket-dialog-file-choice:active{transform:translateY(1px)}
 /* En Pagar premios, Foto automático conserva el bordó y Carga manual el amarillo. */
 .prize-capture-toolbar .rendition-mode-switch button.ticket-photo-source-label,
