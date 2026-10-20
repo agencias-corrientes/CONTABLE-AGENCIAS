@@ -1728,3 +1728,12 @@ input[type="time"]{font-variant-numeric:tabular-nums}
   .mobile-wizard-stage select,
   .mobile-wizard-stage textarea { font-size: 16px; }
 }
+
+@media (max-width: 700px) {
+  .mobile-wizard-navigation {
+    position: sticky;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 20;
+    box-shadow: 0 5px 18px rgba(37, 26, 12, .14);
+  }
+}
