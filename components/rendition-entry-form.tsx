@@ -1041,22 +1041,19 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button primary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("user")}>Usar cámara frontal</button>
-                <label className="ticket-photo-select-button ticket-dialog-file-choice">
-                  Elegir foto o archivo
-                  <input
-                    className="ticket-dialog-native-file-input"
-                    type="file"
-                    accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-                    aria-label="Elegir foto o archivo guardado"
-                    disabled={busy}
-                    onChange={(event) => {
-                      const file = event.currentTarget.files?.[0];
-                      event.currentTarget.value = "";
-                      setTicketCaptureChoiceOpen(false);
-                      if (file) processSelectedTicketFile(file);
-                    }}
-                  />
-                </label>
+                <button
+                  type="button"
+                  className="ticket-photo-select-button ticket-dialog-file-choice"
+                  disabled={busy}
+                  onClick={() => {
+                    const input = ticketCaptureTarget === "existing"
+                      ? document.getElementById(existingTicketPhotoInputId) as HTMLInputElement | null
+                      : ticketPhotoInputRef.current;
+                    if (!input || busy) return;
+                    input.click();
+                    setTicketCaptureChoiceOpen(false);
+                  }}
+                >Elegir foto o archivo</button>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
                 setTicketCaptureChoiceOpen(false);
