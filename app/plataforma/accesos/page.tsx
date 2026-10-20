@@ -400,7 +400,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
           )}
         </section>
 
-        <section className="platform-access-section">
+        <section id="solicitudes-pendientes" className="platform-access-section">
           <h2>2. Solicitudes de alta pendientes</h2>
           <p className="muted">Cuando una persona usa «Crear cuenta de propietario» en el registro, su solicitud aparece aquí. Aprobala para que pueda configurar su agencia; rechazala si no corresponde.</p>
           {requests.length === 0 ? (
@@ -430,7 +430,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
           )}
         </section>
 
-        <section className="platform-access-section">
+        <section id="agencias-registradas" className="platform-access-section">
           <h2>3. Mi agencia</h2>
           <p className="muted">Tu propia agencia está aislada de las demás. Presioná el botón para ver su número oficial, nombre visible, ciudad, correo del titular y las acciones de administración.</p>
           {myAgency ? (
@@ -456,7 +456,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
           )}
         </section>
 
-        <section className="platform-access-section">
+        <section id="cuentas-acceso" className="platform-access-section">
           <h2>5. Cuentas de acceso</h2>
           <p className="muted">Las cuentas se muestran en una lista de botones en columnas. Abrí una cuenta para suspender o reactivar su acceso, corregir el nombre o eliminarla cuando corresponda. La eliminación está protegida para no dejar agencias sin titular ni borrar movimientos por accidente.</p>
           <div className="platform-user-list">
