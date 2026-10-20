@@ -46,6 +46,52 @@ function errorCode(error: { message?: string } | null | undefined, fallback: str
   if (message.includes("no podés eliminar la cuenta")) return "usuario_eliminar_mismo";
   return fallback;
 }
+const agencyStorageBucket = "agency-rendition-tickets";
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function removeAgencyStorageObjects(supabase: any, organizationIds: string[]) {
+  const paths = new Set<string>();
+  const visitedFolders = new Set<string>();
+
+  const scanFolder = async (folderPath: string): Promise<void> => {
+    if (visitedFolders.has(folderPath)) return;
+    visitedFolders.add(folderPath);
+    let offset = 0;
+
+    while (true) {
+      const { data, error } = await supabase.storage.from(agencyStorageBucket).list(folderPath, {
+        limit: 100,
+        offset,
+        sortBy: { column: "name", order: "asc" },
+      });
+      if (error) throw error;
+      const entries: Array<{ name?: string; id?: string | null }> = Array.isArray(data) ? data : [];
+
+      for (const entry of entries) {
+        const name = String(entry?.name ?? "").trim();
+        if (!name || name === "." || name === ".." || name.includes("/")) continue;
+        const path = `${folderPath}/${name}`;
+        if (entry.id == null) await scanFolder(path);
+        else paths.add(path);
+      }
+
+      if (entries.length < 100) break;
+      offset += entries.length;
+    }
+  };
+
+  for (const organizationId of [...new Set(organizationIds)]) {
+    if (!uuidPattern.test(organizationId)) throw new Error("Identificador de agencia inválido.");
+    await scanFolder(organizationId);
+  }
+
+  const objectPaths = [...paths];
+  for (let index = 0; index < objectPaths.length; index += 100) {
+    const { error } = await supabase.storage.from(agencyStorageBucket).remove(objectPaths.slice(index, index + 100));
+    if (error) throw error;
+  }
+}
+
 export async function addPlatformAdmin(formData: FormData) {
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getClaims();
@@ -93,9 +139,36 @@ export async function deletePlatformUser(formData: FormData) {
   const userId = String(formData.get("user_id") ?? "").trim();
   const email = String(formData.get("confirm_email") ?? "").trim().toLowerCase();
   const confirmation = String(formData.get("confirmation") ?? "").trim();
-  if (!userId || !email || confirmation !== "ELIMINAR") redirect("/plataforma/accesos?error=usuario_eliminar_confirmacion");
-  const { error } = await (supabase as any).rpc("delete_platform_user", { p_user_id: userId, p_confirm_email: email, p_confirmation: confirmation });
-  if (error) redirect("/plataforma/accesos?" + errorCode(error, "usuario_eliminar"));
+  if (!uuidPattern.test(userId) || !email || confirmation !== "ELIMINAR") redirect("/plataforma/accesos?error=usuario_eliminar_confirmacion");
+
+  const { data: agencyIds, error: preparationError } = await (supabase as any).rpc("list_platform_user_owned_agencies", {
+    p_user_id: userId,
+    p_confirm_email: email,
+    p_confirmation: confirmation,
+  });
+  if (preparationError || !Array.isArray(agencyIds)) {
+    revalidatePath("/plataforma/accesos");
+    redirect("/plataforma/accesos?error=usuario_eliminar_preparacion");
+  }
+
+  // Supabase blocks direct SQL deletions from storage.objects; use the Storage API before deleting the account.
+  let storageCleanupFailed = false;
+  try {
+    await removeAgencyStorageObjects(supabase, agencyIds.map((id: unknown) => String(id)));
+  } catch {
+    storageCleanupFailed = true;
+  }
+  if (storageCleanupFailed) redirect("/plataforma/accesos?error=usuario_eliminar_storage");
+
+  const { data: deleted, error } = await (supabase as any).rpc("delete_platform_user", {
+    p_user_id: userId,
+    p_confirm_email: email,
+    p_confirmation: confirmation,
+  });
+  if (error || deleted !== true) {
+    revalidatePath("/plataforma/accesos");
+    redirect("/plataforma/accesos?" + errorCode(error, "usuario_eliminar"));
+  }
   revalidatePath("/plataforma/accesos");
   revalidatePath("/");
   redirect("/plataforma/accesos?actualizado=usuario_eliminado");
@@ -152,11 +225,31 @@ export async function deletePlatformAgency(formData: FormData) {
   const organizationId = String(formData.get("organization_id") ?? "").trim();
   const confirmName = String(formData.get("confirm_name") ?? "").trim();
   const confirmation = String(formData.get("confirmation") ?? "").trim();
-  if (!organizationId || !confirmName || confirmation !== "ELIMINAR") redirect("/plataforma/accesos?error=agencia_eliminar");
-  const { error } = await (supabase as any).rpc("delete_platform_agency", {
-    p_organization_id: organizationId, p_confirm_name: confirmName, p_confirmation: confirmation,
+  if (!uuidPattern.test(organizationId) || !confirmName || confirmation !== "ELIMINAR") redirect("/plataforma/accesos?error=agencia_eliminar");
+
+  const { data: validatedId, error: validationError } = await (supabase as any).rpc("validate_platform_agency_delete", {
+    p_organization_id: organizationId,
+    p_confirm_name: confirmName,
+    p_confirmation: confirmation,
   });
-  if (error) redirect("/plataforma/accesos?error=agencia_eliminar");
+  if (validationError || String(validatedId ?? "").toLowerCase() !== organizationId.toLowerCase()) {
+    redirect("/plataforma/accesos?error=agencia_eliminar");
+  }
+
+  let storageCleanupFailed = false;
+  try {
+    await removeAgencyStorageObjects(supabase, [organizationId]);
+  } catch {
+    storageCleanupFailed = true;
+  }
+  if (storageCleanupFailed) redirect("/plataforma/accesos?error=agencia_eliminar_storage");
+
+  const { data: deleted, error } = await (supabase as any).rpc("delete_platform_agency", {
+    p_organization_id: organizationId,
+    p_confirm_name: confirmName,
+    p_confirmation: confirmation,
+  });
+  if (error || deleted !== true) redirect("/plataforma/accesos?error=agencia_eliminar");
   revalidatePath("/plataforma/accesos");
   revalidatePath("/");
   redirect("/plataforma/accesos?actualizado=agencia_eliminada");

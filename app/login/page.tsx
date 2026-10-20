@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, Suspense, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -16,6 +16,12 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const rawProfile = searchParams.get("perfil");
   const profile = rawProfile === "administrador" || rawProfile === "empleado" ? rawProfile : "";
+
+  useEffect(() => {
+    if (searchParams.get("error") === "cuenta_no_activa") {
+      setMessage("Esta cuenta fue eliminada o ya no está activa. Iniciá sesión con una cuenta autorizada.");
+    }
+  }, [searchParams]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

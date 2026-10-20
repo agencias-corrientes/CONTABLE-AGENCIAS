@@ -21,6 +21,36 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getClaims();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  if (claimsData?.claims?.sub) {
+    // getClaims verifies the JWT locally; getUser confirms the account still exists in Auth.
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    const status = Number((userError as { status?: number } | null)?.status ?? 0);
+    const confirmedMissingUser = !userData.user && Boolean(userError) && [400, 401, 403, 404].includes(status);
+
+    if (confirmedMissingUser) {
+      await supabase.auth.signOut({ scope: "local" });
+      const authCookieNames = request.cookies.getAll()
+        .map(({ name }) => name)
+        .filter((name) => name.includes("auth-token"));
+      for (const name of authCookieNames) request.cookies.delete(name);
+
+      response = NextResponse.next({ request });
+      for (const name of authCookieNames) response.cookies.set(name, "", { path: "/", maxAge: 0 });
+
+      const pathname = request.nextUrl.pathname;
+      const isPublicPath = pathname === "/login" || pathname === "/registro" || pathname.startsWith("/auth/");
+      if (!isPublicPath) {
+        const loginUrl = request.nextUrl.clone();
+        loginUrl.pathname = "/login";
+        loginUrl.search = "";
+        loginUrl.searchParams.set("error", "cuenta_no_activa");
+        const redirectResponse = NextResponse.redirect(loginUrl);
+        response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
+        return redirectResponse;
+      }
+    }
+  }
+
   return response;
 }
