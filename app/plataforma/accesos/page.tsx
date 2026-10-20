@@ -315,11 +315,11 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
         <h1>Control de acceso a agencias</h1>
         <p className="muted">Este es el panel central. Las solicitudes nuevas aparecen arriba; las agencias y cuentas existentes se consultan abajo. El titular administra el alta, la baja y los permisos de sus empleados; desde acá solo podés suspender o reactivar globalmente una cuenta, sin borrar rendiciones ni movimientos.</p>
 
-        <div className="platform-access-summary platform-access-summary-grid" aria-label="Resumen del acceso">
-          <div className="button ghost platform-summary-button"><span>Solicitudes pendientes</span><strong>{requests.length}</strong></div>
-          <div className="button ghost platform-summary-button"><span>Agencias registradas</span><strong>{agencies.length}</strong></div>
-          <div className="button ghost platform-summary-button"><span>Cuentas de acceso</span><strong>{users.length}</strong></div>
-        </div>
+        <nav className="platform-access-summary platform-access-summary-grid" aria-label="Resumen del acceso">
+          <Link className="button ghost platform-summary-button" href="#solicitudes-pendientes"><span>Solicitudes pendientes</span><strong>{requests.length}</strong></Link>
+          <Link className="button ghost platform-summary-button" href="#agencias-registradas"><span>Agencias registradas</span><strong>{agencies.length}</strong></Link>
+          <Link className="button ghost platform-summary-button" href="#cuentas-acceso"><span>Cuentas de acceso</span><strong>{users.length}</strong></Link>
+        </nav>
         <div className="platform-access-navigation">
           <Link className="button ghost platform-summary-button" href="/">Volver a Control de Agencias</Link>
           {currentMember?.organization_id && <Link className="button ghost platform-summary-button" href="/pagos">Ingresar a mi agencia</Link>}
