@@ -367,14 +367,9 @@ export function PrizePaymentPanel({
               <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button primary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("user")}>Usar cámara frontal</button>
-                <button type="button" className="button ghost" disabled={readingPhoto} onClick={() => {
-                  setCameraError("");
-                  const input = photoInputRef.current;
-                  if (input) {
-                    input.removeAttribute("capture");
-                    input.click();
-                  }
-                }}>Elegir foto o archivo</button>
+                <label className="button ghost ticket-dialog-file-choice" htmlFor="prize-photo-file-input" onClick={(event) => event.stopPropagation()}>
+                  Elegir foto o archivo
+                </label>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
                 setCaptureChoiceOpen(false);
@@ -447,10 +442,11 @@ export function PrizePaymentPanel({
 
           <input
             ref={photoInputRef}
+            id="prize-photo-file-input"
             className="prize-photo-file-input ticket-photo-operational-input"
             type="file"
             name="prize_photo"
-            accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+            accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
             aria-label="Elegir foto del comprobante del premio"
             onChange={handlePhoto}
             disabled={readingPhoto}
