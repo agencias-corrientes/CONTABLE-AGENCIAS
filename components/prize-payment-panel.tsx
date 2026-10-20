@@ -472,7 +472,7 @@ export function PrizePaymentPanel({
           <input type="hidden" name="capture_method" value={captureMode} />
           <div className="mobile-wizard-progress" aria-label="Etapas para pagar premio"><span>ETAPA {mobileWizardStep} DE 2</span><strong>{mobileWizardStep === 1 ? "Identificar el cupón" : "Revisar y registrar el pago"}</strong><div className="mobile-wizard-progress-track"><i style={{ width: (mobileWizardStep / 2 * 100) + "%" }} /></div></div>
           <div className="mobile-wizard-navigation" aria-label="Navegación por etapas"><button type="button" className="button ghost" disabled={mobileWizardStep === 1 || readingPhoto} onClick={() => setMobileWizardStep(1)}>← Anterior</button>{mobileWizardStep === 1 ? <button type="button" className="button primary" disabled={readingPhoto} onClick={() => setMobileWizardStep(2)}>Continuar →</button> : <span>Verificá cupón e importe antes de registrar la salida de Caja.</span>}</div>
-          <div className="mobile-wizard-stage" data-mobile-wizard-stage="1">
+          <div className="mobile-wizard-stage" data-mobile-wizard-stage="1" data-mobile-wizard-active={mobileWizardStep === 1 ? "true" : "false"}>
           <div className="prize-capture-options" role="group" aria-label="Método para identificar el cupón">
             <button type="button" className={captureMode === "manual" ? "button primary" : "button ghost"} aria-pressed={captureMode === "manual"} onClick={() => { scrollAfterModeChangeRef.current = true; setCaptureMode("manual"); setScanMessage(""); }}>Número de cupón</button>
             <button type="button" className={captureMode === "photo" ? "button primary" : "button ghost"} aria-pressed={captureMode === "photo"} onClick={() => { scrollAfterModeChangeRef.current = true; setCaptureMode("photo"); setScanMessage(""); }}>Foto del cupón</button>
@@ -519,7 +519,7 @@ export function PrizePaymentPanel({
           {readingPhoto && <p className="muted" role="status">Analizando la foto del cupón…</p>}
 
           </div>
-          <div className="mobile-wizard-stage" data-mobile-wizard-stage="2">
+          <div className="mobile-wizard-stage" data-mobile-wizard-stage="2" data-mobile-wizard-active={mobileWizardStep === 2 ? "true" : "false"}>
           <div ref={prizeFieldsRef} className="prize-payment-grid">
             <label>Número de cupón
               <input ref={couponInputRef} name="coupon_number" required maxLength={128} value={couponNumber} onChange={(event) => setCouponNumber(event.target.value)} placeholder="Número impreso o detectado" autoComplete="off" />
