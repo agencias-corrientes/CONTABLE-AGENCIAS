@@ -64,6 +64,7 @@ export function PrizePaymentPanel({
   recentPayments: PrizePayment[];
 }) {
   const [captureMode, setCaptureMode] = useState<CaptureMode>("manual");
+  const [mobileWizardStep, setMobileWizardStep] = useState(1);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const prizePhotoPanelRef = useRef<HTMLDivElement | null>(null);
   const qrPayloadRef = useRef<HTMLTextAreaElement | null>(null);
@@ -469,6 +470,9 @@ export function PrizePaymentPanel({
         <form action={createAgencyPrizePayment} className="form-stack prize-payment-form">
           <input type="hidden" name="return_agent_id" value={returnAgentId} />
           <input type="hidden" name="capture_method" value={captureMode} />
+          <div className="mobile-wizard-progress" aria-label="Etapas para pagar premio"><span>ETAPA {mobileWizardStep} DE 2</span><strong>{mobileWizardStep === 1 ? "Identificar el cupón" : "Revisar y registrar el pago"}</strong><div className="mobile-wizard-progress-track"><i style={{ width: (mobileWizardStep / 2 * 100) + "%" }} /></div></div>
+          <div className="mobile-wizard-navigation" aria-label="Navegación por etapas"><button type="button" className="button ghost" disabled={mobileWizardStep === 1 || readingPhoto} onClick={() => setMobileWizardStep(1)}>← Anterior</button>{mobileWizardStep === 1 ? <button type="button" className="button primary" disabled={readingPhoto} onClick={() => setMobileWizardStep(2)}>Continuar →</button> : <span>Verificá cupón e importe antes de registrar la salida de Caja.</span>}</div>
+          <div className="mobile-wizard-stage" data-mobile-wizard-stage="1">
           <div className="prize-capture-options" role="group" aria-label="Método para identificar el cupón">
             <button type="button" className={captureMode === "manual" ? "button primary" : "button ghost"} aria-pressed={captureMode === "manual"} onClick={() => { scrollAfterModeChangeRef.current = true; setCaptureMode("manual"); setScanMessage(""); }}>Número de cupón</button>
             <button type="button" className={captureMode === "photo" ? "button primary" : "button ghost"} aria-pressed={captureMode === "photo"} onClick={() => { scrollAfterModeChangeRef.current = true; setCaptureMode("photo"); setScanMessage(""); }}>Foto del cupón</button>
@@ -514,6 +518,8 @@ export function PrizePaymentPanel({
           {scanMessage && <p className="message" role="status">{readingPhoto ? "Leyendo la imagen…" : scanMessage}</p>}
           {readingPhoto && <p className="muted" role="status">Analizando la foto del cupón…</p>}
 
+          </div>
+          <div className="mobile-wizard-stage" data-mobile-wizard-stage="2">
           <div ref={prizeFieldsRef} className="prize-payment-grid">
             <label>Número de cupón
               <input ref={couponInputRef} name="coupon_number" required maxLength={128} value={couponNumber} onChange={(event) => setCouponNumber(event.target.value)} placeholder="Número impreso o detectado" autoComplete="off" />
@@ -531,6 +537,7 @@ export function PrizePaymentPanel({
           <label className="prize-included-ocr"><input type="checkbox" name="included_in_ticket_ocr" /><span>Este premio ya está incluido en “Premios pagados” de un ticket OCR de hoy.<small>Marcá esta opción si el comprobante oficial ya suma este pago, para que no se descuente dos veces.</small></span></label>
           <button className="button primary" type="submit" disabled={readingPhoto}>Aceptar y registrar pago de premio en Caja</button>
           <p className="muted small-text">El número de cupón solo puede registrarse una vez por agencia. El alta del pago y la salida de Caja se guardan juntas, sin descontar dos veces un mismo cupón.</p>
+          </div>
         </form>
       )}
 
