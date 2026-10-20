@@ -152,6 +152,8 @@ export function PrizePaymentPanel({
     const file = input.files?.[0];
     input.value = "";
     if (!file) return;
+    setCaptureChoiceOpen(false);
+    setCameraError("");
     await processPhotoFile(file);
   }
 
