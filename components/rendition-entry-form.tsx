@@ -782,9 +782,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     return saved?.type === "loteria-corrientes-end-of-day-batch-v1" && Array.isArray(saved.tickets) ? saved.tickets : [];
   });
   const batchTicketsRef = useRef<TicketClosureData[]>(batchTickets);
-  const renditionFormRef = useRef<HTMLFormElement | null>(null);
-  const scrollAfterModeChangeRef = useRef(false);
-  const wasReadingTicketRef = useRef(false);
   const [gameListExpanded, setGameListExpanded] = useState(false);
   const [receiptReviewed, setReceiptReviewed] = useState(Boolean((initialRendition?.receiptData as any)?.userConfirmedReview));
   const [ocrText, setOcrText] = useState("");
@@ -799,7 +796,20 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [confirmationError, setConfirmationError] = useState("");
   const confirmationId = useId();
   const ticketPhotoInputId = useId();
+  const ticketPhotoInputRef = useRef<HTMLInputElement>(null);
   const existingTicketPhotoInputId = useId();
+  const openTicketPhotoPicker = () => {
+    if (busy) return;
+    const input = ticketPhotoInputRef.current;
+    if (!input) return;
+    try {
+      const showPicker = (input as HTMLInputElement & { showPicker?: () => void }).showPicker;
+      if (typeof showPicker === "function") showPicker.call(input);
+      else input.click();
+    } catch {
+      input.click();
+    }
+  };
   const [ticketCaptureTarget, setTicketCaptureTarget] = useState<"main" | "existing">("main");
   const [ticketCaptureChoiceOpen, setTicketCaptureChoiceOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -811,7 +821,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
-  const [mobileWizardStep, setMobileWizardStep] = useState(1);
   const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">(dailyMode && !dailyCloseAllowed ? "incomplete" : "complete");
   const [pendingAmount, setPendingAmount] = useState("");
 
@@ -834,43 +843,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     if (stream) stream.getTracks().forEach((track) => track.stop());
     cameraStreamRef.current = null;
   }, []);
-
-  useEffect(() => {
-    if (!scrollAfterModeChangeRef.current) return;
-    scrollAfterModeChangeRef.current = false;
-    if (!window.matchMedia("(max-width: 760px)").matches) return;
-    window.requestAnimationFrame(() => {
-      const form = renditionFormRef.current;
-      if (!form) return;
-      const target = mode === "photo"
-        ? form.querySelector<HTMLElement>(".ticket-photo-picker-cta") ?? form.querySelector<HTMLElement>(".ticket-capture-panel")
-        : form.querySelector<HTMLElement>(".ticket-closure-receipt.is-editable")
-          ?? form.querySelector<HTMLElement>(".ticket-closure-receipt")
-          ?? form.querySelector<HTMLElement>(".manual-closure-template-panel")
-          ?? form.querySelector<HTMLElement>(".game-rendition-block");
-      target?.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-        block: "start",
-      });
-    });
-  }, [mode, receiptData]);
-
-  useEffect(() => {
-    if (busy) {
-      wasReadingTicketRef.current = true;
-      return;
-    }
-    if (!wasReadingTicketRef.current) return;
-    wasReadingTicketRef.current = false;
-    if (!window.matchMedia("(max-width: 760px)").matches) return;
-    window.requestAnimationFrame(() => {
-      const target = renditionFormRef.current?.querySelector<HTMLElement>(".game-rendition-block");
-      target?.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-        block: "start",
-      });
-    });
-  }, [busy]);
 
   const total = useMemo(() =>
     Object.values(amounts).reduce((sum, value) => sum + (Number(value) > 0 ? Number(value) : 0), 0),
@@ -1591,7 +1563,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   return (
     <form
       action={initialRendition ? updateAgencyRendition : createAgencyRendition}
-      ref={renditionFormRef}
       className="form-stack rendition-entry-form"
       noValidate
       onSubmit={(event) => {
@@ -1642,29 +1613,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         </>
       )}
 
-      <div className="mobile-wizard-progress" aria-label="Etapas de rendición"><span>ETAPA {mobileWizardStep} DE 3</span><strong>{mobileWizardStep === 1 ? "Cargar comprobante" : mobileWizardStep === 2 ? "Revisar datos e importes" : "Confirmar rendición"}</strong><div className="mobile-wizard-progress-track"><i style={{ width: (mobileWizardStep / 3 * 100) + "%" }} /></div></div>
-      <div className="mobile-wizard-navigation" aria-label="Navegación por etapas"><button type="button" className="button ghost" disabled={mobileWizardStep === 1 || busy} onClick={() => setMobileWizardStep((step) => Math.max(1, step - 1))}>← Anterior</button>{mobileWizardStep < 3 ? <button type="button" className="button primary" disabled={busy} onClick={() => setMobileWizardStep((step) => Math.min(3, step + 1))}>Continuar →</button> : <span>Revisá los importes y tocá “Confirmar y guardar rendición”.</span>}</div>
-      <div className="mobile-wizard-stage" data-mobile-wizard-stage="1" data-mobile-wizard-active={mobileWizardStep === 1 ? "true" : "false"}>
       <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
-          <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => {
-            scrollAfterModeChangeRef.current = true;
-            if (mode === "photo" && window.matchMedia("(max-width: 760px)").matches) {
-              window.requestAnimationFrame(() => renditionFormRef.current?.querySelector<HTMLElement>(".ticket-photo-picker-cta")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-            }
-            setMode("photo");
-          }}>Foto (automático)</button>
+          <button type="button" className={(mode === "photo" ? "active " : "") + "ticket-photo-source-label"} disabled={busy} onClick={() => { setMode("photo"); openTicketPhotoPicker(); }}>Foto automático</button>
           <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
-            scrollAfterModeChangeRef.current = true;
-            if (mode === "manual" && window.matchMedia("(max-width: 760px)").matches) {
-              window.requestAnimationFrame(() => {
-                const form = renditionFormRef.current;
-                const target = form?.querySelector<HTMLElement>(".ticket-closure-receipt.is-editable")
-                  ?? form?.querySelector<HTMLElement>(".ticket-closure-receipt")
-                  ?? form?.querySelector<HTMLElement>(".manual-closure-template-panel");
-                target?.scrollIntoView({ behavior: "smooth", block: "start" });
-              });
-            }
             setMode("manual");
             if (!receiptData && !initialRendition) {
               const template = createManualClosureTemplate(games);
@@ -1702,6 +1654,22 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         )}
       </div>
 
+      <input
+        ref={ticketPhotoInputRef}
+        id={ticketPhotoInputId}
+        className="ticket-photo-native-input ticket-photo-operational-input"
+        type="file"
+        name="ticket_photo"
+        accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+        aria-label="Seleccionar una foto o archivo para leer el ticket"
+        disabled={busy}
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          if (file) processSelectedTicketFile(file);
+          event.currentTarget.value = "";
+        }}
+      />
+
       {mode === "manual" && !receiptData && (
         <section className="manual-closure-template-panel" aria-label="Carga manual de FIN DE JORNADA">
           <div>
@@ -1722,27 +1690,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       {mode === "photo" && (
         <div className="ticket-capture-panel">
-          <div className="ticket-photo-picker">
-            <span className="ticket-photo-icon" aria-hidden="true">▧</span>
-            <strong>Comprobante del ticket</strong>
-            <span>Seleccioná una foto guardada en el teléfono o sacá una nueva.</span>
-            <button type="button" className="ticket-photo-picker-cta" disabled={busy} onClick={() => { setCameraError(""); setTicketCaptureTarget("main"); setTicketCaptureChoiceOpen(true); }}>Elegir foto o archivo</button>
-            <input
-              id={ticketPhotoInputId}
-              className="ticket-photo-native-input ticket-photo-operational-input"
-              type="file"
-              name="ticket_photo"
-              aria-label="Elegir foto o archivo del comprobante del ticket"
-              disabled={busy}
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                if (file) {
-                  processSelectedTicketFile(file);
-                }
-                event.currentTarget.value = "";
-              }}
-            />
-          </div>
           {renderTicketCaptureDialogs()}
           {batchMode && (
             <div className="weekly-ticket-batch-upload-help">
@@ -1770,8 +1717,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         </div>
       )}
 
-      </div>
-      <div className="mobile-wizard-stage" data-mobile-wizard-stage="2" data-mobile-wizard-active={mobileWizardStep === 2 ? "true" : "false"}>
       <div className="detail-grid rendition-meta-grid">
         <label>Fecha de la jornada financiera
           <input type="date" name={receiptData ? undefined : "rendition_date"} value={date} onChange={(event) => setDate(event.target.value)} disabled={Boolean(receiptData)} required />
@@ -1966,8 +1911,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         )}
       </div>
 
-      </div>
-      <div className="mobile-wizard-stage" data-mobile-wizard-stage="3" data-mobile-wizard-active={mobileWizardStep === 3 ? "true" : "false"}>
       <label className="ticket-input-block"><span>Número(s) de ticket / cupón</span><textarea name="ticket_numbers" rows={2} value={ticketNumbers} onChange={(event) => setTicketNumbers(event.target.value)} readOnly={batchMode} placeholder={batchMode ? "El detalle de cada cupón queda en el lote." : "Se completa desde la lectura o ingresalo manualmente."} /></label>
       <label className="ticket-input-block"><span>Observaciones</span><textarea name="notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Opcional." /></label>
       <div className="rendition-settlement-bar">
@@ -1997,8 +1940,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           disabled={!periodGames.length || !period || busy || total <= 0 || netToRemit <= 0 || Boolean(detectedPeriodMismatch) || (batchMode && (!batchTickets.length || !receiptReviewed))}>
           {busy ? "Leyendo ticket…" : initialRendition ? "Guardar cambios de la rendición" : batchMode ? "Confirmar rendición acumulada" : "Confirmar y guardar rendición"}
         </button>
-      </div>
-
       </div>
 
       {!initialRendition && confirmationOpen && (
