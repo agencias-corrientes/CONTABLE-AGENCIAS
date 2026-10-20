@@ -1041,13 +1041,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button primary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("user")}>Usar cámara frontal</button>
-                <button type="button" className="button ghost" disabled={busy} onClick={() => {
-                  setTicketCaptureChoiceOpen(false);
-                  setCameraError("");
-                  const inputId = ticketCaptureTarget === "existing" ? existingTicketPhotoInputId : ticketPhotoInputId;
-                  const input = document.getElementById(inputId) as HTMLInputElement | null;
-                  input?.click();
-                }}>Elegir foto o archivo</button>
+                <label className="ticket-photo-select-button ticket-dialog-file-choice" htmlFor={ticketCaptureTarget === "existing" ? existingTicketPhotoInputId : ticketPhotoInputId} onClick={(event) => event.stopPropagation()}>
+                  Elegir foto o archivo
+                </label>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
                 setTicketCaptureChoiceOpen(false);
@@ -1519,7 +1515,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               id={existingTicketPhotoInputId}
               className="ticket-photo-native-input ticket-photo-operational-input"
               type="file"
-              accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+              accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
               aria-label="Elegir foto del ticket para recuperar el detalle OCR"
               disabled={busy}
               onChange={(event) => {
@@ -1660,7 +1656,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         className="ticket-photo-native-input ticket-photo-operational-input"
         type="file"
         name="ticket_photo"
-        accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+        accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
         aria-label="Seleccionar una foto o archivo para leer el ticket"
         disabled={busy}
         onChange={(event) => {
