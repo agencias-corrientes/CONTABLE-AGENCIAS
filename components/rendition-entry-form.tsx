@@ -1644,7 +1644,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       <div className="mobile-wizard-progress" aria-label="Etapas de rendición"><span>ETAPA {mobileWizardStep} DE 3</span><strong>{mobileWizardStep === 1 ? "Cargar comprobante" : mobileWizardStep === 2 ? "Revisar datos e importes" : "Confirmar rendición"}</strong><div className="mobile-wizard-progress-track"><i style={{ width: (mobileWizardStep / 3 * 100) + "%" }} /></div></div>
       <div className="mobile-wizard-navigation" aria-label="Navegación por etapas"><button type="button" className="button ghost" disabled={mobileWizardStep === 1 || busy} onClick={() => setMobileWizardStep((step) => Math.max(1, step - 1))}>← Anterior</button>{mobileWizardStep < 3 ? <button type="button" className="button primary" disabled={busy} onClick={() => setMobileWizardStep((step) => Math.min(3, step + 1))}>Continuar →</button> : <span>Revisá los importes y tocá “Confirmar y guardar rendición”.</span>}</div>
-      <div className="mobile-wizard-stage" data-mobile-wizard-stage="1">
+      <div className="mobile-wizard-stage" data-mobile-wizard-stage="1" data-mobile-wizard-active={mobileWizardStep === 1 ? "true" : "false"}>
       <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
           <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => {
@@ -1771,7 +1771,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       )}
 
       </div>
-      <div className="mobile-wizard-stage" data-mobile-wizard-stage="2">
+      <div className="mobile-wizard-stage" data-mobile-wizard-stage="2" data-mobile-wizard-active={mobileWizardStep === 2 ? "true" : "false"}>
       <div className="detail-grid rendition-meta-grid">
         <label>Fecha de la jornada financiera
           <input type="date" name={receiptData ? undefined : "rendition_date"} value={date} onChange={(event) => setDate(event.target.value)} disabled={Boolean(receiptData)} required />
@@ -1967,7 +1967,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       </div>
 
       </div>
-      <div className="mobile-wizard-stage" data-mobile-wizard-stage="3">
+      <div className="mobile-wizard-stage" data-mobile-wizard-stage="3" data-mobile-wizard-active={mobileWizardStep === 3 ? "true" : "false"}>
       <label className="ticket-input-block"><span>Número(s) de ticket / cupón</span><textarea name="ticket_numbers" rows={2} value={ticketNumbers} onChange={(event) => setTicketNumbers(event.target.value)} readOnly={batchMode} placeholder={batchMode ? "El detalle de cada cupón queda en el lote." : "Se completa desde la lectura o ingresalo manualmente."} /></label>
       <label className="ticket-input-block"><span>Observaciones</span><textarea name="notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Opcional." /></label>
       <div className="rendition-settlement-bar">
