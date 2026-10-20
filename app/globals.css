@@ -1071,3 +1071,47 @@ input[type="reset"],
     overflow-wrap: anywhere;
   }
 }
+
+
+/* Mobile-safe native file selector rendered directly inside the capture dialog. */
+.ticket-dialog-native-file{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:10px!important;
+  width:100%!important;
+  min-width:0!important;
+  padding:14px!important;
+  border:2px solid #7c3347!important;
+  border-radius:10px!important;
+  background:#fff!important;
+  color:#40242a!important;
+  cursor:pointer!important;
+  touch-action:manipulation!important;
+}
+.ticket-dialog-native-file>span{
+  display:block!important;
+  font-size:15px!important;
+  font-weight:800!important;
+  line-height:1.4!important;
+}
+.ticket-dialog-native-file>input[type="file"]{
+  display:block!important;
+  position:static!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:48px!important;
+  max-width:100%!important;
+  margin:0!important;
+  padding:8px!important;
+  clip:auto!important;
+  clip-path:none!important;
+  opacity:1!important;
+  overflow:visible!important;
+  white-space:normal!important;
+  pointer-events:auto!important;
+  border:1px solid #d4c18b!important;
+  border-radius:8px!important;
+  background:#fffdf6!important;
+  color:#40242a!important;
+  font-size:14px!important;
+}
