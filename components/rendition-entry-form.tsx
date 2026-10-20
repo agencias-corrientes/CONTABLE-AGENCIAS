@@ -1050,8 +1050,13 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                       ? document.getElementById(existingTicketPhotoInputId) as HTMLInputElement | null
                       : ticketPhotoInputRef.current;
                     if (!input || busy) return;
-                    input.click();
-                    setTicketCaptureChoiceOpen(false);
+                    try {
+                      const showPicker = (input as HTMLInputElement & { showPicker?: () => void }).showPicker;
+                      if (typeof showPicker === "function") showPicker.call(input);
+                      else input.click();
+                    } catch {
+                      input.click();
+                    }
                   }}
                 >Elegir foto o archivo</button>
               </div>
@@ -1531,6 +1536,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               onChange={(event) => {
                 const file = event.currentTarget.files?.[0];
                 if (file) {
+                  setTicketCaptureChoiceOpen(false);
                   processSelectedTicketFile(file);
                 }
                 event.currentTarget.value = "";
@@ -1671,7 +1677,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         disabled={busy}
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];
-          if (file) processSelectedTicketFile(file);
+          if (file) {
+            setTicketCaptureChoiceOpen(false);
+            processSelectedTicketFile(file);
+          }
           event.currentTarget.value = "";
         }}
       />
