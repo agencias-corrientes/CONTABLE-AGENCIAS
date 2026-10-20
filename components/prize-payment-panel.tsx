@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import jsQR from "jsqr";
 import { createAgencyPrizePayment, deleteAgencyPrizePayment, updateAgencyPrizePayment } from "@/app/(app)/agencias/actions";
 
@@ -64,6 +64,7 @@ export function PrizePaymentPanel({
   recentPayments: PrizePayment[];
 }) {
   const [captureMode, setCaptureMode] = useState<CaptureMode>("manual");
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [couponNumber, setCouponNumber] = useState("");
   const [prizeAmount, setPrizeAmount] = useState("");
   const [gameName, setGameName] = useState("");
@@ -276,8 +277,13 @@ export function PrizePaymentPanel({
           {captureMode === "photo" && (
             <label className="ticket-photo-picker prize-photo-picker">
               <strong>Fotografiar o adjuntar cupón</strong>
-              <span>Elegí la imagen del cupón directamente desde el selector del dispositivo.</span>
-              <input className="prize-photo-file-input" type="file" name="prize_photo" accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff" onChange={handlePhoto} disabled={readingPhoto} />
+              <span>Elegí cámara trasera, cámara frontal o una foto/archivo guardado.</span>
+              <div className="prize-capture-options" role="group" aria-label="Elegir cámara o archivo">
+              <button type="button" className="button secondary" disabled={readingPhoto} onClick={() => { const input = photoInputRef.current; if (input) { input.setAttribute("capture", "environment"); input.click(); } }}>Cámara trasera</button>
+              <button type="button" className="button secondary" disabled={readingPhoto} onClick={() => { const input = photoInputRef.current; if (input) { input.setAttribute("capture", "user"); input.click(); } }}>Cámara frontal</button>
+              <button type="button" className="button ghost" disabled={readingPhoto} onClick={() => { const input = photoInputRef.current; if (input) { input.removeAttribute("capture"); input.click(); } }}>Elegir foto o archivo</button>
+              </div>
+              <input ref={photoInputRef} className="prize-photo-file-input" type="file" name="prize_photo" accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff" onChange={handlePhoto} disabled={readingPhoto} />
               <small className="muted">Revisá el número detectado y el importe antes de registrar el premio.</small>
             </label>
           )}
@@ -286,7 +292,12 @@ export function PrizePaymentPanel({
             <>
               <label className="ticket-photo-picker prize-photo-picker">
                 <strong>Adjuntar imagen del QR (opcional)</strong>
-                <input className="prize-photo-file-input" type="file" name="prize_photo" accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff" onChange={handlePhoto} disabled={readingPhoto} />
+                <div className="prize-capture-options" role="group" aria-label="Elegir cámara o archivo">
+              <button type="button" className="button secondary" disabled={readingPhoto} onClick={() => { const input = photoInputRef.current; if (input) { input.setAttribute("capture", "environment"); input.click(); } }}>Cámara trasera</button>
+              <button type="button" className="button secondary" disabled={readingPhoto} onClick={() => { const input = photoInputRef.current; if (input) { input.setAttribute("capture", "user"); input.click(); } }}>Cámara frontal</button>
+              <button type="button" className="button ghost" disabled={readingPhoto} onClick={() => { const input = photoInputRef.current; if (input) { input.removeAttribute("capture"); input.click(); } }}>Elegir foto o archivo</button>
+              </div>
+                <input ref={photoInputRef} className="prize-photo-file-input" type="file" name="prize_photo" accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff" onChange={handlePhoto} disabled={readingPhoto} />
               </label>
               <label>Contenido del QR
                 <textarea name="qr_payload" rows={2} value={qrPayload} onChange={(event) => handleQrPayload(event.target.value)} placeholder="Pegá el contenido del QR si ya lo escaneaste." />
