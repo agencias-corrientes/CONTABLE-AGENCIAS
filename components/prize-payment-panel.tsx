@@ -432,12 +432,24 @@ export function PrizePaymentPanel({
           <input type="hidden" name="capture_method" value={captureMode} />
           <div className="rendition-mode-toolbar prize-capture-toolbar">
             <div className="rendition-mode-switch" role="group" aria-label="Método para cargar el comprobante del premio">
-              <button
-                type="button"
-                className={(captureMode === "photo" ? "active " : "") + "ticket-photo-source-label"}
-                disabled={readingPhoto}
-                onClick={() => { setCaptureMode("photo"); setScanMessage(""); setCameraError(""); setCaptureChoiceOpen(true); }}
-              >Foto automático</button>
+              <label className={(captureMode === "photo" ? "active " : "") + "button ticket-photo-source-label ticket-photo-file-label"} aria-label="Elegir foto o archivo del comprobante del premio">
+                <span>Elegir foto o archivo</span>
+                <input
+                  ref={photoInputRef}
+                  id="prize-photo-file-input"
+                  className="ticket-photo-native-input ticket-photo-overlay-input"
+                  type="file"
+                  name="prize_photo"
+                  accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+                  aria-label="Elegir foto o archivo del comprobante del premio"
+                  onChange={(event) => {
+                    setCaptureMode("photo");
+                    setScanMessage("");
+                    handlePhoto(event);
+                  }}
+                  disabled={readingPhoto}
+                />
+              </label>
               <button
                 type="button"
                 className={captureMode === "manual" ? "active" : ""}
@@ -447,17 +459,7 @@ export function PrizePaymentPanel({
             </div>
           </div>
 
-          <input
-            ref={photoInputRef}
-            id="prize-photo-file-input"
-            className="ticket-photo-native-input ticket-photo-operational-input"
-            type="file"
-            name="prize_photo"
-            accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-            aria-label="Elegir foto del comprobante del premio"
-            onChange={handlePhoto}
-            disabled={readingPhoto}
-          />
+
           {renderPrizeCaptureDialogs()}
 
           {captureMode === "qr" && (
