@@ -374,8 +374,13 @@ export function PrizePaymentPanel({
                   onClick={() => {
                     const input = photoInputRef.current;
                     if (!input || readingPhoto) return;
-                    input.click();
-                    setCaptureChoiceOpen(false);
+                    try {
+                      const showPicker = (input as HTMLInputElement & { showPicker?: () => void }).showPicker;
+                      if (typeof showPicker === "function") showPicker.call(input);
+                      else input.click();
+                    } catch {
+                      input.click();
+                    }
                   }}
                 >Elegir foto o archivo</button>
               </div>
