@@ -1643,3 +1643,88 @@ input[type="time"]{font-variant-numeric:tabular-nums}
 
 
 
+
+
+/* Mobile step-by-step workflow: keep every form mounted so OCR and entered values survive navigation. */
+.mobile-wizard-progress,
+.mobile-wizard-navigation { display: none; }
+.mobile-wizard-stage { display: contents; }
+
+@media (max-width: 700px) {
+  .mobile-wizard-progress {
+    display: grid;
+    gap: 7px;
+    margin: 4px 0 10px;
+    padding: 13px;
+    border: 1px solid #d8c16f;
+    border-radius: 12px;
+    background: #fff9e6;
+    color: #352b12;
+  }
+  .mobile-wizard-progress > span {
+    color: #7c3347;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .08em;
+  }
+  .mobile-wizard-progress > strong { font-size: 17px; line-height: 1.25; }
+  .mobile-wizard-progress-track {
+    height: 7px;
+    overflow: hidden;
+    border-radius: 99px;
+    background: #e8dfc6;
+  }
+  .mobile-wizard-progress-track i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #9c2838;
+    transition: width .18s ease;
+  }
+  .mobile-wizard-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0 0 14px;
+    padding: 10px;
+    border: 1px solid #e1d6bd;
+    border-radius: 12px;
+    background: #fffdf6;
+  }
+  .mobile-wizard-navigation button {
+    min-height: 46px;
+    flex: 1 1 0;
+    font-size: 15px;
+    font-weight: 850;
+  }
+  .mobile-wizard-navigation > span {
+    font-size: 12px;
+    line-height: 1.45;
+    font-weight: 700;
+    color: #6d3340;
+  }
+  .mobile-wizard-stage { display: none; }
+  .mobile-wizard-stage[data-mobile-wizard-stage="1"] { display: block; }
+  .rendition-entry-form:has(.mobile-wizard-progress) .mobile-wizard-stage[data-mobile-wizard-stage="2"],
+  .rendition-entry-form:has(.mobile-wizard-progress) .mobile-wizard-stage[data-mobile-wizard-stage="3"] { display: none; }
+  .prize-payment-form .mobile-wizard-stage[data-mobile-wizard-stage="1"],
+  .prize-payment-form .mobile-wizard-stage[data-mobile-wizard-stage="2"] { display: none; }
+  .rendition-entry-form .mobile-wizard-stage[data-mobile-wizard-stage="1"],
+  .prize-payment-form .mobile-wizard-stage[data-mobile-wizard-stage="1"] { display: block; }
+  .rendition-entry-form .mobile-wizard-stage[data-mobile-wizard-stage="2"],
+  .rendition-entry-form .mobile-wizard-stage[data-mobile-wizard-stage="3"],
+  .prize-payment-form .mobile-wizard-stage[data-mobile-wizard-stage="2"] {
+    display: none;
+  }
+  /* The active stage is selected by the React component's data attribute below. */
+  .mobile-wizard-stage[data-mobile-wizard-active="true"] { display: block !important; }
+  .mobile-wizard-stage[data-mobile-wizard-active="false"] { display: none !important; }
+  .mobile-wizard-stage .ticket-photo-picker,
+  .mobile-wizard-stage .rendition-settlement-bar,
+  .mobile-wizard-stage .prize-payment-grid { width: 100%; }
+  .mobile-wizard-stage .button,
+  .mobile-wizard-stage input:not([type="hidden"]),
+  .mobile-wizard-stage select,
+  .mobile-wizard-stage textarea { font-size: 16px; }
+}
