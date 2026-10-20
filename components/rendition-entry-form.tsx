@@ -1515,7 +1515,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               id={existingTicketPhotoInputId}
               className="ticket-photo-native-input ticket-photo-operational-input"
               type="file"
-              accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+              accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
               aria-label="Elegir foto del ticket para recuperar el detalle OCR"
               disabled={busy}
               onChange={(event) => {
@@ -1656,7 +1656,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         className="ticket-photo-native-input ticket-photo-operational-input"
         type="file"
         name="ticket_photo"
-        accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+        accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
         aria-label="Seleccionar una foto o archivo para leer el ticket"
         disabled={busy}
         onChange={(event) => {
