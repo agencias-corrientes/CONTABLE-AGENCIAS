@@ -1041,24 +1041,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button primary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("user")}>Usar cámara frontal</button>
-                <button
-                  type="button"
+                <label
+                  htmlFor={ticketCaptureTarget === "existing" ? existingTicketPhotoInputId : ticketPhotoInputId}
                   className="ticket-photo-select-button ticket-dialog-file-choice"
-                  disabled={busy}
-                  onClick={() => {
-                    const input = ticketCaptureTarget === "existing"
-                      ? document.getElementById(existingTicketPhotoInputId) as HTMLInputElement | null
-                      : ticketPhotoInputRef.current;
-                    if (!input || busy) return;
-                    try {
-                      const showPicker = (input as HTMLInputElement & { showPicker?: () => void }).showPicker;
-                      if (typeof showPicker === "function") showPicker.call(input);
-                      else input.click();
-                    } catch {
-                      input.click();
-                    }
-                  }}
-                >Elegir foto o archivo</button>
+                  aria-disabled={busy}
+                >Elegir foto o archivo</label>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
                 setTicketCaptureChoiceOpen(false);
