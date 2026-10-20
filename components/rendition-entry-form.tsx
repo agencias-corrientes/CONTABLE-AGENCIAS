@@ -1615,7 +1615,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
-          <button type="button" className={(mode === "photo" ? "active " : "") + "ticket-photo-source-label"} disabled={busy} onClick={() => { setMode("photo"); openTicketPhotoPicker(); }}>Foto automático</button>
+          <button type="button" className={(mode === "photo" ? "active " : "") + "ticket-photo-source-label"} disabled={busy} onClick={() => { setMode("photo"); setCameraError(""); setTicketCaptureTarget("main"); setTicketCaptureChoiceOpen(true); }}>Foto automático</button>
           <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
             setMode("manual");
             if (!receiptData && !initialRendition) {
