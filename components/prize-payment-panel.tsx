@@ -136,7 +136,7 @@ export function PrizePaymentPanel({
         behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
         block: "start",
       });
-      couponInputRef.current?.focus({ preventScroll: true });
+      // Keep the fields visible without opening the phone keyboard automatically.
     });
   }, [readingPhoto]);
 
