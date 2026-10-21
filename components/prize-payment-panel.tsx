@@ -367,10 +367,11 @@ export function PrizePaymentPanel({
                 <button type="button" className="button primary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("user")}>Usar cámara frontal</button>
                 <button type="button" className="button ghost" disabled={readingPhoto} onClick={() => {
-                  setCaptureChoiceOpen(false);
                   setCameraError("");
+                  // Invoke the native picker while this trusted tap is still inside
+                  // the open chooser; dismiss the dialog only after a file is chosen.
                   const input = document.getElementById("prize-photo-input") as HTMLInputElement | null;
-                  input?.click();
+                  if (input && !input.disabled) input.click();
                 }}>Elegir foto o archivo</button>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
