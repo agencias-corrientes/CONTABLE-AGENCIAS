@@ -361,20 +361,28 @@ export function PrizePaymentPanel({
                 <h3 id="prize-capture-title">Elegí cómo cargar el ticket</h3>
                 <p>La foto tomada con cámara y los archivos pasan por el mismo lector OCR.</p>
               </div>
+              <style>{".prize-native-file-picker{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:50px;cursor:pointer}.prize-native-file-picker-input{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;margin:0!important;padding:0!important;opacity:0!important;cursor:pointer!important;z-index:5!important;border:0!important}"}</style>
               {cameraError && <p className="ticket-read-error" role="alert">{cameraError}</p>}
               {cameraStarting && <p className="ticket-read-notice" role="status">Solicitando acceso a la cámara…</p>}
               <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button primary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("user")}>Usar cámara frontal</button>
                 <label
-                  htmlFor="prize-photo-input"
-                  className="button ghost"
+                  className="button ghost prize-native-file-picker"
                   aria-disabled={readingPhoto}
-                  onClick={() => {
-                    if (readingPhoto) return;
-                    setCameraError("");
-                  }}
-                >Elegir foto o archivo</label>
+                >
+                  <span>Elegir foto o archivo</span>
+                  <input
+                    id="prize-photo-input"
+                    className="prize-native-file-picker-input"
+                    type="file"
+                    accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+                    aria-label="Elegir foto o archivo del premio"
+                    disabled={readingPhoto}
+                    onClick={() => setCameraError("")}
+                    onChange={handlePhoto}
+                  />
+                </label>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
                 setCaptureChoiceOpen(false);
@@ -435,16 +443,6 @@ export function PrizePaymentPanel({
 
           {(captureMode === "photo" || captureMode === "qr") && (
             <div className="ticket-capture-panel prize-ticket-capture-panel">
-              <input
-                id="prize-photo-input"
-                className="ticket-photo-native-input ticket-photo-operational-input"
-                type="file"
-                name="prize_photo"
-                accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-                aria-label="Elegir foto del premio"
-                onChange={handlePhoto}
-                disabled={readingPhoto}
-              />
               <p className="muted small-text">La foto pasa por el lector de cupón. Revisá el número detectado y el importe antes de registrar el premio.</p>
               {renderPrizeCaptureDialogs()}
             </div>
