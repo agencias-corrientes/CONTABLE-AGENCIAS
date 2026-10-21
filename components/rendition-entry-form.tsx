@@ -796,7 +796,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [confirmationError, setConfirmationError] = useState("");
   const confirmationId = useId();
   const ticketPhotoInputId = useId();
-  const existingTicketPhotoInputId = useId();
   const [ticketCaptureTarget, setTicketCaptureTarget] = useState<"main" | "existing">("main");
   const [ticketCaptureChoiceOpen, setTicketCaptureChoiceOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
