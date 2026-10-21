@@ -1028,32 +1028,25 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button primary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("user")}>Usar cámara frontal</button>
-                <button
-                  type="button"
-                  className="button secondary ticket-photo-file-label"
-                  disabled={busy || cameraStarting}
-                  onClick={() => {
-                    setCameraError("");
-                    // Abrir el selector directamente dentro del gesto del usuario es importante en Android.
-                    ticketFileInputRef.current?.click();
-                  }}
-                >Elegir foto o archivo</button>
-                <input
-                  ref={ticketFileInputRef}
-                  className="ticket-photo-overlay-input"
-                  type="file"
-                  accept="image/*"
-                  aria-label={ticketCaptureTarget === "existing" ? "Elegir foto del ticket para recuperar el detalle OCR" : "Elegir foto o archivo del comprobante del ticket"}
-                  disabled={busy || cameraStarting}
-                  onChange={(event) => {
-                    const input = event.currentTarget;
-                    const file = input.files?.[0];
-                    setTicketCaptureChoiceOpen(false);
-                    setCameraError("");
-                    if (file) processSelectedTicketFile(file);
-                    input.value = "";
-                  }}
-                />
+                <label className="button secondary ticket-photo-file-label">
+                  Elegir foto o archivo
+                  <input
+                    ref={ticketFileInputRef}
+                    className="ticket-photo-overlay-input"
+                    type="file"
+                    accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+                    aria-label={ticketCaptureTarget === "existing" ? "Elegir foto del ticket para recuperar el detalle OCR" : "Elegir foto o archivo del comprobante del ticket"}
+                    disabled={busy || cameraStarting}
+                    onChange={(event) => {
+                      const input = event.currentTarget;
+                      const file = input.files?.[0];
+                      setTicketCaptureChoiceOpen(false);
+                      setCameraError("");
+                      if (file) processSelectedTicketFile(file);
+                      input.value = "";
+                    }}
+                  />
+                </label>
               </div>
             </section>
           </div>
