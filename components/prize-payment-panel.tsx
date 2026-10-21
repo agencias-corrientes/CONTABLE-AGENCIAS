@@ -64,7 +64,6 @@ export function PrizePaymentPanel({
   recentPayments: PrizePayment[];
 }) {
   const [captureMode, setCaptureMode] = useState<CaptureMode>("manual");
-  const photoInputRef = useRef<HTMLInputElement | null>(null);
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const [captureChoiceOpen, setCaptureChoiceOpen] = useState(false);
@@ -368,6 +367,7 @@ export function PrizePaymentPanel({
                 <button type="button" className="button primary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("user")}>Usar cámara frontal</button>
                 <button type="button" className="button ghost" disabled={readingPhoto} onClick={() => {
+                  setCaptureChoiceOpen(false);
                   setCameraError("");
                   const input = document.getElementById("prize-photo-input") as HTMLInputElement | null;
                   input?.click();
@@ -434,7 +434,7 @@ export function PrizePaymentPanel({
             <div className="ticket-capture-panel prize-ticket-capture-panel">
               <input
                 id="prize-photo-input"
-                className="prize-photo-file-input ticket-photo-operational-input"
+                className="ticket-photo-native-input ticket-photo-operational-input"
                 type="file"
                 name="prize_photo"
                 accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
