@@ -1032,12 +1032,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                   htmlFor={ticketCaptureTarget === "existing" ? existingTicketPhotoInputId : ticketPhotoInputId}
                   className={"button secondary ticket-photo-file-label" + (busy || cameraStarting ? " is-disabled" : "")}
                   aria-disabled={busy || cameraStarting}
-                  onClick={(event) => {
-                    // No llamar input.click()/showPicker desde JavaScript: el label nativo
-                    // activa directamente el input asociado y conserva el gesto del usuario en Android.
-                    if (busy || cameraStarting) event.preventDefault();
-                    else setCameraError("");
-                  }}
                 >Elegir foto o archivo</label>
               </div>
             </section>
