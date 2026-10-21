@@ -1061,3 +1061,13 @@ input[type="reset"],
     overflow-wrap: anywhere;
   }
 }
+
+
+/* Selector de premios: el input nativo es el control visible y táctil completo.
+   No depende de un click() sintético ni de un input transparente sobre un botón. */
+.prize-native-file-picker{position:relative;display:block;width:100%;min-height:50px}
+.prize-native-file-input{appearance:none!important;-webkit-appearance:none!important;display:block!important;width:100%!important;height:50px!important;min-height:50px!important;margin:0!important;padding:0!important;border:1px solid #dfcfaa!important;border-radius:8px!important;background:linear-gradient(180deg,#fffdf7 0%,#f7efd9 100%)!important;color:transparent!important;font-size:0!important;cursor:pointer!important;overflow:hidden!important}
+.prize-native-file-input::file-selector-button,.prize-native-file-input::-webkit-file-upload-button{box-sizing:border-box!important;display:block!important;width:100%!important;height:48px!important;min-height:48px!important;margin:0!important;padding:0!important;border:0!important;border-radius:7px!important;background:linear-gradient(180deg,#fffdf7 0%,#f7efd9 100%)!important;color:transparent!important;font-size:0!important;cursor:pointer!important}
+.prize-native-file-picker-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#572634;font-size:15px;font-weight:750;line-height:1.35}
+.prize-native-file-input:focus-visible{outline:3px solid rgba(215,182,79,.85)!important;outline-offset:2px}
+.prize-native-file-input:disabled{opacity:.6!important;cursor:wait!important}
