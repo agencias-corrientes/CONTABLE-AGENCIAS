@@ -127,6 +127,7 @@ export function PrizePaymentPanel({
       cameraStreamRef.current = stream;
       setCameraFacing(facing);
       setCameraOpen(true);
+      setCaptureChoiceOpen(false);
       setCameraStreamVersion((value) => value + 1);
     } catch (error) {
       setCameraError(error instanceof Error
@@ -428,24 +429,12 @@ export function PrizePaymentPanel({
           <input type="hidden" name="capture_method" value={captureMode} />
           <div className="prize-capture-options" role="group" aria-label="Método para identificar el cupón">
             <button type="button" className={captureMode === "manual" ? "button primary" : "button ghost"} aria-pressed={captureMode === "manual"} onClick={() => { setCaptureMode("manual"); setScanMessage(""); }}>Número de cupón</button>
-            <button type="button" className={captureMode === "photo" ? "button primary" : "button ghost"} aria-pressed={captureMode === "photo"} onClick={() => { setCaptureMode("photo"); setScanMessage(""); }}>Foto del cupón</button>
-            <button type="button" className={captureMode === "qr" ? "button primary" : "button ghost"} aria-pressed={captureMode === "qr"} onClick={() => { setCaptureMode("qr"); setScanMessage(""); }}>QR</button>
+            <button type="button" className={captureMode === "photo" ? "button primary" : "button ghost"} aria-pressed={captureMode === "photo"} disabled={readingPhoto} onClick={() => { setCaptureMode("photo"); setScanMessage(""); setCameraError(""); setCaptureChoiceOpen(true); }}>Foto del cupón</button>
+            <button type="button" className={captureMode === "qr" ? "button primary" : "button ghost"} aria-pressed={captureMode === "qr"} disabled={readingPhoto} onClick={() => { setCaptureMode("qr"); setScanMessage(""); setCameraError(""); setCaptureChoiceOpen(true); }}>QR</button>
           </div>
 
           {(captureMode === "photo" || captureMode === "qr") && (
             <div className="ticket-capture-panel prize-ticket-capture-panel">
-              <div className="ticket-photo-picker prize-photo-picker">
-                <span className="ticket-photo-icon" aria-hidden="true">▧</span>
-                <strong>{captureMode === "qr" ? "Comprobante del QR" : "Comprobante del premio"}</strong>
-                <span>Seleccioná una foto guardada en el teléfono o sacá una nueva.</span>
-                <button
-                  type="button"
-                  className="ticket-photo-picker-cta"
-                  disabled={readingPhoto}
-                  onClick={() => { setCameraError(""); setCaptureChoiceOpen(true); }}
-                >Cargar foto o usar cámara</button>
-                <small className="muted">La foto pasa por el lector de cupón. Revisá el número detectado y el importe antes de registrar el premio.</small>
-              </div>
               {renderPrizeCaptureDialogs()}
             </div>
           )}
