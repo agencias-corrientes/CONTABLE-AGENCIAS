@@ -1028,25 +1028,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button primary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("user")}>Usar cámara frontal</button>
-                <label className="button secondary ticket-photo-file-label">
-                  Elegir foto o archivo
-                  <input
-                    ref={ticketFileInputRef}
-                    className="ticket-photo-overlay-input"
-                    type="file"
-                    accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-                    aria-label={ticketCaptureTarget === "existing" ? "Elegir foto del ticket para recuperar el detalle OCR" : "Elegir foto o archivo del comprobante del ticket"}
-                    disabled={busy || cameraStarting}
-                    onChange={(event) => {
-                      const input = event.currentTarget;
-                      const file = input.files?.[0];
-                      setTicketCaptureChoiceOpen(false);
-                      setCameraError("");
-                      if (file) processSelectedTicketFile(file);
-                      input.value = "";
-                    }}
-                  />
-                </label>
+                <button type="button" className="button secondary ticket-photo-file-label" disabled={busy || cameraStarting} onClick={() => {
+                  setCameraError("");
+                  const inputId = ticketCaptureTarget === "existing" ? existingTicketPhotoInputId : ticketPhotoInputId;
+                  const input = document.getElementById(inputId) as HTMLInputElement | null;
+                  input?.click();
+                }}>Elegir foto o archivo</button>
               </div>
             </section>
           </div>
@@ -1510,6 +1497,22 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             <strong>Adjuntar detalle OCR al cierre existente</strong>
             <span>Seleccioná la foto original del FIN DE JORNADA o una copia guardada. Esto no vuelve a registrar importes ni cobros.</span>
             <button type="button" className="ticket-photo-picker-cta" disabled={busy} onClick={() => { setCameraError(""); setTicketCaptureTarget("existing"); setTicketCaptureChoiceOpen(true); }}>Cargar foto o usar cámara</button>
+            <input
+              id={existingTicketPhotoInputId}
+              className="ticket-photo-native-input"
+              type="file"
+              accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+              aria-label="Elegir foto del ticket para recuperar el detalle OCR"
+              disabled={busy}
+              onChange={(event) => {
+                const input = event.currentTarget;
+                const file = input.files?.[0];
+                setTicketCaptureChoiceOpen(false);
+                setCameraError("");
+                if (file) processSelectedTicketFile(file);
+                input.value = "";
+              }}
+            />
           </div>
           {renderTicketCaptureDialogs()}
           {photoPreviewUrl && <div className="ticket-photo-preview"><img src={photoPreviewUrl} alt="Vista previa del ticket para recuperar su detalle OCR" /></div>}
@@ -1654,6 +1657,23 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       {mode === "photo" && (
         <div className="ticket-capture-panel">
+          <input
+            id={ticketPhotoInputId}
+            className="ticket-photo-native-input"
+            type="file"
+            name="ticket_photo"
+            accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+            aria-label="Elegir foto o archivo del comprobante del ticket"
+            disabled={busy}
+            onChange={(event) => {
+              const input = event.currentTarget;
+              const file = input.files?.[0];
+              setTicketCaptureChoiceOpen(false);
+              setCameraError("");
+              if (file) processSelectedTicketFile(file);
+              input.value = "";
+            }}
+          />
           {renderTicketCaptureDialogs()}
           {batchMode && (
             <div className="weekly-ticket-batch-upload-help">
