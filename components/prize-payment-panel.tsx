@@ -371,7 +371,8 @@ export function PrizePaymentPanel({
                   <span>Elegir foto o archivo</span>
                   <input
                     type="file"
-                    accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+                    name="prize_photo"
+                    accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
                     aria-label="Elegir foto o archivo del comprobante del premio"
                     disabled={readingPhoto}
                     onChange={handlePhoto}
