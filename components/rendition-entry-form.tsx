@@ -1028,11 +1028,22 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button primary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("user")}>Usar cámara frontal</button>
-                <button type="button" className="button secondary ticket-photo-file-label" disabled={busy || cameraStarting} onClick={() => {
-                  setCameraError("");
+                <button type="button" className="button secondary ticket-photo-file-label" disabled={busy || cameraStarting} onClick={(event) => {
+                  // Abrir el selector ANTES de actualizar estado React para conservar la activación
+                  // nativa del toque en Android Chrome.
                   const inputId = ticketCaptureTarget === "existing" ? existingTicketPhotoInputId : ticketPhotoInputId;
                   const input = document.getElementById(inputId) as HTMLInputElement | null;
-                  input?.click();
+                  if (!input || input.disabled) {
+                    setCameraError("No se encontró el selector de archivos. Cerrá esta ventana y volvé a abrirla.");
+                    return;
+                  }
+                  try {
+                    if (typeof input.showPicker === "function") input.showPicker();
+                    else input.click();
+                  } catch {
+                    input.click();
+                  }
+                  setCameraError("");
                 }}>Elegir foto o archivo</button>
               </div>
             </section>
