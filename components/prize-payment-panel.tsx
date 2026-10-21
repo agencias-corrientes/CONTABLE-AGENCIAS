@@ -359,8 +359,8 @@ export function PrizePaymentPanel({
           <div className="ticket-capture-dialog-backdrop" role="presentation" onClick={() => setCaptureChoiceOpen(false)}>
             <section className="ticket-capture-dialog" role="dialog" aria-modal="true" aria-labelledby="prize-capture-title" onClick={(event) => event.stopPropagation()}>
               <div className="ticket-capture-dialog-heading">
-                <h3 id="prize-capture-title">Elegí cómo cargar el comprobante del premio</h3>
-                <p>La foto tomada con cámara y los archivos pasan por el mismo lector de cupón.</p>
+                <h3 id="prize-capture-title">Elegí cómo cargar el ticket</h3>
+                <p>La foto tomada con cámara y los archivos pasan por el mismo lector OCR.</p>
               </div>
               {cameraError && <p className="ticket-read-error" role="alert">{cameraError}</p>}
               {cameraStarting && <p className="ticket-read-notice" role="status">Solicitando acceso a la cámara…</p>}
@@ -369,11 +369,8 @@ export function PrizePaymentPanel({
                 <button type="button" className="button secondary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("user")}>Usar cámara frontal</button>
                 <button type="button" className="button ghost" disabled={readingPhoto} onClick={() => {
                   setCameraError("");
-                  const input = photoInputRef.current;
-                  if (input) {
-                    input.removeAttribute("capture");
-                    input.click();
-                  }
+                  const input = document.getElementById("prize-photo-input") as HTMLInputElement | null;
+                  input?.click();
                 }}>Elegir foto o archivo</button>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
@@ -436,7 +433,7 @@ export function PrizePaymentPanel({
           {(captureMode === "photo" || captureMode === "qr") && (
             <div className="ticket-capture-panel prize-ticket-capture-panel">
               <input
-                ref={photoInputRef}
+                id="prize-photo-input"
                 className="prize-photo-file-input ticket-photo-operational-input"
                 type="file"
                 name="prize_photo"
