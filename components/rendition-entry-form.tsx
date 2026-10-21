@@ -1045,10 +1045,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                   />
                 </label>
               </div>
-              <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
-                setTicketCaptureChoiceOpen(false);
-                setCameraError("");
-              }}>Cancelar</button>
             </section>
           </div>
         )}
@@ -1510,22 +1506,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             <span className="ticket-photo-icon" aria-hidden="true">▧</span>
             <strong>Adjuntar detalle OCR al cierre existente</strong>
             <span>Seleccioná la foto original del FIN DE JORNADA o una copia guardada. Esto no vuelve a registrar importes ni cobros.</span>
-            <button type="button" className="ticket-photo-picker-cta" disabled={busy} onClick={() => { setCameraError(""); setTicketCaptureTarget("existing"); setTicketCaptureChoiceOpen(true); }}>Elegir foto o archivo</button>
-            <input
-              id={existingTicketPhotoInputId}
-              className="ticket-photo-native-input ticket-photo-operational-input"
-              type="file"
-              accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-              aria-label="Elegir foto del ticket para recuperar el detalle OCR"
-              disabled={busy}
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                if (file) {
-                  processSelectedTicketFile(file);
-                }
-                event.currentTarget.value = "";
-              }}
-            />
+            <button type="button" className="ticket-photo-picker-cta" disabled={busy} onClick={() => { setCameraError(""); setTicketCaptureTarget("existing"); setTicketCaptureChoiceOpen(true); }}>Cargar foto o usar cámara</button>
           </div>
           {renderTicketCaptureDialogs()}
           {photoPreviewUrl && <div className="ticket-photo-preview"><img src={photoPreviewUrl} alt="Vista previa del ticket para recuperar su detalle OCR" /></div>}
@@ -1675,21 +1656,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             <strong>Comprobante del ticket</strong>
             <span>Seleccioná una foto guardada en el teléfono o sacá una nueva.</span>
             <button type="button" className="ticket-photo-picker-cta" disabled={busy} onClick={() => { setCameraError(""); setTicketCaptureTarget("main"); setTicketCaptureChoiceOpen(true); }}>Elegir foto o archivo</button>
-            <input
-              id={ticketPhotoInputId}
-              className="ticket-photo-native-input ticket-photo-operational-input"
-              type="file"
-              name="ticket_photo"
-              aria-label="Elegir foto o archivo del comprobante del ticket"
-              disabled={busy}
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                if (file) {
-                  processSelectedTicketFile(file);
-                }
-                event.currentTarget.value = "";
-              }}
-            />
           </div>
           {renderTicketCaptureDialogs()}
           {batchMode && (
