@@ -796,20 +796,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [confirmationError, setConfirmationError] = useState("");
   const confirmationId = useId();
   const ticketPhotoInputId = useId();
-  const ticketPhotoInputRef = useRef<HTMLInputElement>(null);
   const existingTicketPhotoInputId = useId();
-  const openTicketPhotoPicker = () => {
-    if (busy) return;
-    const input = ticketPhotoInputRef.current;
-    if (!input) return;
-    try {
-      const showPicker = (input as HTMLInputElement & { showPicker?: () => void }).showPicker;
-      if (typeof showPicker === "function") showPicker.call(input);
-      else input.click();
-    } catch {
-      input.click();
-    }
-  };
   const [ticketCaptureTarget, setTicketCaptureTarget] = useState<"main" | "existing">("main");
   const [ticketCaptureChoiceOpen, setTicketCaptureChoiceOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -1045,15 +1032,14 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                   <span>Elegir foto o archivo</span>
                   <input
                     type="file"
-                    accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-                    aria-label="Elegir foto o archivo desde el teléfono"
+                    accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+                    aria-label="Elegir foto o archivo del ticket"
                     disabled={busy}
                     onChange={(event) => {
                       const file = event.currentTarget.files?.[0];
-                      if (file) {
-                        setTicketCaptureChoiceOpen(false);
-                        processSelectedTicketFile(file);
-                      }
+                      setTicketCaptureChoiceOpen(false);
+                      setCameraError("");
+                      if (file) processSelectedTicketFile(file);
                       event.currentTarget.value = "";
                     }}
                   />
@@ -1529,13 +1515,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               id={existingTicketPhotoInputId}
               className="ticket-photo-native-input ticket-photo-operational-input"
               type="file"
-              accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+              accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
               aria-label="Elegir foto del ticket para recuperar el detalle OCR"
               disabled={busy}
               onChange={(event) => {
                 const file = event.currentTarget.files?.[0];
                 if (file) {
-                  setTicketCaptureChoiceOpen(false);
                   processSelectedTicketFile(file);
                 }
                 event.currentTarget.value = "";
@@ -1626,26 +1611,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
-          <label className={(mode === "photo" ? "active " : "") + "button ticket-photo-source-label ticket-photo-file-label"} aria-label="Elegir foto o archivo del ticket">
-            <span>Elegir foto o archivo</span>
-            <input
-              ref={ticketPhotoInputRef}
-              id={ticketPhotoInputId}
-              className="ticket-photo-native-input ticket-photo-overlay-input"
-              type="file"
-              name="ticket_photo"
-              accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-              aria-label="Elegir foto o archivo del ticket"
-              disabled={busy}
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                setMode("photo");
-                setCameraError("");
-                if (file) processSelectedTicketFile(file);
-                event.currentTarget.value = "";
-              }}
-            />
-          </label>
+          <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => setMode("photo")}>Foto (automático)</button>
           <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
             setMode("manual");
             if (!receiptData && !initialRendition) {
@@ -1684,8 +1650,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         )}
       </div>
 
-
-
       {mode === "manual" && !receiptData && (
         <section className="manual-closure-template-panel" aria-label="Carga manual de FIN DE JORNADA">
           <div>
@@ -1706,6 +1670,27 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       {mode === "photo" && (
         <div className="ticket-capture-panel">
+          <div className="ticket-photo-picker">
+            <span className="ticket-photo-icon" aria-hidden="true">▧</span>
+            <strong>Comprobante del ticket</strong>
+            <span>Seleccioná una foto guardada en el teléfono o sacá una nueva.</span>
+            <button type="button" className="ticket-photo-picker-cta" disabled={busy} onClick={() => { setCameraError(""); setTicketCaptureTarget("main"); setTicketCaptureChoiceOpen(true); }}>Elegir foto o archivo</button>
+            <input
+              id={ticketPhotoInputId}
+              className="ticket-photo-native-input ticket-photo-operational-input"
+              type="file"
+              name="ticket_photo"
+              aria-label="Elegir foto o archivo del comprobante del ticket"
+              disabled={busy}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                if (file) {
+                  processSelectedTicketFile(file);
+                }
+                event.currentTarget.value = "";
+              }}
+            />
+          </div>
           {renderTicketCaptureDialogs()}
           {batchMode && (
             <div className="weekly-ticket-batch-upload-help">
