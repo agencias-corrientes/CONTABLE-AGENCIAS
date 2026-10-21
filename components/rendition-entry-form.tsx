@@ -1028,23 +1028,21 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button primary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("user")}>Usar cámara frontal</button>
-                <label className="ticket-dialog-native-file">
-                  <span>Elegir foto o archivo</span>
-                  <input
-                    ref={ticketFileInputRef}
-                    type="file"
-                    accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-                    aria-label={ticketCaptureTarget === "existing" ? "Elegir foto del ticket para recuperar el detalle OCR" : "Elegir foto o archivo del comprobante del ticket"}
-                    disabled={busy || cameraStarting}
-                    onChange={(event) => {
-                      const file = event.currentTarget.files?.[0];
-                      setTicketCaptureChoiceOpen(false);
-                      setCameraError("");
-                      if (file) processSelectedTicketFile(file);
-                      event.currentTarget.value = "";
-                    }}
-                  />
-                </label>
+                <input
+                  ref={ticketFileInputRef}
+                  className="ticket-dialog-native-file"
+                  type="file"
+                  accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+                  aria-label={ticketCaptureTarget === "existing" ? "Elegir foto del ticket para recuperar el detalle OCR" : "Elegir foto o archivo del comprobante del ticket"}
+                  disabled={busy || cameraStarting}
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    setTicketCaptureChoiceOpen(false);
+                    setCameraError("");
+                    if (file) processSelectedTicketFile(file);
+                    event.currentTarget.value = "";
+                  }}
+                />
               </div>
             </section>
           </div>
