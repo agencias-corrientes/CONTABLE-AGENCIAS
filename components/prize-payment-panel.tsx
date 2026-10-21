@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { createAgencyPrizePayment, deleteAgencyPrizePayment, updateAgencyPrizePayment } from "@/app/(app)/agencias/actions";
 
@@ -64,6 +64,7 @@ export function PrizePaymentPanel({
   recentPayments: PrizePayment[];
 }) {
   const [captureMode, setCaptureMode] = useState<CaptureMode>("manual");
+  const prizePhotoInputId = useId();
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const [captureChoiceOpen, setCaptureChoiceOpen] = useState(false);
@@ -144,16 +145,6 @@ export function PrizePaymentPanel({
       setCouponNumber(detected);
       setScanMessage("Número de cupón detectado desde el contenido QR. Verificalo con el comprobante antes de pagar.");
     }
-  }
-
-  async function handlePhoto(event: ChangeEvent<HTMLInputElement>) {
-    const input = event.currentTarget;
-    const file = input.files?.[0];
-    input.value = "";
-    if (!file) return;
-    setCaptureChoiceOpen(false);
-    setCameraError("");
-    await processPhotoFile(file);
   }
 
   async function processPhotoFile(file: File) {
@@ -356,9 +347,9 @@ export function PrizePaymentPanel({
       <>
         {captureChoiceOpen && (
           <div className="ticket-capture-dialog-backdrop" role="presentation" onClick={() => setCaptureChoiceOpen(false)}>
-            <section className="ticket-capture-dialog" role="dialog" aria-modal="true" aria-labelledby="prize-capture-title" onClick={(event) => event.stopPropagation()}>
+            <section className="ticket-capture-dialog" role="dialog" aria-modal="true" aria-labelledby={prizePhotoInputId + "-capture-title"} onClick={(event) => event.stopPropagation()}>
               <div className="ticket-capture-dialog-heading">
-                <h3 id="prize-capture-title">Elegí cómo cargar el ticket</h3>
+                <h3 id={prizePhotoInputId + "-capture-title"}>Elegí cómo cargar el ticket</h3>
                 <p>La foto tomada con cámara y los archivos pasan por el mismo lector OCR.</p>
               </div>
               {cameraError && <p className="ticket-read-error" role="alert">{cameraError}</p>}
@@ -367,11 +358,10 @@ export function PrizePaymentPanel({
                 <button type="button" className="button primary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("user")}>Usar cámara frontal</button>
                 <button type="button" className="button ghost" disabled={readingPhoto} onClick={() => {
+                  setCaptureChoiceOpen(false);
                   setCameraError("");
-                  // Invoke the native picker while this trusted tap is still inside
-                  // the open chooser; dismiss the dialog only after a file is chosen.
-                  const input = document.getElementById("prize-photo-input") as HTMLInputElement | null;
-                  if (input && !input.disabled) input.click();
+                  const input = document.getElementById(prizePhotoInputId) as HTMLInputElement | null;
+                  input?.click();
                 }}>Elegir foto o archivo</button>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
@@ -435,13 +425,20 @@ export function PrizePaymentPanel({
             <div className="ticket-capture-panel prize-ticket-capture-panel">
               <p className="muted small-text">La foto pasa por el lector de cupón. Revisá el número detectado y el importe antes de registrar el premio.</p>
               <input
-                id="prize-photo-input"
+                id={prizePhotoInputId}
                 className="ticket-photo-native-input ticket-photo-operational-input"
                 type="file"
-                accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
                 aria-label="Elegir foto o archivo del premio"
                 disabled={readingPhoto}
-                onChange={handlePhoto}
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  if (file) {
+                    setCaptureChoiceOpen(false);
+                    setCameraError("");
+                    void processPhotoFile(file);
+                  }
+                  event.currentTarget.value = "";
+                }}
               />
               {renderPrizeCaptureDialogs()}
             </div>
