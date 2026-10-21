@@ -1073,65 +1073,49 @@ input[type="reset"],
 }
 
 
-/* Mobile-safe native file selector rendered directly inside the capture dialog. */
-
-.ticket-dialog-hidden-file{
-  position:absolute!important;
-  width:1px!important;
-  height:1px!important;
-  padding:0!important;
-  margin:-1px!important;
-  overflow:hidden!important;
-  clip:rect(0,0,0,0)!important;
-  white-space:nowrap!important;
-  border:0!important;
-}
-
-.ticket-dialog-native-file{
-  display:block!important;
+/* Selector de archivos integrado en el botón blanco; el input nativo recibe directamente el toque en Android. */
+.ticket-photo-file-label{
+  position:relative!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
   width:100%!important;
-  min-width:0!important;
   min-height:50px!important;
   box-sizing:border-box!important;
-  padding:6px!important;
+  margin:0!important;
+  padding:13px 16px!important;
+  overflow:hidden!important;
   border:2px solid #7c3347!important;
   border-radius:8px!important;
   background:#fff!important;
-  color:#40242a!important;
+  color:#7c3347!important;
+  font-size:15px!important;
+  font-weight:800!important;
+  line-height:1.35!important;
+  text-align:center!important;
   cursor:pointer!important;
   touch-action:manipulation!important;
   -webkit-tap-highlight-color:transparent!important;
-  font-size:15px!important;
-  font-weight:800!important;
 }
-.ticket-dialog-native-file::file-selector-button{
-  display:inline-block!important;
-  min-height:34px!important;
-  margin:0 10px 0 0!important;
-  padding:8px 12px!important;
-  border:0!important;
-  border-radius:5px!important;
-  background:#7c3347!important;
-  color:#fff!important;
-  font:inherit!important;
-  font-weight:800!important;
-  cursor:pointer!important;
-}
-.ticket-dialog-native-file::-webkit-file-upload-button{
-  min-height:34px!important;
-  margin:0 10px 0 0!important;
-  padding:8px 12px!important;
-  border:0!important;
-  border-radius:5px!important;
-  background:#7c3347!important;
-  color:#fff!important;
-  font:inherit!important;
-  font-weight:800!important;
-  cursor:pointer!important;
-}
-
-
-/* Native file input directly over the single picker button; no hidden off-screen input or intermediate modal. */
-.ticket-photo-file-label{position:relative!important;overflow:hidden!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:44px!important;cursor:pointer!important;touch-action:manipulation!important;-webkit-tap-highlight-color:transparent!important;}
 .ticket-photo-file-label>span{pointer-events:none!important;}
-.ticket-photo-file-label>.ticket-photo-overlay-input{position:absolute!important;inset:0!important;display:block!important;width:100%!important;height:100%!important;min-height:100%!important;margin:0!important;padding:0!important;opacity:0!important;z-index:5!important;cursor:pointer!important;clip:auto!important;clip-path:none!important;overflow:hidden!important;pointer-events:auto!important;border:0!important;background:transparent!important;}
+.ticket-photo-file-label>.ticket-photo-overlay-input{
+  position:absolute!important;
+  inset:0!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:100%!important;
+  margin:0!important;
+  padding:0!important;
+  opacity:0!important;
+  z-index:2!important;
+  cursor:pointer!important;
+  clip:auto!important;
+  clip-path:none!important;
+  overflow:hidden!important;
+  pointer-events:auto!important;
+  border:0!important;
+  background:transparent!important;
+  font-size:100px!important;
+  touch-action:manipulation!important;
+}
