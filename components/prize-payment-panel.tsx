@@ -366,20 +366,18 @@ export function PrizePaymentPanel({
               <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button primary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("user")}>Usar cámara frontal</button>
-                <button type="button" className="button ghost" disabled={readingPhoto} onClick={() => {
-                  setCameraError("");
-                  const input = document.getElementById("prize-photo-input") as HTMLInputElement | null;
-                  if (!input) {
-                    setCameraError("No se pudo abrir el selector. Cerrá esta ventana y volvé a tocar Foto automático.");
-                    return;
-                  }
-                  try {
-                    if (typeof input.showPicker === "function") input.showPicker();
-                    else input.click();
-                  } catch {
-                    input.click();
-                  }
-                }}>Elegir foto o archivo</button>
+                <label className="button ghost" style={{ position: "relative", overflow: "hidden", cursor: readingPhoto ? "not-allowed" : "pointer" }}>
+                  Elegir foto o archivo
+                  <input
+                    id="prize-photo-input"
+                    type="file"
+                    accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+                    aria-label="Elegir foto o archivo del premio"
+                    disabled={readingPhoto}
+                    onChange={handlePhoto}
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", zIndex: 2, margin: 0 }}
+                  />
+                </label>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
                 setCaptureChoiceOpen(false);
@@ -441,15 +439,6 @@ export function PrizePaymentPanel({
           {(captureMode === "photo" || captureMode === "qr") && (
             <div className="ticket-capture-panel prize-ticket-capture-panel">
               <p className="muted small-text">La foto pasa por el lector de cupón. Revisá el número detectado y el importe antes de registrar el premio.</p>
-              <input
-                id="prize-photo-input"
-                type="file"
-                accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-                aria-label="Elegir foto o archivo del premio"
-                disabled={readingPhoto}
-                style={{ position: "fixed", width: "1px", height: "1px", opacity: 0, pointerEvents: "none", left: "-10px", top: "0" }}
-                onChange={handlePhoto}
-              />
               {renderPrizeCaptureDialogs()}
             </div>
           )}
