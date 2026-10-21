@@ -366,18 +366,12 @@ export function PrizePaymentPanel({
               <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button primary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("user")}>Usar cámara frontal</button>
-                <div className="prize-native-file-picker">
-                  <input
-                    id="prize-photo-input"
-                    className="prize-native-file-input"
-                    type="file"
-                    accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-                    aria-label="Elegir foto o archivo del premio"
-                    disabled={readingPhoto}
-                    onChange={handlePhoto}
-                  />
-                  <span className="prize-native-file-picker-label" aria-hidden="true">Elegir foto o archivo</span>
-                </div>
+                <button type="button" className="button ghost" disabled={readingPhoto} onClick={() => {
+                  setCaptureChoiceOpen(false);
+                  setCameraError("");
+                  const input = document.getElementById("prize-photo-input") as HTMLInputElement | null;
+                  input?.click();
+                }}>Elegir foto o archivo</button>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
                 setCaptureChoiceOpen(false);
@@ -439,6 +433,15 @@ export function PrizePaymentPanel({
           {(captureMode === "photo" || captureMode === "qr") && (
             <div className="ticket-capture-panel prize-ticket-capture-panel">
               <p className="muted small-text">La foto pasa por el lector de cupón. Revisá el número detectado y el importe antes de registrar el premio.</p>
+              <input
+                id="prize-photo-input"
+                className="prize-persistent-file-input"
+                type="file"
+                accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+                aria-label="Elegir foto o archivo del premio"
+                disabled={readingPhoto}
+                onChange={handlePhoto}
+              />
               {renderPrizeCaptureDialogs()}
             </div>
           )}
