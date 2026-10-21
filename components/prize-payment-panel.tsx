@@ -379,10 +379,6 @@ export function PrizePaymentPanel({
                   />
                 </label>
               </div>
-              <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
-                setCaptureChoiceOpen(false);
-                setCameraError("");
-              }}>Cancelar</button>
             </section>
           </div>
         )}
@@ -448,17 +444,7 @@ export function PrizePaymentPanel({
                   className="ticket-photo-picker-cta"
                   disabled={readingPhoto}
                   onClick={() => { setCameraError(""); setCaptureChoiceOpen(true); }}
-                >Elegir foto o archivo</button>
-                <input
-                  ref={photoInputRef}
-                  className="prize-photo-file-input ticket-photo-operational-input"
-                  type="file"
-                  name="prize_photo"
-                  accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-                  aria-label="Elegir foto del comprobante del premio"
-                  onChange={handlePhoto}
-                  disabled={readingPhoto}
-                />
+                >Cargar foto o usar cámara</button>
                 <small className="muted">La foto pasa por el lector de cupón. Revisá el número detectado y el importe antes de registrar el premio.</small>
               </div>
               {renderPrizeCaptureDialogs()}
