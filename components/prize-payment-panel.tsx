@@ -202,8 +202,9 @@ export function PrizePaymentPanel({
         return;
       }
 
-      // Reutiliza el mismo preprocesamiento del lector oficial de tickets:
-      // imagen ampliada, escala de grises y contraste moderado para papel térmico.
+      // Usar el mismo preprocesamiento de Rendiciones para papel térmico:
+      // ampliar hasta 3000 px, pasar a grises y aumentar moderadamente el contraste.
+      // Si el navegador no puede decodificar el formato, igualmente se intenta leer el original.
       let enhancedImage: HTMLCanvasElement | File = file;
       try {
         const bitmap = await createImageBitmap(file);
@@ -232,7 +233,7 @@ export function PrizePaymentPanel({
           bitmap.close();
         }
       } catch {
-        // Si el navegador no decodifica el formato (p. ej. HEIC), probar el archivo original.
+        // Algunos formatos (p. ej. HEIC) no se decodifican en todos los navegadores.
       }
 
       const { createWorker } = await import("tesseract.js");
@@ -244,14 +245,18 @@ export function PrizePaymentPanel({
         },
       });
       try {
-        const firstResult = await worker.recognize(enhancedImage);
-        let recognized = String(firstResult.data.text ?? "");
-        // Segunda pasada con el original si el texto de la imagen mejorada quedó vacío o muy corto.
-        if (recognized.trim().length < 8 && enhancedImage !== file) {
-          const originalResult = await worker.recognize(file);
-          if (String(originalResult.data.text ?? "").trim().length > recognized.trim().length) {
-            recognized = String(originalResult.data.text ?? "");
-          }
+        // Igual que el lector de Rendiciones: la primera pasada usa la foto original.
+        const originalResult = await worker.recognize(file);
+        let recognized = String(originalResult.data.text ?? "");
+        // La segunda pasada usa la imagen ampliada y mejorada. Elegimos la que
+        // devuelve más texto útil, sin aplicar el parser de FIN DE JORNADA a un premio.
+        if (enhancedImage !== file) {
+          const enhancedResult = await worker.recognize(enhancedImage);
+          const enhancedText = String(enhancedResult.data.text ?? "");
+          const usefulScore = (value: string) =>
+            value.replace(/[^A-Z0-9$.,]/gi, "").length +
+            (value.match(/\d/g)?.length ?? 0) * 2;
+          if (usefulScore(enhancedText) > usefulScore(recognized)) recognized = enhancedText;
         }
         const text = recognized.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
         const couponPatterns = [
