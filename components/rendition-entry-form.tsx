@@ -796,6 +796,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [confirmationError, setConfirmationError] = useState("");
   const confirmationId = useId();
   const ticketPhotoInputId = useId();
+  const ticketFileInputRef = useRef<HTMLInputElement | null>(null);
   const [ticketCaptureTarget, setTicketCaptureTarget] = useState<"main" | "existing">("main");
   const [ticketCaptureChoiceOpen, setTicketCaptureChoiceOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -1027,22 +1028,27 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button primary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("user")}>Usar cámara frontal</button>
-                <label className="ticket-dialog-native-file">
-                  <span>Elegir foto o archivo</span>
-                  <input
-                    type="file"
-                    accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-                    aria-label={ticketCaptureTarget === "existing" ? "Elegir foto del ticket para recuperar el detalle OCR" : "Elegir foto o archivo del comprobante del ticket"}
-                    disabled={busy}
-                    onChange={(event) => {
-                      const file = event.currentTarget.files?.[0];
-                      setTicketCaptureChoiceOpen(false);
-                      setCameraError("");
-                      if (file) processSelectedTicketFile(file);
-                      event.currentTarget.value = "";
-                    }}
-                  />
-                </label>
+                <button
+                  type="button"
+                  className="ticket-dialog-native-file"
+                  disabled={busy || cameraStarting}
+                  onClick={() => ticketFileInputRef.current?.click()}
+                >Elegir foto o archivo</button>
+                <input
+                  ref={ticketFileInputRef}
+                  className="ticket-dialog-hidden-file"
+                  type="file"
+                  accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+                  aria-label={ticketCaptureTarget === "existing" ? "Elegir foto del ticket para recuperar el detalle OCR" : "Elegir foto o archivo del comprobante del ticket"}
+                  disabled={busy}
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    setTicketCaptureChoiceOpen(false);
+                    setCameraError("");
+                    if (file) processSelectedTicketFile(file);
+                    event.currentTarget.value = "";
+                  }}
+                />
               </div>
             </section>
           </div>
