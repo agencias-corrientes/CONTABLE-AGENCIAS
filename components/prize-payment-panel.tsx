@@ -366,18 +366,21 @@ export function PrizePaymentPanel({
               <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button primary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("user")}>Usar cámara frontal</button>
-                <label className="button ghost" style={{ position: "relative", overflow: "hidden", cursor: readingPhoto ? "not-allowed" : "pointer" }}>
-                  Elegir foto o archivo
+                <div style={{ position: "relative", width: "100%", minHeight: 50 }}>
+                  <button type="button" className="button ghost" disabled={readingPhoto} style={{ width: "100%", minHeight: 50 }}>
+                    Elegir foto o archivo
+                  </button>
                   <input
                     id="prize-photo-input"
+                    className="ticket-photo-native-input"
                     type="file"
                     accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
                     aria-label="Elegir foto o archivo del premio"
                     disabled={readingPhoto}
                     onChange={handlePhoto}
-                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", zIndex: 2, margin: 0 }}
+                    style={{ position: "absolute", inset: 0, zIndex: 3, display: "block", width: "100%", height: "100%", margin: 0, padding: 0, border: 0, opacity: 0, background: "transparent", cursor: readingPhoto ? "not-allowed" : "pointer", touchAction: "manipulation" }}
                   />
-                </label>
+                </div>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
                 setCaptureChoiceOpen(false);
