@@ -1074,6 +1074,19 @@ input[type="reset"],
 
 
 /* Mobile-safe native file selector rendered directly inside the capture dialog. */
+
+.ticket-dialog-hidden-file{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  padding:0!important;
+  margin:-1px!important;
+  overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;
+  white-space:nowrap!important;
+  border:0!important;
+}
+
 .ticket-dialog-native-file{
   position:relative!important;
   display:flex!important;
