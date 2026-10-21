@@ -1033,7 +1033,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                   <input
                     type="file"
                     accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-                    aria-label="Elegir foto o archivo del ticket"
+                    aria-label={ticketCaptureTarget === "existing" ? "Elegir foto del ticket para recuperar el detalle OCR" : "Elegir foto o archivo del comprobante del ticket"}
                     disabled={busy}
                     onChange={(event) => {
                       const file = event.currentTarget.files?.[0];
