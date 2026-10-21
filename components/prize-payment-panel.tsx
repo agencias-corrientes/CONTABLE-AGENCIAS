@@ -435,7 +435,7 @@ export function PrizePaymentPanel({
               <p className="muted small-text">La foto pasa por el lector de cupón. Revisá el número detectado y el importe antes de registrar el premio.</p>
               <input
                 id="prize-photo-input"
-                className="prize-persistent-file-input"
+                className="ticket-photo-native-input ticket-photo-operational-input"
                 type="file"
                 accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
                 aria-label="Elegir foto o archivo del premio"
