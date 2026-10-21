@@ -1065,4 +1065,4 @@ input[type="reset"],
 
 
 /* Input persistente para premios: fuera del diálogo, accesible al click directo del usuario. */
-.prize-persistent-file-input{position:absolute!important;left:-10000px!important;top:0!important;width:1px!important;height:1px!important;min-height:1px!important;margin:0!important;padding:0!important;opacity:.01!important;overflow:hidden!important;pointer-events:none!important}
+
