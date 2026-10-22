@@ -362,7 +362,12 @@ export function PrizePaymentPanel({
               <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button primary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("user")}>Usar cámara frontal</button>
-                <label className="button ghost prize-file-picker-trigger" htmlFor={prizePhotoInputId} onClick={() => setCameraError("")}>Elegir foto o archivo</label>
+                <button type="button" className="button ghost" disabled={readingPhoto} onClick={() => {
+                  setCaptureChoiceOpen(false);
+                  setCameraError("");
+                  const input = document.getElementById(prizePhotoInputId) as HTMLInputElement | null;
+                  input?.click();
+                }}>Elegir foto o archivo</button>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
                 setCaptureChoiceOpen(false);
@@ -417,33 +422,33 @@ export function PrizePaymentPanel({
           <input type="hidden" name="return_agent_id" value={returnAgentId} />
           <input type="hidden" name="capture_method" value={captureMode} />
           <div className="prize-capture-options" role="group" aria-label="Método para identificar el cupón">
-            <button type="button" className={captureMode === "photo" ? "button primary" : "button ghost"} aria-pressed={captureMode === "photo"} onClick={() => { setCaptureMode("photo"); setScanMessage(""); setCameraError(""); setCaptureChoiceOpen(true); }}>Elegir foto o archivo</button>
+            <button type="button" className="ticket-photo-picker-cta" aria-pressed={captureMode === "photo"} disabled={readingPhoto} onClick={() => { setCaptureMode("photo"); setScanMessage(""); setCameraError(""); setCaptureChoiceOpen(true); }}>Elegir foto o archivo</button>
             <button type="button" className={captureMode === "manual" ? "button primary" : "button ghost"} aria-pressed={captureMode === "manual"} onClick={() => { setCaptureMode("manual"); setScanMessage(""); }}>Carga manual</button>
           </div>
 
+          <input
+            id={prizePhotoInputId}
+            className="prize-ticket-native-input"
+            type="file"
+            accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+            aria-label="Elegir foto o archivo del premio"
+            disabled={readingPhoto}
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              if (file) {
+                setCaptureChoiceOpen(false);
+                setCameraError("");
+                void processPhotoFile(file);
+              }
+              event.currentTarget.value = "";
+            }}
+          />
           {(captureMode === "photo" || captureMode === "qr") && (
             <div className="ticket-capture-panel prize-ticket-capture-panel">
               <p className="muted small-text">La foto pasa por el lector de cupón. Revisá el número detectado y el importe antes de registrar el premio.</p>
-              <input
-                id={prizePhotoInputId}
-                className="ticket-photo-native-input ticket-photo-operational-input"
-                type="file"
-                accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-                aria-label="Elegir foto o archivo del premio"
-                disabled={readingPhoto}
-                onChange={(event) => {
-                  const file = event.currentTarget.files?.[0];
-                  if (file) {
-                    setCaptureChoiceOpen(false);
-                    setCameraError("");
-                    void processPhotoFile(file);
-                  }
-                  event.currentTarget.value = "";
-                }}
-              />
-              {renderPrizeCaptureDialogs()}
             </div>
           )}
+          {renderPrizeCaptureDialogs()}
 
           {captureMode === "qr" && (
             <>
