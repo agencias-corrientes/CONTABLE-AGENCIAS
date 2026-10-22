@@ -1722,3 +1722,134 @@ input[type="time"]{font-variant-numeric:tabular-nums}
 @media (min-width:641px) and (max-width:1100px) {
   .landing .landing-role-choice { min-height:92px; padding:16px; }
 }
+
+
+/* Acceso móvil: pantalla completa y controles de lectura cómoda. */
+@media (max-width:640px) {
+  .login-auth-page {
+    display:block !important;
+    width:100%;
+    min-height:100vh;
+    min-height:100svh;
+    padding:0 !important;
+    background:#eaf0f3 !important;
+  }
+  .login-auth-page > .auth-card {
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-start;
+    gap:0;
+    width:100% !important;
+    max-width:none !important;
+    min-height:100vh;
+    min-height:100svh;
+    margin:0 !important;
+    padding:max(18px,env(safe-area-inset-top)) 20px max(24px,env(safe-area-inset-bottom)) !important;
+    border:0 !important;
+    border-radius:0 !important;
+    box-shadow:none !important;
+    backdrop-filter:none !important;
+    background:#fff !important;
+  }
+  .login-auth-page .back-link {
+    display:inline-flex;
+    align-items:center;
+    min-height:42px;
+    margin:0 0 12px !important;
+    font-size:16px !important;
+    font-weight:700;
+  }
+  .login-auth-page .login-agency-brand {
+    width:72px !important;
+    height:72px !important;
+    margin-bottom:8px;
+  }
+  .login-auth-page .login-agency-brand img {
+    width:72px !important;
+    height:72px !important;
+    object-fit:contain;
+  }
+  .login-auth-page .eyebrow {
+    margin:5px 0 8px !important;
+    font-size:13px !important;
+    letter-spacing:.12em;
+  }
+  .login-auth-page .auth-card h1 {
+    margin:8px 0 12px !important;
+    font-size:clamp(30px,8vw,36px) !important;
+    line-height:1.08 !important;
+    letter-spacing:-.025em;
+  }
+  .login-auth-page .auth-card > p.muted {
+    margin:0 0 14px !important;
+    font-size:16px !important;
+    line-height:1.5 !important;
+  }
+  .login-auth-page .form-stack {
+    gap:18px !important;
+    margin-top:12px !important;
+  }
+  .login-auth-page .form-stack label {
+    display:grid;
+    gap:8px !important;
+    font-size:16px !important;
+    font-weight:800 !important;
+    line-height:1.3;
+  }
+  .login-auth-page .form-stack input:not([type="checkbox"]) {
+    width:100%;
+    min-height:60px !important;
+    padding:15px 14px !important;
+    border:1px solid #bdcbd4 !important;
+    border-radius:10px !important;
+    background:#fff !important;
+    color:#203343 !important;
+    font-size:18px !important;
+    line-height:1.35;
+  }
+  .login-auth-page .form-stack input:focus {
+    border-color:#496a80 !important;
+    box-shadow:0 0 0 3px rgba(54,91,115,.15) !important;
+  }
+  .login-auth-page .form-stack > .button {
+    min-height:60px !important;
+    padding:15px 18px !important;
+    border-radius:10px !important;
+    font-size:18px !important;
+    font-weight:850 !important;
+  }
+  .login-auth-page .login-role-selector > p {
+    font-size:16px !important;
+    line-height:1.5;
+  }
+  .login-auth-page .login-role-selector .landing-role-choice {
+    min-height:94px !important;
+    padding:18px !important;
+    border-radius:12px !important;
+  }
+  .login-auth-page .login-role-selector .landing-role-copy strong {
+    font-size:21px !important;
+    line-height:1.2;
+  }
+  .login-auth-page .login-role-selector .landing-role-copy small {
+    font-size:15px !important;
+    line-height:1.45;
+  }
+  .login-auth-page .login-role-selector .landing-role-enter {
+    font-size:15px !important;
+  }
+  .login-auth-page .user-role-pill {
+    font-size:13px !important;
+    padding:7px 10px;
+  }
+  .login-auth-page .login-selected-profile a,
+  .login-auth-page .small-text,
+  .login-auth-page .small-text a {
+    font-size:15px !important;
+    line-height:1.5;
+  }
+  .login-auth-page .message {
+    font-size:15px !important;
+    line-height:1.5;
+  }
+}
