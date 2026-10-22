@@ -343,7 +343,7 @@ html,body{background:var(--bg);color:var(--text)}
 .ticket-photo-select-button:disabled{opacity:.6;cursor:wait}
 .ticket-photo-picker>span:not(.ticket-photo-icon){font-size:13px;line-height:1.4;color:#70666a}
 .ticket-photo-picker-cta{display:inline-flex;align-items:center;align-self:flex-start;min-height:44px;margin-top:4px;padding:11px 18px;border-radius:8px;background:#7c3347;color:#fff;font-size:14px;font-weight:800;line-height:1.3}
-.ticket-photo-native-input{position:fixed;left:0;top:0;z-index:0;display:block;width:1px;height:1px;min-width:1px;min-height:1px;margin:0;padding:0;border:0;opacity:0;background:transparent;color:transparent;pointer-events:none;touch-action:manipulation}
+.ticket-photo-native-input{position:absolute;inset:0;z-index:2;display:block;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;background:transparent;color:transparent;cursor:pointer;touch-action:manipulation}
 .ticket-photo-native-input:focus-visible{outline:3px solid #d5b850;outline-offset:-4px;border-radius:13px}
 .prize-photo-picker{gap:10px;cursor:default}
 .prize-photo-file-input{display:block!important;position:static!important;width:100%!important;height:auto!important;min-height:48px!important;max-width:100%;padding:10px!important;opacity:1!important;pointer-events:auto!important;overflow:visible!important;border:1px solid #d4c18b!important;border-radius:9px!important;background:#fff!important;color:#40242a!important;cursor:pointer!important}
