@@ -1157,3 +1157,91 @@ html, body { min-height:100%; }
     padding:12px !important;
   }
 }
+
+
+/* Final, explicit production overrides for the installed mobile app and web. */
+.login-auth-page .form-stack label { width:100%; }
+.login-auth-page .form-stack input,
+.login-auth-page .login-password-field input {
+  border: 2px solid #111111 !important;
+  color: #111111 !important;
+  background: #ffffff !important;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.06) !important;
+}
+.login-auth-page .login-password-field {
+  border: 2px solid #111111 !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  overflow: hidden;
+}
+.login-auth-page .login-password-field input {
+  border: 0 !important;
+  box-shadow: none !important;
+  outline-offset: -3px;
+}
+.login-auth-page .login-password-toggle {
+  right: 5px !important;
+  width: 46px !important;
+  height: 46px !important;
+  border: 2px solid #111111 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+.login-auth-page .login-password-toggle span,
+.login-auth-page .login-password-toggle svg { color:#000 !important; stroke:#000 !important; }
+@media(max-width:640px) {
+  .login-auth-page {
+    width:100vw !important;
+    max-width:100vw !important;
+    min-height:100svh !important;
+    min-height:100dvh !important;
+    margin:0 !important;
+    padding-left:max(12px,env(safe-area-inset-left)) !important;
+    padding-right:max(12px,env(safe-area-inset-right)) !important;
+  }
+  .login-auth-page .auth-card {
+    width:100% !important;
+    min-height:calc(100svh - 24px) !important;
+    min-height:calc(100dvh - 24px) !important;
+    padding:24px 18px !important;
+    border:2px solid #111 !important;
+    box-sizing:border-box !important;
+  }
+  .login-auth-page .form-stack input,
+  .login-auth-page .login-password-field input {
+    min-height:62px !important;
+    font-size:19px !important;
+  }
+}
+@media(max-width:1000px) {
+  html, body { width:100%; min-height:100%; margin:0; }
+  body { overflow-x:hidden; }
+  .app-shell {
+    width:100% !important;
+    max-width:100% !important;
+    min-height:100svh !important;
+    min-height:100dvh !important;
+    margin:0 !important;
+    padding:0 !important;
+  }
+  .app-shell .sidebar {
+    min-height:100svh !important;
+    min-height:100dvh !important;
+    height:auto !important;
+    padding-bottom:max(16px,env(safe-area-inset-bottom)) !important;
+  }
+  .app-shell .sidebar .nav-list {
+    min-height:calc(100svh - 220px) !important;
+    min-height:calc(100dvh - 220px) !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    grid-auto-rows:minmax(112px,1fr) !important;
+    align-content:stretch !important;
+    gap:12px !important;
+  }
+  .app-shell .sidebar .nav-list::before { display:none !important; content:none !important; }
+  .app-shell .sidebar .nav-list .nav-item {
+    min-height:112px !important;
+    height:100% !important;
+  }
+}
