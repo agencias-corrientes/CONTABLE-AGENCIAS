@@ -369,7 +369,8 @@ export function AppShell({
             min-height: 0;
             display: grid !important;
             grid-template-columns: repeat(2,minmax(0,1fr)) !important;
-            grid-template-rows: repeat(3,minmax(76px,1fr));
+            grid-template-rows: auto;
+            grid-auto-rows: minmax(76px,1fr);
             align-content: stretch;
             gap: 11px !important;
             margin: 14px 0 10px !important;
