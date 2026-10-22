@@ -80,7 +80,7 @@ export function AppShell({
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <div className="brand-logo-wrap sidebar-logo"><Image src="/logo-agencias-corrientes-v2.webp" alt="Agencias Corrientes — Quiniela Oficial" width={48} height={48} priority /></div>
+          <div className="brand-logo-wrap sidebar-logo"><Image src="/logo-agencias-corrientes.webp" alt="Agencias Corrientes — Quiniela Oficial" width={48} height={48} priority style={{ mixBlendMode: "multiply" }} /></div>
           <div className="brand-copy">
             <div className="brand-title-row"><strong>Agencias</strong>{officialAgencyNumber && <span className="official-agency-number" aria-label={"Agencia oficial " + officialAgencyNumber}>{officialAgencyNumber}</span>}</div>
             <span className="brand-subtitle">Subagentes · Ambulantes</span>
