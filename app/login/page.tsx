@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
-import { InstallAppButton } from "@/components/install-app-button";
 
 function LoginForm() {
   const router = useRouter();
@@ -182,7 +181,6 @@ export default function LoginPage() {
         <h1>Control de Agencias</h1>
         <p className="muted">Ingresá con una cuenta existente. El sistema verifica el rol asignado por cada agencia.</p>
         <Suspense fallback={<div className="empty-state">Cargando acceso…</div>}><LoginForm /></Suspense>
-        <InstallAppButton />
       </div>
     </main>
   );
