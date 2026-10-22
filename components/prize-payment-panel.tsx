@@ -427,7 +427,7 @@ export function PrizePaymentPanel({
           <input type="hidden" name="return_agent_id" value={returnAgentId} />
           <input type="hidden" name="capture_method" value={captureMode} />
           <div className="prize-capture-options" role="group" aria-label="Método para identificar el cupón">
-            <button type="button" className={captureMode === "photo" ? "button primary" : "button ghost"} aria-pressed={captureMode === "photo"} onClick={() => { setCaptureMode("photo"); setScanMessage(""); setCameraError(""); setCaptureChoiceOpen(true); }}>Foto automático</button>
+            <button type="button" className={captureMode === "photo" ? "button primary" : "button ghost"} aria-pressed={captureMode === "photo"} onClick={() => { setCaptureMode("photo"); setScanMessage(""); setCameraError(""); setCaptureChoiceOpen(true); }}>Elegir foto o archivo</button>
             <button type="button" className={captureMode === "manual" ? "button primary" : "button ghost"} aria-pressed={captureMode === "manual"} onClick={() => { setCaptureMode("manual"); setScanMessage(""); }}>Carga manual</button>
           </div>
 
