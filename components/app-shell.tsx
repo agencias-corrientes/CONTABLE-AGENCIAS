@@ -38,7 +38,13 @@ export function AppShell({
 
   useEffect(() => {
     if (!window.matchMedia("(max-width: 1000px)").matches) return;
-    const hasAgentSelection = new URLSearchParams(searchParamsKey).has("agent");
+    const currentParams = new URLSearchParams(searchParamsKey);
+    if (currentParams.get("menu") === "1") {
+      scrollContentAfterMenuClickRef.current = false;
+      window.scrollTo(0, 0);
+      return;
+    }
+    const hasAgentSelection = currentParams.has("agent");
     if (hasAgentSelection) {
       window.requestAnimationFrame(() => {
         const target = document.querySelector(".rendition-selected-view .rendition-agent-expanded-head") ?? document.querySelector(".rendition-selected-header");
@@ -365,12 +371,13 @@ export function AppShell({
             border-bottom: 1px solid rgba(232,239,243,.18);
           }
           .sidebar .nav-list {
-            flex: 1 0 auto;
+            position: relative;
+            flex: 1 1 auto;
             min-height: 0;
             display: grid !important;
             grid-template-columns: repeat(2,minmax(0,1fr)) !important;
-            grid-template-rows: auto;
-            grid-auto-rows: minmax(76px,1fr);
+            grid-template-rows: repeat(3,minmax(86px,1fr));
+            grid-auto-rows: auto;
             align-content: stretch;
             gap: 11px !important;
             margin: 14px 0 10px !important;
@@ -381,11 +388,18 @@ export function AppShell({
             box-shadow: none !important;
           }
           .sidebar .nav-list::before {
-            padding: 0 2px 2px !important;
+            position: absolute;
+            left: 2px;
+            top: -23px;
+            grid-column: auto;
+            padding: 0 !important;
             color: #d9e1e6 !important;
-            font-size: 11px !important;
+            font-size: 12px !important;
+            font-weight: 900 !important;
             letter-spacing: .16em !important;
           }
+          .sidebar .nav-list:has(.nav-item:nth-child(5)) { grid-template-rows: repeat(3,minmax(86px,1fr)); }
+          .sidebar .nav-list:not(:has(.nav-item:nth-child(5))) { grid-template-rows: repeat(2,minmax(90px,1fr)); }
           .sidebar .nav-list .nav-item {
             min-width: 0;
             min-height: 82px !important;
@@ -446,10 +460,26 @@ export function AppShell({
         }
         @media (max-height: 700px) and (max-width: 1000px) {
           .sidebar-brand { padding-bottom: 9px !important; }
-          .sidebar .nav-list { margin-top: 9px !important; gap: 7px !important; grid-template-rows: repeat(3,minmax(60px,1fr)); }
-          .sidebar .nav-list .nav-item { min-height: 64px !important; padding: 8px !important; font-size: 15px !important; }
+          .sidebar .nav-list { margin-top: 9px !important; gap: 7px !important; }
+          .sidebar .nav-list:has(.nav-item:nth-child(5)) { grid-template-rows: repeat(3,minmax(56px,1fr)); }
+          .sidebar .nav-list:not(:has(.nav-item:nth-child(5))) { grid-template-rows: repeat(2,minmax(62px,1fr)); }
+          .sidebar .nav-list .nav-item { min-height: 60px !important; padding: 8px !important; font-size: 16px !important; }
           .sidebar .sidebar-footer .button { min-height: 43px !important; padding: 8px 10px !important; }
           .sidebar .sidebar-footer .user-role-line { padding: 1px 2px 4px; }
+        }
+        @media (max-width: 1000px) {
+          .sidebar .nav-list .nav-item { font-size: 19px !important; font-weight: 850 !important; line-height: 1.18 !important; min-height: 90px !important; padding: 13px 10px !important; }
+          .sidebar .nav-list:has(.nav-item:nth-child(5)) { grid-template-rows: repeat(3,minmax(86px,1fr)); }
+          .sidebar .nav-list:not(:has(.nav-item:nth-child(5))) { grid-template-rows: repeat(2,minmax(90px,1fr)); }
+        }
+        @media (max-width: 640px) {
+          .sidebar .nav-list .nav-item { font-size: 18px !important; min-height: 90px !important; }
+          .sidebar .nav-list::before { font-size: 12px !important; }
+        }
+        @media (max-height: 700px) and (max-width: 1000px) {
+          .sidebar .nav-list .nav-item { font-size: 16px !important; min-height: 60px !important; }
+          .sidebar .nav-list:has(.nav-item:nth-child(5)) { grid-template-rows: repeat(3,minmax(56px,1fr)); }
+          .sidebar .nav-list:not(:has(.nav-item:nth-child(5))) { grid-template-rows: repeat(2,minmax(62px,1fr)); }
         }
 
       `}</style>
