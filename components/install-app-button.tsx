@@ -7,10 +7,6 @@ type InstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
-/**
- * Botón visible de instalación. Chrome decide cuándo habilitar el instalador nativo;
- * cuando aún no lo ofrece, el botón explica cómo instalar desde el propio navegador.
- */
 export function InstallAppButton() {
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
@@ -42,10 +38,14 @@ export function InstallAppButton() {
 
   async function install() {
     if (!installPrompt) {
-      setHelp((value) => !value);
+      // Browsers do not expose a way to open their native install menu from script.
+      // Always provide visible, actionable instructions instead of a silent-looking click.
+      setHelp(true);
       return;
     }
+
     setBusy(true);
+    setHelp(false);
     try {
       await installPrompt.prompt();
       const choice = await installPrompt.userChoice;
@@ -64,21 +64,37 @@ export function InstallAppButton() {
 
   return (
     <div className="install-app-area">
-      <button type="button" className="button ghost full install-app-button" onClick={install} disabled={busy}>
+      <button
+        type="button"
+        className="button ghost full install-app-button"
+        onClick={install}
+        disabled={busy}
+        aria-expanded={help}
+        aria-controls="install-app-help"
+      >
         {busy ? "Abriendo instalador…" : "⇩ Instalar aplicación"}
       </button>
       {help && (
-        <p className="install-app-help" role="status">
-          {installPrompt
-            ? "Chrome no pudo abrir el instalador en este momento. Cerrá cualquier cuadro abierto y volvé a tocar el botón."
-            : "Chrome todavía no habilitó el instalador directo para esta página. En Android, abrí el menú ⋮ de Chrome y elegí «Instalar aplicación» o «Agregar a pantalla principal». Si esa opción tampoco aparece, el navegador aún no considera esta versión instalable."}
-        </p>
+        <div id="install-app-help" className="install-app-help" role="status" aria-live="polite">
+          <strong>Para instalar Agencias Corrientes:</strong>
+          <ol>
+            <li>En Chrome, tocá el menú de los tres puntos (⋮), arriba a la derecha.</li>
+            <li>Elegí <strong>«Instalar aplicación»</strong> o <strong>«Agregar a pantalla principal»</strong>.</li>
+            <li>Confirmá la instalación cuando aparezca el aviso.</li>
+          </ol>
+          <p>Si no aparece ninguna de esas opciones, abrí este enlace directamente en Google Chrome y volvé a intentarlo.</p>
+          <button type="button" className="install-app-close" onClick={() => setHelp(false)}>Cerrar instrucciones</button>
+        </div>
       )}
       <style jsx>{`
         .install-app-area { display:grid; gap:8px; margin-top:12px; }
         .install-app-button { min-height:48px; border:1px solid #bda66c; background:#fffdf6; color:#64283a; font-weight:850; }
         .install-app-button:disabled { opacity:.7; }
-        .install-app-help,.install-app-status { margin:0; font-size:13px; line-height:1.45; color:#5d5154; }
+        .install-app-help,.install-app-status { margin:0; font-size:14px; line-height:1.5; color:#5d5154; }
+        .install-app-help { padding:12px; border:1px solid #d9c98d; border-radius:10px; background:#fffdf6; }
+        .install-app-help ol { padding-left:22px; margin:8px 0; }
+        .install-app-help li { margin:5px 0; }
+        .install-app-close { margin-top:6px; border:0; background:transparent; color:#702039; text-decoration:underline; font-weight:700; padding:6px 0; }
       `}</style>
     </div>
   );
