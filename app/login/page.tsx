@@ -4,6 +4,7 @@ import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 function LoginForm() {
@@ -143,7 +144,12 @@ function LoginForm() {
         <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="username" />
       </label>
       <label>Contraseña
-        <input type="password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" />
+        <div className="login-password-field">
+          <input type={showPassword ? "text" : "password"} minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" />
+          <button type="button" className="login-password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} aria-pressed={showPassword}>
+            {showPassword ? <EyeOff size={23} aria-hidden="true" /> : <Eye size={23} aria-hidden="true" />}
+          </button>
+        </div>
       </label>
       {message && <div className="message error-message" role="alert">{message}</div>}
       <button className="button primary full" disabled={loading}>{loading ? "Ingresando..." : "Ingresar"}</button>
