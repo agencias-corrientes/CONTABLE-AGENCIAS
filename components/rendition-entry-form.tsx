@@ -1033,7 +1033,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                   setCameraError("");
                   const inputId = ticketCaptureTarget === "existing" ? existingTicketPhotoInputId : ticketPhotoInputId;
                   const input = document.getElementById(inputId) as HTMLInputElement | null;
-                  if (input) {\n                    try {\n                      if (typeof input.showPicker === "function") input.showPicker();\n                      else input.click();\n                    } catch { input.click(); }\n                  }
+                  if (input) {
+                    try {
+                      if (typeof input.showPicker === "function") input.showPicker();
+                      else input.click();
+                    } catch { input.click(); }
+                  }
                 }}>Elegir foto o archivo</button>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
