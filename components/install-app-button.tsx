@@ -10,9 +10,6 @@ type InstallPromptEvent = Event & {
 export function InstallAppButton() {
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
-  // Keep instructions visible in the server-rendered HTML too. This gives users a
-  // usable installation path even if client-side hydration or click handling fails.
-  const [help, setHelp] = useState(true);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -28,8 +25,17 @@ export function InstallAppButton() {
       setInstalled(true);
       setInstallPrompt(null);
     };
+
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
     window.addEventListener("appinstalled", onInstalled);
+
+    // Register the PWA worker so supported browsers can offer native installation.
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {
+        // Keep the button clean; unsupported contexts cannot show the native prompt.
+      });
+    }
+
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstall);
       window.removeEventListener("appinstalled", onInstalled);
@@ -37,27 +43,21 @@ export function InstallAppButton() {
   }, []);
 
   async function install() {
-    if (!installPrompt) {
-      setHelp(true);
-      return;
-    }
+    if (!installPrompt || busy) return;
 
     setBusy(true);
     try {
       await installPrompt.prompt();
       const choice = await installPrompt.userChoice;
       if (choice.outcome === "accepted") setInstallPrompt(null);
-      else setHelp(true);
     } catch {
-      setHelp(true);
+      // Do not add extra UI; leave only the requested button.
     } finally {
       setBusy(false);
     }
   }
 
-  if (installed) {
-    return <p className="install-app-status" role="status">La aplicación ya está instalada en este dispositivo.</p>;
-  }
+  if (installed) return null;
 
   return (
     <div className="install-app-area">
@@ -65,33 +65,14 @@ export function InstallAppButton() {
         type="button"
         className="button ghost full install-app-button"
         onClick={install}
-        disabled={busy}
-        aria-expanded={help}
-        aria-controls="install-app-help"
+        disabled={busy || !installPrompt}
       >
         {busy ? "Abriendo instalador…" : "⇩ Instalar aplicación"}
       </button>
-      {help && (
-        <div id="install-app-help" className="install-app-help" role="status" aria-live="polite">
-          <strong>Para instalar Agencias Corrientes:</strong>
-          <ol>
-            <li>En Chrome, tocá el menú de los tres puntos (⋮), arriba a la derecha.</li>
-            <li>Elegí <strong>«Instalar aplicación»</strong> o <strong>«Agregar a pantalla principal»</strong>.</li>
-            <li>Confirmá la instalación cuando aparezca el aviso.</li>
-          </ol>
-          <p>Si no aparece ninguna de esas opciones, abrí este enlace directamente en Google Chrome y volvé a intentarlo.</p>
-          <button type="button" className="install-app-close" onClick={() => setHelp(false)}>Ocultar instrucciones</button>
-        </div>
-      )}
       <style jsx>{`
-        .install-app-area { display:grid; gap:8px; margin-top:12px; }
+        .install-app-area { margin-top:12px; }
         .install-app-button { min-height:48px; border:1px solid #bda66c; background:#fffdf6; color:#64283a; font-weight:850; }
-        .install-app-button:disabled { opacity:.7; }
-        .install-app-help,.install-app-status { margin:0; font-size:14px; line-height:1.5; color:#5d5154; }
-        .install-app-help { padding:12px; border:1px solid #d9c98d; border-radius:10px; background:#fffdf6; }
-        .install-app-help ol { padding-left:22px; margin:8px 0; }
-        .install-app-help li { margin:5px 0; }
-        .install-app-close { margin-top:6px; border:0; background:transparent; color:#702039; text-decoration:underline; font-weight:700; padding:6px 0; }
+        .install-app-button:disabled { opacity:1; cursor:default; }
       `}</style>
     </div>
   );
