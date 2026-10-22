@@ -11,7 +11,7 @@ const siteUrl =
 const siteTitle = "Agencias Corrientes";
 const siteDescription =
   "Gestión diaria de agencias de quiniela, rendiciones y cobranzas.";
-const brandLogo = "/logo-agencias-quiniela.svg";
+const brandLogo = "/logo-agencias-corrientes-v2.webp";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -23,9 +23,9 @@ export const metadata: Metadata = {
   description: siteDescription,
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: brandLogo, type: "image/svg+xml" }],
-    shortcut: [{ url: brandLogo, type: "image/svg+xml" }],
-    apple: [{ url: "/logo-agencias-quiniela.webp", type: "image/webp" }],
+    icon: [{ url: brandLogo, type: "image/webp" }],
+    shortcut: [{ url: brandLogo, type: "image/webp" }],
+    apple: [{ url: brandLogo, type: "image/webp" }],
   },
   appleWebApp: {
     capable: true,
