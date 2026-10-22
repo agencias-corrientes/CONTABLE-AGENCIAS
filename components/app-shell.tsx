@@ -36,18 +36,26 @@ export function AppShell({
 
   const scrollContentAfterMenuClickRef = useRef(false);
 
-  // El botón Atrás del navegador/celular puede volver a la portada o al login,
-  // pero nunca debe cerrar la sesión. El cierre de sesión queda reservado al botón explícito.
+  // El botón Atrás no debe sacar al agenciero del panel ni llevarlo al login.
+  // Interceptamos en captura antes del manejador de navegación de Next y volvemos
+  // a la última URL del panel. La sesión solo se cierra con el botón explícito.
   useEffect(() => {
     if (isPlatformAdmin) return;
-    const keepAgencySession = () => {
-      const currentPath = window.location.pathname;
-      if (currentPath === "/" || currentPath === "/login" || currentPath === "/registro") {
-        router.replace("/pagos?menu=1");
+    let lastAgencyUrl = window.location.pathname + window.location.search;
+    const keepAgencySession = (event: PopStateEvent) => {
+      const targetPath = window.location.pathname;
+      if (targetPath === "/" || targetPath === "/login" || targetPath === "/registro") {
+        event.stopImmediatePropagation();
+        window.history.pushState({ agencySessionGuard: true }, "", lastAgencyUrl);
+        router.replace(lastAgencyUrl || "/pagos?menu=1");
+        return;
       }
+      lastAgencyUrl = window.location.pathname + window.location.search;
     };
-    window.addEventListener("popstate", keepAgencySession);
-    return () => window.removeEventListener("popstate", keepAgencySession);
+    // Crear un estado propio hace que el primer Atrás dispare el guardián.
+    window.history.pushState({ agencySessionGuard: true }, "", window.location.href);
+    window.addEventListener("popstate", keepAgencySession, true);
+    return () => window.removeEventListener("popstate", keepAgencySession, true);
   }, [isPlatformAdmin, router]);
 
   useEffect(() => {
