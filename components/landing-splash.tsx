@@ -47,7 +47,7 @@ export function LandingSplash() {
           display: "block",
           width: "min(72vw, 176px)",
           height: "auto",
-          borderRadius: 0,
+          borderRadius: 28,\n          overflow: "hidden",
           boxShadow: "none",
           mixBlendMode: "darken",
         }}
