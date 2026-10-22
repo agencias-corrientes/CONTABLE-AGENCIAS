@@ -110,7 +110,7 @@ function LoginForm() {
       return;
     }
 
-    router.push("/pagos");
+    router.push("/pagos?menu=1");
     router.refresh();
   }
 
@@ -157,7 +157,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <main className="auth-page">
+    <main className="auth-page login-auth-page">
       <div className="auth-card">
         <Link href="/" className="back-link">← Volver</Link>
         <div className="brand-logo-wrap brand-logo-top-left login-agency-brand"><Image src="/logo-agencias-corrientes.webp" alt="Agencias Corrientes — Quiniela Oficial" width={88} height={88} priority unoptimized /></div>
