@@ -105,15 +105,22 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       if (batch.length < pageSize) return accumulated;
     }
   }
-  const renditions = await loadAllRenditions();
-  const { data: drawStatusRows } = await supabase
-    .from("agency_agent_draw_status")
-    .select("agent_id,draw_period,rendition_id,status,notes,reported_amount,updated_at")
-    .eq("organization_id", activeOrganization.id)
-    .eq("operational_date", today);
+  // Lanzar juntas las lecturas independientes: antes se esperaba a descargar
+  // todas las rendiciones antes de consultar los estados del día.
+  const [renditions, drawStatusResult, dailyStatusResult] = await Promise.all([
+    loadAllRenditions(),
+    supabase.from("agency_agent_draw_status")
+      .select("agent_id,draw_period,rendition_id,status,notes,reported_amount,updated_at")
+      .eq("organization_id", activeOrganization.id)
+      .eq("operational_date", today),
+    supabase.from("agency_agent_daily_status")
+      .select("agent_id,status,notes,reported_amount,updated_at")
+      .eq("organization_id", activeOrganization.id)
+      .eq("operational_date", today),
+  ]);
+  const drawStatusRows = drawStatusResult.data;
+  const dailyStatusRows = dailyStatusResult.data;
   const drawStatusByKey = new Map((drawStatusRows ?? []).map((row: any) => [String(row.agent_id) + "|" + String(row.draw_period), row]));
-  const { data: dailyStatusRows } = await supabase.from("agency_agent_daily_status")
-    .select("agent_id,status,notes,reported_amount,updated_at").eq("organization_id", activeOrganization.id).eq("operational_date", today);
   const dailyStatusByAgent = new Map((dailyStatusRows ?? []).map((row: any) => [String(row.agent_id), row]));
 
   async function loadHistoricalDailyStatuses() {
@@ -153,6 +160,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       if (batch.length < pageSize) return accumulated;
     }
   }
+  // El historial diario y el historial por sorteo tampoco dependen entre sí.
   const [historicalDailyStatusRows, historicalDrawStatusRows] = await Promise.all([
     loadHistoricalDailyStatuses(),
     loadHistoricalDrawStatuses(),
