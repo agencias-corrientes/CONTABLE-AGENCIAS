@@ -68,9 +68,11 @@ export function AppShell({
     .sort(([first], [second]) => second.length - first.length)[0]?.[0];
 
   async function signOut() {
+    const confirmed = window.confirm("¿Querés cerrar sesión? Elegí Cancelar para seguir dentro de la agencia.");
+    if (!confirmed) return;
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/");
+    router.replace("/");
     router.refresh();
   }
 
