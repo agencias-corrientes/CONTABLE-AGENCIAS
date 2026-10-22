@@ -36,6 +36,20 @@ export function AppShell({
 
   const scrollContentAfterMenuClickRef = useRef(false);
 
+  // El botón Atrás del navegador/celular puede volver a la portada o al login,
+  // pero nunca debe cerrar la sesión. El cierre de sesión queda reservado al botón explícito.
+  useEffect(() => {
+    if (isPlatformAdmin) return;
+    const keepAgencySession = () => {
+      const currentPath = window.location.pathname;
+      if (currentPath === "/" || currentPath === "/login" || currentPath === "/registro") {
+        router.replace("/pagos?menu=1");
+      }
+    };
+    window.addEventListener("popstate", keepAgencySession);
+    return () => window.removeEventListener("popstate", keepAgencySession);
+  }, [isPlatformAdmin, router]);
+
   useEffect(() => {
     if (!window.matchMedia("(max-width: 1000px)").matches) return;
     const currentParams = new URLSearchParams(searchParamsKey);
