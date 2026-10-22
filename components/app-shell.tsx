@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const nav = [
@@ -32,11 +31,6 @@ export function AppShell({
   const router = useRouter();
   const officialAgencyNumber = organizationName.match(/\b(\d{3})\b/)?.[1] ?? null;
 
-  useEffect(() => {
-    if (window.matchMedia("(max-width: 1000px)").matches) {
-      document.querySelector(".content-area")?.scrollIntoView({ behavior: "auto", block: "start" });
-    }
-  }, [pathname]);
   const isOwner = userRole === "owner";
   const visibleNav = nav.filter(([slug]) => isOwner || !["juegos", "equipo", "configuracion"].includes(slug));
 
