@@ -68,7 +68,7 @@ export function AppShell({
       event.stopImmediatePropagation();
       const confirmed = window.confirm("¿Querés cerrar sesión y salir de la agencia? Elegí Cancelar para volver al panel.");
       if (!confirmed) {
-        window.history.pushState(window.history.state, "", window.location.href === destination.href ? previousUrl : window.location.href);
+        window.history.pushState(window.history.state, "", previousUrl);
         return;
       }
 
@@ -84,7 +84,7 @@ export function AppShell({
     const previousUrl = window.location.href;
     window.addEventListener("popstate", handleBackNavigation, true);
     return () => window.removeEventListener("popstate", handleBackNavigation, true);
-  }, [pathname, router]);
+  }, [pathname, searchParamsKey, router]);
 
   const isOwner = userRole === "owner";
   const visibleNav = nav.filter(([slug]) => isOwner || !["juegos", "equipo", "configuracion"].includes(slug));
