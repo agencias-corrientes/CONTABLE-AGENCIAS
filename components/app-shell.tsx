@@ -230,6 +230,108 @@ export function AppShell({
           }
         }
 
+
+        /* Corrección aislada del menú principal: no altera rutas ni lógica de negocio. */
+        :global(.app-shell .sidebar) {
+          background: #ffffff !important;
+          color: #241d20 !important;
+        }
+        :global(.app-shell .sidebar .nav-list) {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          grid-auto-rows: minmax(104px, auto) !important;
+          grid-template-rows: none !important;
+          align-items: stretch !important;
+          gap: 12px !important;
+          margin: 16px 0 !important;
+          padding: 0 !important;
+        }
+        :global(.app-shell .sidebar .nav-list .nav-item),
+        :global(.app-shell .sidebar .nav-list .nav-item:hover),
+        :global(.app-shell .sidebar .nav-list .nav-item:focus),
+        :global(.app-shell .sidebar .nav-list .nav-item:focus-visible),
+        :global(.app-shell .sidebar .nav-list .nav-item:active) {
+          display: flex !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          min-height: 104px !important;
+          height: 100% !important;
+          box-sizing: border-box !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 14px 8px !important;
+          margin: 0 !important;
+          border: 2px solid #632538 !important;
+          border-bottom: 5px solid #4a1b2a !important;
+          border-radius: 8px !important;
+          background: #7c3347 !important;
+          background-image: none !important;
+          color: #ffffff !important;
+          font-size: clamp(21px, 5.2vw, 25px) !important;
+          font-weight: 900 !important;
+          line-height: 1.16 !important;
+          text-align: center !important;
+          text-decoration: none !important;
+          box-shadow: 0 3px 0 rgba(50,15,25,.2) !important;
+          transform: none !important;
+          outline: none !important;
+          -webkit-tap-highlight-color: transparent !important;
+        }
+        :global(.app-shell .sidebar .nav-list .nav-item.active),
+        :global(.app-shell .sidebar .nav-list .nav-item.active:hover),
+        :global(.app-shell .sidebar .nav-list .nav-item.active:focus),
+        :global(.app-shell .sidebar .nav-list .nav-item.active:active) {
+          background: #ffe58a !important;
+          background-image: none !important;
+          color: #3f1825 !important;
+          border-color: #8f6d26 !important;
+          border-bottom-color: #632538 !important;
+          box-shadow: 0 3px 0 rgba(50,15,25,.15) !important;
+          font-weight: 950 !important;
+          transform: none !important;
+          outline: none !important;
+        }
+        :global(.app-shell .sidebar .nav-list .nav-item:not(.active):hover),
+        :global(.app-shell .sidebar .nav-list .nav-item:not(.active):focus),
+        :global(.app-shell .sidebar .nav-list .nav-item:not(.active):active) {
+          background: #7c3347 !important;
+          color: #ffffff !important;
+        }
+        :global(.app-shell .sidebar .nav-list .nav-item .nav-icon) {
+          display: none !important;
+        }
+        @media (min-width: 1001px) {
+          :global(.app-shell .sidebar .nav-list) {
+            grid-template-columns: minmax(0, 1fr) !important;
+            grid-auto-rows: minmax(70px, auto) !important;
+          }
+          :global(.app-shell .sidebar .nav-list .nav-item) {
+            min-height: 70px !important;
+            font-size: 21px !important;
+          }
+        }
+        @media (max-width: 1000px) {
+          :global(.app-shell .sidebar) {
+            background: #ffffff !important;
+            border-right: 0 !important;
+            border-bottom: 4px solid #7c3347 !important;
+          }
+          :global(.app-shell .sidebar .nav-list::before) { display: none !important; }
+          :global(.app-shell .sidebar .nav-list .nav-item),
+          :global(.app-shell .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell .sidebar .nav-list .nav-item:active) {
+            min-height: 104px !important;
+            font-size: clamp(21px, 5.2vw, 25px) !important;
+          }
+        }
+        @media (max-width: 390px) {
+          :global(.app-shell .sidebar .nav-list .nav-item) {
+            font-size: 21px !important;
+            padding: 12px 7px !important;
+          }
+        }
+
       `}</style>
     </div>
   );
