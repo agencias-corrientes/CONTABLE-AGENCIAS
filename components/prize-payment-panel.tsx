@@ -366,7 +366,7 @@ export function PrizePaymentPanel({
                   setCaptureChoiceOpen(false);
                   setCameraError("");
                   const input = document.getElementById(prizePhotoInputId) as HTMLInputElement | null;
-                  input?.click();
+                  if (input) {\n                    try {\n                      if (typeof input.showPicker === "function") input.showPicker();\n                      else input.click();\n                    } catch { input.click(); }\n                  }
                 }}>Elegir foto o archivo</button>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
