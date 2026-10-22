@@ -30,7 +30,7 @@ export default async function HomePage() {
             <p className="lead">Administrá solicitudes de alta, autorización de agencias y estado de las cuentas sin entrar al panel operativo de un agenciero.</p>
             <div className="landing-actions landing-central-actions">
               <Link className="button primary full" href="/plataforma/accesos">Administración Central</Link>
-              {member?.organization_id && <Link className="button ghost full" href="/pagos">Ingresar a mi agencia</Link>}
+              {member?.organization_id && <Link className="button ghost full" href="/pagos?menu=1">Ingresar a mi agencia</Link>}
               <SignOutButton className="button ghost full" />
             </div>
             <p className="muted small-text">El panel central vuelve a verificar tu autorización en el servidor. Las cuentas de agencia no pueden abrirlo por su cuenta.</p>
@@ -38,7 +38,7 @@ export default async function HomePage() {
         </main>
       );
     }
-    redirect("/pagos");
+    redirect("/pagos?menu=1");
   }
 
   return (
