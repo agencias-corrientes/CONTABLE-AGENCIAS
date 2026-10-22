@@ -1853,3 +1853,47 @@ input[type="time"]{font-variant-numeric:tabular-nums}
     line-height:1.5;
   }
 }
+
+
+/* Campo de contraseña con control visible/oculto accesible. */
+.login-password-field {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+  min-width: 0;
+}
+.login-password-field input { min-width: 0; }
+.login-password-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #d8c99f;
+  border-radius: 9px;
+  background: #f4edcf;
+  color: #64283a;
+  font-size: 14px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.login-password-toggle:hover { background: #eee4bc; border-color: #b79a45; }
+.login-password-toggle:focus-visible { outline: 3px solid rgba(124,51,71,.22); outline-offset: 2px; }
+@media (max-width:640px) {
+  .login-auth-page .login-password-field { gap: 7px; }
+  .login-auth-page .login-password-field input:not([type="checkbox"]) {
+    min-width: 0;
+    min-height: 60px !important;
+    font-size: 18px !important;
+    padding: 15px 12px !important;
+  }
+  .login-auth-page .login-password-toggle {
+    min-width: 82px;
+    min-height: 60px !important;
+    padding: 12px 10px;
+    border-radius: 10px;
+    font-size: 15px !important;
+  }
+}
