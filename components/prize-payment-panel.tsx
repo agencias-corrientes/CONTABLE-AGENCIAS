@@ -438,6 +438,7 @@ export function PrizePaymentPanel({
                 id={prizePhotoInputId}
                 className="ticket-photo-native-input ticket-photo-operational-input"
                 type="file"
+                accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
                 aria-label="Elegir foto o archivo del premio"
                 disabled={readingPhoto}
                 onChange={(event) => {
