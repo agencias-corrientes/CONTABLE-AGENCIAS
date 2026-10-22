@@ -9,14 +9,14 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     scope: "/",
     display: "standalone",
-    background_color: "#ffda18",
-    theme_color: "#702039",
+    background_color: "#ffffff",
+    theme_color: "#ffffff",
     icons: [
       {
-        src: "/logo-agencias-corrientes.webp",
-        sizes: "320x320",
-        type: "image/webp",
-        purpose: "any",
+        src: "/logo-app-redondeado.svg",
+        sizes: "any",
+        type: "image/svg+xml",
+        purpose: "any maskable",
       },
     ],
   };
