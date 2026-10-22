@@ -592,13 +592,15 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     <div className="page rendition-page-clean">
       <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={drawPeriods.map((period) => period.time).filter((time): time is string => Boolean(time))} renderedAt={new Date().toISOString()} />
       <RenditionScrollHelper />
-      <div className="stats-grid compact rendition-stats">
+      {!selectedAgentId && (
+        <div className="stats-grid compact rendition-stats">
         <div className="stat-card rendition-total-card"><span>TOTAL RENDIDO</span><strong>{money(todayTotalRendido, activeOrganization.currency_code)}</strong><small>neto después de comisiones y premios · premios descontados: {money(todayPrizeTotal, activeOrganization.currency_code)}</small></div>
         <div className="stat-card"><span>Ventas brutas</span><strong>{money(todayRendidoBruto, activeOrganization.currency_code)}</strong><small>{todayRows.length} registros · antes de comisiones y premios</small></div>
         <div className="stat-card"><span>Comisiones rendidas</span><strong>{money(todayComisiones, activeOrganization.currency_code)}</strong><small>comisiones reconocidas en las rendiciones del día</small></div>
         <div className="stat-card"><span>Premios pagados</span><strong>{money(todayPrizeTotal, activeOrganization.currency_code)}</strong><small>OCR: {money(todayOcrPrizeTotal, activeOrganization.currency_code)} · Caja fuera de OCR: {money(todayCashPrizeTotal, activeOrganization.currency_code)}</small></div>
         <div className="stat-card"><span>Pendiente hoy</span><strong>{money(todayPendiente, activeOrganization.currency_code)}</strong><small>efectivo neto pendiente después de comisión</small></div>
-      </div>
+        </div>
+      )}
       {params.ticket === "guardado" && (
         <div className="ticket-save-success">
           <p className="message success-message" role="status">Se guardó el detalle completo del ticket de fin de jornada junto con la rendición.</p>
@@ -824,6 +826,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             <div>
               <p className="eyebrow">RENDICIÓN DEL DÍA</p>
               <h1>{selectedAgent?.code ?? "Operador"}</h1>
+              {selectedAgent && <p className="rendition-selected-agent-description">{agentLabel(selectedAgent)} · {selectedAgent.full_name}</p>}
             </div>
           </div>
       {params.resultado === "backup-manual-enviado" && <p className="message success-message">Backup manual enviado al correo configurado: {Math.max(0, Number(params.copias ?? 0))} rendición(es). El cierre automático continúa programado.</p>}
@@ -896,7 +899,6 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
           ) : (
             <div className="message error-message">No encontramos ese subagente o ambulante. Volvé a la lista y seleccioná otro código.</div>
           )}
-          <PrizePaymentPanel canRegisterPayments={canRegisterPayments} currencyCode={activeOrganization.currency_code} returnAgentId={selectedAgentId} recentPayments={recentPrizePayments} />
         </div>
       )}
     </div>
