@@ -40,7 +40,8 @@ export function AppShell({
   // Interceptamos en captura antes del manejador de navegación de Next y volvemos
   // a la última URL del panel. La sesión solo se cierra con el botón explícito.
   useEffect(() => {
-    if (isPlatformAdmin) return;
+    // Este guardián también debe proteger al administrador maestro cuando entra
+    // al panel operativo; solo se monta dentro del panel de agencia.
     let lastAgencyUrl = window.location.pathname + window.location.search;
     const keepAgencySession = (event: PopStateEvent) => {
       const targetPath = window.location.pathname;
