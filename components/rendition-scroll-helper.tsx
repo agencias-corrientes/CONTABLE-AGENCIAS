@@ -19,8 +19,6 @@ export function RenditionScrollHelper() {
       scrollToCapture(details, "smooth");
     };
     disclosures.forEach((details) => details.addEventListener("toggle", onToggle));
-    const initiallyOpen = disclosures.find((details) => details.open);
-    if (initiallyOpen) scrollToCapture(initiallyOpen, "auto");
     return () => disclosures.forEach((details) => details.removeEventListener("toggle", onToggle));
   }, []);
   return null;
