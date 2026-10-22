@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 type PendingAgent = {
   id: string;
@@ -38,9 +38,7 @@ export function RenditionDeadlineAlert({
   agents: PendingAgent[];
 }) {
   const [nowMinutes, setNowMinutes] = useState<number | null>(null);
-  const popupShown = useRef(false);
   const closeMinutes = parseClock(closeTime);
-  const pendingKey = agents.map((agent) => agent.id + ":" + agent.code).join("|");
 
   useEffect(() => {
     const update = () => setNowMinutes(buenosAiresMinutes(new Date()));
@@ -63,23 +61,11 @@ export function RenditionDeadlineAlert({
     && minutesUntilClose <= 30
     && minutesUntilClose >= -120;
 
-  useEffect(() => {
-    if (!shouldShow || popupShown.current) return;
-    popupShown.current = true;
-    const names = agents.map((agent) => (agent.kind === "subagent" ? "Subagente " : "Ambulante ") + agent.code + (agent.fullName ? " · " + agent.fullName : ""));
-    window.alert(
-      (minutesUntilClose !== null && minutesUntilClose > 0
-        ? "Faltan " + minutesUntilClose + " minutos para el cierre."
-        : "El horario de cierre ya llegó.") +
-      "\n\nTodavía faltan rendiciones de:\n• " + names.join("\n• ")
-    );
-  }, [agents, minutesUntilClose, shouldShow, pendingKey]);
-
   if (!shouldShow || minutesUntilClose === null) return null;
 
   return (
     <section className="ticket-photo-deadline-alert" role="alert" aria-live="assertive">
-      <h2>{minutesUntilClose > 0 ? "⚠️ Faltan " + minutesUntilClose + " min para el cierre" : "⚠️ Horario de cierre alcanzado"}</h2>
+      <h2>{minutesUntilClose > 0 ? "⚠️ Faltan " + minutesUntilClose + " min para el cierre" : "⚠️ El horario de cierre ya llegó"}</h2>
       <p>Estos operadores todavía no confirmaron su rendición diaria. Entrá desde el código para revisar y registrar la rendición pendiente.</p>
       <ul>
         {agents.map((agent) => (

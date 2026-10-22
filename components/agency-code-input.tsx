@@ -9,7 +9,7 @@ function formatAgencyCode(value: string) {
   return digits.slice(0, 3) + "-" + digits.slice(3, 6) + "-" + digits.slice(6);
 }
 
-export function AgencyCodeInput({ name, defaultValue = "", placeholder = "Código: 251-001-01" }: {
+export function AgencyCodeInput({ name, defaultValue = "", placeholder = "Código: 000-000-01" }: {
   name: string;
   defaultValue?: string;
   placeholder?: string;
@@ -26,7 +26,7 @@ export function AgencyCodeInput({ name, defaultValue = "", placeholder = "Códig
       onChange={(event) => setValue(formatAgencyCode(event.target.value))}
       placeholder={placeholder}
       pattern="[0-9]{3}-[0-9]{3}-[0-9]{2}"
-      title="El formato se completa automáticamente: 251-001-01"
+      title="El formato se completa automáticamente: 000-000-01"
       aria-label="Código del subagente o ambulante"
       required
     />

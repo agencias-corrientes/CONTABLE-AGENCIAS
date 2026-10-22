@@ -11,6 +11,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const rawProfile = searchParams.get("perfil");
@@ -110,7 +111,7 @@ function LoginForm() {
       return;
     }
 
-    router.push("/pagos");
+    router.push("/pagos?menu=1");
     router.refresh();
   }
 
@@ -143,7 +144,18 @@ function LoginForm() {
         <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="username" />
       </label>
       <label>Contraseña
-        <input type="password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" />
+        <div className="login-password-field">
+          <input type={showPassword ? "text" : "password"} minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" />
+          <button
+            type="button"
+            className="login-password-toggle"
+            onClick={() => setShowPassword((visible) => !visible)}
+            aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+            aria-pressed={showPassword}
+          >
+            {showPassword ? "Ocultar" : "Mostrar"}
+          </button>
+        </div>
       </label>
       {message && <div className="message error-message" role="alert">{message}</div>}
       <button className="button primary full" disabled={loading}>{loading ? "Ingresando..." : "Ingresar"}</button>
@@ -157,7 +169,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <main className="auth-page">
+    <main className="auth-page login-auth-page">
       <div className="auth-card">
         <Link href="/" className="back-link">← Volver</Link>
         <div className="brand-logo-wrap brand-logo-top-left login-agency-brand"><Image src="/logo-agencias-corrientes.webp" alt="Agencias Corrientes — Quiniela Oficial" width={88} height={88} priority unoptimized /></div>

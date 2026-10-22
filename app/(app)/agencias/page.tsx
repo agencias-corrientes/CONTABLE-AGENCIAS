@@ -89,7 +89,7 @@ export default async function AgenciasPage({
         "sin-permiso-alta": "No tenés permiso para dar de alta subagentes o ambulantes.",
         "sin-permiso-baja": "Solo el administrador o un empleado autorizado puede eliminar agentes.",
         "tipo-invalido": "El tipo de agente seleccionado no es válido.",
-        "codigo-invalido": "Ingresá el código con el formato 251-010-01.",
+        "codigo-invalido": "Ingresá el código con el formato 000-000-01.",
         "nombre-obligatorio": "Ingresá el nombre del subagente o ambulante.",
         "alta-fallida": "No se pudo guardar el alta. Revisá el código y volvé a intentar.",
         "baja-fallida": "No se pudo completar la baja. No se modificó el historial.",

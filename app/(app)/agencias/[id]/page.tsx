@@ -100,7 +100,7 @@ export default async function AgencyDetailPage({ params, searchParams }: { param
       </div>
 
       {pageParams.resultado === "datos-agente-guardados" && <p className="message success-message">Los datos del subagente o ambulante se guardaron correctamente.</p>}
-      {pageParams.error === "codigo-invalido" && <p className="message error-message">Ingresá el código con el formato 447-005-03.</p>}
+      {pageParams.error === "codigo-invalido" && <p className="message error-message">Ingresá el código con el formato 000-000-01.</p>}
       {pageParams.error === "codigo-duplicado" && <p className="message error-message">Ese código ya está utilizado por otro subagente o ambulante.</p>}
       {pageParams.error === "agente-codigo-ajeno" && <p className="message error-message">Los tres primeros dígitos del código deben coincidir con el número oficial de la agencia. Corregí el código o el número oficial.</p>}
       {pageParams.error === "solo-titular-editar-agente" && <p className="message error-message">Solo el titular puede editar los datos de los subagentes y ambulantes.</p>}

@@ -1643,3 +1643,303 @@ input[type="time"]{font-variant-numeric:tabular-nums}
 
 
 
+
+/* Jerarquía visual de celular: landing, formulario de agentes y rendición individual. */
+.landing, .auth-page, .app-shell {
+  font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.landing .landing-role-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin:24px 0 12px; }
+.landing .landing-role-choice {
+  display:flex; align-items:center; justify-content:space-between; gap:14px; min-width:0; min-height:102px; padding:20px;
+  border:1px solid #d8c794; border-bottom:4px solid #b79a45; border-radius:15px;
+  background:linear-gradient(180deg,#fffef9 0%,#f2e7c4 100%); color:#59273a;
+  box-shadow:0 3px 0 rgba(87,54,31,.11),0 8px 20px rgba(87,54,31,.09);
+  font-family:Inter,"Segoe UI",ui-sans-serif,system-ui,sans-serif; transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;
+}
+.landing .landing-role-choice:hover { transform:translateY(-2px); border-color:#b79a45; box-shadow:0 5px 0 rgba(87,54,31,.10),0 12px 24px rgba(87,54,31,.14); }
+.landing .landing-role-copy { display:grid; gap:7px; min-width:0; }
+.landing .landing-role-copy strong { font-size:19px; font-weight:850; line-height:1.2; letter-spacing:-.015em; }
+.landing .landing-role-copy small { color:#66545a; font-size:13px; line-height:1.45; }
+.landing .landing-role-enter { flex:0 0 auto; color:#7c3347; font-size:14px; font-weight:850; white-space:nowrap; }
+.landing .landing-actions .button { min-height:52px; padding:14px 18px; border-radius:11px; font-size:15px; font-weight:800; }
+
+.agency-create-panel .agency-create-grid {
+  grid-template-columns:minmax(130px,.85fr) minmax(190px,1.2fr) minmax(250px,1.8fr) repeat(3,minmax(140px,.9fr)) auto;
+  gap:12px;
+}
+.agency-create-panel .agency-create-grid > input,
+.agency-create-panel .agency-create-grid > select { min-height:54px; padding:13px 12px; border-radius:10px; font-size:16px; }
+.agency-create-panel .agency-create-grid > .button { min-height:54px; padding:13px 18px; border-radius:10px; font-size:15px; font-weight:850; }
+
+.rendition-mode-toolbar { gap:12px; }
+.rendition-mode-switch { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.rendition-mode-switch > button {
+  min-width:0; min-height:56px; padding:13px 12px; border:1px solid #d9c995; border-bottom:3px solid #b79a45;
+  border-radius:12px; background:linear-gradient(180deg,#fffdf5 0%,#efe3be 100%); color:#64283a;
+  font-size:16px; font-weight:850; line-height:1.2;
+}
+.rendition-mode-switch > button.active { background:#7c3347; color:#fffaf0; border-color:#7c3347; border-bottom-color:#4b1c2c; box-shadow:0 3px 0 rgba(58,20,32,.16); }
+.rendition-selected-view { min-width:0; }
+.rendition-selected-header { gap:12px; margin-bottom:12px; }
+.rendition-selected-header .back-link { margin-bottom:0; }
+.rendition-selected-header h1 { margin-bottom:4px; line-height:1.05; }
+.rendition-selected-agent-description { margin:4px 0 0; color:#6a555d; font-size:14px; font-weight:650; line-height:1.4; }
+.rendition-selected-view .rendition-agent-expanded-head { scroll-margin-top:12px; gap:14px; }
+.rendition-selected-view .rendition-agent-expanded-head h3 { font-size:20px; line-height:1.25; font-weight:850; overflow-wrap:anywhere; }
+.rendition-selected-view .rendition-agent-expanded-head > .button { min-width:126px; min-height:54px; padding:13px 19px; border-radius:11px; font-size:16px; font-weight:850; }
+
+@media (max-width:1100px) {
+  .agency-create-panel .agency-create-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:640px) {
+  .landing { padding:18px 12px; }
+  .landing-card { padding:22px 17px; border-radius:18px; }
+  .landing .landing-role-grid { grid-template-columns:minmax(0,1fr); gap:11px; margin:18px 0 10px; }
+  .landing .landing-role-choice { min-height:84px; padding:15px; border-radius:13px; gap:10px; }
+  .landing .landing-role-copy strong { font-size:18px; }
+  .landing .landing-role-copy small { font-size:13px; }
+  .landing .landing-role-enter { font-size:13px; }
+  .landing .landing-actions { display:grid; gap:10px; margin:20px 0; }
+  .landing .landing-actions .button { min-height:54px; font-size:15px; line-height:1.3; white-space:normal; }
+  .agency-create-panel { padding:17px 14px; border-radius:15px; }
+  .agency-create-panel .panel-head h2 { font-size:20px; line-height:1.25; }
+  .agency-create-panel .panel-head .muted { font-size:14px; line-height:1.4; }
+  .agency-create-panel .agency-create-grid { grid-template-columns:minmax(0,1fr); gap:12px; }
+  .agency-create-panel .agency-create-grid > input,
+  .agency-create-panel .agency-create-grid > select { width:100%; min-height:58px; padding:14px 13px; border-radius:10px; font-size:16px; }
+  .agency-create-panel .agency-create-grid > .button { width:100%; min-height:58px; font-size:16px; }
+  .rendition-mode-toolbar { gap:12px; }
+  .rendition-mode-switch { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .rendition-mode-switch > button { min-height:60px; padding:13px 9px; font-size:16px; line-height:1.2; overflow-wrap:anywhere; }
+  .rendition-selected-header { display:grid; align-items:start; gap:10px; margin-bottom:10px; }
+  .rendition-selected-header h1 { font-size:28px; }
+  .rendition-selected-agent-description { font-size:14px; }
+  .rendition-selected-view .rendition-agent-expanded-head { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; align-items:stretch; }
+  .rendition-selected-view .rendition-agent-expanded-head h3 { font-size:19px; }
+  .rendition-selected-view .rendition-agent-expanded-head > .button { width:100%; min-height:56px; font-size:16px; }
+  .rendition-selected-view .rendition-agent-accordion { margin-top:8px; }
+}
+@media (min-width:641px) and (max-width:1100px) {
+  .landing .landing-role-choice { min-height:92px; padding:16px; }
+}
+
+
+/* Acceso móvil: pantalla completa y controles de lectura cómoda. */
+@media (max-width:640px) {
+  .login-auth-page {
+    display:block !important;
+    width:100%;
+    min-height:100vh;
+    min-height:100svh;
+    padding:0 !important;
+    background:#eaf0f3 !important;
+  }
+  .login-auth-page > .auth-card {
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-start;
+    gap:0;
+    width:100% !important;
+    max-width:none !important;
+    min-height:100vh;
+    min-height:100svh;
+    margin:0 !important;
+    padding:max(18px,env(safe-area-inset-top)) 20px max(24px,env(safe-area-inset-bottom)) !important;
+    border:0 !important;
+    border-radius:0 !important;
+    box-shadow:none !important;
+    backdrop-filter:none !important;
+    background:#fff !important;
+  }
+  .login-auth-page .back-link {
+    display:inline-flex;
+    align-items:center;
+    min-height:42px;
+    margin:0 0 12px !important;
+    font-size:16px !important;
+    font-weight:700;
+  }
+  .login-auth-page .login-agency-brand {
+    width:72px !important;
+    height:72px !important;
+    margin-bottom:8px;
+  }
+  .login-auth-page .login-agency-brand img {
+    width:72px !important;
+    height:72px !important;
+    object-fit:contain;
+  }
+  .login-auth-page .eyebrow {
+    margin:5px 0 8px !important;
+    font-size:13px !important;
+    letter-spacing:.12em;
+  }
+  .login-auth-page .auth-card h1 {
+    margin:8px 0 12px !important;
+    font-size:clamp(30px,8vw,36px) !important;
+    line-height:1.08 !important;
+    letter-spacing:-.025em;
+  }
+  .login-auth-page .auth-card > p.muted {
+    margin:0 0 14px !important;
+    font-size:16px !important;
+    line-height:1.5 !important;
+  }
+  .login-auth-page .form-stack {
+    gap:18px !important;
+    margin-top:12px !important;
+  }
+  .login-auth-page .form-stack label {
+    display:grid;
+    gap:8px !important;
+    font-size:16px !important;
+    font-weight:800 !important;
+    line-height:1.3;
+  }
+  .login-auth-page .form-stack input:not([type="checkbox"]) {
+    width:100%;
+    min-height:60px !important;
+    padding:15px 14px !important;
+    border:1px solid #bdcbd4 !important;
+    border-radius:10px !important;
+    background:#fff !important;
+    color:#203343 !important;
+    font-size:18px !important;
+    line-height:1.35;
+  }
+  .login-auth-page .form-stack input:focus {
+    border-color:#496a80 !important;
+    box-shadow:0 0 0 3px rgba(54,91,115,.15) !important;
+  }
+  .login-auth-page .form-stack > .button {
+    min-height:60px !important;
+    padding:15px 18px !important;
+    border-radius:10px !important;
+    font-size:18px !important;
+    font-weight:850 !important;
+  }
+  .login-auth-page .login-role-selector > p {
+    font-size:16px !important;
+    line-height:1.5;
+  }
+  .login-auth-page .login-role-selector .landing-role-choice {
+    min-height:94px !important;
+    padding:18px !important;
+    border-radius:12px !important;
+  }
+  .login-auth-page .login-role-selector .landing-role-copy strong {
+    font-size:21px !important;
+    line-height:1.2;
+  }
+  .login-auth-page .login-role-selector .landing-role-copy small {
+    font-size:15px !important;
+    line-height:1.45;
+  }
+  .login-auth-page .login-role-selector .landing-role-enter {
+    font-size:15px !important;
+  }
+  .login-auth-page .user-role-pill {
+    font-size:13px !important;
+    padding:7px 10px;
+  }
+  .login-auth-page .login-selected-profile a,
+  .login-auth-page .small-text,
+  .login-auth-page .small-text a {
+    font-size:15px !important;
+    line-height:1.5;
+  }
+  .login-auth-page .message {
+    font-size:15px !important;
+    line-height:1.5;
+  }
+}
+
+
+/* Campo de contraseña con control visible/oculto accesible. */
+.login-password-field {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+  min-width: 0;
+}
+.login-password-field input { min-width: 0; }
+.login-password-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid #d8c99f;
+  border-radius: 9px;
+  background: #f4edcf;
+  color: #64283a;
+  font-size: 14px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.login-password-toggle:hover { background: #eee4bc; border-color: #b79a45; }
+.login-password-toggle:focus-visible { outline: 3px solid rgba(124,51,71,.22); outline-offset: 2px; }
+@media (max-width:640px) {
+  .login-auth-page .login-password-field { gap: 7px; }
+  .login-auth-page .login-password-field input:not([type="checkbox"]) {
+    min-width: 0;
+    min-height: 60px !important;
+    font-size: 18px !important;
+    padding: 15px 12px !important;
+  }
+  .login-auth-page .login-password-toggle {
+    min-width: 82px;
+    min-height: 60px !important;
+    padding: 12px 10px;
+    border-radius: 10px;
+    font-size: 15px !important;
+  }
+}
+
+
+/* Legibilidad real de los selectores de operadores dentro de Rendiciones.
+   Se sobrescriben los tamaños anteriores pequeños con tipografía grande y clara. */
+.rendition-agent-selector .agency-agent-button-list.rendition-agent-code-list {
+  gap: 10px !important;
+}
+.rendition-agent-selector .agency-agent-button-row {
+  align-items: stretch;
+}
+.rendition-agent-selector .agency-agent-code-button,
+.rendition-agent-selector .agency-agent-code-button:hover,
+.rendition-agent-selector .agency-agent-code-button:focus,
+.rendition-agent-selector .agency-agent-code-button:focus-visible {
+  min-height: 60px !important;
+  padding: 13px 16px !important;
+  font-size: 20px !important;
+  font-weight: 950 !important;
+  line-height: 1.15 !important;
+  letter-spacing: .015em !important;
+  text-align: center !important;
+}
+@media (max-width: 700px) {
+  .rendition-agent-selector .agency-agent-button-list.rendition-agent-code-list {
+    gap: 10px !important;
+  }
+  .rendition-agent-selector .agency-agent-code-button,
+  .rendition-agent-selector .agency-agent-code-button:hover,
+  .rendition-agent-selector .agency-agent-code-button:focus,
+  .rendition-agent-selector .agency-agent-code-button:focus-visible {
+    min-height: 62px !important;
+    padding: 13px 12px !important;
+    font-size: 21px !important;
+    font-weight: 950 !important;
+    line-height: 1.12 !important;
+  }
+}
+@media (max-width: 390px) {
+  .rendition-agent-selector .agency-agent-code-button,
+  .rendition-agent-selector .agency-agent-code-button:hover,
+  .rendition-agent-selector .agency-agent-code-button:focus,
+  .rendition-agent-selector .agency-agent-code-button:focus-visible {
+    padding: 12px 9px !important;
+    font-size: 19px !important;
+  }
+}

@@ -1061,3 +1061,8 @@ input[type="reset"],
     overflow-wrap: anywhere;
   }
 }
+
+
+
+/* Input persistente para premios: fuera del diálogo, accesible al click directo del usuario. */
+

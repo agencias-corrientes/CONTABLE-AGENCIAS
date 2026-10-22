@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { createAgencyPrizePayment, deleteAgencyPrizePayment, updateAgencyPrizePayment } from "@/app/(app)/agencias/actions";
 
@@ -64,7 +64,7 @@ export function PrizePaymentPanel({
   recentPayments: PrizePayment[];
 }) {
   const [captureMode, setCaptureMode] = useState<CaptureMode>("manual");
-  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const prizePhotoInputId = useId();
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const [captureChoiceOpen, setCaptureChoiceOpen] = useState(false);
@@ -147,16 +147,6 @@ export function PrizePaymentPanel({
     }
   }
 
-  async function handlePhoto(event: ChangeEvent<HTMLInputElement>) {
-    const input = event.currentTarget;
-    const file = input.files?.[0];
-    input.value = "";
-    if (!file) return;
-    setCaptureChoiceOpen(false);
-    setCameraError("");
-    await processPhotoFile(file);
-  }
-
   async function processPhotoFile(file: File) {
     // Keep QR mode mounted when a QR image is scanned so the decoded payload
     // remains part of the form submission; photo mode remains selected otherwise.
@@ -212,8 +202,9 @@ export function PrizePaymentPanel({
         return;
       }
 
-      // Reutiliza el mismo preprocesamiento del lector oficial de tickets:
-      // imagen ampliada, escala de grises y contraste moderado para papel térmico.
+      // Usar el mismo preprocesamiento de Rendiciones para papel térmico:
+      // ampliar hasta 3000 px, pasar a grises y aumentar moderadamente el contraste.
+      // Si el navegador no puede decodificar el formato, igualmente se intenta leer el original.
       let enhancedImage: HTMLCanvasElement | File = file;
       try {
         const bitmap = await createImageBitmap(file);
@@ -242,7 +233,7 @@ export function PrizePaymentPanel({
           bitmap.close();
         }
       } catch {
-        // Si el navegador no decodifica el formato (p. ej. HEIC), probar el archivo original.
+        // Algunos formatos (p. ej. HEIC) no se decodifican en todos los navegadores.
       }
 
       const { createWorker } = await import("tesseract.js");
@@ -254,14 +245,18 @@ export function PrizePaymentPanel({
         },
       });
       try {
-        const firstResult = await worker.recognize(enhancedImage);
-        let recognized = String(firstResult.data.text ?? "");
-        // Segunda pasada con el original si el texto de la imagen mejorada quedó vacío o muy corto.
-        if (recognized.trim().length < 8 && enhancedImage !== file) {
-          const originalResult = await worker.recognize(file);
-          if (String(originalResult.data.text ?? "").trim().length > recognized.trim().length) {
-            recognized = String(originalResult.data.text ?? "");
-          }
+        // Igual que el lector de Rendiciones: la primera pasada usa la foto original.
+        const originalResult = await worker.recognize(file);
+        let recognized = String(originalResult.data.text ?? "");
+        // La segunda pasada usa la imagen ampliada y mejorada. Elegimos la que
+        // devuelve más texto útil, sin aplicar el parser de FIN DE JORNADA a un premio.
+        if (enhancedImage !== file) {
+          const enhancedResult = await worker.recognize(enhancedImage);
+          const enhancedText = String(enhancedResult.data.text ?? "");
+          const usefulScore = (value: string) =>
+            value.replace(/[^A-Z0-9$.,]/gi, "").length +
+            (value.match(/\d/g)?.length ?? 0) * 2;
+          if (usefulScore(enhancedText) > usefulScore(recognized)) recognized = enhancedText;
         }
         const text = recognized.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
         const couponPatterns = [
@@ -357,10 +352,10 @@ export function PrizePaymentPanel({
       <>
         {captureChoiceOpen && (
           <div className="ticket-capture-dialog-backdrop" role="presentation" onClick={() => setCaptureChoiceOpen(false)}>
-            <section className="ticket-capture-dialog" role="dialog" aria-modal="true" aria-labelledby="prize-capture-title" onClick={(event) => event.stopPropagation()}>
+            <section className="ticket-capture-dialog" role="dialog" aria-modal="true" aria-labelledby={prizePhotoInputId + "-capture-title"} onClick={(event) => event.stopPropagation()}>
               <div className="ticket-capture-dialog-heading">
-                <h3 id="prize-capture-title">Elegí cómo cargar el comprobante del premio</h3>
-                <p>La foto tomada con cámara y los archivos pasan por el mismo lector de cupón.</p>
+                <h3 id={prizePhotoInputId + "-capture-title"}>Elegí cómo cargar el ticket</h3>
+                <p>La foto tomada con cámara y los archivos pasan por el mismo lector OCR.</p>
               </div>
               {cameraError && <p className="ticket-read-error" role="alert">{cameraError}</p>}
               {cameraStarting && <p className="ticket-read-notice" role="status">Solicitando acceso a la cámara…</p>}
@@ -368,12 +363,10 @@ export function PrizePaymentPanel({
                 <button type="button" className="button primary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || readingPhoto} onClick={() => void startPrizeCamera("user")}>Usar cámara frontal</button>
                 <button type="button" className="button ghost" disabled={readingPhoto} onClick={() => {
+                  setCaptureChoiceOpen(false);
                   setCameraError("");
-                  const input = photoInputRef.current;
-                  if (input) {
-                    input.removeAttribute("capture");
-                    input.click();
-                  }
+                  const input = document.getElementById(prizePhotoInputId) as HTMLInputElement | null;
+                  input?.click();
                 }}>Elegir foto o archivo</button>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
@@ -429,35 +422,29 @@ export function PrizePaymentPanel({
           <input type="hidden" name="return_agent_id" value={returnAgentId} />
           <input type="hidden" name="capture_method" value={captureMode} />
           <div className="prize-capture-options" role="group" aria-label="Método para identificar el cupón">
-            <button type="button" className={captureMode === "manual" ? "button primary" : "button ghost"} aria-pressed={captureMode === "manual"} onClick={() => { setCaptureMode("manual"); setScanMessage(""); }}>Número de cupón</button>
-            <button type="button" className={captureMode === "photo" ? "button primary" : "button ghost"} aria-pressed={captureMode === "photo"} onClick={() => { setCaptureMode("photo"); setScanMessage(""); }}>Foto del cupón</button>
-            <button type="button" className={captureMode === "qr" ? "button primary" : "button ghost"} aria-pressed={captureMode === "qr"} onClick={() => { setCaptureMode("qr"); setScanMessage(""); }}>QR</button>
+            <button type="button" className={captureMode === "photo" ? "button primary" : "button ghost"} aria-pressed={captureMode === "photo"} onClick={() => { setCaptureMode("photo"); setScanMessage(""); setCameraError(""); setCaptureChoiceOpen(true); }}>Foto automático</button>
+            <button type="button" className={captureMode === "manual" ? "button primary" : "button ghost"} aria-pressed={captureMode === "manual"} onClick={() => { setCaptureMode("manual"); setScanMessage(""); }}>Carga manual</button>
           </div>
 
           {(captureMode === "photo" || captureMode === "qr") && (
             <div className="ticket-capture-panel prize-ticket-capture-panel">
-              <div className="ticket-photo-picker prize-photo-picker">
-                <span className="ticket-photo-icon" aria-hidden="true">▧</span>
-                <strong>{captureMode === "qr" ? "Comprobante del QR" : "Comprobante del premio"}</strong>
-                <span>Seleccioná una foto guardada en el teléfono o sacá una nueva.</span>
-                <button
-                  type="button"
-                  className="ticket-photo-picker-cta"
-                  disabled={readingPhoto}
-                  onClick={() => { setCameraError(""); setCaptureChoiceOpen(true); }}
-                >Elegir foto o archivo</button>
-                <input
-                  ref={photoInputRef}
-                  className="prize-photo-file-input ticket-photo-operational-input"
-                  type="file"
-                  name="prize_photo"
-                  accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
-                  aria-label="Elegir foto del comprobante del premio"
-                  onChange={handlePhoto}
-                  disabled={readingPhoto}
-                />
-                <small className="muted">La foto pasa por el lector de cupón. Revisá el número detectado y el importe antes de registrar el premio.</small>
-              </div>
+              <p className="muted small-text">La foto pasa por el lector de cupón. Revisá el número detectado y el importe antes de registrar el premio.</p>
+              <input
+                id={prizePhotoInputId}
+                className="ticket-photo-native-input ticket-photo-operational-input"
+                type="file"
+                aria-label="Elegir foto o archivo del premio"
+                disabled={readingPhoto}
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  if (file) {
+                    setCaptureChoiceOpen(false);
+                    setCameraError("");
+                    void processPhotoFile(file);
+                  }
+                  event.currentTarget.value = "";
+                }}
+              />
               {renderPrizeCaptureDialogs()}
             </div>
           )}

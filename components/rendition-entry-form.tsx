@@ -1602,7 +1602,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
-          <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => setMode("photo")}>Foto (automático)</button>
+          <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => { setMode("photo"); setCameraError(""); setTicketCaptureTarget("main"); setTicketCaptureChoiceOpen(true); }}>Foto automático</button>
           <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
             setMode("manual");
             if (!receiptData && !initialRendition) {
@@ -1661,27 +1661,19 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       {mode === "photo" && (
         <div className="ticket-capture-panel">
-          <div className="ticket-photo-picker">
-            <span className="ticket-photo-icon" aria-hidden="true">▧</span>
-            <strong>Comprobante del ticket</strong>
-            <span>Seleccioná una foto guardada en el teléfono o sacá una nueva.</span>
-            <button type="button" className="ticket-photo-picker-cta" disabled={busy} onClick={() => { setCameraError(""); setTicketCaptureTarget("main"); setTicketCaptureChoiceOpen(true); }}>Elegir foto o archivo</button>
-            <input
-              id={ticketPhotoInputId}
-              className="ticket-photo-native-input ticket-photo-operational-input"
-              type="file"
-              name="ticket_photo"
-              aria-label="Elegir foto o archivo del comprobante del ticket"
-              disabled={busy}
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                if (file) {
-                  processSelectedTicketFile(file);
-                }
-                event.currentTarget.value = "";
-              }}
-            />
-          </div>
+          <input
+            id={ticketPhotoInputId}
+            className="ticket-photo-native-input ticket-photo-operational-input"
+            type="file"
+            name="ticket_photo"
+            aria-label="Elegir foto o archivo del ticket"
+            disabled={busy}
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              if (file) processSelectedTicketFile(file);
+              event.currentTarget.value = "";
+            }}
+          />
           {renderTicketCaptureDialogs()}
           {batchMode && (
             <div className="weekly-ticket-batch-upload-help">
@@ -1903,7 +1895,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         )}
       </div>
 
-      <label className="ticket-input-block"><span>Número(s) de ticket / cupón</span><textarea name="ticket_numbers" rows={2} value={ticketNumbers} onChange={(event) => setTicketNumbers(event.target.value)} readOnly={batchMode} placeholder={batchMode ? "El detalle de cada cupón queda en el lote." : "Se completa desde la lectura o ingresalo manualmente."} /></label>
+      <input type="hidden" name="ticket_numbers" value={ticketNumbers} />
       <label className="ticket-input-block"><span>Observaciones</span><textarea name="notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Opcional." /></label>
       <div className="rendition-settlement-bar">
         <div className="rendition-settlement-values">
