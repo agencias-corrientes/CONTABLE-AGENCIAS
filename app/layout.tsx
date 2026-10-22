@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   description: siteDescription,
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: brandLogo, type: "image/webp" }],
-    shortcut: [{ url: brandLogo, type: "image/webp" }],
-    apple: [{ url: brandLogo, type: "image/webp" }],
+    icon: [{ url: "/logo-app-redondeado.svg", type: "image/svg+xml" }],
+    shortcut: [{ url: "/logo-app-redondeado.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/logo-app-redondeado.svg", type: "image/svg+xml" }],
   },
   appleWebApp: {
     capable: true,
