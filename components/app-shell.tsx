@@ -763,6 +763,107 @@ export function AppShell({
           }
         }
 
+
+        /* Force global overrides: the sidebar is rendered inside styled-jsx. */
+        :global(.app-shell .sidebar) { background:#fff !important; }
+        :global(.app-shell .sidebar .nav-list) {
+          display:grid !important;
+          grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+          grid-auto-rows:minmax(112px,auto) !important;
+          grid-template-rows:none !important;
+          gap:12px !important;
+          align-items:stretch !important;
+          margin:16px 0 !important;
+          padding:0 !important;
+        }
+        :global(.app-shell .sidebar .nav-list .nav-item),
+        :global(.app-shell .sidebar .nav-list .nav-item:hover),
+        :global(.app-shell .sidebar .nav-list .nav-item:focus),
+        :global(.app-shell .sidebar .nav-list .nav-item:active),
+        :global(.app-shell .sidebar .nav-list .nav-item:focus-visible) {
+          display:flex !important;
+          width:100% !important;
+          min-width:0 !important;
+          min-height:112px !important;
+          height:100% !important;
+          box-sizing:border-box !important;
+          align-items:center !important;
+          justify-content:center !important;
+          padding:14px 8px !important;
+          margin:0 !important;
+          border:2px solid #632538 !important;
+          border-bottom:5px solid #4a1b2a !important;
+          border-radius:8px !important;
+          background:#7c3347 !important;
+          background-image:none !important;
+          color:#fff !important;
+          font-size:clamp(21px,5.2vw,25px) !important;
+          font-weight:900 !important;
+          line-height:1.16 !important;
+          text-align:center !important;
+          text-decoration:none !important;
+          box-shadow:0 3px 0 rgba(50,15,25,.2) !important;
+          transform:none !important;
+          outline:none !important;
+          -webkit-tap-highlight-color:transparent !important;
+        }
+        :global(.app-shell .sidebar .nav-list .nav-item .nav-label) {
+          display:block !important;
+          width:100% !important;
+          flex:1 1 100% !important;
+          color:inherit !important;
+          font-size:inherit !important;
+          font-weight:inherit !important;
+          line-height:inherit !important;
+          text-align:center !important;
+          white-space:normal !important;
+          overflow-wrap:normal !important;
+          word-break:normal !important;
+        }
+        :global(.app-shell .sidebar .nav-list .nav-item.active),
+        :global(.app-shell .sidebar .nav-list .nav-item.active:hover),
+        :global(.app-shell .sidebar .nav-list .nav-item.active:focus),
+        :global(.app-shell .sidebar .nav-list .nav-item.active:active) {
+          background:#ffe58a !important;
+          background-image:none !important;
+          color:#3f1825 !important;
+          border-color:#8f6d26 !important;
+          border-bottom-color:#632538 !important;
+          box-shadow:0 3px 0 rgba(50,15,25,.15) !important;
+        }
+        :global(.app-shell .sidebar .nav-list .nav-item:not(.active):hover),
+        :global(.app-shell .sidebar .nav-list .nav-item:not(.active):focus),
+        :global(.app-shell .sidebar .nav-list .nav-item:not(.active):active) {
+          background:#7c3347 !important;
+          color:#fff !important;
+        }
+        :global(.app-shell .sidebar .nav-list .nav-item .nav-icon) { display:none !important; }
+        @media (min-width:1001px) {
+          :global(.app-shell .sidebar .nav-list) {
+            grid-template-columns:minmax(0,1fr) !important;
+            grid-auto-rows:minmax(70px,auto) !important;
+          }
+          :global(.app-shell .sidebar .nav-list .nav-item) {
+            min-height:70px !important;
+            font-size:21px !important;
+          }
+        }
+        @media (max-width:1000px) {
+          :global(.app-shell .sidebar) {
+            background:#fff !important;
+            border-right:0 !important;
+            border-bottom:4px solid #7c3347 !important;
+          }
+          :global(.app-shell .sidebar .nav-list::before) { display:none !important; }
+          :global(.app-shell .sidebar .nav-list .nav-item),
+          :global(.app-shell .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell .sidebar .nav-list .nav-item:active) {
+            min-height:112px !important;
+            font-size:clamp(21px,5.2vw,25px) !important;
+          }
+        }
+
       `}</style>
     </div>
   );
