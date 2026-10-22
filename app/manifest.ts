@@ -13,7 +13,7 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#702039",
     icons: [
       {
-        src: "/logo-agencias-corrientes.webp",
+        src: "/logo-agencias-corrientes-v2.webp",
         sizes: "320x320",
         type: "image/webp",
         purpose: "any",
