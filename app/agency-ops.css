@@ -1897,3 +1897,49 @@ input[type="time"]{font-variant-numeric:tabular-nums}
     font-size: 15px !important;
   }
 }
+
+
+/* Legibilidad real de los selectores de operadores dentro de Rendiciones.
+   Se sobrescriben los tamaños anteriores pequeños con tipografía grande y clara. */
+.rendition-agent-selector .agency-agent-button-list.rendition-agent-code-list {
+  gap: 10px !important;
+}
+.rendition-agent-selector .agency-agent-button-row {
+  align-items: stretch;
+}
+.rendition-agent-selector .agency-agent-code-button,
+.rendition-agent-selector .agency-agent-code-button:hover,
+.rendition-agent-selector .agency-agent-code-button:focus,
+.rendition-agent-selector .agency-agent-code-button:focus-visible {
+  min-height: 60px !important;
+  padding: 13px 16px !important;
+  font-size: 20px !important;
+  font-weight: 950 !important;
+  line-height: 1.15 !important;
+  letter-spacing: .015em !important;
+  text-align: center !important;
+}
+@media (max-width: 700px) {
+  .rendition-agent-selector .agency-agent-button-list.rendition-agent-code-list {
+    gap: 10px !important;
+  }
+  .rendition-agent-selector .agency-agent-code-button,
+  .rendition-agent-selector .agency-agent-code-button:hover,
+  .rendition-agent-selector .agency-agent-code-button:focus,
+  .rendition-agent-selector .agency-agent-code-button:focus-visible {
+    min-height: 62px !important;
+    padding: 13px 12px !important;
+    font-size: 21px !important;
+    font-weight: 950 !important;
+    line-height: 1.12 !important;
+  }
+}
+@media (max-width: 390px) {
+  .rendition-agent-selector .agency-agent-code-button,
+  .rendition-agent-selector .agency-agent-code-button:hover,
+  .rendition-agent-selector .agency-agent-code-button:focus,
+  .rendition-agent-selector .agency-agent-code-button:focus-visible {
+    padding: 12px 9px !important;
+    font-size: 19px !important;
+  }
+}
