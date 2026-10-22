@@ -111,7 +111,9 @@ function LoginForm() {
       return;
     }
 
-    router.push("/pagos?menu=1");
+    // Reemplazar el historial de acceso evita que el botón Atrás vuelva al formulario de login
+    // después de entrar al panel, tanto en el navegador como en el acceso instalado (PWA).
+    router.replace("/pagos?menu=1");
     router.refresh();
   }
 
