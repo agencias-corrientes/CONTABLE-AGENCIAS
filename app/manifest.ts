@@ -13,15 +13,9 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#702039",
     icons: [
       {
-        src: "/logo-agencias-quiniela.svg",
+        src: "/logo-agencias-corrientes-pwa.svg?v=20261022",
         sizes: "any",
         type: "image/svg+xml",
-        purpose: "any",
-      },
-      {
-        src: "/logo-agencias-quiniela.webp",
-        sizes: "512x512",
-        type: "image/webp",
         purpose: "any",
       },
     ],
