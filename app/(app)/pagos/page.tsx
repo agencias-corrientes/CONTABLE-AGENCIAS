@@ -9,6 +9,7 @@ import { RenditionDeadlineAlert } from "@/components/rendition-deadline-alert";
 import { RenditionEntryForm } from "@/components/rendition-entry-form";
 import { TicketClosureReceipt } from "@/components/ticket-closure-receipt";
 import { PrizePaymentPanel } from "@/components/prize-payment-panel";
+import { AgentOpenLink } from "@/components/agent-open-link";
 import { receiveAgencyRendition, voidAgencyRendition, correctAgencyDailyRenditionAmount, annulAgencyDailyRendition, setAgencyDrawRenditionStatus, setAgencyDailyRenditionStatus, sendAgencyBackupManually } from "../agencias/actions";
 
 type GameAmount = {
@@ -726,11 +727,11 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             <div className="agency-agent-button-list rendition-agent-code-list">
               {filteredActiveAgents.map((agent) => (
                 <div key={agent.id} className={"agency-agent-button-row " + (agent.kind === "subagent" ? "agency-subagent" : "agency-ambulant")}>
-                  <Link href={"/pagos?agent=" + agent.id} className={"agency-agent-code-button" + (String(agent.id) === selectedAgentId ? " is-selected" : "")}
-                    aria-current={String(agent.id) === selectedAgentId ? "page" : undefined}
-                    aria-label={"Abrir rendición de " + (agent.kind === "subagent" ? "subagente " : "ambulante ") + agent.code}>
+                  <AgentOpenLink href={"/pagos?agent=" + agent.id} className={"agency-agent-code-button" + (String(agent.id) === selectedAgentId ? " is-selected" : "")}
+                    ariaLabel={"Abrir rendición de " + (agent.kind === "subagent" ? "subagente " : "ambulante ") + agent.code}
+                    title={"Abrir rendición de " + (agent.kind === "subagent" ? "subagente " : "ambulante ") + agent.code}>
                     {agent.code || "SIN CÓDIGO"}
-                  </Link>
+                  </AgentOpenLink>
                 </div>
               ))}
               {!filteredActiveAgents.length && (
