@@ -53,12 +53,21 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const canEditRenditions = Boolean(permissions?.can_edit_renditions);
   const canDeleteRenditions = Boolean(permissions?.can_delete_renditions);
   const canRegisterPayments = Boolean(permissions?.can_register_payments);
-  const { data: recentPrizePaymentRows } = await supabase
+  const recentPrizePaymentsQuery = supabase
     .from("agency_prize_payments")
     .select("id,coupon_number,game_name,prize_amount,payment_date,capture_method,notes,included_in_ticket_ocr")
     .eq("organization_id", activeOrganization.id)
     .order("created_at", { ascending: false })
     .limit(25);
+
+  const [{ data: recentPrizePaymentRows }, { data: operationalSettings }, { data: agents }, { data: gameTypes }, { data: agentCommissions }, { data: commissionDefaults }] = await Promise.all([
+    recentPrizePaymentsQuery,
+    supabase.from("agency_operational_settings").select("rendition_cutoff_time").eq("organization_id", activeOrganization.id).maybeSingle(),
+    supabase.from("agency_agents").select("id,kind,full_name,code,is_active,phone,rendition_policy,rendition_periods,rendition_frequency,rendition_weekdays").eq("organization_id", activeOrganization.id).order("kind").order("code"),
+    supabase.from("agency_game_types").select("id,name,category,enabled").eq("organization_id", activeOrganization.id).order("sort_order").order("name"),
+    supabase.from("agency_agent_game_commissions").select("agent_id,game_type_id,commission_percent").eq("organization_id", activeOrganization.id),
+    supabase.from("agency_game_commission_defaults").select("game_type_id,commission_percent").eq("organization_id", activeOrganization.id),
+  ]);
   const recentPrizePayments = (recentPrizePaymentRows ?? []).map((row: any) => ({
     id: String(row.id),
     coupon_number: String(row.coupon_number),
@@ -69,14 +78,6 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     notes: row.notes ? String(row.notes) : null,
     included_in_ticket_ocr: Boolean(row.included_in_ticket_ocr),
   }));
-
-  const [{ data: operationalSettings }, { data: agents }, { data: gameTypes }, { data: agentCommissions }, { data: commissionDefaults }] = await Promise.all([
-    supabase.from("agency_operational_settings").select("rendition_cutoff_time").eq("organization_id", activeOrganization.id).maybeSingle(),
-    supabase.from("agency_agents").select("id,kind,full_name,code,is_active,phone,rendition_policy,rendition_periods,rendition_frequency,rendition_weekdays").eq("organization_id", activeOrganization.id).order("kind").order("code"),
-    supabase.from("agency_game_types").select("id,name,category,enabled").eq("organization_id", activeOrganization.id).order("sort_order").order("name"),
-    supabase.from("agency_agent_game_commissions").select("agent_id,game_type_id,commission_percent").eq("organization_id", activeOrganization.id),
-    supabase.from("agency_game_commission_defaults").select("game_type_id,commission_percent").eq("organization_id", activeOrganization.id),
-  ]);
   const cutoffTime = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);
   const today = agencyBusinessDateForCutoff(cutoffTime);
   const { data: todayPrizePaymentRows, error: todayPrizePaymentError } = await supabase
