@@ -5,6 +5,11 @@
 
 begin;
 
+-- Secure future functions created by the migration owner by default. New RPCs must
+-- explicitly grant EXECUTE to the roles that actually need them.
+alter default privileges for role postgres in schema public
+  revoke execute on functions from public, anon, authenticated;
+
 revoke execute on function public.delete_platform_agency(uuid, text, text) from public, anon;
 revoke execute on function public.delete_platform_user(uuid, text, text) from public, anon;
 revoke execute on function public.list_platform_agencies_and_users_v2() from public, anon;
