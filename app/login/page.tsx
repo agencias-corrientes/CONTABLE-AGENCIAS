@@ -129,6 +129,7 @@ function LoginForm() {
           <span className="landing-role-enter">Ingresar →</span>
         </Link>
         <p className="muted small-text">¿Sos titular y todavía no tenés cuenta? <Link href="/registro">Crear cuenta de propietario</Link></p>
+        <InstallAppButton />
       </div>
     );
   }
