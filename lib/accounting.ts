@@ -1,7 +1,8 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export async function getCurrentContext() {
+export const getCurrentContext = cache(async function getCurrentContext() {
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getClaims();
   const claims = authData?.claims;
@@ -28,19 +29,31 @@ export async function getCurrentContext() {
   if (memberError) throw new Error(memberError.message);
 
   if (!member) {
-    return { supabase, userId, userEmail, member: null, organization: null };
+    return { supabase, userId, userEmail, member: null, organization: null, isPlatformAdmin: false };
   }
 
-  const { data: organization, error: organizationError } = await supabase
-    .from("organizations")
-    .select("id, name, agency_code, legal_name, tax_id, currency_code, timezone")
-    .eq("id", member.organization_id)
-    .single();
+  // La organización y el permiso de administración central no dependen entre sí.
+  // Consultarlos juntos evita sumar otra ida y vuelta al servidor en cada navegación.
+  const [organizationResult, platformAdminResult] = await Promise.all([
+    supabase
+      .from("organizations")
+      .select("id, name, agency_code, legal_name, tax_id, currency_code, timezone")
+      .eq("id", member.organization_id)
+      .single(),
+    (supabase as any).rpc("is_platform_admin"),
+  ]);
 
-  if (organizationError) throw new Error(organizationError.message);
+  if (organizationResult.error) throw new Error(organizationResult.error.message);
 
-  return { supabase, userId, userEmail, member, organization };
-}
+  return {
+    supabase,
+    userId,
+    userEmail,
+    member,
+    organization: organizationResult.data,
+    isPlatformAdmin: platformAdminResult.data === true,
+  };
+});
 
 export function money(value: number | string | null | undefined, currency = "ARS") {
   return new Intl.NumberFormat("es-AR", {
