@@ -58,6 +58,34 @@ export function AppShell({
       document.querySelector(".content-area")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, [pathname, searchParamsKey]);
+  useEffect(() => {
+    function handleBackNavigation(event: PopStateEvent) {
+      const destination = new URL(window.location.href);
+      const isLeavingToAccessScreen = destination.pathname === "/" || destination.pathname === "/login";
+      if (!isLeavingToAccessScreen) return;
+
+      // Si Atrás intenta sacar al usuario del panel hacia el acceso, confirmar antes.
+      event.stopImmediatePropagation();
+      const confirmed = window.confirm("¿Querés cerrar sesión y salir de la agencia? Elegí Cancelar para volver al panel.");
+      if (!confirmed) {
+        window.history.pushState(window.history.state, "", window.location.href === destination.href ? previousUrl : window.location.href);
+        return;
+      }
+
+      void (async () => {
+        const supabase = createClient();
+        await supabase.auth.signOut();
+        router.replace("/");
+        router.refresh();
+      })();
+    }
+
+    // Guardar la URL actual para poder permanecer en el panel si se cancela.
+    const previousUrl = window.location.href;
+    window.addEventListener("popstate", handleBackNavigation, true);
+    return () => window.removeEventListener("popstate", handleBackNavigation, true);
+  }, [pathname, router]);
+
   const isOwner = userRole === "owner";
   const visibleNav = nav.filter(([slug]) => isOwner || !["juegos", "equipo", "configuracion"].includes(slug));
   const activeNavSlug = visibleNav
