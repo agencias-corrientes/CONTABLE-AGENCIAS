@@ -13,7 +13,7 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#702039",
     icons: [
       {
-        src: "/logo-agencias-corrientes-pwa.svg?v=20261022",
+        src: "/logo-app-redondeado.svg",
         sizes: "any",
         type: "image/svg+xml",
         purpose: "any",
