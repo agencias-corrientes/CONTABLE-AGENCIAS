@@ -1033,12 +1033,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                   setCameraError("");
                   const inputId = ticketCaptureTarget === "existing" ? existingTicketPhotoInputId : ticketPhotoInputId;
                   const input = document.getElementById(inputId) as HTMLInputElement | null;
-                  if (input) {
-                    try {
-                      if (typeof input.showPicker === "function") input.showPicker();
-                      else input.click();
-                    } catch { input.click(); }
-                  }
+                  input?.click();
                 }}>Elegir foto o archivo</button>
               </div>
               <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
@@ -1607,7 +1602,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
-          <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => { setMode("photo"); setCameraError(""); setTicketCaptureTarget("main"); setTicketCaptureChoiceOpen(true); }}>Elegir foto o archivo</button>
+          <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => { setMode("photo"); setCameraError(""); setTicketCaptureTarget("main"); setTicketCaptureChoiceOpen(true); }}>Foto automático</button>
           <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
             setMode("manual");
             if (!receiptData && !initialRendition) {
@@ -1670,7 +1665,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             id={ticketPhotoInputId}
             className="ticket-photo-native-input ticket-photo-operational-input"
             type="file"
-            accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
             name="ticket_photo"
             aria-label="Elegir foto o archivo del ticket"
             disabled={busy}
