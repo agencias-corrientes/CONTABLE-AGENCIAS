@@ -1066,3 +1066,21 @@ input[type="reset"],
 
 /* Input persistente para premios: fuera del diálogo, accesible al click directo del usuario. */
 
+
+
+/* La rendición faltante se señala en el propio botón del subagente/ambulante. */
+.agency-agent-code-button.is-rendition-missing {
+  animation: rendition-missing-blink 1s steps(2, start) infinite;
+  outline: 3px solid #d1a928;
+  outline-offset: 2px;
+}
+@keyframes rendition-missing-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .42; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agency-agent-code-button.is-rendition-missing {
+    animation: none;
+    box-shadow: 0 0 0 4px rgba(209, 169, 40, .38);
+  }
+}
