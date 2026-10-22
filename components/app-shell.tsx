@@ -621,6 +621,148 @@ export function AppShell({
             line-height: 1.2 !important;
           }
         }
+
+        /* Menú principal: blanco, botones rectangulares y selección única. */
+        .sidebar {
+          background: #ffffff !important;
+          color: #241d20 !important;
+          border-right: 3px solid #7c3347 !important;
+        }
+        .sidebar-brand strong { color: #64283a !important; }
+        .sidebar .brand-subtitle { color: #5d5154 !important; }
+        .sidebar .nav-list {
+          gap: 12px !important;
+        }
+        .sidebar .nav-list .nav-item,
+        .sidebar .nav-list .nav-item:hover,
+        .sidebar .nav-list .nav-item:focus,
+        .sidebar .nav-list .nav-item:focus-visible,
+        .sidebar .nav-list .nav-item:active,
+        .sidebar .nav-list .nav-item:focus:not(.active),
+        .sidebar .nav-list .nav-item:hover:not(.active),
+        .sidebar .nav-list .nav-item:active:not(.active) {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          min-width: 0 !important;
+          min-height: 68px !important;
+          height: auto !important;
+          padding: 15px 12px !important;
+          border: 2px solid #6e293d !important;
+          border-bottom: 4px solid #4b1b2a !important;
+          border-radius: 4px !important;
+          background: #7c3347 !important;
+          background-image: none !important;
+          color: #ffffff !important;
+          font-size: 21px !important;
+          font-weight: 900 !important;
+          line-height: 1.2 !important;
+          letter-spacing: 0 !important;
+          text-align: center !important;
+          text-decoration: none !important;
+          box-shadow: 0 3px 0 rgba(65,22,35,.18) !important;
+          transform: none !important;
+          outline: none !important;
+          -webkit-tap-highlight-color: transparent !important;
+        }
+        .sidebar .nav-list .nav-item .nav-label {
+          display: block !important;
+          flex: 1 1 auto !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          color: inherit !important;
+          text-align: center !important;
+          overflow-wrap: anywhere !important;
+        }
+        .sidebar .nav-list .nav-item.active,
+        .sidebar .nav-list .nav-item.active:hover,
+        .sidebar .nav-list .nav-item.active:focus,
+        .sidebar .nav-list .nav-item.active:focus-visible,
+        .sidebar .nav-list .nav-item.active:active {
+          background: #ffe58a !important;
+          background-image: none !important;
+          color: #3f1825 !important;
+          border: 2px solid #9b7830 !important;
+          border-bottom: 4px solid #7c3347 !important;
+          box-shadow: 0 3px 0 rgba(65,22,35,.14) !important;
+          font-weight: 950 !important;
+          transform: none !important;
+          outline: none !important;
+        }
+        .sidebar .nav-list .nav-item .nav-icon { display: none !important; }
+        .sidebar .sidebar-footer .button {
+          background: #ffffff !important;
+          color: #64283a !important;
+          border: 1px solid #c9bfc2 !important;
+          box-shadow: none !important;
+        }
+        @media (min-width: 1001px) {
+          .sidebar .nav-list .nav-item {
+            min-height: 66px !important;
+            padding: 15px 12px !important;
+            font-size: 21px !important;
+          }
+        }
+        @media (max-width: 1000px) {
+          .sidebar {
+            background: #ffffff !important;
+            border-right: 0 !important;
+            border-bottom: 4px solid #7c3347 !important;
+          }
+          .sidebar .nav-list {
+            grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+            gap: 12px !important;
+            margin: 16px 0 12px !important;
+          }
+          .sidebar .nav-list .nav-item,
+          .sidebar .nav-list .nav-item:hover,
+          .sidebar .nav-list .nav-item:focus,
+          .sidebar .nav-list .nav-item:focus-visible,
+          .sidebar .nav-list .nav-item:active,
+          .sidebar .nav-list .nav-item:focus:not(.active),
+          .sidebar .nav-list .nav-item:hover:not(.active),
+          .sidebar .nav-list .nav-item:active:not(.active) {
+            min-height: 100px !important;
+            padding: 16px 10px !important;
+            font-size: 23px !important;
+            font-weight: 950 !important;
+            line-height: 1.15 !important;
+          }
+          .sidebar .nav-list .nav-item.active,
+          .sidebar .nav-list .nav-item.active:hover,
+          .sidebar .nav-list .nav-item.active:focus,
+          .sidebar .nav-list .nav-item.active:focus-visible,
+          .sidebar .nav-list .nav-item.active:active {
+            background: #ffe58a !important;
+            color: #3f1825 !important;
+          }
+          .sidebar .sidebar-footer .button {
+            background: #ffffff !important;
+            color: #64283a !important;
+          }
+        }
+        @media (max-width: 390px) {
+          .sidebar .nav-list .nav-item,
+          .sidebar .nav-list .nav-item:hover,
+          .sidebar .nav-list .nav-item:focus,
+          .sidebar .nav-list .nav-item:focus-visible,
+          .sidebar .nav-list .nav-item:active {
+            font-size: 21px !important;
+            padding: 14px 8px !important;
+          }
+        }
+        @media (max-height: 700px) and (max-width: 1000px) {
+          .sidebar .nav-list .nav-item,
+          .sidebar .nav-list .nav-item:hover,
+          .sidebar .nav-list .nav-item:focus,
+          .sidebar .nav-list .nav-item:focus-visible,
+          .sidebar .nav-list .nav-item:active {
+            min-height: 88px !important;
+            font-size: 21px !important;
+            padding: 12px 8px !important;
+          }
+        }
+
       `}</style>
     </div>
   );
