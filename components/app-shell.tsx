@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -30,13 +30,20 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const searchParamsKey = searchParams.toString();
   const officialAgencyNumber = organizationName.match(/\b(\d{3})\b/)?.[1] ?? null;
 
   useEffect(() => {
-    if (window.matchMedia("(max-width: 1000px)").matches) {
-      document.querySelector(".content-area")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [pathname]);
+    if (!window.matchMedia("(max-width: 1000px)").matches) return;
+    const hasAgentSelection = new URLSearchParams(searchParamsKey).has("agent");
+    window.requestAnimationFrame(() => {
+      const target = hasAgentSelection
+        ? document.querySelector(".rendition-selected-view .rendition-agent-expanded-head") ?? document.querySelector(".rendition-selected-header")
+        : document.querySelector(".content-area");
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [pathname, searchParamsKey]);
   const isOwner = userRole === "owner";
   const visibleNav = nav.filter(([slug]) => isOwner || !["juegos", "equipo", "configuracion"].includes(slug));
 
@@ -60,7 +67,7 @@ export function AppShell({
           </div>
         </div>
         <nav className="nav-list">
-          {visibleNav.map(([slug, label]) => {
+          {visibleNav.map(([slug, label, icon]) => {
             const href = `/${slug}`;
             return (
               <Link
@@ -73,7 +80,8 @@ export function AppShell({
                 } : undefined}
                 className={pathname.startsWith(href) ? "nav-item active" : "nav-item"}
               >
-                {label}
+                <span className="nav-icon" aria-hidden="true">{icon}</span>
+                <span className="nav-label">{label}</span>
               </Link>
             );
           })}
@@ -103,7 +111,7 @@ export function AppShell({
         .sidebar .nav-list .nav-item.active:hover { background: #fff !important; color: #64283a !important; }
         .sidebar .user-role-pill { font-size: 11px; font-weight: 800; letter-spacing: .025em; }
         .sidebar .user-line { font-size: 11px; line-height: 1.4; }
-        .sidebar .central-return-button { display: flex; margin-top: 6px; margin-bottom: 22px; min-height: 48px; padding: 9px 10px; border-color: rgba(255,255,255,.35); line-height: 1.25; white-space: normal; text-align: center; font-size: 12px; font-weight: 800; }
+        .sidebar .central-return-button { display: flex; margin-top: 6px; margin-bottom: 30px; min-height: 50px; padding: 9px 10px; border-color: rgba(255,255,255,.35); line-height: 1.25; white-space: normal; text-align: center; font-size: 12px; font-weight: 800; }
         .sidebar .sidebar-footer .button { min-height: 40px; border-color: rgba(255,255,255,.3); font-size: 12px; font-weight: 750; }
         @media (max-width: 1000px) {
           .sidebar { padding: 15px 12px 13px; }
@@ -209,25 +217,58 @@ export function AppShell({
           .sidebar .nav-list .nav-item:nth-child(4) { order: 5; }
           .sidebar .nav-list .nav-item:nth-child(6) { order: 6; }
           .sidebar .nav-list .nav-item {
+            display: flex;
             min-width: 0;
-            min-height: 58px;
-            padding: 10px 11px;
-            border-radius: 10px;
-            font-size: 13.5px;
-            line-height: 1.22;
+            min-height: 66px;
+            padding: 11px 10px;
+            gap: 9px;
+            align-items: center;
+            justify-content: flex-start;
+            border: 1px solid #ddcda0;
+            border-bottom: 3px solid #b79a45;
+            border-radius: 13px;
+            background: linear-gradient(180deg,#fffdf5 0%,#f1e6c4 100%);
+            color: #59273a;
+            font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+            font-size: 16px;
+            line-height: 1.2;
             font-weight: 800;
             text-align: left;
-            justify-content: flex-start;
             overflow-wrap: anywhere;
-            box-shadow: 0 2px 0 rgba(48,12,23,.2), 0 4px 8px rgba(35,8,16,.1);
-          }
-          .sidebar .nav-list .nav-item.active {
+            box-shadow: 0 3px 0 rgba(48,12,23,.16), 0 6px 12px rgba(35,8,16,.13);
             transform: none;
-            box-shadow: inset 4px 0 #d1b35a, 0 2px 0 rgba(48,12,23,.13);
           }
-          .sidebar .nav-list .nav-item:active:not(.active) {
-            transform: translateY(1px);
+          .sidebar .nav-list .nav-item .nav-icon {
+            display: inline-flex;
+            flex: 0 0 29px;
+            width: 29px;
+            height: 29px;
+            margin: 0;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255,255,255,.18);
+            border-radius: 9px;
+            background: #7c3347;
+            color: #fff3d0;
+            font-size: 16px;
+            font-weight: 900;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.15);
           }
+          .sidebar .nav-list .nav-item .nav-label { display: block; min-width: 0; flex: 1 1 auto; }
+          .sidebar .nav-list .nav-item.active {
+            background: linear-gradient(180deg,#ffffff 0%,#fffaf0 100%);
+            color: #542338;
+            border-color: #b79a45;
+            border-bottom-color: #7c3347;
+            box-shadow: inset 4px 0 #7c3347, 0 3px 0 rgba(48,12,23,.13), 0 6px 12px rgba(30,10,16,.12);
+            transform: translateY(-1px);
+          }
+          .sidebar .nav-list .nav-item.active .nav-icon { background: #f0e3bb; color: #64283a; border-color: #d9c48a; }
+          .sidebar .nav-list .nav-item:hover:not(.active) { background: linear-gradient(180deg,#ffffff 0%,#f5ebcd 100%); color: #542338; border-color: #b79a45; transform: translateY(-1px); }
+          .sidebar .nav-list .nav-item:active:not(.active) { transform: translateY(1px); }
+          .sidebar .central-return-button { margin-bottom: 28px; min-height: 54px; font-size: 14px; }
+          .sidebar .sidebar-footer > .button + .button { margin-top: 18px; }
+          .sidebar .sidebar-footer .button { min-height: 50px; padding: 12px 14px; font-size: 14px; line-height: 1.3; white-space: normal; }
         }
 
       `}</style>
