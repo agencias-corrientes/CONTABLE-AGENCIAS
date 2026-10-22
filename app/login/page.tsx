@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { InstallAppButton } from "@/components/install-app-button";
 
 function LoginForm() {
   const router = useRouter();
@@ -167,6 +168,7 @@ function LoginForm() {
         <p className="message success-message">Contraseña actualizada. Ya podés ingresar con la nueva contraseña.</p>
       )}
       <p className="muted small-text"><Link href="/recuperar-clave">¿Olvidaste tu contraseña?</Link></p>
+      <InstallAppButton />
     </form>
   );
 }
