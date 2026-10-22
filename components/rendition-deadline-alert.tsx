@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type PendingAgent = {
@@ -61,21 +60,25 @@ export function RenditionDeadlineAlert({
     && minutesUntilClose <= 30
     && minutesUntilClose >= -120;
 
-  if (!shouldShow || minutesUntilClose === null) return null;
+  useEffect(() => {
+    const selector = ".agency-agent-code-button[data-agent-id]";
+    document.querySelectorAll(selector).forEach((element) => {
+      element.classList.remove("is-rendition-missing");
+    });
+    if (!shouldShow) return;
+    const pendingIds = new Set(agents.map((agent) => agent.id));
+    document.querySelectorAll<HTMLElement>(selector).forEach((element) => {
+      const agentId = element.dataset.agentId;
+      if (agentId && pendingIds.has(agentId)) {
+        element.classList.add("is-rendition-missing");
+      }
+    });
+    return () => {
+      document.querySelectorAll(selector).forEach((element) => {
+        element.classList.remove("is-rendition-missing");
+      });
+    };
+  }, [agents, shouldShow]);
 
-  return (
-    <section className="ticket-photo-deadline-alert" role="alert" aria-live="assertive">
-      <h2>{minutesUntilClose > 0 ? "⚠️ Faltan " + minutesUntilClose + " min para el cierre" : "⚠️ El horario de cierre ya llegó"}</h2>
-      <p>Estos operadores todavía no confirmaron su rendición diaria. Entrá desde el código para revisar y registrar la rendición pendiente.</p>
-      <ul>
-        {agents.map((agent) => (
-          <li key={agent.id}>
-            <strong>{agent.kind === "subagent" ? "Subagente" : "Ambulante"}</strong>
-            <Link href={"/pagos?agent=" + encodeURIComponent(agent.id)}>{agent.code}</Link>
-            {agent.fullName && <span>{agent.fullName}</span>}
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
+  return null;
 }
