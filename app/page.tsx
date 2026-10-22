@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LandingSplash } from "@/components/landing-splash";
 import { SignOutButton } from "@/components/sign-out-button";
+import { InstallAppButton } from "@/components/install-app-button";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -61,6 +62,7 @@ export default async function HomePage() {
         </div>
         <div className="landing-actions">
           <Link className="button primary full" href="/registro">Soy titular: crear cuenta y configurar mi agencia</Link>
+          <InstallAppButton />
         </div>
         <p className="muted small-text">El alta de cada nuevo propietario queda pendiente hasta que el administrador maestro la autorice.</p>
         <div className="feature-strip"><span>✓ Rendiciones diarias</span><span>✓ Subagentes</span><span>✓ Ambulantes</span><span>✓ Cobranzas en Caja</span></div>
