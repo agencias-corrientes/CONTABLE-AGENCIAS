@@ -10,7 +10,9 @@ type InstallPromptEvent = Event & {
 export function InstallAppButton() {
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
-  const [help, setHelp] = useState(false);
+  // Keep instructions visible in the server-rendered HTML too. This gives users a
+  // usable installation path even if client-side hydration or click handling fails.
+  const [help, setHelp] = useState(true);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -21,12 +23,10 @@ export function InstallAppButton() {
     const onBeforeInstall = (event: Event) => {
       event.preventDefault();
       setInstallPrompt(event as InstallPromptEvent);
-      setHelp(false);
     };
     const onInstalled = () => {
       setInstalled(true);
       setInstallPrompt(null);
-      setHelp(false);
     };
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
     window.addEventListener("appinstalled", onInstalled);
@@ -38,14 +38,11 @@ export function InstallAppButton() {
 
   async function install() {
     if (!installPrompt) {
-      // Browsers do not expose a way to open their native install menu from script.
-      // Always provide visible, actionable instructions instead of a silent-looking click.
       setHelp(true);
       return;
     }
 
     setBusy(true);
-    setHelp(false);
     try {
       await installPrompt.prompt();
       const choice = await installPrompt.userChoice;
@@ -83,7 +80,7 @@ export function InstallAppButton() {
             <li>Confirmá la instalación cuando aparezca el aviso.</li>
           </ol>
           <p>Si no aparece ninguna de esas opciones, abrí este enlace directamente en Google Chrome y volvé a intentarlo.</p>
-          <button type="button" className="install-app-close" onClick={() => setHelp(false)}>Cerrar instrucciones</button>
+          <button type="button" className="install-app-close" onClick={() => setHelp(false)}>Ocultar instrucciones</button>
         </div>
       )}
       <style jsx>{`
