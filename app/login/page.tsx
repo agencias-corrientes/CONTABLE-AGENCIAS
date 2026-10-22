@@ -129,7 +129,6 @@ function LoginForm() {
           <span className="landing-role-enter">Ingresar →</span>
         </Link>
         <p className="muted small-text">¿Sos titular y todavía no tenés cuenta? <Link href="/registro">Crear cuenta de propietario</Link></p>
-        <InstallAppButton />
       </div>
     );
   }
@@ -169,7 +168,6 @@ function LoginForm() {
         <p className="message success-message">Contraseña actualizada. Ya podés ingresar con la nueva contraseña.</p>
       )}
       <p className="muted small-text"><Link href="/recuperar-clave">¿Olvidaste tu contraseña?</Link></p>
-      <InstallAppButton />
     </form>
   );
 }
@@ -184,6 +182,7 @@ export default function LoginPage() {
         <h1>Control de Agencias</h1>
         <p className="muted">Ingresá con una cuenta existente. El sistema verifica el rol asignado por cada agencia.</p>
         <Suspense fallback={<div className="empty-state">Cargando acceso…</div>}><LoginForm /></Suspense>
+        <InstallAppButton />
       </div>
     </main>
   );
