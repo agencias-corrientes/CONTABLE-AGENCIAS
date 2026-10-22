@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320">
+  <title>Agencias Corrientes</title>
+  <rect width="320" height="320" rx="42" fill="#702039"/>
+  <path d="M54 232 125 64h42l72 168h-48l-13-34h-64l-13 34H54Zm74-72h35l-17-47-18 47Z" fill="#ffda18"/>
+  <path d="M218 76h48v168h-48z" fill="#fffdf6" opacity=".96"/>
+  <path d="M235 99h14v122h-14z" fill="#702039"/>
+  <path d="M90 258h140" stroke="#fffdf6" stroke-width="8" stroke-linecap="round" opacity=".95"/>
+</svg>
