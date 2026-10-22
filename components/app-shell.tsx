@@ -34,7 +34,7 @@ export function AppShell({
 
   useEffect(() => {
     if (window.matchMedia("(max-width: 1000px)").matches) {
-      document.querySelector(".content-area")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.querySelector(".content-area")?.scrollIntoView({ behavior: "auto", block: "start" });
     }
   }, [pathname]);
   const isOwner = userRole === "owner";
@@ -69,7 +69,6 @@ export function AppShell({
                 onClick={slug === "pagos" ? (event) => {
                   event.preventDefault();
                   router.push("/pagos");
-                  router.refresh();
                 } : undefined}
                 className={pathname.startsWith(href) ? "nav-item active" : "nav-item"}
               >
@@ -332,6 +331,13 @@ export function AppShell({
           }
         }
 
+
+        @media (max-width: 1000px) {
+          .app-shell { display:block !important; width:100% !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; }
+          .sidebar { position:relative !important; top:auto !important; width:100% !important; height:auto !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; box-sizing:border-box !important; padding-top:max(16px,env(safe-area-inset-top)) !important; padding-bottom:max(18px,env(safe-area-inset-bottom)) !important; }
+          .content-area { width:100% !important; min-width:0 !important; padding:12px !important; }
+          .sidebar .nav-list .nav-item { transition:none !important; }
+        }
       `}</style>
     </div>
   );
