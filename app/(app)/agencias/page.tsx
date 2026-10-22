@@ -5,20 +5,21 @@ import { agencyBusinessDateForCutoff } from "@/lib/agency-datetime";
 import { getOfficialDrawPeriodsForDate, OFFICIAL_QUINIELA_SCHEDULE_URL, OFFICIAL_EXTRACTS_SCHEDULE_URL } from "@/lib/agency-draw-schedule";
 import { AgencyCodeInput } from "@/components/agency-code-input";
 import { createAgencyAgent, deleteAgencyAgent } from "./actions";
+import { AgentOpenLink } from "@/components/agent-open-link";
 
 function AgentCard({ agent, canDelete }: { agent: any; canDelete: boolean }) {
   const subagent = agent.kind === "subagent";
   const typeLabel = subagent ? "subagente" : "ambulante";
   return (
     <div className={"agency-agent-button-row " + (subagent ? "agency-subagent" : "agency-ambulant")}>
-      <Link
+      <AgentOpenLink
         href={"/pagos?agent=" + agent.id}
         className="agency-agent-code-button"
-        aria-label={"Abrir rendición de " + typeLabel + " " + agent.code}
+        ariaLabel={"Abrir rendición de " + typeLabel + " " + agent.code}
         title={"Abrir rendición de " + typeLabel + " " + agent.code}
       >
         {agent.code || "SIN CÓDIGO"}
-      </Link>
+      </AgentOpenLink>
       <details className="agency-agent-actions">
         <summary aria-label={"Opciones de " + typeLabel + " " + agent.code} title="Opciones">⋯</summary>
         <div className="agency-agent-actions-menu">
