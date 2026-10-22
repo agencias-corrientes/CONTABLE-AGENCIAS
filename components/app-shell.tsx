@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const nav = [
@@ -34,14 +34,22 @@ export function AppShell({
   const searchParamsKey = searchParams.toString();
   const officialAgencyNumber = organizationName.match(/\b(\d{3})\b/)?.[1] ?? null;
 
+  const scrollContentAfterMenuClickRef = useRef(false);
+
   useEffect(() => {
     if (!window.matchMedia("(max-width: 1000px)").matches) return;
     const hasAgentSelection = new URLSearchParams(searchParamsKey).has("agent");
+    if (hasAgentSelection) {
+      window.requestAnimationFrame(() => {
+        const target = document.querySelector(".rendition-selected-view .rendition-agent-expanded-head") ?? document.querySelector(".rendition-selected-header");
+        target?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      return;
+    }
+    if (!scrollContentAfterMenuClickRef.current) return;
+    scrollContentAfterMenuClickRef.current = false;
     window.requestAnimationFrame(() => {
-      const target = hasAgentSelection
-        ? document.querySelector(".rendition-selected-view .rendition-agent-expanded-head") ?? document.querySelector(".rendition-selected-header")
-        : document.querySelector(".content-area");
-      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.querySelector(".content-area")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, [pathname, searchParamsKey]);
   const isOwner = userRole === "owner";
@@ -73,11 +81,23 @@ export function AppShell({
               <Link
                 key={slug}
                 href={href}
-                onClick={slug === "pagos" ? (event) => {
-                  event.preventDefault();
-                  router.push("/pagos");
-                  router.refresh();
-                } : undefined}
+                onClick={(event) => {
+                  if (window.matchMedia("(max-width: 1000px)").matches) {
+                    scrollContentAfterMenuClickRef.current = true;
+                    if (pathname === href) {
+                      event.preventDefault();
+                      scrollContentAfterMenuClickRef.current = false;
+                      window.requestAnimationFrame(() => {
+                        document.querySelector(".content-area")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      });
+                    }
+                  }
+                  if (slug === "pagos") {
+                    event.preventDefault();
+                    router.push("/pagos");
+                    router.refresh();
+                  }
+                }}
                 className={pathname.startsWith(href) ? "nav-item active" : "nav-item"}
               >
                 <span className="nav-icon" aria-hidden="true">{icon}</span>
@@ -269,6 +289,166 @@ export function AppShell({
           .sidebar .central-return-button { margin-bottom: 28px; min-height: 54px; font-size: 14px; }
           .sidebar .sidebar-footer > .button + .button { margin-top: 18px; }
           .sidebar .sidebar-footer .button { min-height: 50px; padding: 12px 14px; font-size: 14px; line-height: 1.3; white-space: normal; }
+        }
+
+        /* Menú inicial: paleta grafito-azulada y dorado discreto. */
+        .sidebar {
+          background: #263746 !important;
+          color: #f7f9fa !important;
+          border-right: 4px solid #c9ad5d !important;
+        }
+        .sidebar .brand-subtitle { color: #d7e0e5 !important; }
+        .sidebar .official-agency-number {
+          background: #f7f8f8 !important;
+          border-color: #c9ad5d !important;
+          color: #233241 !important;
+          box-shadow: 0 2px 0 rgba(8,20,30,.22) !important;
+        }
+        .sidebar .nav-list .nav-item {
+          background: linear-gradient(180deg,#fbfcfd 0%,#e9eef1 100%) !important;
+          color: #263746 !important;
+          border: 1px solid #d2dce2 !important;
+          border-bottom: 3px solid #a8914c !important;
+          box-shadow: 0 3px 0 rgba(6,17,26,.18), 0 6px 12px rgba(6,17,26,.12) !important;
+        }
+        .sidebar .nav-list .nav-item .nav-icon {
+          background: #e5ebef !important;
+          border-color: #cbd5dc !important;
+          color: #263746 !important;
+          box-shadow: none !important;
+        }
+        .sidebar .nav-list .nav-item.active {
+          background: #ffffff !important;
+          color: #182a39 !important;
+          border-color: #c9ad5d !important;
+          border-bottom-color: #263746 !important;
+          box-shadow: inset 4px 0 #c9ad5d, 0 3px 0 rgba(6,17,26,.13) !important;
+        }
+        .sidebar .nav-list .nav-item.active .nav-icon {
+          background: #f3edda !important;
+          border-color: #d8c68b !important;
+          color: #263746 !important;
+        }
+        .sidebar .nav-list .nav-item:hover:not(.active) {
+          background: #ffffff !important;
+          color: #182a39 !important;
+          border-color: #b8c7d1 !important;
+        }
+        .sidebar .nav-list .nav-item .nav-label { color: inherit !important; }
+        .sidebar .sidebar-footer .button {
+          background: rgba(255,255,255,.08) !important;
+          color: #f5f7f8 !important;
+          border: 1px solid rgba(231,238,242,.38) !important;
+          box-shadow: none !important;
+        }
+        .sidebar .sidebar-footer .central-return-button {
+          margin-bottom: 0 !important;
+        }
+        @media (max-width: 1000px) {
+          .app-shell { display: block !important; min-height: 100vh; }
+          .sidebar {
+            position: relative !important;
+            top: auto !important;
+            width: 100%;
+            height: auto !important;
+            min-height: 100vh;
+            min-height: 100svh;
+            padding: max(16px, env(safe-area-inset-top)) 14px max(18px, env(safe-area-inset-bottom)) !important;
+            border-right: 0 !important;
+            border-bottom: 5px solid #c9ad5d !important;
+            display: flex !important;
+            flex-direction: column !important;
+          }
+          .sidebar-brand {
+            flex: 0 0 auto;
+            padding: 5px 4px 14px !important;
+            border-bottom: 1px solid rgba(232,239,243,.18);
+          }
+          .sidebar .nav-list {
+            flex: 1 0 auto;
+            min-height: 0;
+            display: grid !important;
+            grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+            grid-template-rows: repeat(3,minmax(76px,1fr));
+            align-content: stretch;
+            gap: 11px !important;
+            margin: 14px 0 10px !important;
+            padding: 0 !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+          }
+          .sidebar .nav-list::before {
+            padding: 0 2px 2px !important;
+            color: #d9e1e6 !important;
+            font-size: 11px !important;
+            letter-spacing: .16em !important;
+          }
+          .sidebar .nav-list .nav-item {
+            min-width: 0;
+            min-height: 82px !important;
+            height: 100%;
+            padding: 15px 12px !important;
+            gap: 0 !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 12px !important;
+            text-align: center !important;
+            font-size: 17px !important;
+            font-weight: 800 !important;
+            line-height: 1.3 !important;
+            overflow-wrap: anywhere;
+          }
+          .sidebar .nav-list .nav-item .nav-icon { display: none !important; }
+          .sidebar .nav-list .nav-item .nav-label {
+            flex: 1 1 auto;
+            min-width: 0;
+            text-align: center;
+            color: inherit !important;
+          }
+          .sidebar .nav-list .nav-item.active {
+            box-shadow: inset 0 4px #c9ad5d, 0 3px 0 rgba(6,17,26,.13) !important;
+            transform: none !important;
+          }
+          .sidebar .nav-list .nav-item:hover:not(.active) { transform: none !important; }
+          .sidebar .sidebar-footer {
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: auto !important;
+            padding-top: 8px;
+          }
+          .sidebar .user-role-line {
+            grid-template-columns: minmax(0,1fr);
+            gap: 5px;
+            padding: 5px 2px 7px;
+          }
+          .sidebar .sidebar-footer .button {
+            width: 100%;
+            min-height: 54px !important;
+            margin: 0 !important;
+            padding: 13px 14px !important;
+            border-radius: 10px !important;
+            font-size: 15px !important;
+            font-weight: 800 !important;
+            line-height: 1.25;
+          }
+          .sidebar .sidebar-footer > .button + .button { margin-top: 0 !important; }
+          .sidebar .central-return-button { min-height: 54px !important; }
+          .content-area { padding: 12px !important; }
+        }
+        @media (max-width: 640px) {
+          .sidebar .nav-list .nav-item { min-height: 82px !important; font-size: 16px !important; padding: 13px 9px !important; }
+          .sidebar .user-line { font-size: 12px !important; }
+        }
+        @media (max-height: 700px) and (max-width: 1000px) {
+          .sidebar-brand { padding-bottom: 9px !important; }
+          .sidebar .nav-list { margin-top: 9px !important; gap: 7px !important; grid-template-rows: repeat(3,minmax(60px,1fr)); }
+          .sidebar .nav-list .nav-item { min-height: 64px !important; padding: 8px !important; font-size: 15px !important; }
+          .sidebar .sidebar-footer .button { min-height: 43px !important; padding: 8px 10px !important; }
+          .sidebar .sidebar-footer .user-role-line { padding: 1px 2px 4px; }
         }
 
       `}</style>
