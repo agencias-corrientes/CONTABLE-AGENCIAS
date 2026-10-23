@@ -372,6 +372,40 @@ export async function createAgencyRendition(formData: FormData) {
       identityTicket = null;
     }
   }
+  // Los lotes semanales deben validar la identidad de CADA ticket, no solo
+  // el primero. Así no se puede mezclar el cierre de otro subagente/ambulante.
+  let batchIdentityTicket: any = null;
+  if (ticketReceiptRaw && ticketReceiptRaw.length <= 200000) {
+    try {
+      const parsed = JSON.parse(ticketReceiptRaw);
+      if (parsed?.type === "loteria-corrientes-end-of-day-batch-v1") batchIdentityTicket = parsed;
+    } catch { batchIdentityTicket = null; }
+  }
+  const receiptsToValidate = batchIdentityTicket && Array.isArray(batchIdentityTicket.tickets)
+    ? batchIdentityTicket.tickets
+    : identityTicket ? [identityTicket] : [];
+  if (registeredAgencyCode !== "000" && receiptsToValidate.length > 0) {
+    const expectedParts = selectedAgentCode.split("-");
+    const fullExpected = expectedParts.join("").replace(/\\D/g, "");
+    const localExpected = expectedParts.length >= 3 ? expectedParts[1] + expectedParts[2] : "";
+    for (const receipt of receiptsToValidate) {
+      const rawAgency = String(receipt?.agencyCode ?? "").replace(/\\D/g, "");
+      const receiptAgency = rawAgency.length === 4 && /^[01]\\d{3}$/.test(rawAgency) ? rawAgency.slice(1) : rawAgency;
+      const receiptAgent = String(receipt?.subagentCode ?? "").replace(/\\D/g, "");
+      if (!receiptAgency || !receiptAgent) {
+        redirect("/pagos?error=ticket-identificacion-no-verificada&agent=" + encodeURIComponent(agentId));
+      }
+      if (receiptAgency !== registeredAgencyCode) {
+        redirect("/pagos?error=ticket-agencia-ajena&agent=" + encodeURIComponent(agentId));
+      }
+      const matchesFull = receiptAgent.length >= 7 && receiptAgent === fullExpected;
+      const matchesLocal = receiptAgent === localExpected;
+      if (!matchesFull && !matchesLocal) {
+        redirect("/pagos?error=ticket-subagente-ajeno&agent=" + encodeURIComponent(agentId));
+      }
+    }
+  }
+
   // La agencia oficial 000 se reserva para pruebas del administrador central:
   // permite revisar tickets de cualquier agencia sin relajar las validaciones
   // de las agencias operativas.
@@ -437,6 +471,23 @@ export async function createAgencyRendition(formData: FormData) {
     redirect("/pagos?error=estado-sorteo-fallido&agent=" + encodeURIComponent(agentId));
   }
   if (renditionDate !== operationalDate) redirect("/pagos?error=fecha-sorteo-invalida&agent=" + encodeURIComponent(agentId));
+  // Para cierre diario también se bloquea reutilizar el mismo cupón oficial
+  // (agencia + subagente/ambulante + período + fecha impresa) en otra rendición.
+  // El lote semanal ya realiza esta comprobación más abajo.
+  if (renditionFrequency !== "weekly" && registeredAgencyCode !== "000" && identityTicket) {
+    const candidateKey = closureReceiptDuplicateKey(identityTicket);
+    if (!candidateKey) redirect("/pagos?error=ticket-identificacion-no-verificada&agent=" + encodeURIComponent(agentId));
+    const { data: previousDailyClosures, error: previousDailyClosuresError } = await supabase
+      .from("agency_renditions").select("id,ticket_receipt_data")
+      .eq("organization_id", organizationId).eq("agent_id", agentId)
+      .eq("game_period", "Cierre diario").neq("status", "void").limit(1000);
+    if (previousDailyClosuresError) redirect("/pagos?error=verificacion-duplicado-fallida&agent=" + encodeURIComponent(agentId));
+    const alreadyUsed = (previousDailyClosures ?? []).some((row: any) =>
+      individualClosureReceipts(row.ticket_receipt_data).some((receipt: any) => closureReceiptDuplicateKey(receipt) === candidateKey)
+    );
+    if (alreadyUsed) redirect("/pagos?error=ticket-cierre-ya-rendido&agent=" + encodeURIComponent(agentId));
+  }
+
   if (renditionFrequency === "weekly") {
     const weekdayKeys = ["sun","mon","tue","wed","thu","fri","sat"];
     const operationalWeekday = weekdayKeys[new Date(operationalDate + "T00:00:00.000Z").getUTCDay()];
