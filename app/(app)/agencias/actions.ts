@@ -386,12 +386,12 @@ export async function createAgencyRendition(formData: FormData) {
     : identityTicket ? [identityTicket] : [];
   if (registeredAgencyCode !== "000" && receiptsToValidate.length > 0) {
     const expectedParts = selectedAgentCode.split("-");
-    const fullExpected = expectedParts.join("").replace(/\\D/g, "");
+    const fullExpected = expectedParts.join("").replace(/\D/g, "");
     const localExpected = expectedParts.length >= 3 ? expectedParts[1] + expectedParts[2] : "";
     for (const receipt of receiptsToValidate) {
-      const rawAgency = String(receipt?.agencyCode ?? "").replace(/\\D/g, "");
-      const receiptAgency = rawAgency.length === 4 && /^[01]\\d{3}$/.test(rawAgency) ? rawAgency.slice(1) : rawAgency;
-      const receiptAgent = String(receipt?.subagentCode ?? "").replace(/\\D/g, "");
+      const rawAgency = String(receipt?.agencyCode ?? "").replace(/\D/g, "");
+      const receiptAgency = rawAgency.length === 4 && /^[01]\d{3}$/.test(rawAgency) ? rawAgency.slice(1) : rawAgency;
+      const receiptAgent = String(receipt?.subagentCode ?? "").replace(/\D/g, "");
       if (!receiptAgency || !receiptAgent) {
         redirect("/pagos?error=ticket-identificacion-no-verificada&agent=" + encodeURIComponent(agentId));
       }
