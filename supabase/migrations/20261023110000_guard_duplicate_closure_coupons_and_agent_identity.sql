@@ -16,7 +16,7 @@ BEGIN
 END;
 $function$;
 
--- Apply to the Preview Supabase project first; do not run against Production until validated.
+-- This database guard was validated in Preview before deployment.
 
 CREATE OR REPLACE FUNCTION private.normalize_closure_ticket_date(p_value text)
 RETURNS date
@@ -66,6 +66,11 @@ DECLARE
   v_existing_receipts jsonb;
   v_existing_key text;
 BEGIN
+  -- Do not revalidate legacy OCR payloads when another update leaves the receipt unchanged.
+  -- New/replaced receipt data is still checked against the current agent and prior coupons.
+  IF TG_OP = 'UPDATE' AND NEW.ticket_receipt_data IS NOT DISTINCT FROM OLD.ticket_receipt_data THEN
+    RETURN NEW;
+  END IF;
   IF NEW.ticket_receipt_data IS NULL THEN RETURN NEW; END IF;
 
   SELECT a.code INTO v_agent_code
