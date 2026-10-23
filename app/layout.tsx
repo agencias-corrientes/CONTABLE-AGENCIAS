@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import "./agency-ops.css";
 
@@ -57,11 +58,39 @@ export const metadata: Metadata = {
   },
 };
 
+const installPromptCapture = `
+(() => {
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    window.__deferredPwaInstallPrompt = event;
+    window.dispatchEvent(new Event("pwa-install-prompt-available"));
+  });
+  window.addEventListener("appinstalled", () => {
+    window.__deferredPwaInstallPrompt = null;
+    window.dispatchEvent(new Event("pwa-installed"));
+  });
+})();
+`;
+
+declare global {
+  interface Window {
+    __deferredPwaInstallPrompt?: Event | null;
+  }
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es">
+      <head>
+        <Script
+          id="capture-pwa-install-prompt"
+          strategy="beforeInteractive"
+        >
+          {installPromptCapture}
+        </Script>
+      </head>
       <body>{children}</body>
     </html>
   );
