@@ -11,7 +11,7 @@ const siteUrl =
 const siteTitle = "Agencias Corrientes";
 const siteDescription =
   "Gestión diaria de agencias de quiniela, rendiciones y cobranzas.";
-const brandLogo = "/logo-agencias-corrientes-v2.webp";
+const brandLogo = "/logo-agencias-corrientes.webp?v=20261023";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
