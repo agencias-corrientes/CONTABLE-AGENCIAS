@@ -42,9 +42,9 @@ export const metadata: Metadata = {
     url: siteUrl,
     images: [
       {
-        url: "/logo-agencias-quiniela.webp",
-        width: 512,
-        height: 512,
+        url: "/logo-agencias-corrientes-v2.webp",
+        width: 112,
+        height: 112,
         type: "image/webp",
         alt: "Agencias Corrientes — Quiniela Oficial",
       },
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: siteTitle,
     description: siteDescription,
-    images: ["/logo-agencias-quiniela.webp"],
+    images: ["/logo-agencias-corrientes-v2.webp"],
   },
 };
 
