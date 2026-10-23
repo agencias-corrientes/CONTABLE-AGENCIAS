@@ -71,7 +71,7 @@ export function InstallAppButton() {
         <p className="install-app-help" role="status">
           {installPrompt
             ? "Chrome no pudo abrir el instalador en este momento. Cerrá cualquier cuadro abierto y volvé a tocar el botón."
-            : "Chrome todavía no habilitó el instalador directo para esta página. En Android, abrí el menú ⋮ de Chrome y elegí «Instalar aplicación» o «Agregar a pantalla principal». Si esa opción tampoco aparece, el navegador aún no considera esta versión instalable."}
+            : "Chrome todavía no entregó el instalador directo en esta pestaña. Después de esta actualización, recargá la página y volvé a tocar «Instalar aplicación»."}
         </p>
       )}
       <style jsx>{`

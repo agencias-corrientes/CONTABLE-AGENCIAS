@@ -1,12 +1,14 @@
-import { createElement } from "react";
-import { ImageResponse } from "next/og";
-import { BrandAppIcon } from "@/components/BrandAppIcon";
+import { generateOfficialPwaIcon } from "@/lib/pwa-icon";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
+export const dynamic = "force-static";
 
 export async function GET() {
-  return new ImageResponse(
-    createElement(BrandAppIcon, { scale: 192 / 512 }),
-    { width: 192, height: 192 }
-  );
+  const icon = await generateOfficialPwaIcon(192);
+  return new Response(icon, {
+    headers: {
+      "Content-Type": "image/png",
+      "Cache-Control": "public, max-age=31536000, immutable",
+    },
+  });
 }

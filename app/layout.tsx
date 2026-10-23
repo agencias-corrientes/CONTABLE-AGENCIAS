@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./agency-ops.css";
+import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 
 const productionSiteUrl = "https://contable-agencias.vercel.app";
 const previewHost = process.env.VERCEL_URL;
@@ -62,7 +63,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <ServiceWorkerRegistration />
+        {children}
+      </body>
     </html>
   );
 }
