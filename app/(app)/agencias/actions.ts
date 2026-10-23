@@ -393,8 +393,9 @@ export async function createAgencyRendition(formData: FormData) {
       const localExpected = expectedParts[1] + expectedParts[2];
       const matchesFullExpected = ticketSubagentCode.length >= 7 && ticketSubagentCode === fullExpected;
       const matchesLocalNumber = ticketSubagentCode === localExpected;
-      const matchesSubagentPart = ticketSubagentCode === expectedParts[1];
-      if (!matchesFullExpected && !matchesLocalNumber && !matchesSubagentPart) {
+      // Do not accept only the short subagent fragment: that could match a
+      // different ambulant/subagent under the same agency.
+      if (!matchesFullExpected && !matchesLocalNumber) {
         redirect("/pagos?error=ticket-subagente-ajeno&agent=" + encodeURIComponent(agentId));
       }
     }
