@@ -13,8 +13,14 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#702039",
     icons: [
       {
+        src: "/pwa-install-icon.svg",
+        sizes: "192x192 512x512",
+        type: "image/svg+xml",
+        purpose: "any",
+      },
+      {
         src: "/logo-agencias-quiniela.webp",
-        sizes: "256x256",
+        sizes: "80x80",
         type: "image/webp",
         purpose: "any",
       },
