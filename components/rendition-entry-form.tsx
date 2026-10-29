@@ -236,6 +236,34 @@ function parseTicketText(text: string, games: Game[], recoveredPeriodNumber = ""
   };
 }
 
+function looksLikeClosureText(text:string):boolean {
+  const normalized=normalize(text);
+  return Boolean(parseTicketClosure(text)) ||
+    /\bFIN\s+DE\s+(?:JOR|TOR|IOR)NADA\b/i.test(normalized) ||
+    /\bTOTALES?\s+EN\s+T[J7I1]\b/i.test(normalized) ||
+    (/\bTOTAL\s+GENE?RA[L1I]?\b/i.test(normalized) && /\bPER[I1]ODO\b/i.test(normalized));
+}
+
+function scoreClosureOcrText(text:string):number {
+  const parsed=parseTicketClosure(text);
+  if(!parsed)return -1;
+  let score=0;
+  const fields=[parsed.agencyCode,parsed.subagentCode,parsed.machineCode,parsed.address,
+    parsed.terminalId,parsed.printedAt?.date,parsed.closedAt?.date,parsed.openedAt?.date,parsed.periodNumber];
+  score+=fields.filter((value)=>String(value??"").trim().length>0).length*2;
+  const metrics=[parsed.quiniela.valids,parsed.quiniela.cancelledSpecial,parsed.quiniela.prizesPaid,
+    parsed.quinielaAlToque.valids,parsed.quinielaAlToque.prizesPaid,...parsed.otherGames,
+    parsed.totalOtherGames,parsed.otherGamesPrizes,parsed.totalPrizes,parsed.generalTotal,
+    parsed.digital.cobros,parsed.digital.devoluciones];
+  score+=metrics.filter((metric)=>metric.count!==null||metric.amount!==null).length;
+  if(parsed.quiniela.valids.amount!==null&&parsed.quiniela.valids.amount>0)score+=4;
+  if(parsed.generalTotal.amount!==null&&parsed.generalTotal.amount>0)score+=5;
+  if(parsed.consistency.salesTotalsMatch===true)score+=5;
+  if(parsed.consistency.salesTotalsMatch===false)score-=3;
+  if(/^\d{7}$/.test(String(parsed.periodNumber??"").replace(/\s/g,"")))score+=2;
+  return score;
+}
+
 async function readQrFromImage(file: File): Promise<string | null> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, 1800 / bitmap.width, 1800 / bitmap.height);
@@ -295,43 +323,43 @@ function structuredQr(payload: string) {
 
 type ReceiptFocusRegion = "codes" | "agencyCode" | "subagentCode" | "subagentDigit1" | "subagentDigit0" | "subagentDigit2" | "machineCode" | "machineDigit0" | "machineDigit1" | "address" | "terminalId" | "printedAt" | "periodNumber" | "periodLabelled" | "periodLabelledTight" | "periodTail" | "periodGlyph1" | "periodGlyph2" | "periodGlyph3" | "periodGlyph4" | "periodGlyph5" | "periodGlyph6" | "periodGlyph7";
 type ReceiptFocusSpec = { left:number; right:number; top:number; bottom:number; scale:number; contrast:number };
-type ReceiptPaperBounds = { left:number; top:number; width:number; height:number };
+type ReceiptPaperBounds = {
+  left:number; top:number; width:number; height:number;
+  leftTop:number; rightTop:number; leftBottom:number; rightBottom:number;
+};
 type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
   "agencyCode" | "subagentCode" | "machineCode" | "address" | "terminalId" | "printedAt" | "periodNumber"
 >>;
 
 const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
-  codes:       {left:0.030,right:0.955,top:0.263,bottom:0.292,scale:5,contrast:1.8},
-  agencyCode:  {left:0.140,right:0.365,top:0.263,bottom:0.292,scale:6,contrast:1.8},
-  // Recorte calibrado sobre el renglón impreso SUBAG:102. El valor está entre x≈0.53 y 0.61
-  // del ancho del papel; terminar antes de MAQ evita capturar sus dígitos por error.
-  subagentCode:{left:0.512,right:0.656,top:0.263,bottom:0.292,scale:6,contrast:1.6},
-  // Un recorte por glifo, centrado respectivamente en 1, 0 y 2. Antes los recortes
-  // segundo y tercero se solapaban con el glifo vecino y llegaban hasta la etiqueta MAQ.
-  subagentDigit1:{left:0.522,right:0.556,top:0.263,bottom:0.292,scale:10,contrast:1.6},
-  subagentDigit0:{left:0.568,right:0.602,top:0.263,bottom:0.292,scale:10,contrast:1.6},
-  subagentDigit2:{left:0.613,right:0.651,top:0.263,bottom:0.292,scale:10,contrast:1.6},
-  // MAQ: lectura de los dos glifos individuales; sin incluir los puntos del rótulo.
-  machineCode: {left:0.775,right:0.879,top:0.263,bottom:0.292,scale:8,contrast:1.5},
-  machineDigit0:{left:0.778,right:0.827,top:0.263,bottom:0.292,scale:10,contrast:1.4},
-  machineDigit1:{left:0.828,right:0.875,top:0.263,bottom:0.292,scale:10,contrast:1.4},
-  address:     {left:0.040,right:0.555,top:0.285,bottom:0.307,scale:5,contrast:1.8},
-  // La máquina real está en su propia línea; no incluir la dirección que termina en 410.
-  terminalId:  {left:0.362,right:0.534,top:0.3075,bottom:0.3295,scale:6,contrast:1.6},
-  printedAt:   {left:0.035,right:0.965,top:0.324,bottom:0.347,scale:5,contrast:1.8},
-  // Recortes estrechos: excluir el renglón ABIERTO que está justo debajo del período.
-  periodNumber:{left:0.375,right:0.800,top:0.885,bottom:0.909,scale:10,contrast:1.5},
-  periodLabelled:{left:0.022,right:0.830,top:0.885,bottom:0.909,scale:3,contrast:1.0},
-  periodLabelledTight:{left:0.022,right:0.830,top:0.887,bottom:0.908,scale:3,contrast:1.0},
-  periodTail:  {left:0.625,right:0.805,top:0.885,bottom:0.909,scale:11,contrast:1.5},
-  // El número del cupón tiene siete casilleros de ancho fijo; se leen glifo por glifo.
-  periodGlyph1:{left:0.375,right:0.414,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph2:{left:0.425,right:0.463,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph3:{left:0.473,right:0.513,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph4:{left:0.523,right:0.561,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph5:{left:0.571,right:0.610,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph6:{left:0.622,right:0.659,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph7:{left:0.670,right:0.707,top:0.885,bottom:0.909,scale:10,contrast:1.4},
+  // Las coordenadas son relativas al papel rectificado. Los campos del encabezado están
+  // en la cuarta parte superior del ticket, no al 26% de la foto completa.
+  codes:       {left:0.025,right:0.975,top:0.238,bottom:0.266,scale:6,contrast:1.7},
+  agencyCode:  {left:0.105,right:0.365,top:0.238,bottom:0.266,scale:7,contrast:1.7},
+  // SUBAG:014: el primer cero queda antes del centro del rótulo; incluir los tres dígitos.
+  subagentCode:{left:0.465,right:0.680,top:0.238,bottom:0.266,scale:8,contrast:1.6},
+  subagentDigit1:{left:0.480,right:0.545,top:0.238,bottom:0.266,scale:12,contrast:1.6},
+  subagentDigit0:{left:0.540,right:0.605,top:0.238,bottom:0.266,scale:12,contrast:1.6},
+  subagentDigit2:{left:0.592,right:0.660,top:0.238,bottom:0.266,scale:12,contrast:1.6},
+  machineCode: {left:0.755,right:0.900,top:0.238,bottom:0.266,scale:9,contrast:1.5},
+  machineDigit0:{left:0.775,right:0.830,top:0.238,bottom:0.266,scale:12,contrast:1.5},
+  machineDigit1:{left:0.825,right:0.880,top:0.238,bottom:0.266,scale:12,contrast:1.5},
+  address:     {left:0.035,right:0.560,top:0.267,bottom:0.296,scale:6,contrast:1.8},
+  // La etiqueta "Máquina real" precede el identificador impreso.
+  terminalId:  {left:0.285,right:0.490,top:0.292,bottom:0.321,scale:7,contrast:1.7},
+  printedAt:   {left:0.025,right:0.975,top:0.320,bottom:0.350,scale:6,contrast:1.8},
+  periodNumber:{left:0.395,right:0.680,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  periodLabelled:{left:0.020,right:0.840,top:0.881,bottom:0.915,scale:4,contrast:1.1},
+  periodLabelledTight:{left:0.020,right:0.840,top:0.884,bottom:0.912,scale:4,contrast:1.1},
+  periodTail:  {left:0.600,right:0.690,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  // En el ticket enviado, los siete dígitos ocupan aproximadamente el tramo 0.41–0.65.
+  periodGlyph1:{left:0.407,right:0.443,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  periodGlyph2:{left:0.442,right:0.478,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  periodGlyph3:{left:0.477,right:0.513,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  periodGlyph4:{left:0.512,right:0.548,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  periodGlyph5:{left:0.547,right:0.583,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  periodGlyph6:{left:0.582,right:0.618,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  periodGlyph7:{left:0.617,right:0.653,top:0.882,bottom:0.914,scale:12,contrast:1.5},
 };
 
 function longestBrightRun(scores:number[],threshold:number,from:number,to:number) {
@@ -348,41 +376,144 @@ function longestBrightRun(scores:number[],threshold:number,from:number,to:number
   return bestStart>=0&&bestEnd>bestStart?{start:bestStart,end:bestEnd}:null;
 }
 
+function fullImageBounds(bitmap:ImageBitmap):ReceiptPaperBounds {
+  return {left:0,top:0,width:bitmap.width,height:bitmap.height,
+    leftTop:0,rightTop:bitmap.width,leftBottom:0,rightBottom:bitmap.width};
+}
+
 function detectReceiptPaperBounds(bitmap:ImageBitmap):ReceiptPaperBounds {
   const scale=Math.min(1,400/bitmap.width,760/bitmap.height);
   const scan=document.createElement("canvas");
   scan.width=Math.max(1,Math.round(bitmap.width*scale));
   scan.height=Math.max(1,Math.round(bitmap.height*scale));
   const context=scan.getContext("2d",{willReadFrequently:true});
-  if(!context)return {left:0,top:0,width:bitmap.width,height:bitmap.height};
+  if(!context)return fullImageBounds(bitmap);
   context.drawImage(bitmap,0,0,scan.width,scan.height);
   const pixels=context.getImageData(0,0,scan.width,scan.height).data;
-  const columns=new Array<number>(scan.width).fill(0);
+  const rowScores=new Array<number>(scan.height).fill(0);
+  const xStart=Math.floor(scan.width*.04);
+  const xEnd=Math.ceil(scan.width*.98);
+  const span=Math.max(1,xEnd-xStart);
+  for(let y=0;y<scan.height;y+=1){
+    let bright=0;
+    for(let x=xStart;x<xEnd;x+=1){
+      const i=(y*scan.width+x)*4;
+      const gray=.299*pixels[i]!+.587*pixels[i+1]!+.114*pixels[i+2]!;
+      if(gray>150)bright+=1;
+    }
+    rowScores[y]=bright/span;
+  }
+
+  // Find the longest vertical region whose rows mostly belong to light receipt paper.
+  // This is essential when a phone photo includes dark table/background above and below it.
+  let bestStart=-1,bestEnd=-1,runStart=-1;
+  for(let y=0;y<rowScores.length;y+=1){
+    if((rowScores[y]??0)>=.30){if(runStart<0)runStart=y;}
+    else if(runStart>=0){
+      if(bestStart<0||y-runStart>bestEnd-bestStart){bestStart=runStart;bestEnd=y;}
+      runStart=-1;
+    }
+  }
+  if(runStart>=0&&(bestStart<0||rowScores.length-runStart>bestEnd-bestStart)){
+    bestStart=runStart;bestEnd=rowScores.length;
+  }
+  if(bestStart<0||bestEnd-bestStart<scan.height*.25)return fullImageBounds(bitmap);
+
+  const edgeAt=(sampleY:number)=>{
+    const radius=Math.max(2,Math.round(scan.height*.008));
+    const top=Math.max(0,Math.floor(sampleY-radius));
+    const bottom=Math.min(scan.height,Math.ceil(sampleY+radius));
+    const columns=new Array<number>(scan.width).fill(0);
+    for(let x=0;x<scan.width;x+=1){
+      let total=0,count=0;
+      for(let y=top;y<bottom;y+=1){
+        const i=(y*scan.width+x)*4;
+        total+=.299*pixels[i]!+.587*pixels[i+1]!+.114*pixels[i+2]!;count+=1;
+      }
+      columns[x]=count?total/count:0;
+    }
+    return longestBrightRun(columns,145,scan.width*.04,scan.width*.98);
+  };
+
+  const pageHeight=bestEnd-bestStart;
+  const topRun=edgeAt(bestStart+Math.max(2,Math.round(pageHeight*.015)));
+  const bottomRun=edgeAt(bestEnd-Math.max(2,Math.round(pageHeight*.015)));
+  const globalColumns=new Array<number>(scan.width).fill(0);
   for(let x=0;x<scan.width;x+=1){
     let total=0,count=0;
-    for(let y=Math.floor(scan.height*.03);y<scan.height*.97;y+=2){
+    for(let y=bestStart;y<bestEnd;y+=2){
       const i=(y*scan.width+x)*4;
       total+=.299*pixels[i]!+.587*pixels[i+1]!+.114*pixels[i+2]!;count+=1;
     }
-    columns[x]=count?total/count:0;
+    globalColumns[x]=count?total/count:0;
   }
-  const horizontal=longestBrightRun(columns,150,scan.width*.06,scan.width*.98);
-  if(!horizontal||horizontal.end-horizontal.start<scan.width*.34)return {left:0,top:0,width:bitmap.width,height:bitmap.height};
-  const innerLeft=Math.round(horizontal.start+(horizontal.end-horizontal.start)*.04);
-  const innerRight=Math.round(horizontal.end-(horizontal.end-horizontal.start)*.04);
-  // El texto térmico divide el papel en franjas claras/oscuras; no usar esas franjas
-  // como límites verticales. Mantener la altura completa evita desplazar los recortes OCR.
+  const globalRun=longestBrightRun(globalColumns,145,scan.width*.04,scan.width*.98);
+  const validRun=(run:{start:number;end:number}|null)=>run&&run.end-run.start>=scan.width*.25?run:null;
+  const topEdge=validRun(topRun)??validRun(globalRun);
+  const bottomEdge=validRun(bottomRun)??validRun(globalRun);
+  if(!topEdge||!bottomEdge)return fullImageBounds(bitmap);
+
   const sx=bitmap.width/scan.width;
-  const paperLeft=Math.max(0,Math.round(horizontal.start*sx));
-  const paperWidth=Math.max(1,Math.min(bitmap.width,Math.round((horizontal.end-horizontal.start)*sx)));
-  return {left:paperLeft,top:0,width:paperWidth,height:bitmap.height};
+  const sy=bitmap.height/scan.height;
+  const top=Math.max(0,Math.round(bestStart*sy));
+  const bottom=Math.min(bitmap.height,Math.round(bestEnd*sy));
+  const leftTop=Math.max(0,Math.round(topEdge.start*sx));
+  const rightTop=Math.min(bitmap.width,Math.round(topEdge.end*sx));
+  const leftBottom=Math.max(0,Math.round(bottomEdge.start*sx));
+  const rightBottom=Math.min(bitmap.width,Math.round(bottomEdge.end*sx));
+  const left=Math.min(leftTop,leftBottom);
+  const right=Math.max(rightTop,rightBottom);
+  if(right-left<bitmap.width*.25||bottom-top<bitmap.height*.25)return fullImageBounds(bitmap);
+  return {left,top,width:right-left,height:bottom-top,leftTop,rightTop,leftBottom,rightBottom};
 }
 
-function makeReceiptFocusCrop(bitmap:ImageBitmap,bounds:ReceiptPaperBounds,region:ReceiptFocusRegion):HTMLCanvasElement {
+function makeRectifiedReceiptCanvas(bitmap:ImageBitmap,bounds:ReceiptPaperBounds):HTMLCanvasElement {
+  const topWidth=Math.max(1,bounds.rightTop-bounds.leftTop);
+  const bottomWidth=Math.max(1,bounds.rightBottom-bounds.leftBottom);
+  const sourceWidth=(topWidth+bottomWidth)/2;
+  const scale=Math.max(1,Math.min(2.2,3000/Math.max(sourceWidth,bounds.height)));
+  const canvas=document.createElement("canvas");
+  canvas.width=Math.max(1,Math.round(sourceWidth*scale));
+  canvas.height=Math.max(1,Math.round(bounds.height*scale));
+  const context=canvas.getContext("2d",{willReadFrequently:true});
+  if(!context)throw new Error("No se pudo enderezar la foto del comprobante.");
+  context.imageSmoothingEnabled=true;
+  context.imageSmoothingQuality="high";
+
+  // Rectify the paper one narrow horizontal strip at a time. Interpolating both side
+  // edges removes the camera's trapezoid perspective before OCR reads fixed field zones.
+  for(let y=0;y<canvas.height;y+=4){
+    const stripHeight=Math.min(4,canvas.height-y);
+    const sourceY=bounds.top+y/scale;
+    const t=Math.max(0,Math.min(1,(sourceY-bounds.top)/Math.max(1,bounds.height)));
+    const sourceLeft=bounds.leftTop+(bounds.leftBottom-bounds.leftTop)*t;
+    const sourceRight=bounds.rightTop+(bounds.rightBottom-bounds.rightTop)*t;
+    const sourceStripHeight=stripHeight/scale;
+    context.drawImage(bitmap,sourceLeft,sourceY,Math.max(1,sourceRight-sourceLeft),sourceStripHeight,
+      0,y,canvas.width,stripHeight);
+  }
+
+  // Retain pale thermal strokes; grayscale and moderate contrast are safer than hard thresholding.
+  const image=context.getImageData(0,0,canvas.width,canvas.height);
+  const data=image.data;
+  for(let i=0;i<data.length;i+=4){
+    const gray=.299*data[i]!+.587*data[i+1]!+.114*data[i+2]!;
+    const value=Math.max(0,Math.min(255,(gray-128)*1.45+128));
+    data[i]=value;data[i+1]=value;data[i+2]=value;
+  }
+  context.putImageData(image,0,0);
+  return canvas;
+}
+
+function makeReceiptFocusCrop(bitmap:ImageBitmap|HTMLCanvasElement,bounds:ReceiptPaperBounds,region:ReceiptFocusRegion):HTMLCanvasElement {
   const spec=receiptFocusSpecs[region];
-  const x=Math.max(0,Math.round(bounds.left+bounds.width*spec.left));
+  const midY=(spec.top+spec.bottom)/2;
+  const leftEdge=bounds.leftTop+(bounds.leftBottom-bounds.leftTop)*midY;
+  const rightEdge=bounds.rightTop+(bounds.rightBottom-bounds.rightTop)*midY;
+  const paperWidth=Math.max(1,rightEdge-leftEdge);
+  const x=Math.max(0,Math.round(leftEdge+paperWidth*spec.left));
   const y=Math.max(0,Math.round(bounds.top+bounds.height*spec.top));
-  const right=Math.min(bitmap.width,Math.round(bounds.left+bounds.width*spec.right));
+  const right=Math.min(bitmap.width,Math.round(leftEdge+paperWidth*spec.right));
   const bottom=Math.min(bitmap.height,Math.round(bounds.top+bounds.height*spec.bottom));
   const sw=Math.max(1,right-x),sh=Math.max(1,bottom-y);
   const scale=Math.max(1,Math.min(spec.scale,2800/Math.max(sw,sh)));
@@ -441,31 +572,37 @@ async function makeFocusedReceiptCrops(file:File) {
   const bitmap=await createImageBitmap(file);
   try {
     const bounds=detectReceiptPaperBounds(bitmap);
+    const pageImage=makeRectifiedReceiptCanvas(bitmap,bounds);
+    const pageBounds:ReceiptPaperBounds={
+      left:0,top:0,width:pageImage.width,height:pageImage.height,
+      leftTop:0,rightTop:pageImage.width,leftBottom:0,rightBottom:pageImage.width,
+    };
     const crops={
-      codes:makeReceiptFocusCrop(bitmap,bounds,"codes"),
-      agencyCode:makeReceiptFocusCrop(bitmap,bounds,"agencyCode"),
-      subagentCode:makeReceiptFocusCrop(bitmap,bounds,"subagentCode"),
-      subagentDigit1:makeReceiptFocusCrop(bitmap,bounds,"subagentDigit1"),
-      subagentDigit0:makeReceiptFocusCrop(bitmap,bounds,"subagentDigit0"),
-      subagentDigit2:makeReceiptFocusCrop(bitmap,bounds,"subagentDigit2"),
-      machineCode:makeReceiptFocusCrop(bitmap,bounds,"machineCode"),
-      machineDigit0:makeReceiptFocusCrop(bitmap,bounds,"machineDigit0"),
-      machineDigit1:makeReceiptFocusCrop(bitmap,bounds,"machineDigit1"),
-      address:makeReceiptFocusCrop(bitmap,bounds,"address"),
-      terminalId:makeReceiptFocusCrop(bitmap,bounds,"terminalId"),
-      printedAt:makeReceiptFocusCrop(bitmap,bounds,"printedAt"),
-      periodNumber:makeReceiptFocusCrop(bitmap,bounds,"periodNumber"),
-      periodLabelled:makeReceiptFocusCrop(bitmap,bounds,"periodLabelled"),
-      periodLabelledTight:makeReceiptFocusCrop(bitmap,bounds,"periodLabelledTight"),
-      periodTail:makeReceiptFocusCrop(bitmap,bounds,"periodTail"),
+      pageImage,
+      codes:makeReceiptFocusCrop(pageImage,pageBounds,"codes"),
+      agencyCode:makeReceiptFocusCrop(pageImage,pageBounds,"agencyCode"),
+      subagentCode:makeReceiptFocusCrop(pageImage,pageBounds,"subagentCode"),
+      subagentDigit1:makeReceiptFocusCrop(pageImage,pageBounds,"subagentDigit1"),
+      subagentDigit0:makeReceiptFocusCrop(pageImage,pageBounds,"subagentDigit0"),
+      subagentDigit2:makeReceiptFocusCrop(pageImage,pageBounds,"subagentDigit2"),
+      machineCode:makeReceiptFocusCrop(pageImage,pageBounds,"machineCode"),
+      machineDigit0:makeReceiptFocusCrop(pageImage,pageBounds,"machineDigit0"),
+      machineDigit1:makeReceiptFocusCrop(pageImage,pageBounds,"machineDigit1"),
+      address:makeReceiptFocusCrop(pageImage,pageBounds,"address"),
+      terminalId:makeReceiptFocusCrop(pageImage,pageBounds,"terminalId"),
+      printedAt:makeReceiptFocusCrop(pageImage,pageBounds,"printedAt"),
+      periodNumber:makeReceiptFocusCrop(pageImage,pageBounds,"periodNumber"),
+      periodLabelled:makeReceiptFocusCrop(pageImage,pageBounds,"periodLabelled"),
+      periodLabelledTight:makeReceiptFocusCrop(pageImage,pageBounds,"periodLabelledTight"),
+      periodTail:makeReceiptFocusCrop(pageImage,pageBounds,"periodTail"),
       periodGlyphs:[
-        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph1"),
-        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph2"),
-        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph3"),
-        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph4"),
-        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph5"),
-        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph6"),
-        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph7"),
+        makeReceiptFocusCrop(pageImage,pageBounds,"periodGlyph1"),
+        makeReceiptFocusCrop(pageImage,pageBounds,"periodGlyph2"),
+        makeReceiptFocusCrop(pageImage,pageBounds,"periodGlyph3"),
+        makeReceiptFocusCrop(pageImage,pageBounds,"periodGlyph4"),
+        makeReceiptFocusCrop(pageImage,pageBounds,"periodGlyph5"),
+        makeReceiptFocusCrop(pageImage,pageBounds,"periodGlyph6"),
+        makeReceiptFocusCrop(pageImage,pageBounds,"periodGlyph7"),
       ],
     };
     return {
@@ -1020,8 +1157,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           <div className="ticket-capture-dialog-backdrop" role="presentation" onClick={() => setTicketCaptureChoiceOpen(false)}>
             <section className="ticket-capture-dialog" role="dialog" aria-modal="true" aria-labelledby={ticketPhotoInputId + "-capture-title"} onClick={(event) => event.stopPropagation()}>
               <div className="ticket-capture-dialog-heading">
-                <h3 id={ticketPhotoInputId + "-capture-title"}>Elegí cómo cargar el ticket</h3>
-                <p>La foto tomada con cámara y los archivos pasan por el mismo lector OCR.</p>
+                <h3 id={ticketPhotoInputId + "-capture-title"}>Foto automático</h3>
               </div>
               {cameraError && <p className="ticket-read-error" role="alert">{cameraError}</p>}
               {cameraStarting && <p className="ticket-read-notice" role="status">Solicitando acceso a la cámara…</p>}
@@ -1036,10 +1172,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                   input?.click();
                 }}>Elegir foto o archivo</button>
               </div>
-              <button type="button" className="button ghost ticket-capture-dialog-cancel" onClick={() => {
-                setTicketCaptureChoiceOpen(false);
-                setCameraError("");
-              }}>Cancelar</button>
             </section>
           </div>
         )}
@@ -1127,21 +1259,44 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let focusedClosureMetadata: FocusedClosureMetadata = {};
       let focusedOcrDebugText = "";
       try {
-        const result = await worker.recognize(file);
+        const enhancedFrame = await makeEnhancedTicketImage(file);
+        const result = await worker.recognize(enhancedFrame);
         recognizedText = result.data.text ?? "";
 
-        // La pasada general sigue siendo la fuente de importes. Se conserva el segundo
-        // intento anterior solo como alternativa de texto general.
-        const closureCandidate = Boolean(parseTicketClosure(recognizedText)) ||
-          /\bFIN\s+DE\s+(?:JOR|TOR)NADA\b/i.test(normalize(recognizedText)) ||
-          /\bTOTALES?\s+EN\s+T[J7I1]\b/i.test(normalize(recognizedText));
+        // Una foto puede contener bastante fondo alrededor del papel. Antes de descartarla
+        // como ticket común, se hace una lectura alternativa sobre el papel enderezado.
+        let preparedReceiptCrops: Awaited<ReturnType<typeof makeFocusedReceiptCrops>> | null = null;
+        let closureCandidate = looksLikeClosureText(recognizedText);
+        if (!closureCandidate) {
+          preparedReceiptCrops = await makeFocusedReceiptCrops(file);
+          await worker.setParameters({tessedit_pageseg_mode:6,tessedit_char_whitelist:""} as any);
+          const rectifiedCandidateText=(await worker.recognize(preparedReceiptCrops.pageImage)).data.text ?? "";
+          if(looksLikeClosureText(rectifiedCandidateText)){
+            recognizedText=rectifiedCandidateText;
+            closureCandidate=true;
+          }
+        }
+
         if (closureCandidate) {
           setProgress("Leyendo los datos impresos del FIN DE JORNADA…");
           setProgressPercent(72);
-          const crops = await makeFocusedReceiptCrops(file);
+          const crops = preparedReceiptCrops ?? await makeFocusedReceiptCrops(file);
           const setOcrMode = async (mode:number, whitelist?:string) => {
             await worker.setParameters({tessedit_pageseg_mode:mode,tessedit_char_whitelist:whitelist ?? ""} as any);
           };
+
+          // La lectura de la hoja rectificada suele conservar importes que se pierden cuando
+          // el OCR analiza la foto completa con fondo. Comparar bloque y texto disperso.
+          await setOcrMode(6);
+          const rectifiedBlockText=(await worker.recognize(crops.pageImage)).data.text ?? "";
+          await setOcrMode(11);
+          const rectifiedSparseText=(await worker.recognize(crops.pageImage)).data.text ?? "";
+          const textCandidates=[recognizedText,rectifiedBlockText,rectifiedSparseText];
+          const bestCandidate=textCandidates
+            .map((text)=>({text,score:scoreClosureOcrText(text)}))
+            .sort((left,right)=>right.score-left.score)[0];
+          if(bestCandidate&&bestCandidate.score>=0)recognizedText=bestCandidate.text;
+          await setOcrMode(6);
 
           // Lectura enfocada reducida: dos lecturas de la franja de identificadores
           // para confirmar SUBAG/MAQ, y una por cada campo independiente. Evita decenas
@@ -1660,18 +1815,16 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       )}
 
       {mode === "photo" && (
-        <div className="ticket-capture-panel">
-          <div className="ticket-photo-picker">
-            <span className="ticket-photo-icon" aria-hidden="true">▧</span>
-            <strong>Comprobante del ticket</strong>
-            <span>Seleccioná una foto guardada en el teléfono o sacá una nueva.</span>
-            <button type="button" className="ticket-photo-picker-cta" disabled={busy} onClick={() => { setCameraError(""); setTicketCaptureTarget("main"); setTicketCaptureChoiceOpen(true); }}>Elegir foto o archivo</button>
+        <div className="ticket-capture-panel ticket-capture-panel-automatic">
+          <div className="ticket-photo-picker ticket-photo-auto-control">
+            <button type="button" className="ticket-photo-picker-cta" disabled={busy} onClick={() => { setCameraError(""); setTicketCaptureTarget("main"); setTicketCaptureChoiceOpen(true); }}>Foto automático</button>
             <input
               id={ticketPhotoInputId}
               className="ticket-photo-native-input ticket-photo-operational-input"
               type="file"
               name="ticket_photo"
-              aria-label="Elegir foto o archivo del comprobante del ticket"
+              accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+              aria-label="Elegir una foto o archivo del comprobante del ticket"
               disabled={busy}
               onChange={(event) => {
                 const file = event.currentTarget.files?.[0];
