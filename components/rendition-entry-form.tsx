@@ -368,14 +368,47 @@ function detectReceiptPaperBounds(bitmap:ImageBitmap):ReceiptPaperBounds {
   }
   const horizontal=longestBrightRun(columns,150,scan.width*.06,scan.width*.98);
   if(!horizontal||horizontal.end-horizontal.start<scan.width*.34)return {left:0,top:0,width:bitmap.width,height:bitmap.height};
-  const innerLeft=Math.round(horizontal.start+(horizontal.end-horizontal.start)*.04);
-  const innerRight=Math.round(horizontal.end-(horizontal.end-horizontal.start)*.04);
-  // El texto térmico divide el papel en franjas claras/oscuras; no usar esas franjas
-  // como límites verticales. Mantener la altura completa evita desplazar los recortes OCR.
+
+  // En fotos de celular el ticket no ocupa toda la altura: usar solo su ancho
+  // interior para detectar también el borde superior e inferior del papel.
+  // Sin esta referencia, los recortes verticales se medían desde la foto completa
+  // y «AG / SUBAG / MAQ» acababan leyendo el título o el fondo detrás del ticket.
+  const verticalScores=new Array<number>(scan.height).fill(0);
+  const xStart=Math.max(0,Math.floor(horizontal.start+(horizontal.end-horizontal.start)*.18));
+  const xEnd=Math.min(scan.width,Math.ceil(horizontal.end-(horizontal.end-horizontal.start)*.18));
+  for(let y=0;y<scan.height;y+=1){
+    let total=0,count=0;
+    for(let x=xStart;x<xEnd;x+=2){
+      const i=(y*scan.width+x)*4;
+      total+=.299*pixels[i]!+.587*pixels[i+1]!+.114*pixels[i+2]!;count+=1;
+    }
+    verticalScores[y]=count?total/count:0;
+  }
+  const vertical=longestBrightRun(verticalScores,132,scan.height*.02,scan.height*.99);
+  const verticalHeight=vertical?vertical.end-vertical.start:0;
+  // Si no hay un borde vertical fiable (p. ej. escaneo ya recortado), conservar
+  // la geometría previa en vez de desplazar los campos de tickets normales.
+  const hasVerticalBounds=Boolean(vertical&&verticalHeight>=scan.height*.34);
   const sx=bitmap.width/scan.width;
+  const sy=bitmap.height/scan.height;
   const paperLeft=Math.max(0,Math.round(horizontal.start*sx));
   const paperWidth=Math.max(1,Math.min(bitmap.width,Math.round((horizontal.end-horizontal.start)*sx)));
-  return {left:paperLeft,top:0,width:paperWidth,height:bitmap.height};
+  const paperTop=hasVerticalBounds?Math.max(0,Math.round(vertical!.start*sy)):0;
+  const paperHeight=hasVerticalBounds?Math.max(1,Math.min(bitmap.height,Math.round(verticalHeight*sy))):bitmap.height;
+  return {left:paperLeft,top:paperTop,width:paperWidth,height:paperHeight};
+}
+
+function makeReceiptPaperCrop(bitmap:ImageBitmap,bounds:ReceiptPaperBounds):HTMLCanvasElement {
+  const x=Math.max(0,Math.floor(bounds.left));
+  const y=Math.max(0,Math.floor(bounds.top));
+  const width=Math.max(1,Math.min(bitmap.width-x,Math.ceil(bounds.width)));
+  const height=Math.max(1,Math.min(bitmap.height-y,Math.ceil(bounds.height)));
+  const canvas=document.createElement("canvas");
+  canvas.width=width;canvas.height=height;
+  const context=canvas.getContext("2d",{willReadFrequently:true});
+  if(!context)throw new Error("No se pudo recortar el comprobante para mejorar la lectura.");
+  context.drawImage(bitmap,x,y,width,height,0,0,width,height);
+  return canvas;
 }
 
 function makeReceiptFocusCrop(bitmap:ImageBitmap,bounds:ReceiptPaperBounds,region:ReceiptFocusRegion):HTMLCanvasElement {
@@ -442,6 +475,8 @@ async function makeFocusedReceiptCrops(file:File) {
   try {
     const bounds=detectReceiptPaperBounds(bitmap);
     const crops={
+      // OCR general de todo el ticket, sin mesa/fondo alrededor de la hoja.
+      paper:makeReceiptPaperCrop(bitmap,bounds),
       codes:makeReceiptFocusCrop(bitmap,bounds,"codes"),
       agencyCode:makeReceiptFocusCrop(bitmap,bounds,"agencyCode"),
       subagentCode:makeReceiptFocusCrop(bitmap,bounds,"subagentCode"),
@@ -1137,13 +1172,55 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
         // La pasada general sigue siendo la fuente de importes. Se conserva el segundo
         // intento anterior solo como alternativa de texto general.
-        const closureCandidate = Boolean(parseTicketClosure(recognizedText)) ||
+        let closureCandidate = Boolean(parseTicketClosure(recognizedText)) ||
           /\bFIN\s+DE\s+(?:JOR|TOR)NADA\b/i.test(normalize(recognizedText)) ||
           /\bTOTALES?\s+EN\s+T[J7I1]\b/i.test(normalize(recognizedText));
+        let preparedCrops: Awaited<ReturnType<typeof makeFocusedReceiptCrops>> | null = null;
+        // Si el fondo o el encuadre hicieron fallar la lectura completa, hacer un único
+        // reintento sobre el papel detectado antes de descartar el FIN DE JORNADA.
+        if (!closureCandidate) {
+          const paperAttempt = await makeFocusedReceiptCrops(file);
+          const paperText = (await worker.recognize(paperAttempt.paper)).data.text ?? "";
+          const paperIsClosure = Boolean(parseTicketClosure(paperText)) ||
+            /\bFIN\s+DE\s+(?:JOR|TOR)NADA\b/i.test(normalize(paperText)) ||
+            /\bTOTALES?\s+EN\s+T[J7I1]\b/i.test(normalize(paperText));
+          if (paperIsClosure) {
+            recognizedText = paperText;
+            closureCandidate = true;
+            preparedCrops = paperAttempt;
+          }
+        }
         if (closureCandidate) {
           setProgress("Leyendo los datos impresos del FIN DE JORNADA…");
           setProgressPercent(72);
-          const crops = await makeFocusedReceiptCrops(file);
+          const crops = preparedCrops ?? await makeFocusedReceiptCrops(file);
+          // La hoja recortada también es la fuente del texto que alimenta los importes.
+          // Solo sustituir la lectura original si reconoce el mismo tipo de comprobante
+          // y devuelve al menos tanta información estructurada.
+          const paperText = preparedCrops ? recognizedText : ((await worker.recognize(crops.paper)).data.text ?? "");
+          const closureReadScore = (value: string) => {
+            const receipt = parseTicketClosure(value);
+            if (!receipt) return -1;
+            const identifiers = [receipt.agencyCode, receipt.subagentCode, receipt.machineCode, receipt.terminalId, receipt.periodNumber];
+            const metrics = [
+              receipt.quiniela.valids, receipt.quiniela.cancelledSpecial, receipt.quiniela.prizesPaid,
+              receipt.quinielaAlToque.valids, receipt.quinielaAlToque.prizesPaid,
+              ...receipt.otherGames.map((game) => ({count:game.count,amount:game.amount})),
+              receipt.totalOtherGames, receipt.otherGamesPrizes, receipt.totalPrizes, receipt.generalTotal,
+              receipt.digital.cobros, receipt.digital.devoluciones,
+            ];
+            let score = 20 + identifiers.filter((field) => Boolean(field)).length;
+            for (const metric of metrics) {
+              if (metric.count !== null) score += 1;
+              if (metric.amount !== null) score += 1;
+            }
+            if (receipt.consistency.salesTotalsMatch === true) score += 6;
+            else if (receipt.consistency.salesTotalsMatch === false) score -= 4;
+            if (receipt.consistency.prizeTotalsMatch === true) score += 3;
+            else if (receipt.consistency.prizeTotalsMatch === false) score -= 2;
+            return score;
+          };
+          if (closureReadScore(paperText) >= closureReadScore(recognizedText)) recognizedText = paperText;
           const setOcrMode = async (mode:number, whitelist?:string) => {
             await worker.setParameters({tessedit_pageseg_mode:mode,tessedit_char_whitelist:whitelist ?? ""} as any);
           };
