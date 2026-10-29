@@ -1270,3 +1270,18 @@ html, body { min-height:100%; }
   border: 0 !important;
   z-index: -1 !important;
 }
+
+
+/* Selector unificado: un solo botón, sin tarjeta ni textos extra. */
+.ticket-capture-panel-automatic {
+  width:100%!important;max-width:none!important;margin:0!important;padding:0!important;gap:0!important;
+}
+.ticket-photo-auto-control {
+  display:flex!important;min-height:0!important;aspect-ratio:auto!important;width:100%!important;
+  justify-content:center!important;align-items:stretch!important;padding:0!important;
+  border:0!important;border-radius:0!important;background:transparent!important;gap:0!important;
+}
+.ticket-photo-auto-control .ticket-photo-picker-cta {
+  align-self:stretch!important;width:100%!important;min-width:0!important;min-height:48px!important;
+  margin:0!important;border-radius:9px!important;
+}
