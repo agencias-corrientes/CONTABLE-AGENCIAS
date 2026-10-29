@@ -226,7 +226,9 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   if (!isEndOfDay) return null;
 
   const qIndex = findIndex(lines, /^QUINIELA(?:\s+CORRIENTES?)?$/);
-  const qToqueIndex = findIndex(lines, /AL\s+TOQUE/);
+  // OCR térmico suele leer "Quiniela al Toque" como "Toave" o "TOW".
+  // El comienzo del encabezado basta para separar sus importes de la Quiniela común.
+  const qToqueIndex = findIndex(lines, /^QUINIELA\s+AL\s+T/);
   const otherIndex = findIndex(lines, /OTROS\s+JUE\w{2,3}/);
   const digitalIndex = findIndex(lines, /[MN]EDIOS\s+DIGITALES/);
   const otherEnd = digitalIndex >= 0 ? digitalIndex : lines.length;
