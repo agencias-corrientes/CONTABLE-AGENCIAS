@@ -337,10 +337,11 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   codes:       {left:0.025,right:0.975,top:0.238,bottom:0.266,scale:6,contrast:1.7},
   agencyCode:  {left:0.105,right:0.365,top:0.238,bottom:0.266,scale:7,contrast:1.7},
   // SUBAG:014: el primer cero queda antes del centro del rótulo; incluir los tres dígitos.
-  subagentCode:{left:0.465,right:0.680,top:0.238,bottom:0.266,scale:8,contrast:1.6},
-  subagentDigit1:{left:0.480,right:0.545,top:0.238,bottom:0.266,scale:12,contrast:1.6},
-  subagentDigit0:{left:0.540,right:0.605,top:0.238,bottom:0.266,scale:12,contrast:1.6},
-  subagentDigit2:{left:0.592,right:0.660,top:0.238,bottom:0.266,scale:12,contrast:1.6},
+  subagentCode:{left:0.465,right:0.700,top:0.238,bottom:0.266,scale:8,contrast:1.6},
+  // Los tres recortes individuales quedan centrados en los dígitos, no en "SUBAG:".
+  subagentDigit1:{left:0.520,right:0.565,top:0.238,bottom:0.266,scale:12,contrast:1.6},
+  subagentDigit0:{left:0.565,right:0.610,top:0.238,bottom:0.266,scale:12,contrast:1.6},
+  subagentDigit2:{left:0.610,right:0.655,top:0.238,bottom:0.266,scale:12,contrast:1.6},
   machineCode: {left:0.755,right:0.900,top:0.238,bottom:0.266,scale:9,contrast:1.5},
   machineDigit0:{left:0.775,right:0.830,top:0.238,bottom:0.266,scale:12,contrast:1.5},
   machineDigit1:{left:0.825,right:0.880,top:0.238,bottom:0.266,scale:12,contrast:1.5},
@@ -348,18 +349,18 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   // La etiqueta "Máquina real" precede el identificador impreso.
   terminalId:  {left:0.285,right:0.490,top:0.292,bottom:0.321,scale:7,contrast:1.7},
   printedAt:   {left:0.025,right:0.975,top:0.320,bottom:0.350,scale:6,contrast:1.8},
-  periodNumber:{left:0.395,right:0.680,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  periodNumber:{left:0.345,right:0.695,top:0.882,bottom:0.914,scale:12,contrast:1.5},
   periodLabelled:{left:0.020,right:0.840,top:0.881,bottom:0.915,scale:4,contrast:1.1},
   periodLabelledTight:{left:0.020,right:0.840,top:0.884,bottom:0.912,scale:4,contrast:1.1},
-  periodTail:  {left:0.600,right:0.690,top:0.882,bottom:0.914,scale:12,contrast:1.5},
-  // En el ticket enviado, los siete dígitos ocupan aproximadamente el tramo 0.41–0.65.
-  periodGlyph1:{left:0.407,right:0.443,top:0.882,bottom:0.914,scale:12,contrast:1.5},
-  periodGlyph2:{left:0.442,right:0.478,top:0.882,bottom:0.914,scale:12,contrast:1.5},
-  periodGlyph3:{left:0.477,right:0.513,top:0.882,bottom:0.914,scale:12,contrast:1.5},
-  periodGlyph4:{left:0.512,right:0.548,top:0.882,bottom:0.914,scale:12,contrast:1.5},
-  periodGlyph5:{left:0.547,right:0.583,top:0.882,bottom:0.914,scale:12,contrast:1.5},
-  periodGlyph6:{left:0.582,right:0.618,top:0.882,bottom:0.914,scale:12,contrast:1.5},
-  periodGlyph7:{left:0.617,right:0.653,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  periodTail:  {left:0.625,right:0.700,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  // En la foto real, el primer dígito inicia en x≈0.36 y los siete terminan en x≈0.69.
+  periodGlyph1:{left:0.354,right:0.397,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  periodGlyph2:{left:0.402,right:0.445,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  periodGlyph3:{left:0.450,right:0.493,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  periodGlyph4:{left:0.499,right:0.542,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  periodGlyph5:{left:0.547,right:0.590,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  periodGlyph6:{left:0.596,right:0.639,top:0.882,bottom:0.914,scale:12,contrast:1.5},
+  periodGlyph7:{left:0.644,right:0.687,top:0.882,bottom:0.914,scale:12,contrast:1.5},
 };
 
 function longestBrightRun(scores:number[],threshold:number,from:number,to:number) {
@@ -1287,11 +1288,13 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
           // La lectura de la hoja rectificada suele conservar importes que se pierden cuando
           // el OCR analiza la foto completa con fondo. Comparar bloque y texto disperso.
+          await setOcrMode(4);
+          const rectifiedColumnText=(await worker.recognize(crops.pageImage)).data.text ?? "";
           await setOcrMode(6);
           const rectifiedBlockText=(await worker.recognize(crops.pageImage)).data.text ?? "";
           await setOcrMode(11);
           const rectifiedSparseText=(await worker.recognize(crops.pageImage)).data.text ?? "";
-          const textCandidates=[recognizedText,rectifiedBlockText,rectifiedSparseText];
+          const textCandidates=[recognizedText,rectifiedColumnText,rectifiedBlockText,rectifiedSparseText];
           const bestCandidate=textCandidates
             .map((text)=>({text,score:scoreClosureOcrText(text)}))
             .sort((left,right)=>right.score-left.score)[0];
