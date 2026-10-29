@@ -155,6 +155,25 @@ function aliasesFor(game: Game) {
   return [name];
 }
 
+function closureReadScoreForSelection(receipt: TicketClosureData): number {
+  const identifiers = [receipt.agencyCode, receipt.subagentCode, receipt.machineCode, receipt.terminalId, receipt.periodNumber];
+  const metrics = [
+    receipt.quiniela.valids, receipt.quiniela.cancelledSpecial, receipt.quiniela.prizesPaid,
+    receipt.quinielaAlToque.valids, receipt.quinielaAlToque.prizesPaid,
+    ...receipt.otherGames.map((game) => ({count:game.count,amount:game.amount})),
+    receipt.totalOtherGames, receipt.otherGamesPrizes, receipt.totalPrizes, receipt.generalTotal,
+    receipt.digital.cobros, receipt.digital.devoluciones,
+  ];
+  let score = identifiers.filter((field) => Boolean(field)).length * 2;
+  for (const metric of metrics) {
+    if (metric.count !== null) score += 1;
+    if (metric.amount !== null) score += 1;
+  }
+  if (receipt.consistency.salesTotalsMatch === true) score += 6;
+  if (receipt.consistency.prizeTotalsMatch === true) score += 3;
+  return score;
+}
+
 function parseTicketText(text: string, games: Game[], recoveredPeriodNumber = "") {
   const receiptData = parseTicketClosure(text);
   if (receiptData) {
@@ -1181,26 +1200,41 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
         // La pasada general sigue siendo la fuente de importes. Se conserva el segundo
         // intento anterior solo como alternativa de texto general.
-        let closureCandidate = Boolean(parseTicketClosure(recognizedText)) ||
-          /\bFIN\s+DE\s+(?:JOR|TOR)NADA\b/i.test(normalize(recognizedText)) ||
-          /\bTOTALES?\s+EN\s+T[J7I1]\b/i.test(normalize(recognizedText));
+        const looksLikeEndOfDay = (value: string) => {
+          const normalized = normalize(value);
+          const parsed = parseTicketClosure(value);
+          if (parsed) return true;
+          const markers = [
+            /FIN\s+DE\s+(?:JOR|TOR)NADA/,
+            /TOTALES?\s+EN\s+T[J7I1]/,
+            /TOTAL\s+GENE?RA[L1I]?/,
+            /AB[I1L]ERTO\s+E[L1I]/,
+            /CERRAD[O0]?/,
+            /MED[I1]OS\s+D[I1]G[I1]T[A4][L1I]ES/,
+            /PER[I1]ODO/,
+            /PREM[I1]OS?\s+P[A-Z]{2,3}/,
+            /SUBAG(?:ENTE)?/,
+            /MAQ(?:UINA)?\s*(?:REAL)?/,
+          ].filter((pattern) => pattern.test(normalized)).length;
+          return markers >= 4 && /TOTAL|CERRAD|PER[I1]ODO/.test(normalized);
+        };
+        let closureCandidate = looksLikeEndOfDay(recognizedText);
         let preparedCrops: Awaited<ReturnType<typeof makeFocusedReceiptCrops>> | null = null;
-        // Si el fondo o el encuadre hicieron fallar la lectura completa, hacer un único
-        // reintento sobre el papel detectado antes de descartar el FIN DE JORNADA.
-        if (!closureCandidate && (normalize(recognizedText).length < 35 ||
-          /\b(?:FIN|JORN|TOTALES?\s+EN|CERRAD|PER[I1]ODO|MEDIOS\s+DIGITALES?)\b/i.test(normalize(recognizedText)))) {
-          // Este reintento liviano solo se hace si el OCR general dejó muy poco texto
-          // o indicios de un cierre; los cupones comunes conservan su flujo habitual.
-          const paperCrop = await makeReceiptPaperCropFromFile(file);
-          const paperText = (await worker.recognize(paperCrop)).data.text ?? "";
-          const paperIsClosure = Boolean(parseTicketClosure(paperText)) ||
-            /\bFIN\s+DE\s+(?:JOR|TOR)NADA\b/i.test(normalize(paperText)) ||
-            /\bTOTALES?\s+EN\s+T[J7I1]\b/i.test(normalize(paperText));
-          if (paperIsClosure) {
-            recognizedText = paperText;
-            closureCandidate = true;
-            preparedCrops = await makeFocusedReceiptCrops(file);
-          }
+        // Leer siempre una segunda vez sobre el papel aislado. El OCR de la foto completa
+        // puede devolver bastante texto de fondo y aun así perder todos los campos del cierre.
+        // El reintento es local a este lector y no modifica el flujo de selección/cámara.
+        const paperCrop = await makeReceiptPaperCropFromFile(file);
+        await worker.setParameters({ tessedit_pageseg_mode: 6, preserve_interword_spaces: "1" } as any);
+        const paperText = (await worker.recognize(paperCrop)).data.text ?? "";
+        const paperLooksLikeEndOfDay = looksLikeEndOfDay(paperText);
+        if (paperLooksLikeEndOfDay) {
+          const originalParsed = parseTicketClosure(recognizedText);
+          const paperParsed = parseTicketClosure(paperText);
+          const originalScore = originalParsed ? closureReadScoreForSelection(originalParsed) : -1;
+          const paperScore = paperParsed ? closureReadScoreForSelection(paperParsed) : -1;
+          if (!closureCandidate || paperScore >= originalScore) recognizedText = paperText;
+          closureCandidate = true;
+          preparedCrops = await makeFocusedReceiptCrops(file);
         }
         if (closureCandidate) {
           setProgress("Leyendo los datos impresos del FIN DE JORNADA…");
@@ -1212,27 +1246,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const paperText = preparedCrops ? recognizedText : ((await worker.recognize(crops.paper)).data.text ?? "");
           const closureReadScore = (value: string) => {
             const receipt = parseTicketClosure(value);
-            if (!receipt) return -1;
-            const identifiers = [receipt.agencyCode, receipt.subagentCode, receipt.machineCode, receipt.terminalId, receipt.periodNumber];
-            const metrics = [
-              receipt.quiniela.valids, receipt.quiniela.cancelledSpecial, receipt.quiniela.prizesPaid,
-              receipt.quinielaAlToque.valids, receipt.quinielaAlToque.prizesPaid,
-              ...receipt.otherGames.map((game) => ({count:game.count,amount:game.amount})),
-              receipt.totalOtherGames, receipt.otherGamesPrizes, receipt.totalPrizes, receipt.generalTotal,
-              receipt.digital.cobros, receipt.digital.devoluciones,
-            ];
-            let score = 20 + identifiers.filter((field) => Boolean(field)).length;
-            for (const metric of metrics) {
-              if (metric.count !== null) score += 1;
-              if (metric.amount !== null) score += 1;
-            }
-            if (receipt.consistency.salesTotalsMatch === true) score += 6;
-            else if (receipt.consistency.salesTotalsMatch === false) score -= 4;
-            if (receipt.consistency.prizeTotalsMatch === true) score += 3;
-            else if (receipt.consistency.prizeTotalsMatch === false) score -= 2;
-            return score;
+            return receipt ? closureReadScoreForSelection(receipt) : -1;
           };
-          if (closureReadScore(paperText) >= closureReadScore(recognizedText)) recognizedText = paperText;
+          if (closureReadScore(paperText) > closureReadScore(recognizedText)) recognizedText = paperText;
           const setOcrMode = async (mode:number, whitelist?:string) => {
             await worker.setParameters({tessedit_pageseg_mode:mode,tessedit_char_whitelist:whitelist ?? ""} as any);
           };
