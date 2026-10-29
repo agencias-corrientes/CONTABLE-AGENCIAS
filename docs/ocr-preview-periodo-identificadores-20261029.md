@@ -1,0 +1,1 @@
+Preview temporal de OCR histórico basado en 824c067bdc8521363581a77ec8ccf7f274da2cd6, que recupera el número de período y lee por separado los campos identificatorios mediante recortes y varias pasadas OCR. No promover a producción sin validación. El Preview usa temporalmente autenticación de producción: probar solo lectura; no guardar rendiciones ni pagos.
