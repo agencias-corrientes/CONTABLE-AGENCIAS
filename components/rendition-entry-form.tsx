@@ -339,18 +339,18 @@ const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   terminalId:  {left:0.19,right:0.58,top:0.292,bottom:0.321,scale:7,contrast:1.7},
   printedAt:   {left:0.025,right:0.975,top:0.320,bottom:0.350,scale:6,contrast:1.8},
   // Recortes estrechos: excluir el renglón ABIERTO que está justo debajo del período.
-  periodNumber:{left:0.635,right:0.810,top:0.852,bottom:0.879,scale:12,contrast:1.5},
+  periodNumber:{left:0.34,right:0.68,top:0.852,bottom:0.879,scale:12,contrast:1.5},
   periodLabelled:{left:0.022,right:0.840,top:0.852,bottom:0.879,scale:4,contrast:1.15},
   periodLabelledTight:{left:0.022,right:0.840,top:0.856,bottom:0.877,scale:4,contrast:1.15},
-  periodTail:  {left:0.750,right:0.810,top:0.852,bottom:0.879,scale:12,contrast:1.5},
+  periodTail:  {left:0.585,right:0.685,top:0.852,bottom:0.879,scale:12,contrast:1.5},
   // El número del cupón tiene siete casilleros de ancho fijo; se leen glifo por glifo.
-  periodGlyph1:{left:0.635,right:0.657,top:0.852,bottom:0.879,scale:12,contrast:1.5},
-  periodGlyph2:{left:0.657,right:0.679,top:0.852,bottom:0.879,scale:12,contrast:1.5},
-  periodGlyph3:{left:0.679,right:0.701,top:0.852,bottom:0.879,scale:12,contrast:1.5},
-  periodGlyph4:{left:0.701,right:0.723,top:0.852,bottom:0.879,scale:12,contrast:1.5},
-  periodGlyph5:{left:0.723,right:0.745,top:0.852,bottom:0.879,scale:12,contrast:1.5},
-  periodGlyph6:{left:0.745,right:0.767,top:0.852,bottom:0.879,scale:12,contrast:1.5},
-  periodGlyph7:{left:0.767,right:0.792,top:0.852,bottom:0.879,scale:12,contrast:1.5},
+  periodGlyph1:{left:0.350,right:0.390,top:0.852,bottom:0.879,scale:12,contrast:1.5},
+  periodGlyph2:{left:0.395,right:0.435,top:0.852,bottom:0.879,scale:12,contrast:1.5},
+  periodGlyph3:{left:0.440,right:0.480,top:0.852,bottom:0.879,scale:12,contrast:1.5},
+  periodGlyph4:{left:0.485,right:0.525,top:0.852,bottom:0.879,scale:12,contrast:1.5},
+  periodGlyph5:{left:0.530,right:0.570,top:0.852,bottom:0.879,scale:12,contrast:1.5},
+  periodGlyph6:{left:0.575,right:0.615,top:0.852,bottom:0.879,scale:12,contrast:1.5},
+  periodGlyph7:{left:0.620,right:0.675,top:0.852,bottom:0.879,scale:12,contrast:1.5},
 };
 
 function longestBrightRun(scores:number[],threshold:number,from:number,to:number) {
