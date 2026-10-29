@@ -207,7 +207,7 @@ export function extractTicketPeriodNumber(text: string): string | null {
   }
   return null;
 }
-export function parseTicketClosure(text: string): TicketClosureData | null {
+export function parseTicketClosure(text: string, forceClosure = false): TicketClosureData | null {
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   if (!lines.length) return null;
   const normalized = lines.map(normalizeTicketText);
@@ -233,7 +233,7 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
     hasClosureFooter ||
     (markerCount >= 4 && (closureMarkers.general || closureMarkers.totalsTj) &&
       (closureMarkers.opened || closureMarkers.closed || closureMarkers.period));
-  if (!isEndOfDay) return null;
+  if (!isEndOfDay && !forceClosure) return null;
 
   const qIndex = findIndex(lines, /^QUINIELA(?:\s+CORRIENTES?)?$/);
   const qToqueIndex = findIndex(lines, /AL\s+TOQUE/);
