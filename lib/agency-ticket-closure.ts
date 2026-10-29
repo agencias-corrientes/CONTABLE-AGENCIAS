@@ -54,10 +54,17 @@ function metricFromLine(line: string): TicketReceiptMetric | null {
   // The digits in "Quini 6" and "Loto 5 Plus" are game names, not amounts.
   const cleaned = normalizeTicketText(line)
     .replace(/^(?:LOTO\s+5\s+PLUS|LOTO\s+PLUS|QUINI\s*6|MUINI\s*6|HUI[I1]NI\s*6|QUINIELA\s+POCEADA|LOTER[I1]A\s+ONLINE|POZO\s+QUINIELA|BRINCO|TELEKINO|QUINIELA\s+AL\s+TOQUE|QUINIELA(?:\s+CORRIENTES?)?)\s*/i, "").trim();
-  const values = cleaned.match(/\d[\d.,]*/g) ?? [];
+  // El OCR de la térmica a veces lee la coma decimal como punto y coma
+  // o la omite por completo (p. ej. 19260,00 -> 1926000). Normalizar solo
+  // líneas que contienen moneda evita reinterpretar números de códigos/fechas.
+  const moneyLine = cleaned.replace(/(?<=\d)[;:](?=\d{2}(?:\s|$))/g, ",");
+  const values = moneyLine.match(/\d[\d.,]*/g) ?? [];
   if (!values.length) return null;
-  const amountToken = values[values.length - 1] ?? "";
-  const hasCurrency = /\$|\bARS\b|PESOS/i.test(cleaned);
+  let amountToken = values[values.length - 1] ?? "";
+  const hasCurrency = /\$|\bARS\b|PESOS/i.test(moneyLine);
+  if (hasCurrency && !/[.,]/.test(amountToken) && /^\d{6,7}$/.test(amountToken) && amountToken.endsWith("00")) {
+    amountToken = amountToken.slice(0, -2) + ",00";
+  }
   const hasCents = /[.,]\d{2}\b/.test(amountToken);
   if (values.length === 1 && !hasCurrency && !hasCents) return null;
   const amount = moneyAllowZero(amountToken);
