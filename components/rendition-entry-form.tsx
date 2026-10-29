@@ -1278,14 +1278,23 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         // nunca cancelar la lectura original del ticket.
         try {
           const paperCrop = await makeReceiptPaperCropFromFile(file);
-          await worker.setParameters({ tessedit_pageseg_mode: 6, preserve_interword_spaces: "1" } as any);
-          const paperText = (await worker.recognize(paperCrop)).data.text ?? "";
+          const paperCandidates: string[] = [];
+          for (const psm of [6, 4, 11]) {
+            await worker.setParameters({ tessedit_pageseg_mode: psm, preserve_interword_spaces: "1" } as any);
+            const text = (await worker.recognize(paperCrop)).data.text ?? "";
+            if (text.trim()) paperCandidates.push(text);
+          }
+          const paperTextScore = (value: string) => {
+            const parsed = parseTicketClosure(value, dailyMode);
+            return parsed ? closureReadScoreForSelection(parsed) : -1;
+          };
+          const paperText = paperCandidates.sort((left, right) => paperTextScore(right) - paperTextScore(left))[0] ?? "";
           const paperLooksLikeEndOfDay = looksLikeEndOfDay(paperText);
           if (paperLooksLikeEndOfDay || dailyMode) {
-            const originalParsed = parseTicketClosure(recognizedText);
-            const paperParsed = parseTicketClosure(paperText);
-            const originalScore = originalParsed ? closureReadScoreForSelection(originalParsed) : -1;
-            const paperScore = paperParsed ? closureReadScoreForSelection(paperParsed) : -1;
+            const originalScore = paperTextScore(recognizedText);
+            const paperScore = paperTextScore(paperText);
+            // En cierre diario, elegir la pasada que recupere más campos estructurados,
+            // aunque el OCR no haya leído perfectamente el encabezado FIN DE JORNADA.
             if (dailyMode || !closureCandidate || paperScore >= originalScore) recognizedText = paperText;
             closureCandidate = true;
             preparedCrops = await makeFocusedReceiptCrops(file);
