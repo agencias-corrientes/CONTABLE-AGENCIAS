@@ -1486,7 +1486,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       setOcrText([recognizedText, focusedOcrDebugText].filter(Boolean).join("\n\n"));
       const activeGames = games.filter((game) => game.enabled !== false);
-      const parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber, closureCandidate);
+      const parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber, dailyMode);
       if (batchMode && !parsed.receiptData) {
         setError("Esta modalidad acepta comprobantes oficiales FIN DE JORNADA. El cupón no se agregó al lote.");
         setProgress("No se incorporó el archivo. Elegí un cierre oficial o continuá con otro cupón.");
