@@ -1611,9 +1611,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       if (parsed.date && !parsed.receiptData) setDate(parsed.date);
       if (parsed.drawNumber) setDrawNumber(parsed.drawNumber);
       if (parsed.receiptData) {
-        // Para un FIN DE JORNADA, conservar el período recuperado por el OCR del ticket completo
-        // cuando el recorte específico no consigue una lectura válida.
-        setTicketNumbers(closureReceipt.periodNumber ?? "");
+        // Recuperar el período desde el OCR general cuando no se confirmó en los recortes.
+        setTicketNumbers(parsed.receiptData.periodNumber ?? recoveredPeriodNumber ?? "");
       } else if (parsed.ticketNumber) {
         setTicketNumbers((previous) => previous.split(/\s+/).includes(parsed.ticketNumber) ? previous : previous ? previous + "\n" + parsed.ticketNumber : parsed.ticketNumber);
       }
