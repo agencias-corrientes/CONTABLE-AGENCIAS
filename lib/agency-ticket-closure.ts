@@ -271,7 +271,7 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   const totalOtherGames = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, totalOtherMatcher);
   const otherGamesPrizes = metricInRange(lines, totalOtherIndex >= 0 ? totalOtherIndex + 1 : (otherIndex >= 0 ? otherIndex : 0), otherEnd, /PREMIOS?\s+P[A-Z]{2,3}/);
   const totalPrizes = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /PREMIOS?\s+P[A-Z]{2,3}/, true);
-  const generalTotal = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /TOTAL\s+GENERAL/);
+  let generalTotal = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /TOTAL\s+GENERAL/);
   const cobros = digitalIndex >= 0 ? metricInRange(lines, digitalIndex, lines.length, /^COBROS?\b/) : emptyMetric();
   const devoluciones = digitalIndex >= 0 ? metricInRange(lines, digitalIndex, lines.length, /^DEVOLUCIONES?\b/) : emptyMetric();
 
