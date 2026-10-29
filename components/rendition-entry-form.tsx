@@ -320,37 +320,37 @@ type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
 >>;
 
 const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
-  codes:       {left:0.030,right:0.955,top:0.263,bottom:0.292,scale:5,contrast:1.8},
-  agencyCode:  {left:0.140,right:0.365,top:0.263,bottom:0.292,scale:6,contrast:1.8},
+  codes:       {left:0.15,right:0.995,top:0.238,bottom:0.266,scale:6,contrast:1.7},
+  agencyCode:  {left:0.18,right:0.42,top:0.238,bottom:0.266,scale:7,contrast:1.7},
   // Recorte calibrado sobre el renglón impreso SUBAG:102. El valor está entre x≈0.53 y 0.61
   // del ancho del papel; terminar antes de MAQ evita capturar sus dígitos por error.
-  subagentCode:{left:0.512,right:0.656,top:0.263,bottom:0.292,scale:6,contrast:1.6},
+  subagentCode:{left:0.43,right:0.805,top:0.238,bottom:0.266,scale:8,contrast:1.6},
   // Un recorte por glifo, centrado respectivamente en 1, 0 y 2. Antes los recortes
   // segundo y tercero se solapaban con el glifo vecino y llegaban hasta la etiqueta MAQ.
-  subagentDigit1:{left:0.522,right:0.556,top:0.263,bottom:0.292,scale:10,contrast:1.6},
-  subagentDigit0:{left:0.568,right:0.602,top:0.263,bottom:0.292,scale:10,contrast:1.6},
-  subagentDigit2:{left:0.613,right:0.651,top:0.263,bottom:0.292,scale:10,contrast:1.6},
+  subagentDigit1:{left:0.64,right:0.688,top:0.238,bottom:0.266,scale:12,contrast:1.6},
+  subagentDigit0:{left:0.692,right:0.738,top:0.238,bottom:0.266,scale:12,contrast:1.6},
+  subagentDigit2:{left:0.742,right:0.792,top:0.238,bottom:0.266,scale:12,contrast:1.6},
   // MAQ: lectura de los dos glifos individuales; sin incluir los puntos del rótulo.
-  machineCode: {left:0.775,right:0.879,top:0.263,bottom:0.292,scale:8,contrast:1.5},
-  machineDigit0:{left:0.778,right:0.827,top:0.263,bottom:0.292,scale:10,contrast:1.4},
-  machineDigit1:{left:0.828,right:0.875,top:0.263,bottom:0.292,scale:10,contrast:1.4},
-  address:     {left:0.040,right:0.555,top:0.285,bottom:0.307,scale:5,contrast:1.8},
+  machineCode: {left:0.80,right:0.995,top:0.238,bottom:0.266,scale:9,contrast:1.5},
+  machineDigit0:{left:0.925,right:0.960,top:0.238,bottom:0.266,scale:12,contrast:1.5},
+  machineDigit1:{left:0.962,right:0.997,top:0.238,bottom:0.266,scale:12,contrast:1.5},
+  address:     {left:0.035,right:0.560,top:0.267,bottom:0.296,scale:6,contrast:1.8},
   // La máquina real está en su propia línea; no incluir la dirección que termina en 410.
-  terminalId:  {left:0.362,right:0.534,top:0.3075,bottom:0.3295,scale:6,contrast:1.6},
-  printedAt:   {left:0.035,right:0.965,top:0.324,bottom:0.347,scale:5,contrast:1.8},
+  terminalId:  {left:0.19,right:0.58,top:0.292,bottom:0.321,scale:7,contrast:1.7},
+  printedAt:   {left:0.025,right:0.975,top:0.320,bottom:0.350,scale:6,contrast:1.8},
   // Recortes estrechos: excluir el renglón ABIERTO que está justo debajo del período.
-  periodNumber:{left:0.375,right:0.800,top:0.885,bottom:0.909,scale:10,contrast:1.5},
-  periodLabelled:{left:0.022,right:0.830,top:0.885,bottom:0.909,scale:3,contrast:1.0},
-  periodLabelledTight:{left:0.022,right:0.830,top:0.887,bottom:0.908,scale:3,contrast:1.0},
-  periodTail:  {left:0.625,right:0.805,top:0.885,bottom:0.909,scale:11,contrast:1.5},
+  periodNumber:{left:0.635,right:0.810,top:0.852,bottom:0.879,scale:12,contrast:1.5},
+  periodLabelled:{left:0.022,right:0.840,top:0.852,bottom:0.879,scale:4,contrast:1.15},
+  periodLabelledTight:{left:0.022,right:0.840,top:0.856,bottom:0.877,scale:4,contrast:1.15},
+  periodTail:  {left:0.750,right:0.810,top:0.852,bottom:0.879,scale:12,contrast:1.5},
   // El número del cupón tiene siete casilleros de ancho fijo; se leen glifo por glifo.
-  periodGlyph1:{left:0.375,right:0.414,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph2:{left:0.425,right:0.463,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph3:{left:0.473,right:0.513,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph4:{left:0.523,right:0.561,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph5:{left:0.571,right:0.610,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph6:{left:0.622,right:0.659,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph7:{left:0.670,right:0.707,top:0.885,bottom:0.909,scale:10,contrast:1.4},
+  periodGlyph1:{left:0.635,right:0.657,top:0.852,bottom:0.879,scale:12,contrast:1.5},
+  periodGlyph2:{left:0.657,right:0.679,top:0.852,bottom:0.879,scale:12,contrast:1.5},
+  periodGlyph3:{left:0.679,right:0.701,top:0.852,bottom:0.879,scale:12,contrast:1.5},
+  periodGlyph4:{left:0.701,right:0.723,top:0.852,bottom:0.879,scale:12,contrast:1.5},
+  periodGlyph5:{left:0.723,right:0.745,top:0.852,bottom:0.879,scale:12,contrast:1.5},
+  periodGlyph6:{left:0.745,right:0.767,top:0.852,bottom:0.879,scale:12,contrast:1.5},
+  periodGlyph7:{left:0.767,right:0.792,top:0.852,bottom:0.879,scale:12,contrast:1.5},
 };
 
 function longestBrightRun(scores:number[],threshold:number,from:number,to:number) {
@@ -410,10 +410,40 @@ function detectReceiptPaperBounds(bitmap:ImageBitmap):ReceiptPaperBounds {
   const hasVerticalBounds=Boolean(vertical&&verticalHeight>=scan.height*.34);
   const sx=bitmap.width/scan.width;
   const sy=bitmap.height/scan.height;
-  const paperLeft=Math.max(0,Math.round(horizontal.start*sx));
-  const paperWidth=Math.max(1,Math.min(bitmap.width,Math.round((horizontal.end-horizontal.start)*sx)));
+  // La media vertical de toda la foto encontraba solo la zona central del papel.
+  // En tickets inclinados, los laterales aparecen y desaparecen a distintas alturas:
+  // usar el mayor contorno horizontal visto en varias filas evita recortar
+  // los importes de la derecha y las etiquetas de la izquierda.
+  let detectedLeft=horizontal.start;
+  let detectedRight=horizontal.end;
+  if(hasVerticalBounds) {
+    const sampleStart=Math.floor(vertical!.start+verticalHeight*.05);
+    const sampleEnd=Math.ceil(vertical!.start+verticalHeight*.95);
+    const sampleStep=Math.max(4,Math.round(verticalHeight/35));
+    for(let y=sampleStart;y<sampleEnd;y+=sampleStep) {
+      const bandTop=Math.max(0,y-3);
+      const bandBottom=Math.min(scan.height,y+4);
+      const rowScores=new Array<number>(scan.width).fill(0);
+      for(let x=0;x<scan.width;x+=1) {
+        let total=0,count=0;
+        for(let yy=bandTop;yy<bandBottom;yy+=1) {
+          const i=(yy*scan.width+x)*4;
+          total+=.299*pixels[i]!+.587*pixels[i+1]!+.114*pixels[i+2]!;
+          count+=1;
+        }
+        rowScores[x]=count?total/count:0;
+      }
+      const rowRun=longestBrightRun(rowScores,150,scan.width*.04,scan.width*.98);
+      if(rowRun&&rowRun.end-rowRun.start>=scan.width*.30) {
+        detectedLeft=Math.min(detectedLeft,rowRun.start);
+        detectedRight=Math.max(detectedRight,rowRun.end);
+      }
+    }
+  }
+  const paperLeft=Math.max(0,Math.round(detectedLeft*sx));
+  const paperWidth=Math.max(1,Math.min(bitmap.width-paperLeft,Math.round((detectedRight-detectedLeft)*sx)));
   const paperTop=hasVerticalBounds?Math.max(0,Math.round(vertical!.start*sy)):0;
-  const paperHeight=hasVerticalBounds?Math.max(1,Math.min(bitmap.height,Math.round(verticalHeight*sy))):bitmap.height;
+  const paperHeight=hasVerticalBounds?Math.max(1,Math.min(bitmap.height-paperTop,Math.round(verticalHeight*sy))):bitmap.height;
   return {left:paperLeft,top:paperTop,width:paperWidth,height:paperHeight};
 }
 
