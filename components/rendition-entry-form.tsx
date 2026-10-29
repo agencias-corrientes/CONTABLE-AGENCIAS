@@ -1166,12 +1166,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                 <button type="button" className="button primary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("user")}>Usar cámara frontal</button>
                 <button type="button" className="button ghost" disabled={busy} onClick={() => {
+                  setTicketCaptureChoiceOpen(false);
                   setCameraError("");
                   const inputId = ticketCaptureTarget === "existing" ? existingTicketPhotoInputId : ticketPhotoInputId;
                   const input = document.getElementById(inputId) as HTMLInputElement | null;
-                  // Open the native picker while the click still has user activation.
                   input?.click();
-                  setTicketCaptureChoiceOpen(false);
                 }}>Elegir foto o archivo</button>
               </div>
             </section>
