@@ -411,6 +411,15 @@ function makeReceiptPaperCrop(bitmap:ImageBitmap,bounds:ReceiptPaperBounds):HTML
   return canvas;
 }
 
+async function makeReceiptPaperCropFromFile(file:File):Promise<HTMLCanvasElement> {
+  const bitmap=await createImageBitmap(file);
+  try {
+    return makeReceiptPaperCrop(bitmap,detectReceiptPaperBounds(bitmap));
+  } finally {
+    bitmap.close();
+  }
+}
+
 function makeReceiptFocusCrop(bitmap:ImageBitmap,bounds:ReceiptPaperBounds,region:ReceiptFocusRegion):HTMLCanvasElement {
   const spec=receiptFocusSpecs[region];
   const x=Math.max(0,Math.round(bounds.left+bounds.width*spec.left));
@@ -1178,16 +1187,19 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         let preparedCrops: Awaited<ReturnType<typeof makeFocusedReceiptCrops>> | null = null;
         // Si el fondo o el encuadre hicieron fallar la lectura completa, hacer un único
         // reintento sobre el papel detectado antes de descartar el FIN DE JORNADA.
-        if (!closureCandidate) {
-          const paperAttempt = await makeFocusedReceiptCrops(file);
-          const paperText = (await worker.recognize(paperAttempt.paper)).data.text ?? "";
+        if (!closureCandidate && (normalize(recognizedText).length < 35 ||
+          /\b(?:FIN|JORN|TOTALES?\s+EN|CERRAD|PER[I1]ODO|MEDIOS\s+DIGITALES?)\b/i.test(normalize(recognizedText)))) {
+          // Este reintento liviano solo se hace si el OCR general dejó muy poco texto
+          // o indicios de un cierre; los cupones comunes conservan su flujo habitual.
+          const paperCrop = await makeReceiptPaperCropFromFile(file);
+          const paperText = (await worker.recognize(paperCrop)).data.text ?? "";
           const paperIsClosure = Boolean(parseTicketClosure(paperText)) ||
             /\bFIN\s+DE\s+(?:JOR|TOR)NADA\b/i.test(normalize(paperText)) ||
             /\bTOTALES?\s+EN\s+T[J7I1]\b/i.test(normalize(paperText));
           if (paperIsClosure) {
             recognizedText = paperText;
             closureCandidate = true;
-            preparedCrops = paperAttempt;
+            preparedCrops = await makeFocusedReceiptCrops(file);
           }
         }
         if (closureCandidate) {
