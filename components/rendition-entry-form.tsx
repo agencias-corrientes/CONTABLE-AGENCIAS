@@ -1228,18 +1228,25 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         // Leer siempre una segunda vez sobre el papel aislado. El OCR de la foto completa
         // puede devolver bastante texto de fondo y aun así perder todos los campos del cierre.
         // El reintento es local a este lector y no modifica el flujo de selección/cámara.
-        const paperCrop = await makeReceiptPaperCropFromFile(file);
-        await worker.setParameters({ tessedit_pageseg_mode: 6, preserve_interword_spaces: "1" } as any);
-        const paperText = (await worker.recognize(paperCrop)).data.text ?? "";
-        const paperLooksLikeEndOfDay = looksLikeEndOfDay(paperText);
-        if (paperLooksLikeEndOfDay) {
-          const originalParsed = parseTicketClosure(recognizedText);
-          const paperParsed = parseTicketClosure(paperText);
-          const originalScore = originalParsed ? closureReadScoreForSelection(originalParsed) : -1;
-          const paperScore = paperParsed ? closureReadScoreForSelection(paperParsed) : -1;
-          if (!closureCandidate || paperScore >= originalScore) recognizedText = paperText;
-          closureCandidate = true;
-          preparedCrops = await makeFocusedReceiptCrops(file);
+        // La lectura general ya se completó: los recortes son una mejora opcional.
+        // Si el navegador no admite createImageBitmap/canvas o falla la detección del papel,
+        // nunca cancelar la lectura original del ticket.
+        try {
+          const paperCrop = await makeReceiptPaperCropFromFile(file);
+          await worker.setParameters({ tessedit_pageseg_mode: 6, preserve_interword_spaces: "1" } as any);
+          const paperText = (await worker.recognize(paperCrop)).data.text ?? "";
+          const paperLooksLikeEndOfDay = looksLikeEndOfDay(paperText);
+          if (paperLooksLikeEndOfDay) {
+            const originalParsed = parseTicketClosure(recognizedText);
+            const paperParsed = parseTicketClosure(paperText);
+            const originalScore = originalParsed ? closureReadScoreForSelection(originalParsed) : -1;
+            const paperScore = paperParsed ? closureReadScoreForSelection(paperParsed) : -1;
+            if (!closureCandidate || paperScore >= originalScore) recognizedText = paperText;
+            closureCandidate = true;
+            preparedCrops = await makeFocusedReceiptCrops(file);
+          }
+        } catch (paperCropError) {
+          console.warn("[OCR] Falló el reintento sobre papel aislado; se conserva la lectura general del archivo.", paperCropError);
         }
         if (closureCandidate) {
           setProgress("Leyendo los datos impresos del FIN DE JORNADA…");
