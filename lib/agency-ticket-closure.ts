@@ -52,8 +52,12 @@ function moneyAllowZero(value: string): number | null {
 
 function metricFromLine(line: string): TicketReceiptMetric | null {
   // The digits in "Quini 6" and "Loto 5 Plus" are game names, not amounts.
+  // OCR térmico suele confundir la coma decimal con ":" o "+", por ejemplo 19260:00.
+  // Normalizar solo el separador que precede exactamente dos centavos evita convertir
+  // ese importe en un count de 19260 y un importe falso de 0,00.
   const cleaned = normalizeTicketText(line)
-    .replace(/^(?:LOTO\s+5\s+PLUS|LOTO\s+PLUS|QUINI\s*6|MUINI\s*6|HUI[I1]NI\s*6|QUINIELA\s+POCEADA|LOTER[I1]A\s+ONLINE|POZO\s+QUINIELA|BRINCO|TELEKINO|QUINIELA\s+AL\s+TOQUE|QUINIELA(?:\s+CORRIENTES?)?)\s*/i, "").trim();
+    .replace(/^(?:LOTO\s+5\s+PLUS|LOTO\s+PLUS|QUINI\s*6|MUINI\s*6|HUI[I1]NI\s*6|QUINIELA\s+POCEADA|LOTER[I1]A\s+ONLINE|POZO\s+QUINIELA|BRINCO|TELEKINO|QUINIELA\s+AL\s+TOQUE|QUINIELA(?:\s+CORRIENTES?)?)\s*/i, "").trim()
+    .replace(/(\d{1,9})\s*[:+;]\s*(\d{2})(?=\D*$)/g, "$1,$2");
   const values = cleaned.match(/\d[\d.,]*/g) ?? [];
   if (!values.length) return null;
   const amountToken = values[values.length - 1] ?? "";
@@ -319,8 +323,19 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   const downloadLine = lines.find((line) => /DESCARGA?\s+CONFIRMADA/i.test(normalizeTicketText(line))) ?? null;
 
   const salesAmounts = [qValid.amount, toqueValid.amount, ...otherGames.map((game) => game.amount)];
-  const salesTotalsMatch = salesAmounts.every((value) => value !== null) && generalTotal.amount !== null
-    ? cents(salesAmounts.reduce<number>((sum, value) => sum + (value ?? 0), 0)) === cents(generalTotal.amount)
+  const detectedSalesTotal = salesAmounts.every((value) => value !== null)
+    ? salesAmounts.reduce<number>((sum, value) => sum + (value ?? 0), 0)
+    : null;
+  if (detectedSalesTotal !== null && detectedSalesTotal > 0 && generalTotal.amount !== null) {
+    const parsedTotalCents = cents(generalTotal.amount);
+    const salesTotalCents = cents(detectedSalesTotal);
+    const scaleFactors = [0.1, 0.01, 0.001, 0.0001, 10, 100, 1000, 10000];
+    const decimalScaleMismatch = parsedTotalCents !== salesTotalCents &&
+      scaleFactors.some((factor) => cents(generalTotal.amount! * factor) === salesTotalCents);
+    if (decimalScaleMismatch) generalTotal = { ...generalTotal, amount: detectedSalesTotal };
+  }
+  const salesTotalsMatch = detectedSalesTotal !== null && generalTotal.amount !== null
+    ? cents(detectedSalesTotal) === cents(generalTotal.amount)
     : null;
   const prizeAmounts = [qPrizes.amount, toquePrizes.amount, otherGamesPrizes.amount];
   const prizeTotalsMatch = prizeAmounts.every((value) => value !== null) && totalPrizes.amount !== null
