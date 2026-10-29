@@ -1281,7 +1281,6 @@ html, body { min-height:100%; }
   justify-content:center!important;align-items:stretch!important;padding:0!important;
   border:0!important;border-radius:0!important;background:transparent!important;gap:0!important;
 }
-/* El selector nativo del flujo principal no debe aparecer como un segundo control debajo de Foto automático. */
 .ticket-photo-auto-control .ticket-photo-operational-input{display:none!important;}
 .ticket-photo-auto-control .ticket-photo-picker-cta {
   align-self:stretch!important;width:100%!important;min-width:0!important;min-height:48px!important;
