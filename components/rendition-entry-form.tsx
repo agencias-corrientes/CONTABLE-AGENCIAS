@@ -174,8 +174,8 @@ function closureReadScoreForSelection(receipt: TicketClosureData): number {
   return score;
 }
 
-function parseTicketText(text: string, games: Game[], recoveredPeriodNumber = "") {
-  const receiptData = parseTicketClosure(text);
+function parseTicketText(text: string, games: Game[], recoveredPeriodNumber = "", forceClosure = false) {
+  const receiptData = parseTicketClosure(text, forceClosure);
   if (receiptData) {
     return {
       amountMap: mapTicketClosureAmounts(receiptData, games),
@@ -1268,7 +1268,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           // pero dos marcas propias del cierre bastan para iniciar la extracción focalizada.
           return strongMarkers >= 2 || (strongMarkers >= 1 && contextMarkers >= 2);
         };
-        let closureCandidate = looksLikeEndOfDay(recognizedText);
+        let closureCandidate = dailyMode || looksLikeEndOfDay(recognizedText);
         let preparedCrops: Awaited<ReturnType<typeof makeFocusedReceiptCrops>> | null = null;
         // Leer siempre una segunda vez sobre el papel aislado. El OCR de la foto completa
         // puede devolver bastante texto de fondo y aun así perder todos los campos del cierre.
@@ -1281,12 +1281,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           await worker.setParameters({ tessedit_pageseg_mode: 6, preserve_interword_spaces: "1" } as any);
           const paperText = (await worker.recognize(paperCrop)).data.text ?? "";
           const paperLooksLikeEndOfDay = looksLikeEndOfDay(paperText);
-          if (paperLooksLikeEndOfDay) {
+          if (paperLooksLikeEndOfDay || dailyMode) {
             const originalParsed = parseTicketClosure(recognizedText);
             const paperParsed = parseTicketClosure(paperText);
             const originalScore = originalParsed ? closureReadScoreForSelection(originalParsed) : -1;
             const paperScore = paperParsed ? closureReadScoreForSelection(paperParsed) : -1;
-            if (!closureCandidate || paperScore >= originalScore) recognizedText = paperText;
+            if (dailyMode || !closureCandidate || paperScore >= originalScore) recognizedText = paperText;
             closureCandidate = true;
             preparedCrops = await makeFocusedReceiptCrops(file);
           }
@@ -1477,7 +1477,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       setOcrText([recognizedText, focusedOcrDebugText].filter(Boolean).join("\n\n"));
       const activeGames = games.filter((game) => game.enabled !== false);
-      const parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber);
+      const parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber, dailyMode);
       if (batchMode && !parsed.receiptData) {
         setError("Esta modalidad acepta comprobantes oficiales FIN DE JORNADA. El cupón no se agregó al lote.");
         setProgress("No se incorporó el archivo. Elegí un cierre oficial o continuá con otro cupón.");
