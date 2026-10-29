@@ -1295,7 +1295,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             const paperScore = paperTextScore(paperText);
             // En cierre diario, elegir la pasada que recupere más campos estructurados,
             // aunque el OCR no haya leído perfectamente el encabezado FIN DE JORNADA.
-            if (dailyMode || !closureCandidate || paperScore >= originalScore) recognizedText = paperText;
+            if (paperScore > originalScore && paperScore > 0) recognizedText = paperText;
             closureCandidate = true;
             preparedCrops = await makeFocusedReceiptCrops(file);
           }
@@ -1543,12 +1543,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           ...parsed.receiptData,
           agencyCode: validAgencyCode(focusedClosureMetadata.agencyCode) ?? validAgencyCode(parsed.receiptData.agencyCode),
           // No rescatar SUBAG desde el OCR general: solo vale la franja identificada.
-          subagentCode: validSubagent(focusedClosureMetadata.subagentCode),
-          machineCode: focusedClosureMetadata.machineCode ?? null,
+          subagentCode: validSubagent(focusedClosureMetadata.subagentCode) ?? validSubagent(parsed.receiptData.subagentCode),
+          machineCode: focusedClosureMetadata.machineCode ?? parsed.receiptData.machineCode,
           address: focusedClosureMetadata.address ?? parsed.receiptData.address,
-          terminalId: focusedClosureMetadata.terminalId ?? null,
+          terminalId: focusedClosureMetadata.terminalId ?? parsed.receiptData.terminalId,
           printedAt: focusedClosureMetadata.printedAt ?? parsed.receiptData.printedAt,
-          periodNumber: labelledPeriod,
+          periodNumber: labelledPeriod ?? validPeriod(parsed.receiptData.periodNumber),
           commissionRates,
         };
         // The printed date stays in receipt metadata; the financial entry stays on today's operational day.
@@ -1611,9 +1611,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       if (parsed.date && !parsed.receiptData) setDate(parsed.date);
       if (parsed.drawNumber) setDrawNumber(parsed.drawNumber);
       if (parsed.receiptData) {
-        // Para un FIN DE JORNADA, el identificador del cupón es exactamente
-        // el valor impreso en "Período N.º"; no anexar otro número detectado.
-        setTicketNumbers("");
+        // Para un FIN DE JORNADA, conservar el período recuperado por el OCR del ticket completo
+        // cuando el recorte específico no consigue una lectura válida.
+        setTicketNumbers(closureReceipt.periodNumber ?? "");
       } else if (parsed.ticketNumber) {
         setTicketNumbers((previous) => previous.split(/\s+/).includes(parsed.ticketNumber) ? previous : previous ? previous + "\n" + parsed.ticketNumber : parsed.ticketNumber);
       }
