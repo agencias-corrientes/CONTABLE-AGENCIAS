@@ -452,11 +452,26 @@ function makeReceiptPaperCrop(bitmap:ImageBitmap,bounds:ReceiptPaperBounds):HTML
   const y=Math.max(0,Math.floor(bounds.top));
   const width=Math.max(1,Math.min(bitmap.width-x,Math.ceil(bounds.width)));
   const height=Math.max(1,Math.min(bitmap.height-y,Math.ceil(bounds.height)));
+  // La foto original suele dejar el texto térmico de 8–12 px de alto.
+  // Ampliar el papel completo hasta un tamaño útil para Tesseract y aumentar
+  // suavemente el contraste mejora importes sin cambiar la imagen ni la interfaz.
+  const scale=Math.min(2.4,2800/Math.max(width,height));
   const canvas=document.createElement("canvas");
-  canvas.width=width;canvas.height=height;
+  canvas.width=Math.max(1,Math.round(width*scale));
+  canvas.height=Math.max(1,Math.round(height*scale));
   const context=canvas.getContext("2d",{willReadFrequently:true});
   if(!context)throw new Error("No se pudo recortar el comprobante para mejorar la lectura.");
-  context.drawImage(bitmap,x,y,width,height,0,0,width,height);
+  context.imageSmoothingEnabled=true;
+  context.imageSmoothingQuality="high";
+  context.drawImage(bitmap,x,y,width,height,0,0,canvas.width,canvas.height);
+  const image=context.getImageData(0,0,canvas.width,canvas.height);
+  const pixels=image.data;
+  for(let i=0;i<pixels.length;i+=4) {
+    const gray=.299*pixels[i]!+.587*pixels[i+1]!+.114*pixels[i+2]!;
+    const value=Math.max(0,Math.min(255,(gray-128)*1.35+128));
+    pixels[i]=value;pixels[i+1]=value;pixels[i+2]=value;
+  }
+  context.putImageData(image,0,0);
   return canvas;
 }
 
