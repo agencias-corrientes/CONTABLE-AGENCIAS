@@ -1509,6 +1509,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       const parsedAmountMap = Object.fromEntries(
         Object.entries(parsed.amountMap).filter(([gameId]) => gamesForDetectedPeriod.some((game) => game.id === gameId))
       );
+      let closureReadConfidence = 0;
       if (parsed.receiptData) {
         const commissionRates = Object.fromEntries(periodGames.map((game) => [
           normalize(game.name),
@@ -1543,6 +1544,37 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           periodNumber: labelledPeriod,
           commissionRates,
         };
+        // Medir lectura real del cierre, no el mero fin del proceso Tesseract.
+        // Los importes cero cuentan solo cuando el parser identificó explícitamente el campo.
+        const closureMetrics = [
+          closureReceipt.quiniela?.valids,
+          closureReceipt.quiniela?.cancelledSpecial,
+          closureReceipt.quiniela?.prizesPaid,
+          closureReceipt.quinielaAlToque?.valids,
+          closureReceipt.quinielaAlToque?.prizesPaid,
+          ...(closureReceipt.otherGames ?? []),
+          closureReceipt.totalOtherGames,
+          closureReceipt.otherGamesPrizes,
+          closureReceipt.totalPrizes,
+          closureReceipt.generalTotal,
+          closureReceipt.digital?.cobros,
+          closureReceipt.digital?.devoluciones,
+        ];
+        const confirmedFields = [
+          closureReceipt.agencyCode,
+          closureReceipt.subagentCode,
+          closureReceipt.machineCode,
+          closureReceipt.periodNumber,
+          closureReceipt.address,
+          closureReceipt.terminalId,
+          closureReceipt.printedAt?.date ?? closureReceipt.closedAt?.date ?? closureReceipt.openedAt?.date,
+        ].filter((value) => String(value ?? "").trim().length > 0).length;
+        const confirmedMetrics = closureMetrics.filter((metric) =>
+          metric && (metric.count !== null && metric.count !== undefined ||
+            metric.amount !== null && metric.amount !== undefined)
+        ).length;
+        const totalChecks = 7 + 12;
+        closureReadConfidence = Math.min(99, Math.round(((confirmedFields + confirmedMetrics) / totalChecks) * 100));
         // The printed date stays in receipt metadata; the financial entry stays on today's operational day.
         setDate(initialRendition?.renditionDate ?? today);
         if (batchMode) {
@@ -1638,8 +1670,17 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       } else {
         setNotice("Se leyó el texto, pero no se pudieron confirmar importes. Completalos manualmente.");
       }
-      setProgressPercent(100);
-      setProgress("Lectura completada. Revisá los datos cargados abajo en Juegos e importes.");
+      const hasClosure = Boolean(parsed.receiptData);
+      const amountEvidence = Object.keys(parsedAmountMap).length;
+      const readConfidence = hasClosure
+        ? closureReadConfidence
+        : Math.min(99, Math.round((amountEvidence / Math.max(1, gamesForDetectedPeriod.length)) * 100));
+      setProgressPercent(readConfidence);
+      if (readConfidence >= 90) {
+        setProgress("Lectura con alta cobertura (" + readConfidence + "%). Revisá los datos e importes antes de guardar.");
+      } else {
+        setProgress("Lectura parcial (" + readConfidence + "%): faltan datos o importes por confirmar. No se considera una lectura completa; revisá el ticket y completá lo que falte.");
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo leer la foto del ticket.");
       setProgress("La lectura no pudo completarse. Corregí la imagen e intentá de nuevo.");
