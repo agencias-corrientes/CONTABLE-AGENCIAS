@@ -1204,19 +1204,24 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const normalized = normalize(value);
           const parsed = parseTicketClosure(value);
           if (parsed) return true;
-          const markers = [
+          const closureMarkers = [
             /FIN\s+DE\s+(?:JOR|TOR)NADA/,
             /TOTALES?\s+EN\s+T[J7I1]/,
-            /TOTAL\s+GENE?RA[L1I]?/,
             /AB[I1L]ERTO\s+E[L1I]/,
             /CERRAD[O0]?/,
             /MED[I1]OS\s+D[I1]G[I1]T[A4][L1I]ES/,
+          ];
+          const strongMarkers = closureMarkers.filter((pattern) => pattern.test(normalized)).length;
+          const contextMarkers = [
+            /TOTAL\s+GENE?RA[L1I]?/,
             /PER[I1]ODO/,
             /PREM[I1]OS?\s+P[A-Z]{2,3}/,
             /SUBAG(?:ENTE)?/,
             /MAQ(?:UINA)?\s*(?:REAL)?/,
           ].filter((pattern) => pattern.test(normalized)).length;
-          return markers >= 4 && /TOTAL|CERRAD|PER[I1]ODO/.test(normalized);
+          // No exigir cuatro coincidencias exactas: un cierre borroso puede perder palabras,
+          // pero dos marcas propias del cierre bastan para iniciar la extracción focalizada.
+          return strongMarkers >= 2 || (strongMarkers >= 1 && contextMarkers >= 2);
         };
         let closureCandidate = looksLikeEndOfDay(recognizedText);
         let preparedCrops: Awaited<ReturnType<typeof makeFocusedReceiptCrops>> | null = null;
