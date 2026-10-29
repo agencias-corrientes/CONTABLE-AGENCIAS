@@ -1006,6 +1006,10 @@ input[type="reset"],
   white-space: normal;
   line-height: 1.35;
 }
+.ticket-photo-picker.ticket-photo-auto-control .ticket-photo-operational-input{display:none!important;}
+.ticket-capture-file-option{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important;cursor:pointer!important;}
+.ticket-capture-file-option input[type="file"]{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;margin:0!important;opacity:0!important;cursor:pointer!important;z-index:2!important;}
+.ticket-capture-file-option span{pointer-events:none!important;}
 .ticket-capture-dialog .ticket-capture-dialog-cancel {
   margin-top: 2px;
 }
