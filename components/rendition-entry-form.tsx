@@ -303,11 +303,11 @@ type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
 const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
   codes:       {left:0.030,right:0.955,top:0.263,bottom:0.292,scale:5,contrast:1.8},
   agencyCode:  {left:0.140,right:0.365,top:0.263,bottom:0.292,scale:6,contrast:1.8},
-  // Recorte calibrado sobre el renglón impreso SUBAG:102. El valor está entre x≈0.53 y 0.61
-  // del ancho del papel; terminar antes de MAQ evita capturar sus dígitos por error.
+  // Recorte del campo SUBAG en el formato común del comprobante FIN DE JORNADA.
+  // Se limita al espacio entre agencia y máquina para no mezclar sus identificadores.
   subagentCode:{left:0.512,right:0.656,top:0.263,bottom:0.292,scale:6,contrast:1.6},
-  // Un recorte por glifo, centrado respectivamente en 1, 0 y 2. Antes los recortes
-  // segundo y tercero se solapaban con el glifo vecino y llegaban hasta la etiqueta MAQ.
+  // Recortes independientes por casillero del campo SUBAG para verificar cualquier
+  // combinación de tres dígitos sin depender del número de subagente de un ticket ejemplo.
   subagentDigit1:{left:0.522,right:0.556,top:0.263,bottom:0.292,scale:10,contrast:1.6},
   subagentDigit0:{left:0.568,right:0.602,top:0.263,bottom:0.292,scale:10,contrast:1.6},
   subagentDigit2:{left:0.613,right:0.651,top:0.263,bottom:0.292,scale:10,contrast:1.6},
@@ -1146,9 +1146,19 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
         // La pasada general sigue siendo la fuente de importes. Se conserva el segundo
         // intento anterior solo como alternativa de texto general.
-        const closureCandidate = Boolean(parseTicketClosure(recognizedText)) ||
-          /\bFIN\s+DE\s+(?:JOR|TOR)NADA\b/i.test(normalize(recognizedText)) ||
-          /\bTOTALES?\s+EN\s+T[J7I1]\b/i.test(normalize(recognizedText));
+        const normalizedPageText = normalize(recognizedText);
+        const hasClosureStructure =
+          /\bSUBAG(?:ENTE)?\b|\bSUBA?G\b/.test(normalizedPageText) &&
+          /\bMAQ(?:UINA)?\b/.test(normalizedPageText) &&
+          /\bPER[I1]ODO\b/.test(normalizedPageText) &&
+          /\bTOTAL\b/.test(normalizedPageText);
+        // En los modos de cierre/lote, el tipo de comprobante ya está determinado por el flujo.
+        // No exigir que el OCR general lea perfectamente "FIN DE JORNADA": una falla en el
+        // encabezado no debe impedir las lecturas focalizadas de SUBAG, MAQ y PERIODO.
+        const closureCandidate = batchMode || receiptOnlyMode || hasClosureStructure ||
+          Boolean(parseTicketClosure(recognizedText)) ||
+          /\bFIN\s+DE\s+(?:JOR|TOR)NADA\b/i.test(normalizedPageText) ||
+          /\bTOTALES?\s+EN\s+T[J7I1]\b/i.test(normalizedPageText);
         if (closureCandidate) {
           setProgress("Leyendo los datos impresos del FIN DE JORNADA…");
           setProgressPercent(72);
@@ -1200,7 +1210,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const subagentCropPsm7 = (await worker.recognize(crops.subagentCodeThreshold160)).data.text ?? "";
           await setOcrMode(13,"0123456789OQIL");
           const subagentCropPsm13 = (await worker.recognize(crops.subagentCodeThreshold140)).data.text ?? "";
-          // PSM 13 distingue el cero cuadrado en el centro de SUBAG:102; PSM 10 lo confundía con 1.
+          // PSM 13 aporta una segmentación alternativa para los tres casilleros de SUBAG.
           await setOcrMode(13,"0123456789OQIL");
           const subagentGlyph1Raw = (await worker.recognize(crops.subagentDigit1)).data.text ?? "";
           const subagentGlyph0Raw = (await worker.recognize(crops.subagentDigit0)).data.text ?? "";
