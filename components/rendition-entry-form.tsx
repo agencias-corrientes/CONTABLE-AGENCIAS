@@ -1920,7 +1920,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         if (target) setAmounts((previous) => ({
           ...previous,
           [target.id]: dailyMode
-            ? ((parseMoney(previous[target.id] ?? "") ?? 0) + qr.amount!).toFixed(2)
+            ? String(Math.round((parseMoney(previous[target.id] ?? "") ?? 0) + qr.amount!))
             : String(Math.round(qr.amount!)),
         }));
       }
