@@ -49,7 +49,7 @@ function reconstructLinesFromOcrWords(rawWords: unknown): string {
     row.center=row.words.reduce((sum,item)=>sum+item.y,0)/row.words.length;
     row.height=Math.max(row.height,word.height);
   }
-  return rows.sort((a,b)=>a.center-b.center).map(row=>row.words.sort((a,b)=>a.x-b.x).map(word=>word.text).join(" ")).filter(Boolean).join("\\n");
+  return rows.sort((a,b)=>a.center-b.center).map(row=>row.words.sort((a,b)=>a.x-b.x).map(word=>word.text).join(" ")).filter(Boolean).join("\n");
 }
 
 function closureBatchKey(ticket: TicketClosureData): string {
