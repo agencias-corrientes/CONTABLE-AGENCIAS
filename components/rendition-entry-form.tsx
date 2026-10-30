@@ -1070,14 +1070,39 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         };
         // La cantidad de cifras reconocidas no es una medida de exactitud.
         // Solo aceptar importes cuando los renglones válidos suman TOTAL GENERAL.
-        const bestCandidate = candidateReceipts
-          .filter((receipt) => receipt.consistency.salesTotalsMatch === true)
+        const salesSignature = (receipt:TicketClosureData) => JSON.stringify([
+          receipt.quiniela.valids.amount,
+          receipt.quinielaAlToque.valids.amount,
+          ...receipt.otherGames.map(game=>game.amount),
+          receipt.generalTotal.amount,
+        ]);
+        const verifiedSales = candidateReceipts.filter(receipt=>receipt.consistency.salesTotalsMatch===true);
+        const salesVotes = new Map<string,number>();
+        for(const receipt of verifiedSales){
+          const signature=salesSignature(receipt);
+          salesVotes.set(signature,(salesVotes.get(signature)??0)+1);
+        }
+        const bestCandidate = verifiedSales
+          .filter(receipt=>(salesVotes.get(salesSignature(receipt))??0)>=2)
           .map((receipt) => ({ receipt, score: completeness(receipt) }))
           .sort((a, b) => b.score - a.score)[0];
         if (bestCandidate) {
           recognizedText = bestCandidate.receipt.rawText;
           receiptAmountsValidated = true;
-          receiptPrizesValidated = bestCandidate.receipt.consistency.prizeTotalsMatch === true;
+          const prizeSignature = (receipt:TicketClosureData) => JSON.stringify([
+            receipt.quiniela.prizesPaid.amount,
+            receipt.quinielaAlToque.prizesPaid.amount,
+            receipt.otherGamesPrizes.amount,
+            receipt.totalPrizes.amount,
+          ]);
+          const verifiedPrizes = candidateReceipts.filter(receipt=>receipt.consistency.prizeTotalsMatch===true);
+          const prizeVotes = new Map<string,number>();
+          for(const receipt of verifiedPrizes){
+            const signature=prizeSignature(receipt);
+            prizeVotes.set(signature,(prizeVotes.get(signature)??0)+1);
+          }
+          receiptPrizesValidated = bestCandidate.receipt.consistency.prizeTotalsMatch===true &&
+            (prizeVotes.get(prizeSignature(bestCandidate.receipt))??0)>=2;
           parsed = {
             ...parsed,
             amountMap: mapTicketClosureAmounts(bestCandidate.receipt, activeGames),
