@@ -53,62 +53,6 @@ function reconstructLinesFromOcrWords(rawWords: unknown): string {
 }
 
 
-function makeIdentifierRowCrop(source: HTMLCanvasElement, rawWords: unknown): HTMLCanvasElement | null {
-  if (!Array.isArray(rawWords)) return null;
-  const words = rawWords.map((item: any) => {
-    const value = String(item?.text ?? "").trim();
-    const box = item?.bbox;
-    if (!value || !box || ![box.x0, box.y0, box.x1, box.y1].every((n: unknown) => typeof n === "number" && Number.isFinite(n))) return null;
-    return { value, x0: box.x0, y0: box.y0, x1: box.x1, y1: box.y1, cy: (box.y0 + box.y1) / 2 };
-  }).filter(Boolean) as Array<{value:string;x0:number;y0:number;x1:number;y1:number;cy:number}>;
-  if (words.length < 3) return null;
-  words.sort((a,b)=>a.cy-b.cy || a.x0-b.x0);
-  const rows: Array<{cy:number; words:typeof words}> = [];
-  for (const word of words) {
-    let row=rows.find((candidate)=>Math.abs(candidate.cy-word.cy)<=Math.max(6,Math.min(
-      Math.max(1,word.y1-word.y0),
-      Math.max(1,(candidate.words[0]?.y1??word.y1)-(candidate.words[0]?.y0??word.y0))
-    )*.7));
-    if(!row){row={cy:word.cy,words:[]};rows.push(row);}
-    row.words.push(word);
-    row.cy=row.words.reduce((sum,item)=>sum+item.cy,0)/row.words.length;
-  }
-  const candidates=rows.map(row=>{
-    const ordered=row.words.sort((a,b)=>a.x0-b.x0);
-    const line=ordered.map(word=>word.value).join(" ").toUpperCase();
-    const hasAgency=/AGENCIA|\bAG\b|A\s*[:.]?\s*B\s*\d/i.test(line);
-    const hasSubagent=/SUBAG|SUBA?G|SIBAG|SILAG|SIEAG/i.test(line);
-    const hasCode=/\d{2,}/.test(line);
-    const forbidden=/TOTALES|TOTAL GENERAL|VALIDOS|PREMIOS|OTROS JUEGOS/i.test(line);
-    return {row,line,score:(hasAgency?5:0)+(hasSubagent?5:0)+(hasCode?2:0)-(forbidden?20:0)};
-  }).filter(item=>item.score>=7).sort((a,b)=>b.score-a.score);
-  const selected=candidates[0]?.row;
-  if(!selected)return null;
-  const left=Math.max(0,Math.floor(Math.min(...selected.words.map(word=>word.x0))-source.width*.025));
-  const right=Math.min(source.width,Math.ceil(Math.max(...selected.words.map(word=>word.x1))+source.width*.025));
-  const top=Math.max(0,Math.floor(Math.min(...selected.words.map(word=>word.y0))-source.height*.008));
-  const bottom=Math.min(source.height,Math.ceil(Math.max(...selected.words.map(word=>word.y1))+source.height*.008));
-  if(right-left<source.width*.12||bottom-top<4)return null;
-  const scale=Math.min(8,2600/Math.max(right-left,bottom-top));
-  const crop=document.createElement("canvas");
-  crop.width=Math.max(1,Math.round((right-left)*scale));
-  crop.height=Math.max(1,Math.round((bottom-top)*scale));
-  const context=crop.getContext("2d",{willReadFrequently:true});
-  if(!context)return null;
-  context.imageSmoothingEnabled=true;
-  context.imageSmoothingQuality="high";
-  context.drawImage(source,left,top,right-left,bottom-top,0,0,crop.width,crop.height);
-  const image=context.getImageData(0,0,crop.width,crop.height);
-  for(let i=0;i<image.data.length;i+=4){
-    const gray=.299*image.data[i]!+.587*image.data[i+1]!+.114*image.data[i+2]!;
-    const value=Math.max(0,Math.min(255,(gray-128)*1.7+128));
-    image.data[i]=value;image.data[i+1]=value;image.data[i+2]=value;
-  }
-  context.putImageData(image,0,0);
-  return crop;
-}
-
-
 // Extrae campos por rótulo y posición real de las palabras de cada pasada OCR.
 // No presupone que el papel ocupe un porcentaje fijo de la foto ni que el ticket
 // tenga siempre la misma escala, márgenes o encuadre.
@@ -503,46 +447,10 @@ function structuredQr(payload: string) {
   }
 }
 
-type ReceiptFocusRegion = "codes" | "agencyCode" | "subagentCode" | "subagentDigit1" | "subagentDigit0" | "subagentDigit2" | "machineCode" | "machineDigit0" | "machineDigit1" | "address" | "terminalId" | "printedAt" | "periodNumber" | "periodLabelled" | "periodLabelledTight" | "periodTail" | "periodGlyph1" | "periodGlyph2" | "periodGlyph3" | "periodGlyph4" | "periodGlyph5" | "periodGlyph6" | "periodGlyph7";
-type ReceiptFocusSpec = { left:number; right:number; top:number; bottom:number; scale:number; contrast:number };
 type ReceiptPaperBounds = { left:number; top:number; width:number; height:number };
 type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
   "agencyCode" | "subagentCode" | "machineCode" | "address" | "terminalId" | "printedAt" | "periodNumber"
 >>;
-
-const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
-  codes:       {left:0.030,right:0.955,top:0.235,bottom:0.263,scale:5,contrast:1.8},
-  agencyCode:  {left:0.140,right:0.365,top:0.235,bottom:0.263,scale:6,contrast:1.8},
-  // Recorte del campo SUBAG en el formato común del comprobante FIN DE JORNADA.
-  // Se limita al espacio entre agencia y máquina para no mezclar sus identificadores.
-  subagentCode:{left:0.512,right:0.656,top:0.235,bottom:0.263,scale:6,contrast:1.6},
-  // Recortes independientes por casillero del campo SUBAG para verificar cualquier
-  // combinación de tres dígitos sin depender del número de subagente de un ticket ejemplo.
-  subagentDigit1:{left:0.522,right:0.556,top:0.235,bottom:0.263,scale:10,contrast:1.6},
-  subagentDigit0:{left:0.568,right:0.602,top:0.235,bottom:0.263,scale:10,contrast:1.6},
-  subagentDigit2:{left:0.613,right:0.651,top:0.235,bottom:0.263,scale:10,contrast:1.6},
-  // MAQ: lectura de los dos glifos individuales; sin incluir los puntos del rótulo.
-  machineCode: {left:0.775,right:0.879,top:0.235,bottom:0.263,scale:8,contrast:1.5},
-  machineDigit0:{left:0.778,right:0.827,top:0.235,bottom:0.263,scale:10,contrast:1.4},
-  machineDigit1:{left:0.828,right:0.875,top:0.235,bottom:0.263,scale:10,contrast:1.4},
-  address:     {left:0.040,right:0.555,top:0.263,bottom:0.284,scale:5,contrast:1.8},
-  // La máquina real está en su propia línea; no incluir la dirección que termina en 410.
-  terminalId:  {left:0.362,right:0.534,top:0.284,bottom:0.308,scale:6,contrast:1.6},
-  printedAt:   {left:0.035,right:0.965,top:0.324,bottom:0.347,scale:5,contrast:1.8},
-  // Recortes estrechos: excluir el renglón ABIERTO que está justo debajo del período.
-  periodNumber:{left:0.375,right:0.800,top:0.865,bottom:0.891,scale:10,contrast:1.5},
-  periodLabelled:{left:0.022,right:0.830,top:0.865,bottom:0.891,scale:3,contrast:1.0},
-  periodLabelledTight:{left:0.022,right:0.830,top:0.868,bottom:0.889,scale:3,contrast:1.0},
-  periodTail:  {left:0.625,right:0.805,top:0.865,bottom:0.891,scale:11,contrast:1.5},
-  // El número del cupón tiene siete casilleros de ancho fijo; se leen glifo por glifo.
-  periodGlyph1:{left:0.375,right:0.414,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph2:{left:0.425,right:0.463,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph3:{left:0.473,right:0.513,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph4:{left:0.523,right:0.561,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph5:{left:0.571,right:0.610,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph6:{left:0.622,right:0.659,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-  periodGlyph7:{left:0.670,right:0.707,top:0.885,bottom:0.909,scale:10,contrast:1.4},
-};
 
 function longestBrightRun(scores:number[],threshold:number,from:number,to:number) {
   let bestStart=-1,bestEnd=-1,runStart=-1;
@@ -612,424 +520,23 @@ function detectReceiptPaperBounds(bitmap:ImageBitmap):ReceiptPaperBounds {
   return {left:paperLeft,top,width:paperWidth,height:Math.max(1,bottom-top)};
 }
 
-function makeReceiptFocusCrop(bitmap:ImageBitmap,bounds:ReceiptPaperBounds,region:ReceiptFocusRegion):HTMLCanvasElement {
-  const spec=receiptFocusSpecs[region];
-  const x=Math.max(0,Math.round(bounds.left+bounds.width*spec.left));
-  const y=Math.max(0,Math.round(bounds.top+bounds.height*spec.top));
-  const right=Math.min(bitmap.width,Math.round(bounds.left+bounds.width*spec.right));
-  const bottom=Math.min(bitmap.height,Math.round(bounds.top+bounds.height*spec.bottom));
-  const sw=Math.max(1,right-x),sh=Math.max(1,bottom-y);
-  const scale=Math.max(1,Math.min(spec.scale,2800/Math.max(sw,sh)));
-  const canvas=document.createElement("canvas");
-  canvas.width=Math.max(1,Math.round(sw*scale));canvas.height=Math.max(1,Math.round(sh*scale));
-  const context=canvas.getContext("2d",{willReadFrequently:true});
-  if(!context)throw new Error("No se pudo preparar una zona del comprobante.");
-  context.imageSmoothingEnabled=true;context.imageSmoothingQuality="high";
-  context.drawImage(bitmap,x,y,sw,sh,0,0,canvas.width,canvas.height);
-  const image=context.getImageData(0,0,canvas.width,canvas.height),data=image.data;
-  for(let i=0;i<data.length;i+=4){
-    const gray=.299*data[i]!+.587*data[i+1]!+.114*data[i+2]!;
-    const v=Math.max(0,Math.min(255,(gray-128)*spec.contrast+128));
-    data[i]=v;data[i+1]=v;data[i+2]=v;
-  }
-  // En los números del período, el papel térmico borroso convierte los ceros en bloques.
-  // Un enfoque suave recupera los bordes sin binarizar ni borrar los trazos finos.
-  if(region==="periodNumber"||region.startsWith("periodGlyph")||region==="machineDigit0"||region==="machineDigit1"||region==="agencyCode"||region==="subagentCode"||region==="machineCode"){
-    const original=new Uint8ClampedArray(data);
-    const width=canvas.width,height=canvas.height;
-    for(let y=1;y<height-1;y+=1){
-      for(let x=1;x<width-1;x+=1){
-        const i=(y*width+x)*4;
-        const center=original[i]!;
-        const blur=(center+
-          original[i-4]!+original[i+4]!+
-          original[i-width*4]!+original[i+width*4]!+
-          original[i-width*4-4]!+original[i-width*4+4]!+
-          original[i+width*4-4]!+original[i+width*4+4]!+center*4)/13;
-        const v=Math.max(0,Math.min(255,center+(center-blur)));
-        data[i]=v;data[i+1]=v;data[i+2]=v;
-      }
-    }
-  }
-  context.putImageData(image,0,0);return canvas;
-}
-
-function makeThresholdOcrCrop(source:HTMLCanvasElement,threshold:number):HTMLCanvasElement {
-  const canvas=document.createElement("canvas");
-  canvas.width=source.width;canvas.height=source.height;
-  const context=canvas.getContext("2d",{willReadFrequently:true});
-  if(!context)throw new Error("No se pudo preparar la variante de OCR.");
-  context.drawImage(source,0,0);
-  const image=context.getImageData(0,0,canvas.width,canvas.height);
-  const pixels=image.data;
-  for(let i=0;i<pixels.length;i+=4){
-    const gray=.299*pixels[i]!+.587*pixels[i+1]!+.114*pixels[i+2]!;
-    const value=gray<threshold?0:255;
-    pixels[i]=value;pixels[i+1]=value;pixels[i+2]=value;pixels[i+3]=255;
-  }
-  context.putImageData(image,0,0);
-  return canvas;
-}
-
-async function makeFocusedReceiptCrops(file:File) {
+async function makeReceiptPaperCanvas(file:File):Promise<HTMLCanvasElement> {
   const bitmap=await createImageBitmap(file);
   try {
     const bounds=detectReceiptPaperBounds(bitmap);
-    const paperCanvas=document.createElement("canvas");
-    paperCanvas.width=Math.max(1,bounds.width);
-    paperCanvas.height=Math.max(1,bounds.height);
-    const paperContext=paperCanvas.getContext("2d");
-    if(paperContext)paperContext.drawImage(bitmap,bounds.left,bounds.top,bounds.width,bounds.height,0,0,paperCanvas.width,paperCanvas.height);
-    const crops={
-      paper:paperCanvas,
-      codes:makeReceiptFocusCrop(bitmap,bounds,"codes"),
-      agencyCode:makeReceiptFocusCrop(bitmap,bounds,"agencyCode"),
-      subagentCode:makeReceiptFocusCrop(bitmap,bounds,"subagentCode"),
-      subagentDigit1:makeReceiptFocusCrop(bitmap,bounds,"subagentDigit1"),
-      subagentDigit0:makeReceiptFocusCrop(bitmap,bounds,"subagentDigit0"),
-      subagentDigit2:makeReceiptFocusCrop(bitmap,bounds,"subagentDigit2"),
-      machineCode:makeReceiptFocusCrop(bitmap,bounds,"machineCode"),
-      machineDigit0:makeReceiptFocusCrop(bitmap,bounds,"machineDigit0"),
-      machineDigit1:makeReceiptFocusCrop(bitmap,bounds,"machineDigit1"),
-      address:makeReceiptFocusCrop(bitmap,bounds,"address"),
-      terminalId:makeReceiptFocusCrop(bitmap,bounds,"terminalId"),
-      printedAt:makeReceiptFocusCrop(bitmap,bounds,"printedAt"),
-      periodNumber:makeReceiptFocusCrop(bitmap,bounds,"periodNumber"),
-      periodLabelled:makeReceiptFocusCrop(bitmap,bounds,"periodLabelled"),
-      periodLabelledTight:makeReceiptFocusCrop(bitmap,bounds,"periodLabelledTight"),
-      periodTail:makeReceiptFocusCrop(bitmap,bounds,"periodTail"),
-      periodGlyphs:[
-        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph1"),
-        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph2"),
-        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph3"),
-        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph4"),
-        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph5"),
-        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph6"),
-        makeReceiptFocusCrop(bitmap,bounds,"periodGlyph7"),
-      ],
-    };
-    return {
-      ...crops,
-      codesThreshold140:makeThresholdOcrCrop(crops.codes,140),
-      codesThreshold170:makeThresholdOcrCrop(crops.codes,170),
-      codesThreshold175:makeThresholdOcrCrop(crops.codes,175),
-      agencyCodeThreshold160:makeThresholdOcrCrop(crops.agencyCode,160),
-      agencyCodeThreshold175:makeThresholdOcrCrop(crops.agencyCode,175),
-      agencyCodeThreshold185:makeThresholdOcrCrop(crops.agencyCode,185),
-      agencyCodeThreshold195:makeThresholdOcrCrop(crops.agencyCode,195),
-      machineCodeThreshold140:makeThresholdOcrCrop(crops.machineCode,140),
-      machineCodeThreshold160:makeThresholdOcrCrop(crops.machineCode,160),
-      machineCodeThreshold175:makeThresholdOcrCrop(crops.machineCode,175),
-      machineCodeThreshold185:makeThresholdOcrCrop(crops.machineCode,185),
-      periodLabelledThreshold140:makeThresholdOcrCrop(crops.periodLabelled,140),
-      periodLabelledThreshold160:makeThresholdOcrCrop(crops.periodLabelled,160),
-      periodLabelledThreshold170:makeThresholdOcrCrop(crops.periodLabelled,170),
-      periodLabelledThreshold175:makeThresholdOcrCrop(crops.periodLabelled,175),
-      periodLabelledTightThreshold160:makeThresholdOcrCrop(crops.periodLabelledTight,160),
-      subagentCodeThreshold140:makeThresholdOcrCrop(crops.subagentCode,140),
-      subagentCodeThreshold160:makeThresholdOcrCrop(crops.subagentCode,160),
-      subagentCodeThreshold170:makeThresholdOcrCrop(crops.subagentCode,170),
-      subagentCodeThreshold175:makeThresholdOcrCrop(crops.subagentCode,175),
-      periodNumberThreshold140:makeThresholdOcrCrop(crops.periodNumber,140),
-      periodNumberThreshold160:makeThresholdOcrCrop(crops.periodNumber,160),
-      periodNumberThreshold170:makeThresholdOcrCrop(crops.periodNumber,170),
-      periodNumberThreshold175:makeThresholdOcrCrop(crops.periodNumber,175),
-      periodTailThreshold140:makeThresholdOcrCrop(crops.periodTail,140),
-      periodTailThreshold175:makeThresholdOcrCrop(crops.periodTail,175),
-    };
-  } finally { bitmap.close(); }
+    const canvas=document.createElement("canvas");
+    canvas.width=Math.max(1,bounds.width);
+    canvas.height=Math.max(1,bounds.height);
+    const context=canvas.getContext("2d");
+    if(!context)throw new Error("No se pudo preparar el papel del comprobante.");
+    context.drawImage(bitmap,bounds.left,bounds.top,bounds.width,bounds.height,0,0,canvas.width,canvas.height);
+    return canvas;
+  } finally {
+    bitmap.close();
+  }
 }
 
-function ocrDigitSequence(value:string,mapBoxedZero=false):string {
-  let text=normalize(value).toUpperCase().replace(/\s+/g,"").replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
-  if(mapBoxedZero)text=text.replace(/[BDGCEA]/g,"0").replace(/Z/g,"2");
-  return text.replace(/\D/g,"");
-}
-function numericSequenceInSegment(value:string):string {
-  const groups=value.toUpperCase().match(/[0-9OQILZBDGCEA](?:[\s.:_-]*[0-9OQILZBDGCEA]){0,7}/g)??[];
-  return groups.map((s)=>ocrDigitSequence(s,true)).filter((s)=>s.length>0&&s.length<=8).sort((a,b)=>b.length-a.length)[0]??"";
-}
-function labelledNumberSegment(line:string,startLabels:RegExp[],stopLabels:RegExp[]):string {
-  const text=normalize(line).replace(/\s+/g," ").toUpperCase();
-  const starts=startLabels.map((pattern)=>{const m=text.match(pattern);return m&&m.index!==undefined?{index:m.index,length:m[0].length}:null;})
-    .filter((v):v is {index:number;length:number}=>v!==null).sort((a,b)=>a.index-b.index);
-  const start=starts[0];if(!start)return "";
-  const from=start.index+start.length;let to=text.length;
-  for(const pattern of stopLabels){const m=text.slice(from).match(pattern);if(m&&m.index!==undefined)to=Math.min(to,from+m.index);}
-  return text.slice(from,to);
-}
-function readFocusedCodes(codesText:string,agencyDigitsText:string,machineDigitsText:string) {
-  const agencyLabels=[/\bAGENCIA\s*[:.]/i,/\bAG\s*[:.]/i,/\bAB\s*[:.]/i,/\bA[BG86]\s*[:.]/i,/\bA\s*[:.]\s*B\s*[:.]?/i];
-  const subagentLabels=[/\bSUBAG(?:ENTE)?\s*[:.]/i,/\bSUBA?G\s*[:.]/i,/\bSUA\s*[:.]/i,/\bSIEAG\s*[:.]/i,/\bSILAG\s*[:.]/i,/\bS[UI1]B?A?G\s*[:.]/i,/\bS[UI1]E?A?G\s*[:.]/i];
-  const machineLabels=[/\bMAQUINA\s*[:.]/i,/\bMAQ\s*[:.]/i,/\bM0+\s*[:.]/i,/\bMAO\s*[:.]/i,/\bM[A4][QOD0]\s*[:.]/i,/\bH[A4][VD]\s*[:.]/i,/\bN[A4]D\s*[:.]/i];
-  let agency=numericSequenceInSegment(labelledNumberSegment(codesText,agencyLabels,[...subagentLabels,...machineLabels]));
-  const subagent=numericSequenceInSegment(labelledNumberSegment(codesText,subagentLabels,machineLabels));
-  let machine=numericSequenceInSegment(labelledNumberSegment(codesText,machineLabels,[]));
-  // El identificador oficial tiene tres dígitos; no agregar un cero delante.
-  if (agency && agency.length === 4 && /^[01]\d{3}$/.test(agency)) agency = agency.slice(1);
-  if (agency && !/^\d{3}$/.test(agency)) agency = "";
-  if(machine)machine=machine.length<2?machine.padStart(2,"0"):machine.slice(-2);
-  return {agencyCode:agency||null,subagentCode:subagent||null,machineCode:machine||null};
-}
-function readFocusedAddress(values:string[],fallback:string|null):string|null {
-  for(const value of values){
-    const text=normalize(value).replace(/\s+/g," ").trim();if(!text)continue;
-    const number=[...text.matchAll(/\b\d{1,5}\b/g)].at(-1)?.[0]??null;
-    if(number&&/\b(?:RIOJA|RIOJ|RIGT?A|RIGIA|RITA|RIUTA)\b/i.test(text))return "LA RIOJA N.º "+number;
-    if(number&&/\b(?:CALLE|AVENIDA|AV\.?|RUTA|DOMICILIO|DIRECCION)\b/i.test(text))return value.trim();
-    // Muchos cierres imprimen directamente el nombre de la calle, sin el rótulo
-    // "Domicilio" (por ejemplo, "CATAMARCA 834"). Admitir ese formato sin
-    // confundir las líneas de códigos, fechas o importes con una dirección.
-    if(number&&/^[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ .'-]{2,}\s+(?:N[º°.]?\s*)?\d{1,5}$/i.test(text)&&
-      !/\b(?:AG|AGENCIA|SUBAG|MAQ|TOTAL|PERIODO|IMPRESO|ABIERTO|CERRADO)\b/i.test(text))return value.trim();
-  }
-  return fallback;
-}
-function readFocusedPrintedAt(values:string[]):TicketClosureData["printedAt"]|null {
-  for(const raw of values){
-    const text=raw.replace(/\s+/g," ").trim();
-    const date=text.match(/\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b/)?.[1]??null;
-    const time=text.match(/\b(\d{1,2}:\d{2}(?::\d{2})?)\b/)?.[1]??null;
-    if(!date||!time)continue;
-    const d=date.split(/[/-]/).map(Number),t=time.split(":").map(Number);
-    if(d.length!==3||(d[0]??0)<1||(d[0]??0)>31||(d[1]??0)<1||(d[1]??0)>12||
-      t.length<2||(t[0]??-1)<0||(t[0]??99)>23||(t[1]??-1)<0||(t[1]??99)>59||
-      (t[2]!==undefined&&(t[2]<0||t[2]>59)))continue;
-    return {date,time,raw:date+" "+time};
-  }
-  return null;
-}
-function normalizePrintedPeriodGlyphs(raw:string):string|null {
-  const token=raw.toUpperCase().replace(/[^0-9A-Z|!]/g,"");
-  if(token.length<3||token.length>7)return null;
-  const hasOcrLetters=/[A-Z|!]/.test(token);
-  const digits=[...token].map((char,index)=>{
-    if(/[OQBDGCEAH]/.test(char))return "0";
-    if(/[IL|!]/.test(char))return "1";
-    if(char==="Z")return "2";
-    if(char==="8"&&index===0&&hasOcrLetters)return "0";
-    return /^[0-9]$/.test(char)?char:"";
-  }).join("");
-  if(!/^\d{3,7}$/.test(digits))return null;
-  return digits.padStart(7,"0");
-}
-function readLabelledPeriodNumber(values:string[],confirmedTail:string|null=null):string|null {
-  const candidates:string[]=[];
-  for(const raw of values){
-    const text=raw.toUpperCase().replace(/\s+/g," ").trim();
-    const labelPattern=/P\s*E?\s*R\s*[I1LYN]?\s*[O0Q8GHN]?\s*D\s*[O0Q8GHY]?/i;
-    const label=labelPattern.exec(text);
-    if(!label||label.index===undefined)continue;
-    let suffix=text.slice(label.index+label[0].length);
-    suffix=suffix.replace(/^\s*[\s:.,_\-).#º°]*(?:NRO|NR0|GRO|GR0|RNO|RN0|ARO|AR0|ORO|OR0|RO|R0|NO|N[º°.]?)\s*[\s:.,_\-).#º°]*/i," ");
-    // Reconocer los dígitos aunque estén separados por espacios o puntos en la lectura térmica.
-    const tokens=suffix.match(/[0-9OQIL|!BDGCEAZH8](?:[\s.:_-]*[0-9OQIL|!BDGCEAZH8]){3,6}/g)??[];
-    for(const token of tokens){
-      const digits=normalizePrintedPeriodGlyphs(token);
-      if(!digits||digits==="0000000")continue;
-      candidates.push(digits);
-      break;
-    }
-  }
-  const counts=new Map<string,number>();
-  for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
-  const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
-  if(confirmedTail){
-    const matches=ranked.filter(([value])=>value.endsWith(confirmedTail));
-    if(matches.length){
-      const best=matches[0]!;
-      if(matches.length===1||best[1]>(matches[1]?.[1]??0))return best[0];
-    }
-  }
-  if(!ranked[0]||ranked[0][1]<2||(ranked[1]&&ranked[1][1]===ranked[0][1]))return null;
-  return ranked[0][0];
-}
-function looksLikeZeroGlyph(canvas: HTMLCanvasElement, luminanceThreshold = 180): boolean {
-  const context = canvas.getContext("2d", { willReadFrequently: true });
-  if (!context) return false;
-  const { width, height, data } = context.getImageData(0, 0, canvas.width, canvas.height);
-  const xMargin = Math.max(1, Math.floor(width * 0.05));
-  const yStart = Math.floor(height * 0.10);
-  const yEnd = Math.ceil(height * 0.90);
-  const edgeWidth = Math.max(2, Math.floor(width * 0.30));
-  const centerStart = Math.floor(width * 0.40);
-  const centerEnd = Math.ceil(width * 0.60);
-  let leftDark = 0, rightDark = 0, centerDark = 0, rowCount = 0, bothEdgeRows = 0;
-  for (let y = yStart; y < yEnd; y += 1) {
-    let leftRow = 0, rightRow = 0, centerRow = 0;
-    for (let x = xMargin; x < Math.min(width, xMargin + edgeWidth); x += 1) {
-      const i = (y * width + x) * 4;
-      if (0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]! < luminanceThreshold) leftRow += 1;
-    }
-    for (let x = Math.max(0, width - xMargin - edgeWidth); x < width - xMargin; x += 1) {
-      const i = (y * width + x) * 4;
-      if (0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]! < luminanceThreshold) rightRow += 1;
-    }
-    for (let x = centerStart; x < centerEnd; x += 1) {
-      const i = (y * width + x) * 4;
-      if (0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]! < luminanceThreshold) centerRow += 1;
-    }
-    const leftFraction = leftRow / edgeWidth;
-    const rightFraction = rightRow / edgeWidth;
-    const centerFraction = centerRow / Math.max(1, centerEnd - centerStart);
-    leftDark += leftFraction; rightDark += rightFraction; centerDark += centerFraction; rowCount += 1;
-    if (leftFraction > 0.16 && rightFraction > 0.16) bothEdgeRows += 1;
-  }
-  if (!rowCount) return false;
-  const leftMean = leftDark / rowCount;
-  const rightMean = rightDark / rowCount;
-  const centerMean = centerDark / rowCount;
-  const closedSideRows = bothEdgeRows / rowCount;
-  return leftMean > 0.19 && rightMean > 0.19 && closedSideRows > 0.38 &&
-    centerMean < Math.min(leftMean, rightMean) * 0.84;
-}
 
-function readSingleDigitGlyph(raw: string): string | null {
-  const token = raw.toUpperCase().replace(/[^0-9OQIL|!Z]/g, "");
-  if (token.length !== 1) return null;
-  const char = token[0]!;
-  if (/^[0-9]$/.test(char)) return char;
-  if (/[OQ]/.test(char)) return "0";
-  if (/[IL|!]/.test(char)) return "1";
-  if (char === "Z") return "2";
-  return null;
-}
-
-function readFocusedPeriodNumber(labelledValues:string[],digitValues:string[],confirmedTail:string|null):string|null {
-  const periodLabel=/P\s*E?\s*R\s*[I1LYN]?\s*[O0Q8GHN]?\s*D/i;
-  const labelWasRead=labelledValues.some((value)=>periodLabel.test(value.toUpperCase()));
-  if(!labelWasRead||!confirmedTail||!/^\d{2}$/.test(confirmedTail))return null;
-
-  const candidates:string[]=[];
-  for(const raw of digitValues){
-    const tokens=raw.toUpperCase().match(/[0-9OQIL|!BDGCEAZH8]{3,7}/g)??[];
-    for(const token of tokens){
-      const normalized=normalizePrintedPeriodGlyphs(token);
-      if(!normalized||normalized==="0000000"||!normalized.endsWith(confirmedTail))continue;
-      candidates.push(normalized);
-    }
-  }
-  const counts=new Map<string,number>();
-  for(const candidate of candidates)counts.set(candidate,(counts.get(candidate)??0)+1);
-  const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
-  // If threshold variants disagree, leave the field empty instead of showing a number from elsewhere.
-  if(ranked[0]&&(!ranked[1]||ranked[0][1]>ranked[1][1]))return ranked[0][0];
-  return null;
-}
-function readFocusedDigitValue(values:string[],minimumLength:number,maximumLength=10):string|null {
-  const candidates=values
-    .map((value)=>ocrDigitSequence(value,true))
-    .filter((value)=>value.length>=minimumLength&&value.length<=maximumLength);
-  if(!candidates.length)return null;
-  const counts=new Map<string,number>();for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
-  return candidates.sort((a,b)=>(counts.get(b)??0)-(counts.get(a)??0)||b.length-a.length)[0]??null;
-}
-
-function readFocusedAgencyCode(values:string[]):string|null {
-  const rawCandidates:string[]=[];
-  for(const raw of values){
-    const tokens=raw.toUpperCase().match(/[0-9OQIL|!BDGCEAZH]{3,4}/g)??[];
-    for(const token of tokens){
-      let digits=ocrDigitSequence(token,true);
-      // El número oficial es de tres dígitos. El OCR a veces añade un prefijo 0/1.
-      if(digits.length===4 && /^[01]\d{3}$/.test(digits)) digits=digits.slice(1);
-      if(/^\d{3}$/.test(digits))rawCandidates.push(digits);
-    }
-  }
-  if(!rawCandidates.length)return null;
-  const counts=new Map<string,number>();
-  for(const value of rawCandidates)counts.set(value,(counts.get(value)??0)+1);
-  const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
-  if(ranked.length>1&&ranked[0]![1]===ranked[1]![1])return null;
-  return ranked[0]?.[0]??null;
-}
-
-function readSubagentCandidate(raw:string):string|null {
-  const upper=raw.toUpperCase().trim();
-  // Los recortes SUBAG son solo el valor impreso; quitar el rótulo si el OCR lo devuelve.
-  const labelled=upper.match(/(?:SUBAG(?:ENTE)?|SUBA?G|S[UI1]B?A?G)\s*[:.]?\s*(.*)$/);
-  const value=(labelled?.[1] ?? upper).trim();
-  // El campo contiene tres dígitos. No permitir que 4/5 cifras de una línea vecina pasen.
-  const candidates=[...value.matchAll(/(?:^|[^A-Z0-9])([0-9OQIL|!](?:[\s.:_-]*[0-9OQIL|!]){2})(?=$|[^A-Z0-9])/g)];
-  for(const match of candidates){
-    const digits=(match[1]??"").replace(/[\s.:_-]/g,"").replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
-    if(/^\d{3}$/.test(digits))return digits;
-  }
-  // Algunas pasadas devuelven únicamente el valor, sin etiqueta ni separadores.
-  const compact=value.replace(/\s+/g,"");
-  if(/^[0-9OQIL|!]{3}$/.test(compact)){
-    const digits=compact.replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
-    return /^\d{3}$/.test(digits)?digits:null;
-  }
-  return null;
-}
-function readFocusedSubagentCode(values:string[]):string|null {
-  const candidates=values.map(readSubagentCandidate).filter((value):value is string=>Boolean(value));
-  const counts=new Map<string,number>();
-  for(const candidate of candidates)counts.set(candidate,(counts.get(candidate)??0)+1);
-  const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
-  if(ranked[0]&&ranked[0][1]>=2&&(!ranked[1]||ranked[0][1]>ranked[1][1]))return ranked[0][0];
-  return null;
-}
-function readClosureIdentityFromText(text:string):{agencyCode:string|null;subagentCode:string|null} {
-  const lines=text.split(/\r?\n/).map((line)=>normalize(line).toUpperCase());
-  const read=(pattern:RegExp,expected:3|4):string|null=>{
-    const values:string[]=[];
-    for(const line of lines){
-      const match=pattern.exec(line);
-      if(!match?.[1])continue;
-      let digits=ocrDigitSequence(match[1],false);
-      if(expected===4&&digits.length===4&&/^[01]\d{3}$/.test(digits))digits=digits.slice(1);
-      if(expected===4 ? /^\d{3}$/.test(digits) : digits.length===expected)values.push(digits);
-    }
-    const counts=new Map<string,number>();
-    for(const value of values)counts.set(value,(counts.get(value)??0)+1);
-    const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
-    if(!ranked[0]||(ranked[1]&&ranked[0][1]===ranked[1][1]))return null;
-    return ranked[0][0];
-  };
-  return {
-    agencyCode:read(/(?:AGENCIA|\bAG\b|A\s*[:.]\s*B)\s*[:.]?\s*([0-9OQIL|!]{3,4})\b/i,4) ??
-      read(/A\s*[:.]\s*B\s*([0-9OQIL|!]{3,4})\b/i,4),
-    subagentCode:read(/(?:SUBAG(?:ENTE)?|S[UI1]B?A?G)\s*[:.]?\s*([0-9OQIL|!]{3})\b/i,3),
-  };
-}
-function readFocusedMachineCode(digitValues:string[]):string|null {
-  // MAQ tiene dos glifos impresos ("01"). Ignorar letras sueltas y secuencias largas
-  // que podrían venir de la dirección o de Máquina real.
-  const direct:string[]=[];
-  for(const raw of digitValues){
-    const token=raw.toUpperCase().replace(/[^0-9OQIL|!BDGCEAZH]/g,"");
-    if(token.length!==2)continue;
-    const digits=token.replace(/[OQBDGCEAH]/g,"0").replace(/[IL|!]/g,"1").replace(/Z/g,"2");
-    if(/^\d{2}$/.test(digits))direct.push(digits);
-  }
-  const counts=new Map<string,number>();
-  for(const value of direct)counts.set(value,(counts.get(value)??0)+1);
-  const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
-  return ranked[0]&&(!ranked[1]||ranked[0][1]>ranked[1][1])?ranked[0][0]:null;
-}
-function periodDigits(raw:string):string {
-  return raw.toUpperCase().replace(/[^0-9OQIL|!BDGCEAZH]/g,"")
-    .replace(/[OQBDGCEAH]/g,"0").replace(/[IL|!]/g,"1").replace(/Z/g,"2");
-}
-
-function readPeriodTail(values:string[]):string|null {
-  const candidates:string[]=[];
-  for(const raw of values){
-    const tokens=raw.toUpperCase().match(/[0-9OQIL|!BDGCEAZH]{2,}/g)??[];
-    for(const token of tokens){
-      const digits=token.replace(/[OQBDGCEAH]/g,"0").replace(/[IL|!]/g,"1").replace(/Z/g,"2").replace(/\D/g,"");
-      if(digits.length>=2)candidates.push(digits.slice(-2));
-    }
-  }
-  const counts=new Map<string,number>();
-  for(const value of candidates)counts.set(value,(counts.get(value)??0)+1);
-  const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
-  if(!ranked[0])return null;
-  if(ranked[1]&&ranked[0][1]===ranked[1][1])return null;
-  return ranked[0][0];
-}
 export function RenditionEntryForm({ agentId, games, today, periods, allPeriods, defaultPeriod, initialRendition, dailyMode = false, dailyCloseAllowed = true, receiptOnlyMode = false, batchMode = false }: { agentId: string; games: Game[]; today: string; periods: OfficialDrawPeriod[]; allPeriods?: OfficialDrawPeriod[]; defaultPeriod?: string; initialRendition?: InitialRendition; dailyMode?: boolean; dailyCloseAllowed?: boolean; receiptOnlyMode?: boolean; batchMode?: boolean }) {
   const [mode, setMode] = useState<"photo" | "manual">(receiptOnlyMode ? "photo" : initialRendition?.captureMethod === "manual" ? "manual" : "photo");
   const [date, setDate] = useState(initialRendition?.renditionDate ?? today);
@@ -1430,21 +937,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         if (closureCandidate) {
           setProgress("Leyendo los datos impresos del FIN DE JORNADA…");
           setProgressPercent(72);
-          const crops = await makeFocusedReceiptCrops(file);
-          // Volver a reconocer el ticket completo, pero aislando primero el papel del fondo.
-          // La pasada original sobre toda la foto pierde renglones pequeños cuando el ticket
-          // ocupa solo una parte de la imagen; esta lectura aporta los importes y totales.
-          // Nueva estrategia: el ticket no se segmenta por una plantilla fija.
-          // Se prueban modos de página distintos sobre el papel completo y se elige
-          // por presencia de rótulos/valores propios del cierre, no por cantidad de texto.
+          const paperCanvas = await makeReceiptPaperCanvas(file);
           const closureReadScore = (value:string) => {
             const normalized = normalize(value);
             const labelHits = [
               /AGENCIA|\bAG\b/.test(normalized),
-              /SUBAG(?:ENTE)?/.test(normalized),
+              /SUBAG(?:ENTE)?|SIBAG|SILAG|SIEAG/.test(normalized),
               /MAQ(?:UINA)?/.test(normalized),
               /PER[I1]ODO/.test(normalized),
-              /DIRECCI[O0]N|DOMICILIO|CATAMARCA|CORRIENTES/.test(normalized),
+              /DIRECCI[O0]N|DOMICILIO|LA RIOJA|CATAMARCA|CORRIENTES/.test(normalized),
               /TOTAL\s+GENERAL/.test(normalized),
               /QUINIELA/.test(normalized),
               /FIN\s+DE\s+JORNADA/.test(normalized),
@@ -1455,239 +956,74 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             return labelHits * 12 + Math.min(numericLines,24) + Math.min(moneyLines,12) * 3;
           };
           const pageCandidates:[string,string][] = [];
-          const pageWordCandidates: Array<{mode:number; words:unknown; score:number}> = [];
-          for (const mode of [4,6,11,12]) {
-            await worker.setParameters({tessedit_pageseg_mode:mode,tessedit_char_whitelist:"",preserve_interword_spaces:"1"} as any);
-            const pageResult = await worker.recognize(crops.paper);
-            const plainText = pageResult.data.text ?? "";
-            const rawWords = (pageResult.data as any).words;
-            const geometryText = reconstructLinesFromOcrWords(rawWords);
-            // Se prefiere el texto reconstruido por coordenadas de palabras cuando
-            // conserva más rótulos/códigos del cierre que la salida lineal de Tesseract.
-            const candidate = geometryText && closureReadScore(geometryText) > closureReadScore(plainText)
-              ? geometryText : plainText;
-            pageCandidates.push(["PSM "+mode,candidate]);
-            pageWordCandidates.push({mode,words:rawWords,score:closureReadScore(candidate)});
+          const pageWordCandidates:Array<{mode:string;words:unknown;score:number}> = [];
+          const sources:[string,HTMLCanvasElement][] = [
+            ["Papel delimitado",paperCanvas],
+            ["Foto mejorada",enhancedPage],
+          ];
+          for(const [sourceName,sourceCanvas] of sources){
+            for(const mode of [4,6,11,12]){
+              await worker.setParameters({
+                tessedit_pageseg_mode:mode,
+                tessedit_char_whitelist:"",
+                preserve_interword_spaces:"1",
+              } as any);
+              const pageResult=await worker.recognize(sourceCanvas);
+              const plainText=pageResult.data.text??"";
+              const rawWords=(pageResult.data as any).words;
+              const geometryText=reconstructLinesFromOcrWords(rawWords);
+              const candidate=geometryText&&closureReadScore(geometryText)>closureReadScore(plainText)
+                ?geometryText:plainText;
+              const modeLabel=sourceName+" PSM "+mode;
+              pageCandidates.push([modeLabel,candidate]);
+              pageWordCandidates.push({mode:modeLabel,words:rawWords,score:closureReadScore(candidate)});
+            }
           }
-          // Localizar la fila de identificadores por sus palabras y cajas reales.
-          // Si no hay una fila inequívoca, no se inventan códigos desde un recorte fijo.
-          const identifierWords = pageWordCandidates
-            .filter(item=>item.words)
-            .sort((a,b)=>b.score-a.score)
-            .map(item=>makeIdentifierRowCrop(crops.paper,item.words))
-            .find((crop):crop is HTMLCanvasElement=>Boolean(crop)) ?? null;
-          closureTextCandidates = Array.from(new Set([
-            originalPageText,
-            enhancedText,
-            recognizedText,
-            ...pageCandidates.map(([, value]) => value),
-          ].map((value) => value.trim()).filter(Boolean)));
-          const bestPaperRead = pageCandidates
+          closureTextCandidates=pageCandidates.map(([,value])=>value.trim()).filter(Boolean);
+          const bestPaperRead=pageCandidates
             .map(([mode,value])=>({mode,value,score:closureReadScore(value)}))
             .sort((a,b)=>b.score-a.score)[0];
-          if(bestPaperRead?.value && (
-            closureReadScore(bestPaperRead.value)>closureReadScore(recognizedText) ||
-            (closureReadScore(bestPaperRead.value)===closureReadScore(recognizedText) && textScore(bestPaperRead.value)>textScore(recognizedText))
-          )) recognizedText=bestPaperRead.value;
-          const pageReadDiagnostics = pageCandidates.map(([mode,value])=>mode+"="+closureReadScore(value)).join(" / ");
-          const setOcrMode = async (mode:number, whitelist?:string) => {
-            await worker.setParameters({tessedit_pageseg_mode:mode,tessedit_char_whitelist:whitelist ?? ""} as any);
+          if(bestPaperRead?.value&&(
+            closureReadScore(bestPaperRead.value)>closureReadScore(recognizedText)||
+            (closureReadScore(bestPaperRead.value)===closureReadScore(recognizedText)&&textScore(bestPaperRead.value)>textScore(recognizedText))
+          ))recognizedText=bestPaperRead.value;
+
+          // Campo a campo: rótulo y valor deben estar en la misma línea geométrica,
+          // y el mismo valor debe repetirse en al menos dos pasadas PSM.
+          const anchoredReads=pageWordCandidates.map(item=>readClosureMetadataFromOcrWords(item.words));
+          const anchoredAgency=readOcrConsensus(anchoredReads.map(item=>item.agencyCode));
+          const anchoredSubagent=readOcrConsensus(anchoredReads.map(item=>item.subagentCode));
+          const anchoredMachine=readOcrConsensus(anchoredReads.map(item=>item.machineCode));
+          const anchoredAddress=readOcrConsensus(anchoredReads.map(item=>item.address));
+          const anchoredTerminal=readOcrConsensus(anchoredReads.map(item=>item.terminalId));
+          const anchoredPrinted=readOcrConsensus(anchoredReads.map(item=>item.printedAt));
+          const anchoredPeriod=readOcrConsensus(anchoredReads.map(item=>item.periodNumber));
+          const anchoredDate=anchoredPrinted?.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0]??null;
+          const anchoredTime=anchoredPrinted?.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0]??null;
+          focusedClosureMetadata={
+            agencyCode:anchoredAgency??undefined,
+            subagentCode:anchoredSubagent??undefined,
+            machineCode:anchoredMachine??undefined,
+            address:anchoredAddress??undefined,
+            terminalId:anchoredTerminal??undefined,
+            printedAt:anchoredDate&&anchoredTime
+              ?{date:anchoredDate,time:anchoredTime,raw:anchoredPrinted}
+              :undefined,
+            periodNumber:anchoredPeriod??undefined,
           };
-
-          // Lectura enfocada reducida: dos lecturas de la franja de identificadores
-          // para confirmar SUBAG/MAQ, y una por cada campo independiente. Evita decenas
-          // de pasadas sobre variantes del mismo recorte.
-          await setOcrMode(6);
-          const codesLine6 = identifierWords ? (await worker.recognize(identifierWords)).data.text ?? "" : "";
-          await setOcrMode(7);
-          const codesLine7 = identifierWords ? (await worker.recognize(identifierWords)).data.text ?? "" : "";
-          const codesLineThreshold170 = "";
-          const codeRead6 = readFocusedCodes(codesLine6,"","");
-          const codeRead7 = readFocusedCodes(codesLine7,"","");
-          const codeReadThreshold170 = readFocusedCodes(codesLineThreshold170,"","");
-          // Leer AG, SUBAG y MAQ en recortes independientes. Antes se generaban los recortes
-          // de AG/MAQ pero sus resultados no se utilizaban para rellenar esos campos.
-          const digitWhitelist = "0123456789OQILBDGCEA";
-          await setOcrMode(7,digitWhitelist);
-          const agencyCropRaw7 = (await worker.recognize(crops.agencyCode)).data.text ?? "";
-          await setOcrMode(7,"0123456789OQIL");
-          const subagentCropRaw7 = (await worker.recognize(crops.subagentCode)).data.text ?? "";
-          await setOcrMode(7,digitWhitelist);
-          const machineCropRaw7 = (await worker.recognize(crops.machineCode)).data.text ?? "";
-          // PSM 7 acierta "01" en el recorte MAQ de esta foto; PSM 8 lo confunde con letras.
-          const machineCrop140 = (await worker.recognize(crops.machineCodeThreshold140)).data.text ?? "";
-          const machineCrop160 = (await worker.recognize(crops.machineCodeThreshold160)).data.text ?? "";
-          const machineCrop175 = (await worker.recognize(crops.machineCodeThreshold175)).data.text ?? "";
-          const machineCrop185 = (await worker.recognize(crops.machineCodeThreshold185)).data.text ?? "";
-
-          await setOcrMode(8,digitWhitelist);
-          const agencyCrop160 = (await worker.recognize(crops.agencyCodeThreshold160)).data.text ?? "";
-          const agencyCrop175 = (await worker.recognize(crops.agencyCodeThreshold175)).data.text ?? "";
-          const agencyCrop185 = (await worker.recognize(crops.agencyCodeThreshold185)).data.text ?? "";
-          const agencyCrop195 = (await worker.recognize(crops.agencyCodeThreshold195)).data.text ?? "";
-          // Las cuatro variantes de SUBAG se leen con whitelist numérica: el campo es solo 3 dígitos.
-          await setOcrMode(8,"0123456789OQIL");
-          const subagentCrop140 = (await worker.recognize(crops.subagentCodeThreshold140)).data.text ?? "";
-          const subagentCrop160 = (await worker.recognize(crops.subagentCodeThreshold160)).data.text ?? "";
-          const subagentCrop170 = (await worker.recognize(crops.subagentCodeThreshold170)).data.text ?? "";
-          const subagentCrop175 = (await worker.recognize(crops.subagentCodeThreshold175)).data.text ?? "";
-          // Variar la segmentación sobre dos recortes ya aislados: algunos tickets térmicos
-          // separan el rótulo SUBAG del valor y PSM 8 puede descartar los tres dígitos.
-          await setOcrMode(7,"0123456789OQIL");
-          const subagentCropPsm7 = (await worker.recognize(crops.subagentCodeThreshold160)).data.text ?? "";
-          await setOcrMode(13,"0123456789OQIL");
-          const subagentCropPsm13 = (await worker.recognize(crops.subagentCodeThreshold140)).data.text ?? "";
-          // PSM 13 aporta una segmentación alternativa para los tres casilleros de SUBAG.
-          await setOcrMode(13,"0123456789OQIL");
-          const subagentGlyph1Raw = (await worker.recognize(crops.subagentDigit1)).data.text ?? "";
-          const subagentGlyph0Raw = (await worker.recognize(crops.subagentDigit0)).data.text ?? "";
-          const subagentGlyph2Raw = (await worker.recognize(crops.subagentDigit2)).data.text ?? "";
-          const subagentGlyph1 = readSingleDigitGlyph(subagentGlyph1Raw);
-          const subagentGlyph0 = looksLikeZeroGlyph(crops.subagentDigit0,140) ? "0" : readSingleDigitGlyph(subagentGlyph0Raw);
-          const subagentGlyph2 = readSingleDigitGlyph(subagentGlyph2Raw);
-          const subagentFromIndividualGlyphs = subagentGlyph1 && subagentGlyph0 && subagentGlyph2
-            ? subagentGlyph1 + subagentGlyph0 + subagentGlyph2
-            : null;
-          await setOcrMode(8,digitWhitelist);
-          const dynamicCodeRead = readFocusedCodes(codesLine6,"","");
-          const dynamicCodeRead7 = readFocusedCodes(codesLine7,"","");
-          const rowAgency = dynamicCodeRead.agencyCode === dynamicCodeRead7.agencyCode
-            ? dynamicCodeRead.agencyCode : null;
-          const textIdentity = readClosureIdentityFromText(closureTextCandidates.join("\n") || recognizedText);
-          const cropAgency = readFocusedAgencyCode([agencyCropRaw7,agencyCrop160,agencyCrop175,agencyCrop185,agencyCrop195]);
-          const focusedAgency = rowAgency ?? cropAgency ?? textIdentity.agencyCode;
-          const validSubagentCode = (value:string|null|undefined) => value && /^\d{3}$/.test(value) ? value : null;
-          const cropConsensusSubagent = readFocusedSubagentCode([subagentCropRaw7,subagentCrop140,subagentCrop160,subagentCrop170,subagentCrop175,subagentCropPsm7,subagentCropPsm13]);
-          // Cada intento focalizado se aprovecha; el texto general solo se usa si el rótulo y sus tres cifras aparecen juntos.
-          const rowSubagent = validSubagentCode(dynamicCodeRead.subagentCode) &&
-            dynamicCodeRead.subagentCode === dynamicCodeRead7.subagentCode
-            ? dynamicCodeRead.subagentCode : null;
-          const focusedSubagent = rowSubagent ?? validSubagentCode(cropConsensusSubagent) ?? textIdentity.subagentCode;
-
-          await setOcrMode(10,digitWhitelist);
-          const machineTensIsZero = looksLikeZeroGlyph(crops.machineDigit0);
-          const machineTensRaw = machineTensIsZero ? "" : (await worker.recognize(crops.machineDigit0)).data.text ?? "";
-          const machineUnitsRaw = (await worker.recognize(crops.machineDigit1)).data.text ?? "";
-          const machineTens = machineTensIsZero ? "0" : readSingleDigitGlyph(machineTensRaw);
-          const machineUnits = readSingleDigitGlyph(machineUnitsRaw);
-          const isolatedMachine = machineTens && machineUnits ? machineTens + machineUnits : null;
-          const rowMachine = dynamicCodeRead.machineCode &&
-            dynamicCodeRead.machineCode === dynamicCodeRead7.machineCode
-            ? dynamicCodeRead.machineCode : null;
-          const cropMachine = readFocusedMachineCode([machineCropRaw7,machineCrop140,machineCrop160,machineCrop175,machineCrop185]);
-          const focusedMachine = rowMachine ?? cropMachine ?? isolatedMachine;
-
-          await setOcrMode(6);
-          const addressLine = (await worker.recognize(crops.address)).data.text ?? "";
-          const printedLine = (await worker.recognize(crops.printedAt)).data.text ?? "";
-          const terminalLine = (await worker.recognize(crops.terminalId)).data.text ?? "";
-
-          // Tres lecturas, todas sobre el renglón «Periodo nro», no sobre la página completa.
-          // Dos recortes usan umbral 160 y PSM 8; el tercero verifica el trazo a umbral 170.
-          await setOcrMode(8);
-          const periodLineWide160 = (await worker.recognize(crops.periodLabelledThreshold160)).data.text ?? "";
-          const periodLineTight160 = (await worker.recognize(crops.periodLabelledTightThreshold160)).data.text ?? "";
-          await setOcrMode(6);
-          const periodLineWide170 = (await worker.recognize(crops.periodLabelledThreshold170)).data.text ?? "";
-          await setOcrMode(8,"0123456789OQILBDGCEAZH");
-          const periodDigitsRaw = (await worker.recognize(crops.periodNumber)).data.text ?? "";
-          const periodDigits140 = (await worker.recognize(crops.periodNumberThreshold140)).data.text ?? "";
-          const periodDigits160 = (await worker.recognize(crops.periodNumberThreshold160)).data.text ?? "";
-          const periodDigits170 = (await worker.recognize(crops.periodNumberThreshold170)).data.text ?? "";
-          const periodDigits175 = (await worker.recognize(crops.periodNumberThreshold175)).data.text ?? "";
-          const periodTail140 = (await worker.recognize(crops.periodTailThreshold140)).data.text ?? "";
-          const periodTail175 = (await worker.recognize(crops.periodTailThreshold175)).data.text ?? "";
-          const focusedPeriodTail = readPeriodTail([periodTail140,periodTail175]);
-          // El cierre ya se reconoció como FIN DE JORNADA y este recorte está en la fila fija
-          // "Periodo nro"; el OCR puede deformar las letras del rótulo.
-          const periodLabelConfirmed = closureCandidate;
-          const periodGlyphRaw: string[] = [];
-          const periodGlyphDigits: string[] = [];
-          await setOcrMode(10,digitWhitelist);
-          for (const glyph of crops.periodGlyphs) {
-            if (looksLikeZeroGlyph(glyph,140)) {
-              periodGlyphRaw.push("[cero por forma]");
-              periodGlyphDigits.push("0");
-              continue;
-            }
-            const firstRead = (await worker.recognize(glyph)).data.text ?? "";
-            let digit = readSingleDigitGlyph(firstRead);
-            let rawRead = firstRead;
-            if (!digit) {
-              await setOcrMode(13,digitWhitelist);
-              rawRead = (await worker.recognize(glyph)).data.text ?? "";
-              digit = readSingleDigitGlyph(rawRead);
-              await setOcrMode(10,digitWhitelist);
-            }
-            periodGlyphRaw.push(rawRead.trim());
-            periodGlyphDigits.push(digit ?? "");
-          }
-          const periodFromIndividualGlyphs = periodLabelConfirmed && periodGlyphDigits.length === 7 &&
-            periodGlyphDigits.every((value)=>/^\d$/.test(value))
-            ? periodGlyphDigits.join("")
-            : null;
-          const rejectedWholeNumberCandidate = readFocusedPeriodNumber(
-            [periodLineWide160,periodLineTight160,periodLineWide170],
-            [periodDigitsRaw,periodDigits140,periodDigits160,periodDigits170,periodDigits175],
-            focusedPeriodTail
-          );
-          // Los siete glifos alineados con sus casilleros son la fuente de verdad.
-          // La lectura de la línea completa confundía los ceros cuadrados y daba 0100011.
-          // Si los siete glifos individuales no alcanzan consenso, recuperar el período
-          // solo cuando al menos dos lecturas independientes del renglón rotulado coinciden.
-          // Nunca tomar una cifra de otra zona del ticket ni completar dígitos por suposición.
-          const focusedPeriod = periodFromIndividualGlyphs ?? readLabelledPeriodNumber(
-            [periodLineWide160, periodLineTight160, periodLineWide170],
-            focusedPeriodTail
-          );
-          const focusedTerminal = readFocusedDigitValue([terminalLine],4,6);
-          const focusedPrint = readFocusedPrintedAt([printedLine]);
-          const focusedAddress = readFocusedAddress([addressLine],null);
-          // Los recortes fijos anteriores quedan fuera de la asignación final.
-          // Cada campo se confirma con el mismo rótulo en, al menos, dos pasadas
-          // independientes sobre el papel completo y sus cajas reales de palabras.
-          const anchoredReads = pageWordCandidates.map(item=>readClosureMetadataFromOcrWords(item.words));
-          const anchoredAgency = readOcrConsensus(anchoredReads.map(item=>item.agencyCode));
-          const anchoredSubagent = readOcrConsensus(anchoredReads.map(item=>item.subagentCode));
-          const anchoredMachine = readOcrConsensus(anchoredReads.map(item=>item.machineCode));
-          const anchoredAddress = readOcrConsensus(anchoredReads.map(item=>item.address));
-          const anchoredTerminal = readOcrConsensus(anchoredReads.map(item=>item.terminalId));
-          const anchoredPrinted = readOcrConsensus(anchoredReads.map(item=>item.printedAt));
-          const anchoredPeriod = readOcrConsensus(anchoredReads.map(item=>item.periodNumber));
-          const anchoredDate = anchoredPrinted?.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0] ?? null;
-          const anchoredTime = anchoredPrinted?.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0] ?? null;
-          focusedClosureMetadata = {
-            agencyCode: anchoredAgency ?? undefined,
-            subagentCode: anchoredSubagent ?? undefined,
-            machineCode: anchoredMachine ?? undefined,
-            address: anchoredAddress ?? undefined,
-            terminalId: anchoredTerminal ?? undefined,
-            printedAt: anchoredDate && anchoredTime
-              ? {date:anchoredDate,time:anchoredTime,raw:anchoredPrinted}
-              : undefined,
-            periodNumber: anchoredPeriod ?? undefined,
-          };
-          recoveredPeriodNumber = anchoredPeriod ?? "";
-          focusedOcrDebugText = [
-            "[LECTURA FOCALIZADA FIN DE JORNADA]",
-            "Lecturas de página por rótulos: " + pageReadDiagnostics,
-            "Identificadores (PSM 6): " + codesLine6.trim(),
-            "Identificadores (PSM 7): " + codesLine7.trim(),
-            "Dirección: " + addressLine.trim(),
-            "Máquina real: " + terminalLine.trim(),
-            "Impresión: " + printedLine.trim(),
-            "AG recortes: " + [agencyCropRaw7,agencyCrop160,agencyCrop175,agencyCrop185,agencyCrop195].map((v)=>v.trim()).join(" / "),
-            "SUBAG glifos: " + [subagentGlyph1Raw,subagentGlyph0Raw,subagentGlyph2Raw].map((v)=>v.trim()).join(" | ") + " => " + (subagentFromIndividualGlyphs ?? "sin lectura segura"),
-            "SUBAG recortes: " + [subagentCropRaw7,subagentCrop160,subagentCrop170,subagentCrop175].map((v)=>v.trim()).join(" / "),
-            "MAQ recortes: " + [machineCropRaw7,machineCrop140,machineCrop160,machineCrop175,machineCrop185].map((v)=>v.trim()).join(" / "),
-            "Renglón de códigos 170: " + codesLineThreshold170.trim(),
-            "Cola de período: " + [periodTail140,periodTail175].map((v)=>v.trim()).join(" / "),
-            "Período solo dígitos: " + [periodDigitsRaw,periodDigits140,periodDigits160,periodDigits170,periodDigits175].map((v)=>v.trim()).join(" / "),
-            "Período rotulado 160 ancho: " + periodLineWide160.trim(),
-            "Período rotulado 160 ajustado: " + periodLineTight160.trim(),
-            "Período rotulado 170: " + periodLineWide170.trim(),
-            "Período por glifo: " + periodGlyphDigits.join("") + " (OCR: " + periodGlyphRaw.join("|") + ")",
-            "Período final por siete glifos: " + (focusedPeriod ?? "sin lectura segura") + "; OCR de línea descartado: " + (rejectedWholeNumberCandidate ?? "sin lectura segura"),
+          recoveredPeriodNumber=anchoredPeriod??"";
+          const pageReadDiagnostics=pageCandidates
+            .map(([mode,value])=>mode+"="+closureReadScore(value)).join(" / ");
+          focusedOcrDebugText=[
+            "[LECTURA ADAPTATIVA FIN DE JORNADA]",
+            "Pasadas de página: "+pageReadDiagnostics,
+            "Agencia confirmada: "+(anchoredAgency??"sin consenso"),
+            "Subagente confirmado: "+(anchoredSubagent??"sin consenso"),
+            "Máquina confirmada: "+(anchoredMachine??"sin consenso"),
+            "Domicilio confirmado: "+(anchoredAddress??"sin consenso"),
+            "Máquina real confirmada: "+(anchoredTerminal??"sin consenso"),
+            "Impresión confirmada: "+(anchoredPrinted??"sin consenso"),
+            "Período confirmado: "+(anchoredPeriod??"sin consenso"),
           ].join("\n");
         }
       } finally {
