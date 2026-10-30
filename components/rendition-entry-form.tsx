@@ -901,136 +901,22 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let recoveredPeriodNumber = "";
       let focusedClosureMetadata: FocusedClosureMetadata = {};
       let focusedOcrDebugText = "";
+      // Una lectura general de la foto completa, como en la versión histórica.
+      // Sin recortes, umbrales ni consenso artificial entre múltiples pasadas.
       let closureTextCandidates: string[] = [];
       let receiptAmountsValidated = false;
       let receiptPrizesValidated = false;
       try {
         const result = await worker.recognize(file);
         recognizedText = result.data.text ?? "";
-        const originalPageText = recognizedText;
-        const enhancedPage = await makeEnhancedTicketImage(file);
-        await worker.setParameters({ tessedit_pageseg_mode: 6, tessedit_char_whitelist: "", preserve_interword_spaces: "1" } as any);
-        const enhancedResult = await worker.recognize(enhancedPage);
-        const enhancedText = enhancedResult.data.text ?? "";
-        const textScore = (value: string) => {
-          const lines = value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-          return lines.length +
-            lines.filter((line) => /\d/.test(line)).length * 2 +
-            lines.filter((line) => /\$|\b\d+[.,]\d{2}\b/.test(line)).length * 5 +
-            lines.filter((line) => /QUINIELA|LOTER[IÍ]A|TOMBOLA|POCEADA|DEPORTIVA|OTROS? JUEGOS|TOTAL/i.test(line)).length * 4;
-        };
-        if (textScore(enhancedText) > textScore(originalPageText)) recognizedText = enhancedText;
-        await worker.setParameters({ tessedit_pageseg_mode: 3, tessedit_char_whitelist: "" } as any);
-
-        // La pasada general sigue siendo la fuente de importes. Se conserva el segundo
-        // intento anterior solo como alternativa de texto general.
-        const normalizedPageText = normalize(recognizedText);
-        const hasAnyClosureField =
-          /\bSUBAG(?:ENTE)?\b|\bSUBA?G\b|\bMAQ(?:UINA)?\b|\bPER[I1]ODO\b|\bTOTAL\b/.test(normalizedPageText);
-        // En los flujos de rendición diaria, lote y comprobante único el documento esperado
-        // ya es un FIN DE JORNADA. La lectura focalizada debe ejecutarse aunque el OCR de
-        // página completa pierda uno o varios rótulos por calidad, encuadre o impresión.
-        const closureCandidate = dailyMode || batchMode || receiptOnlyMode || hasAnyClosureField ||
-          Boolean(parseTicketClosure(recognizedText)) ||
-          /\bFIN\s+DE\s+(?:JOR|TOR)NADA\b/i.test(normalizedPageText) ||
-          /\bTOTALES?\s+EN\s+T[J7I1]\b/i.test(normalizedPageText);
-        if (closureCandidate) {
-          setProgress("Leyendo los datos impresos del FIN DE JORNADA…");
-          setProgressPercent(72);
-          const paperCanvas = await makeReceiptPaperCanvas(file);
-          const closureReadScore = (value:string) => {
-            const normalized = normalize(value);
-            const labelHits = [
-              /AGENCIA|\bAG\b/.test(normalized),
-              /SUBAG(?:ENTE)?|SIBAG|SILAG|SIEAG/.test(normalized),
-              /MAQ(?:UINA)?/.test(normalized),
-              /PER[I1]ODO/.test(normalized),
-              /DIRECCI[O0]N|DOMICILIO|LA RIOJA|CATAMARCA|CORRIENTES/.test(normalized),
-              /TOTAL\s+GENERAL/.test(normalized),
-              /QUINIELA/.test(normalized),
-              /FIN\s+DE\s+JORNADA/.test(normalized),
-              /IMPRES[O0]|CERRAD[O0]/.test(normalized),
-            ].filter(Boolean).length;
-            const numericLines = value.split(/\r?\n/).filter(line => /\d/.test(line)).length;
-            const moneyLines = value.split(/\r?\n/).filter(line => /\$|\d[.,]\d{2}/.test(line)).length;
-            return labelHits * 12 + Math.min(numericLines,24) + Math.min(moneyLines,12) * 3;
-          };
-          const pageCandidates:[string,string][] = [];
-          const pageWordCandidates:Array<{mode:string;words:unknown;score:number}> = [];
-          const sources:[string,HTMLCanvasElement][] = [
-            ["Papel delimitado",paperCanvas],
-            ["Foto mejorada",enhancedPage],
-          ];
-          for(const [sourceName,sourceCanvas] of sources){
-            for(const mode of [4,6,11,12]){
-              await worker.setParameters({
-                tessedit_pageseg_mode:mode,
-                tessedit_char_whitelist:"",
-                preserve_interword_spaces:"1",
-              } as any);
-              const pageResult=await worker.recognize(sourceCanvas);
-              const plainText=pageResult.data.text??"";
-              const rawWords=(pageResult.data as any).words;
-              const geometryText=reconstructLinesFromOcrWords(rawWords);
-              const candidate=geometryText&&closureReadScore(geometryText)>closureReadScore(plainText)
-                ?geometryText:plainText;
-              const modeLabel=sourceName+" PSM "+mode;
-              pageCandidates.push([modeLabel,candidate]);
-              pageWordCandidates.push({mode:modeLabel,words:rawWords,score:closureReadScore(candidate)});
-            }
-          }
-          closureTextCandidates=pageCandidates.map(([,value])=>value.trim()).filter(Boolean);
-          const bestPaperRead=pageCandidates
-            .map(([mode,value])=>({mode,value,score:closureReadScore(value)}))
-            .sort((a,b)=>b.score-a.score)[0];
-          if(bestPaperRead?.value&&(
-            closureReadScore(bestPaperRead.value)>closureReadScore(recognizedText)||
-            (closureReadScore(bestPaperRead.value)===closureReadScore(recognizedText)&&textScore(bestPaperRead.value)>textScore(recognizedText))
-          ))recognizedText=bestPaperRead.value;
-
-          // Campo a campo: rótulo y valor deben estar en la misma línea geométrica,
-          // y el mismo valor debe repetirse en al menos dos pasadas PSM.
-          const anchoredReads=pageWordCandidates.map(item=>readClosureMetadataFromOcrWords(item.words));
-          const anchoredAgency=readOcrConsensus(anchoredReads.map(item=>item.agencyCode));
-          const anchoredSubagent=readOcrConsensus(anchoredReads.map(item=>item.subagentCode));
-          const anchoredMachine=readOcrConsensus(anchoredReads.map(item=>item.machineCode));
-          const anchoredAddress=readOcrConsensus(anchoredReads.map(item=>item.address));
-          const anchoredTerminal=readOcrConsensus(anchoredReads.map(item=>item.terminalId));
-          const anchoredPrinted=readOcrConsensus(anchoredReads.map(item=>item.printedAt));
-          const anchoredPeriod=readOcrConsensus(anchoredReads.map(item=>item.periodNumber));
-          const anchoredDate=anchoredPrinted?.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0]??null;
-          const anchoredTime=anchoredPrinted?.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0]??null;
-          focusedClosureMetadata={
-            agencyCode:anchoredAgency??undefined,
-            subagentCode:anchoredSubagent??undefined,
-            machineCode:anchoredMachine??undefined,
-            address:anchoredAddress??undefined,
-            terminalId:anchoredTerminal??undefined,
-            printedAt:anchoredDate&&anchoredTime
-              ?{date:anchoredDate,time:anchoredTime,raw:anchoredPrinted}
-              :undefined,
-            periodNumber:anchoredPeriod??undefined,
-          };
-          recoveredPeriodNumber=anchoredPeriod??"";
-          const pageReadDiagnostics=pageCandidates
-            .map(([mode,value])=>mode+"="+closureReadScore(value)).join(" / ");
-          focusedOcrDebugText=[
-            "[LECTURA ADAPTATIVA FIN DE JORNADA]",
-            "Pasadas de página: "+pageReadDiagnostics,
-            "Agencia confirmada: "+(anchoredAgency??"sin consenso"),
-            "Subagente confirmado: "+(anchoredSubagent??"sin consenso"),
-            "Máquina confirmada: "+(anchoredMachine??"sin consenso"),
-            "Domicilio confirmado: "+(anchoredAddress??"sin consenso"),
-            "Máquina real confirmada: "+(anchoredTerminal??"sin consenso"),
-            "Impresión confirmada: "+(anchoredPrinted??"sin consenso"),
-            "Período confirmado: "+(anchoredPeriod??"sin consenso"),
-          ].join("\n");
+        if (dailyMode || receiptOnlyMode || batchMode) {
+          closureTextCandidates = recognizedText.trim() ? [recognizedText] : [];
         }
       } finally {
         await worker.terminate();
       }
 
-      setOcrText([recognizedText, focusedOcrDebugText].filter(Boolean).join("\n\n"));
+      setOcrText(recognizedText);
       const activeGames = games.filter((game) => game.enabled !== false);
       let parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber, dailyMode || receiptOnlyMode || batchMode);
       // Elegir la pasada OCR por la información real que logra extraer del cierre,
@@ -1083,7 +969,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           salesVotes.set(signature,(salesVotes.get(signature)??0)+1);
         }
         const bestCandidate = verifiedSales
-          .filter(receipt=>(salesVotes.get(salesSignature(receipt))??0)>=2)
+          .filter(receipt=>(salesVotes.get(salesSignature(receipt))??0)>=1)
           .map((receipt) => ({ receipt, score: completeness(receipt) }))
           .sort((a, b) => b.score - a.score)[0];
         if (bestCandidate) {
@@ -1102,7 +988,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             prizeVotes.set(signature,(prizeVotes.get(signature)??0)+1);
           }
           receiptPrizesValidated = bestCandidate.receipt.consistency.prizeTotalsMatch===true &&
-            (prizeVotes.get(prizeSignature(bestCandidate.receipt))??0)>=2;
+            (prizeVotes.get(prizeSignature(bestCandidate.receipt))??0)>=1;
           parsed = {
             ...parsed,
             amountMap: mapTicketClosureAmounts(bestCandidate.receipt, activeGames),
@@ -1159,7 +1045,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         // No usar el período del parser general, que puede confundirlo con otra cifra del ticket.
         // No recurrir al OCR general si las dos lecturas del recorte rotulado no coinciden:
         // es preferible dejar Período vacío a mostrar un código inventado de otra zona.
-        const labelledPeriod = validPeriod(focusedClosureMetadata.periodNumber);
+        const labelledPeriod = validPeriod(focusedClosureMetadata.periodNumber ?? parsed.receiptData.periodNumber);
         const validSubagent = (value: string | null | undefined) => {
           const digits = String(value ?? "").replace(/\D/g, "");
           return /^\d{3}$/.test(digits) ? digits : null;
@@ -1177,12 +1063,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           receiptPrizesValidated ? {count:null,amount:metric.amount} : emptyMetric();
         const closureReceipt = {
           ...parsed.receiptData,
-          agencyCode: validAgencyCode(focusedClosureMetadata.agencyCode),
-          subagentCode: validSubagent(focusedClosureMetadata.subagentCode),
-          machineCode: focusedClosureMetadata.machineCode ?? null,
-          address: focusedClosureMetadata.address ?? null,
-          terminalId: focusedClosureMetadata.terminalId ?? null,
-          printedAt: focusedClosureMetadata.printedAt ?? {date:null,time:null,raw:null},
+          agencyCode: validAgencyCode(focusedClosureMetadata.agencyCode ?? parsed.receiptData.agencyCode),
+          subagentCode: validSubagent(focusedClosureMetadata.subagentCode ?? parsed.receiptData.subagentCode),
+          machineCode: focusedClosureMetadata.machineCode ?? parsed.receiptData.machineCode ?? null,
+          address: focusedClosureMetadata.address ?? parsed.receiptData.address ?? null,
+          terminalId: focusedClosureMetadata.terminalId ?? parsed.receiptData.terminalId ?? null,
+          printedAt: focusedClosureMetadata.printedAt ?? parsed.receiptData.printedAt ?? {date:null,time:null,raw:null},
           periodNumber: labelledPeriod,
           // Cantidades, ventas, premios y medios digitales no verificados quedan vacíos.
           // No mostrar números estimados solo porque Tesseract haya devuelto cifras.
