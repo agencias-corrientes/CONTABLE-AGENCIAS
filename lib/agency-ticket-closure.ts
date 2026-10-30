@@ -242,8 +242,14 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
   const qValid = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /\bVALIDOS?\b/);
   const qCancelled = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /ANULADOS?\s*(?:ESP|ESPECIALES?)/);
   const qPrizes = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /PREMIOS?\s+P[A-Z]{2,3}/);
-  const toqueValid = metricInRange(lines, qToqueIndex >= 0 ? qToqueIndex : 0, qToqueEnd, /\bVALIDOS?\b/);
-  const toquePrizes = metricInRange(lines, qToqueIndex >= 0 ? qToqueIndex : 0, qToqueEnd, /PREMIOS?\s+P[A-Z]{2,3}/);
+  // Si el ticket no contiene la sección «Quiniela al Toque», no reutilizar
+  // el primer renglón Válidos: pertenece a Quiniela y duplicaría sus ventas.
+  const toqueValid = qToqueIndex >= 0
+    ? metricInRange(lines, qToqueIndex, qToqueEnd, /\bVALIDOS?\b/)
+    : emptyMetric();
+  const toquePrizes = qToqueIndex >= 0
+    ? metricInRange(lines, qToqueIndex, qToqueEnd, /PREMIOS?\s+P[A-Z]{2,3}/)
+    : emptyMetric();
 
   const gameLabels: Array<{ name: string; matcher: RegExp }> = [
     { name: "Loto Plus", matcher: /^(?:L?OTO)\s+PLUS(?!\s+EXTRA)(?!\s+5)/ },
