@@ -93,8 +93,8 @@ function paddleOcrItemsToText(rawItems: unknown): string {
 function ocrTextHasEnoughSignals(value: string, closure: boolean): boolean {
   const text = value.trim();
   if (!text) return false;
-  const lines = text.split(/\\r?\\n/).map((line) => line.trim()).filter(Boolean);
-  const numericLines = lines.filter((line) => /\\d{2,}/.test(line)).length;
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const numericLines = lines.filter((line) => /\d{2,}/.test(line)).length;
   if (closure) {
     return text.length >= 30 && lines.length >= 3 && numericLines >= 2 &&
       /FIN|JORNADA|QUINIELA|TOTAL|VALID|AGENCIA|SUBAG|MAQ/i.test(text);
