@@ -213,12 +213,22 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
     alToque: /AL\s+TOQUE/.test(joined),
   };
   const markerCount = Object.values(closureMarkers).filter(Boolean).length;
-  const hasClosureFooter = closureMarkers.totalsTj && closureMarkers.general &&
-    (closureMarkers.opened || closureMarkers.closed || closureMarkers.period);
-  const isEndOfDay = (closureMarkers.header && markerCount >= 2) ||
+  // El encabezado térmico puede quedar ilegible. Reconocer el formato por una
+  // combinación de secciones independientes del cierre, sin exigir todos los rótulos.
+  const hasClosureFooter = closureMarkers.general && (
+    closureMarkers.totalsTj ||
+    closureMarkers.opened ||
+    closureMarkers.closed ||
+    closureMarkers.period ||
+    closureMarkers.digital ||
+    closureMarkers.prizes ||
+    closureMarkers.otherGames ||
+    closureMarkers.alToque
+  );
+  const isEndOfDay = (closureMarkers.header && markerCount >= 1) ||
     hasClosureFooter ||
-    (markerCount >= 4 && (closureMarkers.general || closureMarkers.totalsTj) &&
-      (closureMarkers.opened || closureMarkers.closed || closureMarkers.period));
+    (markerCount >= 3 && (closureMarkers.general || closureMarkers.totalsTj) &&
+      (closureMarkers.opened || closureMarkers.closed || closureMarkers.period || closureMarkers.digital));
   if (!isEndOfDay) return null;
 
   const qIndex = findIndex(lines, /^QUINIELA(?:\s+CORRIENTES?)?$/);
