@@ -37,7 +37,16 @@ function TextField({label,value,editable,onChange}:{label:string;value:string|nu
 function dtText(v:{date:string|null;time:string|null;raw:string|null}) { return v.raw??([v.date,v.time].filter(Boolean).join(" ")||null); }
 function dtParse(raw:string) { return {date:raw.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0]??null,time:raw.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0]??null,raw:raw.trim()||null}; }
 export function TicketClosureReceipt({data,compact=false,editable=false,onChange}:Props) {
- const update=(next:TicketClosureData)=>onChange?.(next);
+ const update=(next:TicketClosureData)=>{
+  if(!onChange)return;
+  const sales=[next.quiniela.valids.amount,next.quinielaAlToque.valids.amount,...next.otherGames.map(g=>g.amount)];
+  const salesOk=next.generalTotal.amount!==null&&sales.every(v=>v!==null)
+   ?Math.round(sales.reduce<number>((sum,v)=>sum+(v??0),0)*100)===Math.round(next.generalTotal.amount*100):false;
+  const prizes=[next.quiniela.prizesPaid.amount,next.quinielaAlToque.prizesPaid.amount,next.otherGamesPrizes.amount];
+  const prizesOk=next.totalPrizes.amount!==null&&prizes.every(v=>v!==null)
+   ?Math.round(prizes.reduce<number>((sum,v)=>sum+(v??0),0)*100)===Math.round(next.totalPrizes.amount*100):false;
+  onChange({...next,consistency:{...next.consistency,salesTotalsMatch:salesOk,prizeTotalsMatch:prizesOk}});
+ };
  const metric=(section:"quiniela"|"quinielaAlToque"|"digital"|"totalOtherGames"|"otherGamesPrizes"|"totalPrizes"|"generalTotal",key:string,value:TicketReceiptMetric)=>{
   if(section==="quiniela")update({...data,quiniela:{...data.quiniela,[key]:value}});
   else if(section==="quinielaAlToque")update({...data,quinielaAlToque:{...data.quinielaAlToque,[key]:value}});
