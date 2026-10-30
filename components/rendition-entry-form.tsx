@@ -1463,8 +1463,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       if (closureTextCandidates.length && (dailyMode || receiptOnlyMode || batchMode)) {
         const candidateReceipts = closureTextCandidates
           .map((candidateText) => parseTicketClosure(candidateText, true))
-          .filter((receipt): receipt is NonNullable<typeof receipt> => receipt !== null);
-        const completeness = (receipt: NonNullable<typeof candidateReceipts[number]>) => {
+          .filter((receipt): receipt is TicketClosureData => receipt !== null);
+        const completeness = (receipt: TicketClosureData) => {
           const metrics = [
             receipt.quiniela.valids,
             receipt.quiniela.cancelledSpecial,
