@@ -386,9 +386,14 @@ export function mapTicketClosureAmounts(receipt: TicketClosureData, games: { id:
     ...receipt.otherGames.map((item) => item.amount),
   ];
   const salesTotal = receipt.generalTotal.amount;
+  // No bloquear todos los importes válidos porque una línea secundaria quedó
+  // sin lectura. Solo trasladar cifras realmente reconocidas y exigir que la suma
+  // de esas cifras coincida exactamente con el total impreso antes de proponerlas.
+  // Las líneas null permanecen sin asignar: nunca se inventan ceros.
+  const knownSalesAmounts = salesAmounts.filter((amount): amount is number => amount !== null);
   const salesMatch = salesTotal !== null &&
-    salesAmounts.every((amount) => amount !== null) &&
-    Math.round(salesAmounts.reduce<number>((sum, amount) => sum + (amount ?? 0), 0) * 100) ===
+    knownSalesAmounts.length > 0 &&
+    Math.round(knownSalesAmounts.reduce<number>((sum, amount) => sum + amount, 0) * 100) ===
       Math.round(salesTotal * 100);
   if (!salesMatch) return mapped;
   for (const entry of entries) {
