@@ -47,7 +47,7 @@ function moneyAllowZero(value: string): number | null {
     amount = last.length === 3 ? chunks.join("") : chunks.slice(0, -1).join("") + "." + last;
   }
   const parsed = Number(amount);
-  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed * 100) / 100 : null;
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : null;
 }
 
 function metricFromLine(line: string): TicketReceiptMetric | null {
@@ -378,10 +378,13 @@ export function mapTicketClosureAmounts(receipt: TicketClosureData, games: { id:
     { amount: receipt.otherGames.find((item) => item.name === "Lotería Online")?.amount ?? null, match: (name) => name.includes("LOTERIA ONLINE") },
   ];
   const mapped: Record<string, string> = {};
+  // No ofrecer importes calculados desde OCR si los renglones de venta no cierran
+  // exactamente contra TOTAL GENERAL. Es preferible dejar los campos para revisión.
+  if (receipt.consistency.salesTotalsMatch !== true) return mapped;
   for (const entry of entries) {
     if (entry.amount === null) continue;
     const game = games.find((candidate) => entry.match(normalizeTicketText(candidate.name)));
-    if (game) mapped[game.id] = entry.amount.toFixed(2);
+    if (game) mapped[game.id] = String(Math.round(entry.amount));
   }
   return mapped;
 }
