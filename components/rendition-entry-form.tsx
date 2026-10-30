@@ -54,10 +54,12 @@ async function getPaddleOcrEngine(): Promise<any> {
       .then(({ PaddleOCR }) => PaddleOCR.create({
         lang: "es",
         ocrVersion: "PP-OCRv6",
-        worker: true,
+        // El CDN +esm no trae el worker empaquetado por el build de Next/Vercel.
+        // En Android ejecutamos el motor en el hilo principal para evitar ese fallo.
+        worker: false,
         ortOptions: {
           backend: "wasm",
-          wasmPaths: "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/",
+          wasmPaths: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.3/dist/",
           numThreads: 1,
           simd: true,
         },
@@ -995,6 +997,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let focusedClosureMetadata: FocusedClosureMetadata = {};
       let focusedOcrDebugText = "";
       let closureTextCandidates: string[] = [];
+      let paddleFailure = "";
 
       // Motor principal nuevo: PaddleOCR v6 en español, ejecutado localmente en el navegador.
       // Tesseract queda únicamente como respaldo si el motor/modelo no puede iniciarse.
@@ -1002,15 +1005,20 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         const paddle = await getPaddleOcrEngine();
         setProgress("Reconociendo los renglones impresos del cupón…");
         setProgressPercent(35);
-        const [paddleResult] = await paddle.predict(file);
+        const [paddleResult] = await paddle.predict(file, {
+          textDetBoxThresh: 0.4,
+          textDetUnclipRatio: 1.8,
+          textRecScoreThresh: 0.0,
+        });
         recognizedText = paddleOcrItemsToText(paddleResult?.items ?? []);
-      } catch {
+      } catch (cause) {
+        paddleFailure = cause instanceof Error ? cause.message : String(cause);
         recognizedText = "";
       }
 
       const closureReadExpected = dailyMode || receiptOnlyMode || batchMode;
       if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
-        recognizedText = "";
+        const paddlePartialText = recognizedText;
         setProgress("Activando lector de respaldo…");
         setProgressPercent(42);
         const { createWorker } = await import("tesseract.js");
@@ -1025,20 +1033,26 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         });
         try {
           const result = await worker.recognize(file);
-          recognizedText = result.data.text ?? "";
+          const tesseractText = result.data.text ?? "";
+          if (ocrTextHasEnoughSignals(tesseractText, closureReadExpected) || tesseractText.length >= paddlePartialText.length) {
+            recognizedText = tesseractText;
+          }
         } finally {
           await worker.terminate();
         }
       }
 
+      // Mostrar texto parcial aunque no supere el control de calidad: no ocultar
+      // lo que sí logró detectar alguno de los motores.
+      setOcrText(recognizedText);
       if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
-        throw new Error("No se pudo reconocer suficiente texto del cupón. No se cargaron datos inventados. Volvé a capturar el ticket completo, enfocado y con buena luz.");
+        const detail = paddleFailure ? " Error de PaddleOCR: " + paddleFailure.slice(0, 220) : "";
+        throw new Error("La lectura automática no obtuvo texto suficiente. No se cargaron datos inventados." + detail);
       }
       if (dailyMode || receiptOnlyMode || batchMode) {
         closureTextCandidates = [recognizedText];
       }
 
-      setOcrText(recognizedText);
       const activeGames = games.filter((game) => game.enabled !== false);
       let parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber, dailyMode || receiptOnlyMode || batchMode);
       // Elegir la pasada OCR por la información real que logra extraer del cierre,
