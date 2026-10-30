@@ -1030,7 +1030,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         const paddle = await getPaddleOcrEngine();
         setProgress("Reconociendo los renglones impresos del cupón…");
         setProgressPercent(35);
-        const [paddleResult] = await withOcrTimeout(
+        const [paddleResult] = await withOcrTimeout<any>(
           paddle.predict(file, {
             textDetBoxThresh: 0.4,
             textDetUnclipRatio: 1.8,
