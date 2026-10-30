@@ -1021,6 +1021,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let focusedOcrDebugText = "";
       let closureTextCandidates: string[] = [];
       let paddleFailure = "";
+      let fallbackFailure = "";
+      let ocrStage = "inicialización del lector";
 
       // Motor principal nuevo: PaddleOCR v6 en español, ejecutado localmente en el navegador.
       // Tesseract queda únicamente como respaldo si el motor/modelo no puede iniciarse.
@@ -1028,11 +1030,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         const paddle = await getPaddleOcrEngine();
         setProgress("Reconociendo los renglones impresos del cupón…");
         setProgressPercent(35);
-        const [paddleResult] = await paddle.predict(file, {
-          textDetBoxThresh: 0.4,
-          textDetUnclipRatio: 1.8,
-          textRecScoreThresh: 0.0,
-        });
+        const [paddleResult] = await withOcrTimeout(
+          paddle.predict(file, {
+            textDetBoxThresh: 0.4,
+            textDetUnclipRatio: 1.8,
+            textRecScoreThresh: 0.0,
+          }),
+          60000,
+          "PaddleOCR no terminó de analizar la foto en 60 segundos. Se activará el lector de respaldo.",
+        );
         recognizedText = paddleOcrItemsToText(paddleResult?.items ?? []);
       } catch (cause) {
         paddleFailure = cause instanceof Error ? cause.message : String(cause);
@@ -1044,24 +1050,45 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         const paddlePartialText = recognizedText;
         setProgress("Activando lector de respaldo…");
         setProgressPercent(42);
-        const { createWorker } = await import("tesseract.js");
-        const worker = await createWorker("spa+eng", 1, {
-          logger: (message) => {
-            if (message.status === "recognizing text" && typeof message.progress === "number") {
-              const percent = Math.min(96, 42 + Math.round(message.progress * 52));
-              setProgressPercent(percent);
-              setProgress("Reconociendo ticket…");
-            }
-          },
-        });
+        let worker: Awaited<ReturnType<typeof import("tesseract.js")["createWorker"]>> | null = null;
         try {
-          const result = await worker.recognize(file);
+          ocrStage = "descarga del lector de respaldo";
+          const { createWorker } = await withOcrTimeout(
+            import("tesseract.js"),
+            20000,
+            "No se pudo descargar Tesseract en 20 segundos.",
+          );
+          ocrStage = "carga del idioma español e inglés";
+          worker = await withOcrTimeout(
+            createWorker("spa+eng", 1, {
+              logger: (message) => {
+                if (message.status === "recognizing text" && typeof message.progress === "number") {
+                  const percent = Math.min(96, 42 + Math.round(message.progress * 52));
+                  setProgressPercent(percent);
+                  setProgress("Reconociendo ticket…");
+                }
+              },
+            }),
+            60000,
+            "Tesseract no pudo cargar los modelos de idioma en 60 segundos.",
+          );
+          ocrStage = "reconocimiento de texto con Tesseract";
+          const result = await withOcrTimeout(
+            worker.recognize(file),
+            90000,
+            "Tesseract no terminó de leer la foto en 90 segundos.",
+          );
           const tesseractText = result.data.text ?? "";
           if (ocrTextHasEnoughSignals(tesseractText, closureReadExpected) || tesseractText.length >= paddlePartialText.length) {
             recognizedText = tesseractText;
           }
+          if (!tesseractText.trim()) fallbackFailure = "Tesseract terminó sin devolver texto.";
+        } catch (cause) {
+          fallbackFailure = cause instanceof Error ? cause.message : String(cause);
         } finally {
-          await worker.terminate();
+          if (worker) {
+            try { await worker.terminate(); } catch { /* liberar el lector no debe ocultar el resultado OCR */ }
+          }
         }
       }
 
@@ -1069,8 +1096,14 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       // lo que sí logró detectar alguno de los motores.
       setOcrText(recognizedText);
       if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
-        const detail = paddleFailure ? " Error de PaddleOCR: " + paddleFailure.slice(0, 220) : "";
-        throw new Error("La lectura automática no obtuvo texto suficiente. No se cargaron datos inventados." + detail);
+        const details = [
+          paddleFailure ? "PaddleOCR: " + paddleFailure.slice(0, 180) : "",
+          fallbackFailure ? "Respaldo (" + ocrStage + "): " + fallbackFailure.slice(0, 180) : "",
+        ].filter(Boolean).join(" | ");
+        throw new Error(
+          "La lectura automática no obtuvo texto suficiente. No se cargaron datos inventados." +
+          (details ? " Diagnóstico: " + details : " Los dos motores devolvieron un resultado vacío o insuficiente."),
+        );
       }
       if (dailyMode || receiptOnlyMode || batchMode) {
         closureTextCandidates = [recognizedText];
