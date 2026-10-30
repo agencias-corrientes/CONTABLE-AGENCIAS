@@ -359,39 +359,46 @@ function detectReceiptPaperBounds(bitmap:ImageBitmap):ReceiptPaperBounds {
   if(!context)return {left:0,top:0,width:bitmap.width,height:bitmap.height};
   context.drawImage(bitmap,0,0,scan.width,scan.height);
   const pixels=context.getImageData(0,0,scan.width,scan.height).data;
+  // Usar percentiles en lugar del promedio: con fondo negro, el papel ocupa
+  // solo una parte de la altura/ancho y el promedio queda artificialmente oscuro.
+  // El percentil conserva la señal clara del papel aunque haya texto y fondo oscuro.
+  const luminance=(x:number,y:number)=>{
+    const i=(y*scan.width+x)*4;
+    return .299*pixels[i]!+.587*pixels[i+1]!+.114*pixels[i+2]!;
+  };
+  const percentile=(values:number[],fraction:number)=>{
+    if(!values.length)return 0;
+    values.sort((a,b)=>a-b);
+    return values[Math.min(values.length-1,Math.floor((values.length-1)*fraction))]??0;
+  };
   const columns=new Array<number>(scan.width).fill(0);
   for(let x=0;x<scan.width;x+=1){
-    let total=0,count=0;
-    for(let y=Math.floor(scan.height*.03);y<scan.height*.97;y+=2){
-      const i=(y*scan.width+x)*4;
-      total+=.299*pixels[i]!+.587*pixels[i+1]!+.114*pixels[i+2]!;count+=1;
-    }
-    columns[x]=count?total/count:0;
+    const samples:number[]=[];
+    for(let y=Math.floor(scan.height*.03);y<scan.height*.97;y+=2)samples.push(luminance(x,y));
+    columns[x]=percentile(samples,.72);
   }
-  const horizontal=longestBrightRun(columns,150,scan.width*.06,scan.width*.98);
-  if(!horizontal||horizontal.end-horizontal.start<scan.width*.34)return {left:0,top:0,width:bitmap.width,height:bitmap.height};
-  const innerLeft=Math.round(horizontal.start+(horizontal.end-horizontal.start)*.04);
-  const innerRight=Math.round(horizontal.end-(horizontal.end-horizontal.start)*.04);
-  // Detectar también los bordes verticales del papel. Las fotos de celular suelen
-  // incluir mesa/fondo arriba y abajo; usar toda la altura desplaza todos los recortes.
+  const horizontal=longestBrightRun(columns,132,scan.width*.02,scan.width*.99);
+  if(!horizontal||horizontal.end-horizontal.start<scan.width*.22)return {left:0,top:0,width:bitmap.width,height:bitmap.height};
+  const innerLeft=Math.round(horizontal.start+(horizontal.end-horizontal.start)*.03);
+  const innerRight=Math.round(horizontal.end-(horizontal.end-horizontal.start)*.03);
   const rows=new Array<number>(scan.height).fill(0);
   for(let y=0;y<scan.height;y+=1){
-    let total=0,count=0;
-    for(let x=innerLeft;x<innerRight;x+=2){
-      const i=(y*scan.width+x)*4;
-      total+=.299*pixels[i]!+.587*pixels[i+1]!+.114*pixels[i+2]!;
-      count+=1;
-    }
-    rows[y]=count?total/count:0;
+    const samples:number[]=[];
+    for(let x=innerLeft;x<innerRight;x+=2)samples.push(luminance(x,y));
+    rows[y]=percentile(samples,.48);
   }
-  const vertical=longestBrightRun(rows,145,scan.height*.04,scan.height*.98);
+  const vertical=longestBrightRun(rows,125,scan.height*.015,scan.height*.99);
   const sx=bitmap.width/scan.width;
   const sy=bitmap.height/scan.height;
   const paperLeft=Math.max(0,Math.round(horizontal.start*sx));
   const paperWidth=Math.max(1,Math.min(bitmap.width,Math.round((horizontal.end-horizontal.start)*sx)));
-  const paperTop=vertical?Math.max(0,Math.round(vertical.start*sy)):0;
-  const paperBottom=vertical?Math.min(bitmap.height,Math.round(vertical.end*sy)):bitmap.height;
-  const verticalPadding=vertical?Math.round((paperBottom-paperTop)*.008):0;
+  // Si no hay una franja vertical clara y suficientemente grande, no recortar:
+  // es más seguro OCR sobre la foto completa que desplazar todos los campos.
+  if(!vertical||vertical.end-vertical.start<scan.height*.35)
+    return {left:0,top:0,width:bitmap.width,height:bitmap.height};
+  const paperTop=Math.max(0,Math.round(vertical.start*sy));
+  const paperBottom=Math.min(bitmap.height,Math.round(vertical.end*sy));
+  const verticalPadding=Math.round((paperBottom-paperTop)*.012);
   const top=Math.max(0,paperTop-verticalPadding);
   const bottom=Math.min(bitmap.height,paperBottom+verticalPadding);
   return {left:paperLeft,top,width:paperWidth,height:Math.max(1,bottom-top)};
