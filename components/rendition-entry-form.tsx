@@ -108,6 +108,132 @@ function makeIdentifierRowCrop(source: HTMLCanvasElement, rawWords: unknown): HT
   return crop;
 }
 
+
+// Extrae campos por rótulo y posición real de las palabras de cada pasada OCR.
+// No presupone que el papel ocupe un porcentaje fijo de la foto ni que el ticket
+// tenga siempre la misma escala, márgenes o encuadre.
+function readClosureMetadataFromOcrWords(rawWords: unknown) {
+  if (!Array.isArray(rawWords)) return {
+    agencyCode:null, subagentCode:null, machineCode:null, address:null,
+    terminalId:null, printedAt:null, periodNumber:null,
+  };
+  const words = rawWords.map((item: any) => {
+    const text = String(item?.text ?? "").trim();
+    const box = item?.bbox;
+    if (!text || !box || ![box.x0,box.y0,box.x1,box.y1].every((n:unknown)=>typeof n==="number"&&Number.isFinite(n))) return null;
+    return {
+      text,
+      x:Number(box.x0),
+      y:(Number(box.y0)+Number(box.y1))/2,
+      height:Math.max(1,Number(box.y1)-Number(box.y0)),
+    };
+  }).filter(Boolean) as Array<{text:string;x:number;y:number;height:number}>;
+  words.sort((a,b)=>a.y-b.y||a.x-b.x);
+  const rows:Array<{y:number;height:number;words:typeof words;text:string}>=[];
+  for(const word of words){
+    let row=rows.find(candidate=>Math.abs(candidate.y-word.y)<=Math.max(5,Math.min(candidate.height,word.height)*0.55));
+    if(!row){
+      row={y:word.y,height:word.height,words:[],text:""};
+      rows.push(row);
+    }
+    row.words.push(word);
+    row.y=row.words.reduce((sum,item)=>sum+item.y,0)/row.words.length;
+    row.height=Math.max(row.height,word.height);
+  }
+  for(const row of rows){
+    row.words.sort((a,b)=>a.x-b.x);
+    row.text=row.words.map(word=>word.text).join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/\s+/g," ").trim();
+  }
+
+  const normalizeCode=(raw:string,length:number):string|null=>{
+    const compact=raw.toUpperCase().replace(/[\s.:_-]/g,"")
+      .replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
+    return new RegExp("^\\d{"+length+"}$").test(compact)?compact:null;
+  };
+  const digitsAfter=(text:string,label:RegExp,length:number):string|null=>{
+    const match=label.exec(text);
+    if(!match||match.index===undefined)return null;
+    const suffix=text.slice(match.index+match[0].length);
+    const pattern=new RegExp("^\\s*[:#.,-]?\\s*([0-9OQIL|!](?:[\\s.:_-]*[0-9OQIL|!]){"+(length-1)+"})(?![A-Z0-9])","i");
+    const value=suffix.match(pattern)?.[1];
+    return value?normalizeCode(value,length):null;
+  };
+  const tokenAfter=(text:string,label:RegExp,min:number,max:number):string|null=>{
+    const match=label.exec(text);
+    if(!match||match.index===undefined)return null;
+    const suffix=text.slice(match.index+match[0].length);
+    const token=suffix.match(/^\s*[:#.,-]?\s*([0-9OQIL|!]{4,7})(?![A-Z0-9])/i)?.[1]??"";
+    const compact=token.replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
+    return new RegExp("^\\d{"+min+","+max+"}$").test(compact)?compact:null;
+  };
+  const agencyLabel=/(?:\bAGENCIA\b|\bAG\b|\bA\s*[:.]\s*B)\s*[:.]?\s*/i;
+  const subagentLabel=/(?:\bSUBAG(?:ENTE)?\b|\bSIBAG\b|\bSILAG\b|\bSIEAG\b|\bS[UI1]B?A?G\b)\s*[:.]?\s*/i;
+  const machineLabel=/(?:\bMAQUINA\b|\bMAQ\b)\s*[:.]?\s*/i;
+  const terminalLabel=/(?:\bMAQUINA\b|\bMAQ\b)\s+REAL\s*[:.]?\s*/i;
+  const periodLabel=/\bPER[I1]ODO\b\s*(?:NRO|NO|N[º°.]?)?\s*[:.]?\s*/i;
+  const addressLabel=/\b(?:DOMICILIO|DIRECCION|DIREC)\b\s*[:.]?\s*/i;
+  const readPeriod=(index:number):string|null=>{
+    const row=rows[index];
+    if(!row)return null;
+    const match=periodLabel.exec(row.text);
+    if(!match||match.index===undefined)return null;
+    const suffix=row.text.slice(match.index+match[0].length);
+    const pattern=/^\s*[:#.,-]?\s*([0-9OQIL|!](?:[\s.:_-]*[0-9OQIL|!]){6})(?![A-Z0-9])/i;
+    const direct=suffix.match(pattern)?.[1];
+    if(direct)return normalizeCode(direct,7);
+    const next=rows[index+1];
+    if(!next||next.y-row.y>Math.max(row.height,next.height)*1.8)return null;
+    if(!/^[0-9OQIL|! .:_-]+$/.test(next.text))return null;
+    const nextMatch=next.text.match(/^\s*([0-9OQIL|!](?:[\s.:_-]*[0-9OQIL|!]){6})\s*$/i)?.[1];
+    return nextMatch?normalizeCode(nextMatch,7):null;
+  };
+  const first=(values:Array<string|null>)=>values.find(value=>value!==null)??null;
+
+  const agency=first(rows.map(row=>digitsAfter(row.text,agencyLabel,3)));
+  const subagent=first(rows.map(row=>digitsAfter(row.text,subagentLabel,3)));
+  const machine=first(rows.map(row=>/MAQUINA\s+REAL/i.test(row.text)?null:digitsAfter(row.text,machineLabel,2)));
+  const terminal=first(rows.map(row=>tokenAfter(row.text,terminalLabel,4,6)));
+  const period=first(rows.map((_,index)=>readPeriod(index)));
+
+  const address=first(rows.map(row=>{
+    const label=addressLabel.exec(row.text);
+    if(label&&label.index!==undefined){
+      const value=row.text.slice(label.index+label[0].length).trim();
+      return /\d/.test(value)&&/[A-Z]/.test(value)?value:null;
+    }
+    return /\b(?:LA RIOJA|CATAMARCA|CORRIENTES|CALLE|AVENIDA|RUTA)\b/.test(row.text)&&/\b\d{1,5}\b/.test(row.text)
+      ? row.text : null;
+  }));
+
+  const printed=first(rows.map(row=>{
+    if(!/\bIMPRES[O0]\b/.test(row.text))return null;
+    const date=row.text.match(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/)?.[0];
+    const time=row.text.match(/\b\d{1,2}:\d{2}(?::\d{2})?\b/)?.[0];
+    return date&&time?date+" "+time:null;
+  }));
+
+  return {
+    agencyCode:agency,
+    subagentCode:subagent,
+    machineCode:machine,
+    address,
+    terminalId:terminal,
+    printedAt:printed,
+    periodNumber:period,
+  };
+}
+
+function readOcrConsensus(values:Array<string|null|undefined>):string|null {
+  const counts=new Map<string,number>();
+  for(const raw of values){
+    const value=String(raw??"").trim();
+    if(value)counts.set(value,(counts.get(value)??0)+1);
+  }
+  const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
+  return ranked[0]&&ranked[0][1]>=2&&(!ranked[1]||ranked[0][1]>ranked[1][1])
+    ? ranked[0][0] : null;
+}
+
 function closureBatchKey(ticket: TicketClosureData): string {
   const agency = String(ticket.agencyCode ?? "").replace(/\D/g, "");
   const subagent = String(ticket.subagentCode ?? "").replace(/\D/g, "");
@@ -1515,16 +1641,31 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const focusedTerminal = readFocusedDigitValue([terminalLine],4,6);
           const focusedPrint = readFocusedPrintedAt([printedLine]);
           const focusedAddress = readFocusedAddress([addressLine],null);
+          // Los recortes fijos anteriores quedan fuera de la asignación final.
+          // Cada campo se confirma con el mismo rótulo en, al menos, dos pasadas
+          // independientes sobre el papel completo y sus cajas reales de palabras.
+          const anchoredReads = pageWordCandidates.map(item=>readClosureMetadataFromOcrWords(item.words));
+          const anchoredAgency = readOcrConsensus(anchoredReads.map(item=>item.agencyCode));
+          const anchoredSubagent = readOcrConsensus(anchoredReads.map(item=>item.subagentCode));
+          const anchoredMachine = readOcrConsensus(anchoredReads.map(item=>item.machineCode));
+          const anchoredAddress = readOcrConsensus(anchoredReads.map(item=>item.address));
+          const anchoredTerminal = readOcrConsensus(anchoredReads.map(item=>item.terminalId));
+          const anchoredPrinted = readOcrConsensus(anchoredReads.map(item=>item.printedAt));
+          const anchoredPeriod = readOcrConsensus(anchoredReads.map(item=>item.periodNumber));
+          const anchoredDate = anchoredPrinted?.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0] ?? null;
+          const anchoredTime = anchoredPrinted?.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0] ?? null;
           focusedClosureMetadata = {
-            agencyCode: focusedAgency ?? undefined,
-            subagentCode: focusedSubagent ?? undefined,
-            machineCode: focusedMachine ?? undefined,
-            address: focusedAddress ?? undefined,
-            terminalId: focusedTerminal ?? undefined,
-            printedAt: focusedPrint ?? undefined,
-            periodNumber: focusedPeriod ?? undefined,
+            agencyCode: anchoredAgency ?? undefined,
+            subagentCode: anchoredSubagent ?? undefined,
+            machineCode: anchoredMachine ?? undefined,
+            address: anchoredAddress ?? undefined,
+            terminalId: anchoredTerminal ?? undefined,
+            printedAt: anchoredDate && anchoredTime
+              ? {date:anchoredDate,time:anchoredTime,raw:anchoredPrinted}
+              : undefined,
+            periodNumber: anchoredPeriod ?? undefined,
           };
-          recoveredPeriodNumber = focusedPeriod ?? "";
+          recoveredPeriodNumber = anchoredPeriod ?? "";
           focusedOcrDebugText = [
             "[LECTURA FOCALIZADA FIN DE JORNADA]",
             "Lecturas de página por rótulos: " + pageReadDiagnostics,
@@ -1648,7 +1789,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         // No usar el período del parser general, que puede confundirlo con otra cifra del ticket.
         // No recurrir al OCR general si las dos lecturas del recorte rotulado no coinciden:
         // es preferible dejar Período vacío a mostrar un código inventado de otra zona.
-        const labelledPeriod = validPeriod(focusedClosureMetadata.periodNumber) ?? validPeriod(extractTicketPeriodNumber(recognizedText));
+        const labelledPeriod = validPeriod(focusedClosureMetadata.periodNumber);
         const validSubagent = (value: string | null | undefined) => {
           const digits = String(value ?? "").replace(/\D/g, "");
           return /^\d{3}$/.test(digits) ? digits : null;
