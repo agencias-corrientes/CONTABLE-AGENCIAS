@@ -845,6 +845,29 @@ function readFocusedSubagentCode(values:string[]):string|null {
   if(ranked[0]&&ranked[0][1]>=2&&(!ranked[1]||ranked[0][1]>ranked[1][1]))return ranked[0][0];
   return null;
 }
+function readClosureIdentityFromText(text:string):{agencyCode:string|null;subagentCode:string|null} {
+  const lines=text.split(/\r?\n/).map((line)=>normalize(line).toUpperCase());
+  const read=(pattern:RegExp,expected:3|4):string|null=>{
+    const values:string[]=[];
+    for(const line of lines){
+      const match=pattern.exec(line);
+      if(!match?.[1])continue;
+      let digits=ocrDigitSequence(match[1],false);
+      if(expected===4&&digits.length===4&&/^[01]\d{3}$/.test(digits))digits=digits.slice(1);
+      if(digits.length===expected)values.push(digits);
+    }
+    const counts=new Map<string,number>();
+    for(const value of values)counts.set(value,(counts.get(value)??0)+1);
+    const ranked=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
+    if(!ranked[0]||(ranked[1]&&ranked[0][1]===ranked[1][1]))return null;
+    return ranked[0][0];
+  };
+  return {
+    agencyCode:read(/(?:AGENCIA|\bAG\b|A\s*[:.]\s*B)\s*[:.]?\s*([0-9OQIL|!]{3,4})\b/i,4) ??
+      read(/A\s*[:.]\s*B\s*([0-9OQIL|!]{3,4})\b/i,4),
+    subagentCode:read(/(?:SUBAG(?:ENTE)?|S[UI1]B?A?G)\s*[:.]?\s*([0-9OQIL|!]{3})\b/i,3),
+  };
+}
 function readFocusedMachineCode(digitValues:string[]):string|null {
   // MAQ tiene dos glifos impresos ("01"). Ignorar letras sueltas y secuencias largas
   // que podrían venir de la dirección o de Máquina real.
@@ -1400,16 +1423,18 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           await setOcrMode(8,digitWhitelist);
           const dynamicCodeRead = readFocusedCodes(codesLine6,"","");
           const dynamicCodeRead7 = readFocusedCodes(codesLine7,"","");
-          const focusedAgency = dynamicCodeRead.agencyCode === dynamicCodeRead7.agencyCode
+          const rowAgency = dynamicCodeRead.agencyCode === dynamicCodeRead7.agencyCode
             ? dynamicCodeRead.agencyCode : null;
+          const textIdentity = readClosureIdentityFromText(closureTextCandidates.join("\n") || recognizedText);
+          const cropAgency = readFocusedAgencyCode([agencyCropRaw7,agencyCrop160,agencyCrop175,agencyCrop185,agencyCrop195]);
+          const focusedAgency = rowAgency ?? cropAgency ?? textIdentity.agencyCode;
           const validSubagentCode = (value:string|null|undefined) => value && /^\d{3}$/.test(value) ? value : null;
-          const subagentFrom140 = readSubagentCandidate(subagentCrop140);
-          const subagentFrom160 = readSubagentCandidate(subagentCrop160);
           const cropConsensusSubagent = readFocusedSubagentCode([subagentCropRaw7,subagentCrop140,subagentCrop160,subagentCrop170,subagentCrop175,subagentCropPsm7,subagentCropPsm13]);
-          // Para SUBAG solo aceptar consenso de la franja independiente, nunca cifras del renglón completo.
-          const focusedSubagent = validSubagentCode(dynamicCodeRead.subagentCode) &&
+          // Cada intento focalizado se aprovecha; el texto general solo se usa si el rótulo y sus tres cifras aparecen juntos.
+          const rowSubagent = validSubagentCode(dynamicCodeRead.subagentCode) &&
             dynamicCodeRead.subagentCode === dynamicCodeRead7.subagentCode
             ? dynamicCodeRead.subagentCode : null;
+          const focusedSubagent = rowSubagent ?? validSubagentCode(cropConsensusSubagent) ?? textIdentity.subagentCode;
 
           await setOcrMode(10,digitWhitelist);
           const machineTensIsZero = looksLikeZeroGlyph(crops.machineDigit0);
@@ -1418,9 +1443,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const machineTens = machineTensIsZero ? "0" : readSingleDigitGlyph(machineTensRaw);
           const machineUnits = readSingleDigitGlyph(machineUnitsRaw);
           const isolatedMachine = machineTens && machineUnits ? machineTens + machineUnits : null;
-          const focusedMachine = dynamicCodeRead.machineCode &&
+          const rowMachine = dynamicCodeRead.machineCode &&
             dynamicCodeRead.machineCode === dynamicCodeRead7.machineCode
             ? dynamicCodeRead.machineCode : null;
+          const cropMachine = readFocusedMachineCode([machineCropRaw7,machineCrop140,machineCrop160,machineCrop175,machineCrop185]);
+          const focusedMachine = rowMachine ?? cropMachine ?? isolatedMachine;
 
           await setOcrMode(6);
           const addressLine = (await worker.recognize(crops.address)).data.text ?? "";
