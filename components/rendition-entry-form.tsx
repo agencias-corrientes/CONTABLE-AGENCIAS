@@ -28,11 +28,21 @@ function normalize(value: string) {
 
 let paddleOcrEnginePromise: Promise<any> | null = null;
 
+function withOcrTimeout<T>(promise: Promise<T>, milliseconds: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => reject(new Error(message)), milliseconds);
+    promise.then(
+      (value) => { window.clearTimeout(timeout); resolve(value); },
+      (error) => { window.clearTimeout(timeout); reject(error); },
+    );
+  });
+}
+
 async function loadPaddleOcrSdk(): Promise<any> {
   const browserWindow = window as any;
   if (browserWindow.__agenciasPaddleOcrSdk) return browserWindow.__agenciasPaddleOcrSdk;
   if (!browserWindow.__agenciasPaddleOcrSdkPromise) {
-    browserWindow.__agenciasPaddleOcrSdkPromise = new Promise((resolve, reject) => {
+    const loading = new Promise((resolve, reject) => {
       const script = document.createElement("script");
       script.type = "module";
       script.src = "/paddleocr-loader.js";
@@ -44,6 +54,15 @@ async function loadPaddleOcrSdk(): Promise<any> {
       script.onerror = () => reject(new Error("No se pudo descargar el motor PaddleOCR."));
       document.head.appendChild(script);
     });
+    browserWindow.__agenciasPaddleOcrSdkPromise = withOcrTimeout(
+      loading,
+      15000,
+      "PaddleOCR tardó demasiado en descargarse. Se activará el lector de respaldo.",
+    ).catch((error) => {
+      browserWindow.__agenciasPaddleOcrSdkPromise = null;
+      document.querySelector('script[src="/paddleocr-loader.js"]')?.remove();
+      throw error;
+    });
   }
   return browserWindow.__agenciasPaddleOcrSdkPromise;
 }
@@ -51,19 +70,23 @@ async function loadPaddleOcrSdk(): Promise<any> {
 async function getPaddleOcrEngine(): Promise<any> {
   if (!paddleOcrEnginePromise) {
     paddleOcrEnginePromise = loadPaddleOcrSdk()
-      .then(({ PaddleOCR }) => PaddleOCR.create({
-        lang: "es",
-        ocrVersion: "PP-OCRv6",
-        // El CDN +esm no trae el worker empaquetado por el build de Next/Vercel.
-        // En Android ejecutamos el motor en el hilo principal para evitar ese fallo.
-        worker: false,
-        ortOptions: {
-          backend: "wasm",
-          wasmPaths: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.3/dist/",
-          numThreads: 1,
-          simd: true,
-        },
-      }))
+      .then(({ PaddleOCR }) => withOcrTimeout(
+        PaddleOCR.create({
+          lang: "es",
+          ocrVersion: "PP-OCRv6",
+          // El CDN +esm no trae el worker empaquetado por el build de Next/Vercel.
+          // En Android ejecutamos el motor en el hilo principal para evitar ese fallo.
+          worker: false,
+          ortOptions: {
+            backend: "wasm",
+            wasmPaths: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.3/dist/",
+            numThreads: 1,
+            simd: true,
+          },
+        }),
+        30000,
+        "PaddleOCR no pudo inicializar sus modelos en 30 segundos. Se activará el lector de respaldo.",
+      ))
       .catch((error) => {
         paddleOcrEnginePromise = null;
         throw error;
