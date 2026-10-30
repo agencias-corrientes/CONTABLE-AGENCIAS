@@ -1076,18 +1076,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           .sort((a, b) => b.score - a.score)[0];
         if (bestCandidate) {
           recognizedText = bestCandidate.receipt.rawText;
-          const prizeSignature = (receipt:TicketClosureData) => JSON.stringify([
-            receipt.quiniela.prizesPaid.amount,
-            receipt.quinielaAlToque.prizesPaid.amount,
-            receipt.otherGamesPrizes.amount,
-            receipt.totalPrizes.amount,
-          ]);
-          const verifiedPrizes = candidateReceipts.filter(receipt=>receipt.consistency.prizeTotalsMatch===true);
-          const prizeVotes = new Map<string,number>();
-          for(const receipt of verifiedPrizes){
-            const signature=prizeSignature(receipt);
-            prizeVotes.set(signature,(prizeVotes.get(signature)??0)+1);
-          }
           parsed = {
             ...parsed,
             amountMap: mapTicketClosureAmounts(bestCandidate.receipt, activeGames),
