@@ -378,9 +378,19 @@ export function mapTicketClosureAmounts(receipt: TicketClosureData, games: { id:
     { amount: receipt.otherGames.find((item) => item.name === "Lotería Online")?.amount ?? null, match: (name) => name.includes("LOTERIA ONLINE") },
   ];
   const mapped: Record<string, string> = {};
-  // No ofrecer importes calculados desde OCR si los renglones de venta no cierran
-  // exactamente contra TOTAL GENERAL. Es preferible dejar los campos para revisión.
-  if (receipt.consistency.salesTotalsMatch !== true) return mapped;
+  // Calcular el control con los valores actuales, no con el booleano guardado
+  // durante la primera lectura OCR. Así el usuario puede corregir una cifra y validar.
+  const salesAmounts = [
+    receipt.quiniela.valids.amount,
+    receipt.quinielaAlToque.valids.amount,
+    ...receipt.otherGames.map((item) => item.amount),
+  ];
+  const salesTotal = receipt.generalTotal.amount;
+  const salesMatch = salesTotal !== null &&
+    salesAmounts.every((amount) => amount !== null) &&
+    Math.round(salesAmounts.reduce<number>((sum, amount) => sum + (amount ?? 0), 0) * 100) ===
+      Math.round(salesTotal * 100);
+  if (!salesMatch) return mapped;
   for (const entry of entries) {
     if (entry.amount === null) continue;
     const game = games.find((candidate) => entry.match(normalizeTicketText(candidate.name)));
