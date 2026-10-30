@@ -1147,15 +1147,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         // La pasada general sigue siendo la fuente de importes. Se conserva el segundo
         // intento anterior solo como alternativa de texto general.
         const normalizedPageText = normalize(recognizedText);
-        const hasClosureStructure =
-          /\bSUBAG(?:ENTE)?\b|\bSUBA?G\b/.test(normalizedPageText) &&
-          /\bMAQ(?:UINA)?\b/.test(normalizedPageText) &&
-          /\bPER[I1]ODO\b/.test(normalizedPageText) &&
-          /\bTOTAL\b/.test(normalizedPageText);
-        // En los modos de cierre/lote, el tipo de comprobante ya está determinado por el flujo.
-        // No exigir que el OCR general lea perfectamente "FIN DE JORNADA": una falla en el
-        // encabezado no debe impedir las lecturas focalizadas de SUBAG, MAQ y PERIODO.
-        const closureCandidate = batchMode || receiptOnlyMode || hasClosureStructure ||
+        const hasAnyClosureField =
+          /\bSUBAG(?:ENTE)?\b|\bSUBA?G\b|\bMAQ(?:UINA)?\b|\bPER[I1]ODO\b|\bTOTAL\b/.test(normalizedPageText);
+        // En los flujos de rendición diaria, lote y comprobante único el documento esperado
+        // ya es un FIN DE JORNADA. La lectura focalizada debe ejecutarse aunque el OCR de
+        // página completa pierda uno o varios rótulos por calidad, encuadre o impresión.
+        const closureCandidate = dailyMode || batchMode || receiptOnlyMode || hasAnyClosureField ||
           Boolean(parseTicketClosure(recognizedText)) ||
           /\bFIN\s+DE\s+(?:JOR|TOR)NADA\b/i.test(normalizedPageText) ||
           /\bTOTALES?\s+EN\s+T[J7I1]\b/i.test(normalizedPageText);
