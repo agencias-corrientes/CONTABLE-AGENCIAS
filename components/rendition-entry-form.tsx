@@ -1189,6 +1189,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let recoveredPeriodNumber = "";
       let focusedClosureMetadata: FocusedClosureMetadata = {};
       let focusedOcrDebugText = "";
+      let closureTextCandidates: string[] = [];
       try {
         const result = await worker.recognize(file);
         recognizedText = result.data.text ?? "";
@@ -1258,6 +1259,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               ? geometryText : plainText;
             pageCandidates.push(["PSM "+mode,candidate]);
           }
+          closureTextCandidates = Array.from(new Set([
+            originalPageText,
+            enhancedText,
+            recognizedText,
+            ...pageCandidates.map(([, value]) => value),
+          ].map((value) => value.trim()).filter(Boolean)));
           const bestPaperRead = pageCandidates
             .map(([mode,value])=>({mode,value,score:closureReadScore(value)}))
             .sort((a,b)=>b.score-a.score)[0];
@@ -1450,7 +1457,60 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       setOcrText([recognizedText, focusedOcrDebugText].filter(Boolean).join("\n\n"));
       const activeGames = games.filter((game) => game.enabled !== false);
-      const parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber, dailyMode || receiptOnlyMode || batchMode);
+      let parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber, dailyMode || receiptOnlyMode || batchMode);
+      // Elegir la pasada OCR por la información real que logra extraer del cierre,
+      // no solo por cantidad de renglones o rótulos reconocidos.
+      if (closureTextCandidates.length && (dailyMode || receiptOnlyMode || batchMode)) {
+        const candidateReceipts = closureTextCandidates
+          .map((candidateText) => parseTicketClosure(candidateText, true))
+          .filter((receipt): receipt is NonNullable<typeof receipt> => receipt !== null);
+        const completeness = (receipt: NonNullable<typeof candidateReceipts[number]>) => {
+          const metrics = [
+            receipt.quiniela.valids,
+            receipt.quiniela.cancelledSpecial,
+            receipt.quiniela.prizesPaid,
+            receipt.quinielaAlToque.valids,
+            receipt.quinielaAlToque.prizesPaid,
+            ...receipt.otherGames.map((game) => ({ amount: game.amount })),
+            receipt.totalOtherGames,
+            receipt.otherGamesPrizes,
+            receipt.totalPrizes,
+            receipt.generalTotal,
+            receipt.digital.cobros,
+            receipt.digital.devoluciones,
+          ];
+          const populatedMetrics = metrics.filter((metric) => metric.amount !== null).length;
+          const populatedIdentity = [
+            receipt.agencyCode,
+            receipt.subagentCode,
+            receipt.machineCode,
+            receipt.address,
+            receipt.terminalId,
+            receipt.periodNumber,
+            receipt.printedAt.date,
+          ].filter(Boolean).length;
+          return populatedMetrics * 5 + populatedIdentity * 4 +
+            (receipt.consistency.salesTotalsMatch === true ? 12 : 0) +
+            (receipt.consistency.prizeTotalsMatch === true ? 8 : 0);
+        };
+        const bestCandidate = candidateReceipts
+          .map((receipt) => ({ receipt, score: completeness(receipt) }))
+          .sort((a, b) => b.score - a.score)[0];
+        const currentScore = parsed.receiptData ? completeness(parsed.receiptData) : -1;
+        if (bestCandidate && bestCandidate.score > currentScore) {
+          recognizedText = bestCandidate.receipt.rawText;
+          parsed = {
+            ...parsed,
+            amountMap: mapTicketClosureAmounts(bestCandidate.receipt, activeGames),
+            period: "",
+            drawNumber: "",
+            date: null,
+            ticketNumber: bestCandidate.receipt.periodNumber ?? recoveredPeriodNumber ?? "",
+            detectedGames: ["Cierre de jornada"],
+            receiptData: bestCandidate.receipt,
+          };
+        }
+      }
       if (batchMode && !parsed.receiptData) {
         setError("Esta modalidad acepta comprobantes oficiales FIN DE JORNADA. El cupón no se agregó al lote.");
         setProgress("No se incorporó el archivo. Elegí un cierre oficial o continuá con otro cupón.");
