@@ -392,7 +392,7 @@ function parseTicketText(text: string, games: Game[], recoveredPeriodNumber = ""
       const nextLineAmount = amountsFromLine(lines[index + 1] ?? "").at(-1);
       const amount = sameLineAmount ?? nextLineAmount;
       if (amount) {
-        amountMap[game.id] = amount.toFixed(2);
+        amountMap[game.id] = String(Math.round(amount));
         break;
       }
     }
@@ -403,7 +403,7 @@ function parseTicketText(text: string, games: Game[], recoveredPeriodNumber = ""
     .flatMap(amountsFromLine);
   const ticketTotal = totalLineAmounts.at(-1);
   if (matchedGames.length === 1 && ticketTotal && !amountMap[matchedGames[0]!.id]) {
-    amountMap[matchedGames[0]!.id] = ticketTotal.toFixed(2);
+    amountMap[matchedGames[0]!.id] = String(Math.round(ticketTotal));
   }
 
   const dateMatch = text.match(/\b(\d{2})[\/-](\d{2})[\/-](20\d{2}|\d{2})\b/);
@@ -1374,7 +1374,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         if (qr.amount && qr.game && !dailyMode) {
           const normalizedGame = normalize(qr.game);
           const target = games.find((game) => game.enabled !== false && aliasesFor(game).some((alias) => normalizedGame.includes(alias)));
-          if (target) setAmounts((previous) => ({ ...previous, [target.id]: qr.amount!.toFixed(2) }));
+          if (target) setAmounts((previous) => ({ ...previous, [target.id]: String(Math.round(qr.amount!)) }));
         }
       }
 
@@ -1395,6 +1395,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let focusedClosureMetadata: FocusedClosureMetadata = {};
       let focusedOcrDebugText = "";
       let closureTextCandidates: string[] = [];
+      let receiptAmountsValidated = false;
+      let receiptPrizesValidated = false;
       try {
         const result = await worker.recognize(file);
         recognizedText = result.data.text ?? "";
@@ -1730,12 +1732,16 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             (receipt.consistency.salesTotalsMatch === true ? 12 : 0) +
             (receipt.consistency.prizeTotalsMatch === true ? 8 : 0);
         };
+        // La cantidad de cifras reconocidas no es una medida de exactitud.
+        // Solo aceptar importes cuando los renglones válidos suman TOTAL GENERAL.
         const bestCandidate = candidateReceipts
+          .filter((receipt) => receipt.consistency.salesTotalsMatch === true)
           .map((receipt) => ({ receipt, score: completeness(receipt) }))
           .sort((a, b) => b.score - a.score)[0];
-        const currentScore = parsed.receiptData ? completeness(parsed.receiptData) : -1;
-        if (bestCandidate && bestCandidate.score > currentScore) {
+        if (bestCandidate) {
           recognizedText = bestCandidate.receipt.rawText;
+          receiptAmountsValidated = true;
+          receiptPrizesValidated = bestCandidate.receipt.consistency.prizeTotalsMatch === true;
           parsed = {
             ...parsed,
             amountMap: mapTicketClosureAmounts(bestCandidate.receipt, activeGames),
@@ -1746,6 +1752,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             detectedGames: ["Cierre de jornada"],
             receiptData: bestCandidate.receipt,
           };
+        } else {
+          // No dejar valores monetarios del OCR en el formulario cuando no cierran.
+          parsed = { ...parsed, amountMap: {} };
         }
       }
       if (batchMode && !parsed.receiptData) {
@@ -1800,17 +1809,43 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           if (/^[01]\d{3}$/.test(digits)) return digits.slice(1);
           return null;
         };
+        const emptyMetric = () => ({count:null,amount:null});
+        const salesMetric = (metric:{count:number|null;amount:number|null}) =>
+          receiptAmountsValidated ? {count:null,amount:metric.amount} : emptyMetric();
+        const prizeMetric = (metric:{count:number|null;amount:number|null}) =>
+          receiptPrizesValidated ? {count:null,amount:metric.amount} : emptyMetric();
         const closureReceipt = {
           ...parsed.receiptData,
-          // Los identificadores solo se aceptan desde la fila localizada por bounding boxes.
-          // El parser general puede leer cifras de TOTALES EN o de importes como si fueran códigos.
           agencyCode: validAgencyCode(focusedClosureMetadata.agencyCode),
           subagentCode: validSubagent(focusedClosureMetadata.subagentCode),
           machineCode: focusedClosureMetadata.machineCode ?? null,
-          address: focusedClosureMetadata.address ?? parsed.receiptData.address,
+          address: focusedClosureMetadata.address ?? null,
           terminalId: focusedClosureMetadata.terminalId ?? null,
-          printedAt: focusedClosureMetadata.printedAt ?? parsed.receiptData.printedAt,
+          printedAt: focusedClosureMetadata.printedAt ?? {date:null,time:null,raw:null},
           periodNumber: labelledPeriod,
+          // Cantidades, ventas, premios y medios digitales no verificados quedan vacíos.
+          // No mostrar números estimados solo porque Tesseract haya devuelto cifras.
+          quiniela: {
+            ...parsed.receiptData.quiniela,
+            valids:salesMetric(parsed.receiptData.quiniela.valids),
+            cancelledSpecial:emptyMetric(),
+            prizesPaid:prizeMetric(parsed.receiptData.quiniela.prizesPaid),
+          },
+          quinielaAlToque: {
+            ...parsed.receiptData.quinielaAlToque,
+            valids:salesMetric(parsed.receiptData.quinielaAlToque.valids),
+            prizesPaid:prizeMetric(parsed.receiptData.quinielaAlToque.prizesPaid),
+          },
+          otherGames:parsed.receiptData.otherGames.map(game=>({
+            ...game,
+            count:null,
+            amount:receiptAmountsValidated?game.amount:null,
+          })),
+          totalOtherGames:emptyMetric(),
+          otherGamesPrizes:prizeMetric(parsed.receiptData.otherGamesPrizes),
+          totalPrizes:prizeMetric(parsed.receiptData.totalPrizes),
+          generalTotal:salesMetric(parsed.receiptData.generalTotal),
+          digital:{cobros:emptyMetric(),devoluciones:emptyMetric()},
           commissionRates,
         };
         // The printed date stays in receipt metadata; the financial entry stays on today's operational day.
@@ -1846,7 +1881,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           for (const [gameId, rawAmount] of Object.entries(incoming)) {
             const add = parseMoney(String(rawAmount ?? "")) ?? 0;
             if (add <= 0) continue;
-            combined[gameId] = ((parseMoney(String(previous[gameId] ?? "")) ?? 0) + add).toFixed(2);
+            combined[gameId] = String(Math.round((parseMoney(String(previous[gameId] ?? "")) ?? 0) + add));
           }
           return combined;
         });
@@ -1863,7 +1898,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             const scannedAmount = parseMoney(String(rawAmount));
             if (scannedAmount === null) continue;
             const priorAmount = parseMoney(previous[gameId] ?? "") ?? 0;
-            combined[gameId] = (priorAmount + scannedAmount).toFixed(2);
+            combined[gameId] = String(Math.round(priorAmount + scannedAmount));
           }
           return combined;
         });
@@ -1886,7 +1921,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           ...previous,
           [target.id]: dailyMode
             ? ((parseMoney(previous[target.id] ?? "") ?? 0) + qr.amount!).toFixed(2)
-            : qr.amount!.toFixed(2),
+            : String(Math.round(qr.amount!)),
         }));
       }
 
