@@ -1233,18 +1233,18 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const closureReadScore = (value:string) => {
             const normalized = normalize(value);
             const labelHits = [
-              /AGENCIA|\\bAG\\b/.test(normalized),
+              /AGENCIA|\bAG\b/.test(normalized),
               /SUBAG(?:ENTE)?/.test(normalized),
               /MAQ(?:UINA)?/.test(normalized),
               /PER[I1]ODO/.test(normalized),
               /DIRECCI[O0]N|DOMICILIO|CATAMARCA|CORRIENTES/.test(normalized),
-              /TOTAL\\s+GENERAL/.test(normalized),
+              /TOTAL\s+GENERAL/.test(normalized),
               /QUINIELA/.test(normalized),
-              /FIN\\s+DE\\s+JORNADA/.test(normalized),
+              /FIN\s+DE\s+JORNADA/.test(normalized),
               /IMPRES[O0]|CERRAD[O0]/.test(normalized),
             ].filter(Boolean).length;
-            const numericLines = value.split(/\\r?\\n/).filter(line => /\\d/.test(line)).length;
-            const moneyLines = value.split(/\\r?\\n/).filter(line => /\\$|\\d[.,]\\d{2}/.test(line)).length;
+            const numericLines = value.split(/\r?\n/).filter(line => /\d/.test(line)).length;
+            const moneyLines = value.split(/\r?\n/).filter(line => /\$|\d[.,]\d{2}/.test(line)).length;
             return labelHits * 12 + Math.min(numericLines,24) + Math.min(moneyLines,12) * 3;
           };
           const pageCandidates:[string,string][] = [];
