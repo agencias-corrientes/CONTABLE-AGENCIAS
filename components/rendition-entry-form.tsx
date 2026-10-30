@@ -1129,6 +1129,20 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       try {
         const result = await worker.recognize(file);
         recognizedText = result.data.text ?? "";
+        const originalPageText = recognizedText;
+        const enhancedPage = await makeEnhancedTicketImage(file);
+        await worker.setParameters({ tessedit_pageseg_mode: 6, tessedit_char_whitelist: "", preserve_interword_spaces: "1" } as any);
+        const enhancedResult = await worker.recognize(enhancedPage);
+        const enhancedText = enhancedResult.data.text ?? "";
+        const textScore = (value: string) => {
+          const lines = value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+          return lines.length +
+            lines.filter((line) => /\d/.test(line)).length * 2 +
+            lines.filter((line) => /\$|\b\d+[.,]\d{2}\b/.test(line)).length * 5 +
+            lines.filter((line) => /QUINIELA|LOTER[IÍ]A|TOMBOLA|POCEADA|DEPORTIVA|OTROS? JUEGOS|TOTAL/i.test(line)).length * 4;
+        };
+        if (textScore(enhancedText) > textScore(originalPageText)) recognizedText = enhancedText;
+        await worker.setParameters({ tessedit_pageseg_mode: 3, tessedit_char_whitelist: "" } as any);
 
         // La pasada general sigue siendo la fuente de importes. Se conserva el segundo
         // intento anterior solo como alternativa de texto general.
