@@ -90,6 +90,19 @@ function paddleOcrItemsToText(rawItems: unknown): string {
     .join("\n");
 }
 
+function ocrTextHasEnoughSignals(value: string, closure: boolean): boolean {
+  const text = value.trim();
+  if (!text) return false;
+  const lines = text.split(/\\r?\\n/).map((line) => line.trim()).filter(Boolean);
+  const numericLines = lines.filter((line) => /\\d{2,}/.test(line)).length;
+  if (closure) {
+    return text.length >= 30 && lines.length >= 3 && numericLines >= 2 &&
+      /FIN|JORNADA|QUINIELA|TOTAL|VALID|AGENCIA|SUBAG|MAQ/i.test(text);
+  }
+  return text.length >= 10 && numericLines >= 1;
+}
+
+
 
 
 // Recompone renglones usando las cajas reales que devuelve Tesseract.
@@ -962,8 +975,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let focusedClosureMetadata: FocusedClosureMetadata = {};
       let focusedOcrDebugText = "";
       let closureTextCandidates: string[] = [];
-      let receiptAmountsValidated = false;
-      let receiptPrizesValidated = false;
 
       // Motor principal nuevo: PaddleOCR v6 en español, ejecutado localmente en el navegador.
       // Tesseract queda únicamente como respaldo si el motor/modelo no puede iniciarse.
@@ -977,7 +988,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         recognizedText = "";
       }
 
-      if (!recognizedText.trim()) {
+      const closureReadExpected = dailyMode || receiptOnlyMode || batchMode;
+      if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
+        recognizedText = "";
         setProgress("Activando lector de respaldo…");
         setProgressPercent(42);
         const { createWorker } = await import("tesseract.js");
@@ -998,8 +1011,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         }
       }
 
-      if (!recognizedText.trim()) {
-        throw new Error("No se pudo reconocer texto de la foto. Volvé a capturar el cupón completo, enfocado y con buena luz.");
+      if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
+        throw new Error("No se pudo reconocer suficiente texto del cupón. No se cargaron datos inventados. Volvé a capturar el ticket completo, enfocado y con buena luz.");
       }
       if (dailyMode || receiptOnlyMode || batchMode) {
         closureTextCandidates = [recognizedText];
@@ -1063,7 +1076,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           .sort((a, b) => b.score - a.score)[0];
         if (bestCandidate) {
           recognizedText = bestCandidate.receipt.rawText;
-          receiptAmountsValidated = true;
           const prizeSignature = (receipt:TicketClosureData) => JSON.stringify([
             receipt.quiniela.prizesPaid.amount,
             receipt.quinielaAlToque.prizesPaid.amount,
@@ -1076,8 +1088,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             const signature=prizeSignature(receipt);
             prizeVotes.set(signature,(prizeVotes.get(signature)??0)+1);
           }
-          receiptPrizesValidated = bestCandidate.receipt.consistency.prizeTotalsMatch===true &&
-            (prizeVotes.get(prizeSignature(bestCandidate.receipt))??0)>=1;
           parsed = {
             ...parsed,
             amountMap: mapTicketClosureAmounts(bestCandidate.receipt, activeGames),
@@ -1145,11 +1155,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           if (/^[01]\d{3}$/.test(digits)) return digits.slice(1);
           return null;
         };
-        const emptyMetric = () => ({count:null,amount:null});
-        const salesMetric = (metric:{count:number|null;amount:number|null}) =>
-          receiptAmountsValidated ? {count:null,amount:metric.amount} : emptyMetric();
-        const prizeMetric = (metric:{count:number|null;amount:number|null}) =>
-          receiptPrizesValidated ? {count:null,amount:metric.amount} : emptyMetric();
+        // Mostrar los valores que el OCR sí encontró para que puedan corregirse.
+        // El mapeo contable sigue bloqueado hasta que las ventas sumen TOTAL GENERAL.
+        const salesMetric = (metric:{count:number|null;amount:number|null}) => metric;
+        const prizeMetric = (metric:{count:number|null;amount:number|null}) => metric;
         const closureReceipt = {
           ...parsed.receiptData,
           agencyCode: validAgencyCode(focusedClosureMetadata.agencyCode ?? parsed.receiptData.agencyCode),
@@ -1164,7 +1173,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           quiniela: {
             ...parsed.receiptData.quiniela,
             valids:salesMetric(parsed.receiptData.quiniela.valids),
-            cancelledSpecial:emptyMetric(),
+            cancelledSpecial:parsed.receiptData.quiniela.cancelledSpecial,
             prizesPaid:prizeMetric(parsed.receiptData.quiniela.prizesPaid),
           },
           quinielaAlToque: {
@@ -1174,14 +1183,14 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           },
           otherGames:parsed.receiptData.otherGames.map(game=>({
             ...game,
-            count:null,
-            amount:receiptAmountsValidated?game.amount:null,
+            count:game.count,
+            amount:game.amount,
           })),
-          totalOtherGames:emptyMetric(),
+          totalOtherGames:parsed.receiptData.totalOtherGames,
           otherGamesPrizes:prizeMetric(parsed.receiptData.otherGamesPrizes),
           totalPrizes:prizeMetric(parsed.receiptData.totalPrizes),
           generalTotal:salesMetric(parsed.receiptData.generalTotal),
-          digital:{cobros:emptyMetric(),devoluciones:emptyMetric()},
+          digital:parsed.receiptData.digital,
           commissionRates,
         };
         // The printed date stays in receipt metadata; the financial entry stays on today's operational day.
