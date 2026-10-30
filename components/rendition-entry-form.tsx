@@ -1200,10 +1200,40 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           // Volver a reconocer el ticket completo, pero aislando primero el papel del fondo.
           // La pasada original sobre toda la foto pierde renglones pequeños cuando el ticket
           // ocupa solo una parte de la imagen; esta lectura aporta los importes y totales.
-          await worker.setParameters({tessedit_pageseg_mode:6,tessedit_char_whitelist:"",preserve_interword_spaces:"1"} as any);
-          const paperResult=await worker.recognize(crops.paper);
-          const paperText=paperResult.data.text??"";
-          if(textScore(paperText)>textScore(recognizedText))recognizedText=paperText;
+          // Nueva estrategia: el ticket no se segmenta por una plantilla fija.
+          // Se prueban modos de página distintos sobre el papel completo y se elige
+          // por presencia de rótulos/valores propios del cierre, no por cantidad de texto.
+          const closureReadScore = (value:string) => {
+            const normalized = normalize(value);
+            const labelHits = [
+              /AGENCIA|\\bAG\\b/.test(normalized),
+              /SUBAG(?:ENTE)?/.test(normalized),
+              /MAQ(?:UINA)?/.test(normalized),
+              /PER[I1]ODO/.test(normalized),
+              /DIRECCI[O0]N|DOMICILIO|CATAMARCA|CORRIENTES/.test(normalized),
+              /TOTAL\\s+GENERAL/.test(normalized),
+              /QUINIELA/.test(normalized),
+              /FIN\\s+DE\\s+JORNADA/.test(normalized),
+              /IMPRES[O0]|CERRAD[O0]/.test(normalized),
+            ].filter(Boolean).length;
+            const numericLines = value.split(/\\r?\\n/).filter(line => /\\d/.test(line)).length;
+            const moneyLines = value.split(/\\r?\\n/).filter(line => /\\$|\\d[.,]\\d{2}/.test(line)).length;
+            return labelHits * 12 + Math.min(numericLines,24) + Math.min(moneyLines,12) * 3;
+          };
+          const pageCandidates:[string,string][] = [];
+          for (const mode of [4,6,11,12]) {
+            await worker.setParameters({tessedit_pageseg_mode:mode,tessedit_char_whitelist:"",preserve_interword_spaces:"1"} as any);
+            const candidate = (await worker.recognize(crops.paper)).data.text ?? "";
+            pageCandidates.push(["PSM "+mode,candidate]);
+          }
+          const bestPaperRead = pageCandidates
+            .map(([mode,value])=>({mode,value,score:closureReadScore(value)}))
+            .sort((a,b)=>b.score-a.score)[0];
+          if(bestPaperRead?.value && (
+            closureReadScore(bestPaperRead.value)>closureReadScore(recognizedText) ||
+            (closureReadScore(bestPaperRead.value)===closureReadScore(recognizedText) && textScore(bestPaperRead.value)>textScore(recognizedText))
+          )) recognizedText=bestPaperRead.value;
+          const pageReadDiagnostics = pageCandidates.map(([mode,value])=>mode+"="+closureReadScore(value)).join(" / ");
           const setOcrMode = async (mode:number, whitelist?:string) => {
             await worker.setParameters({tessedit_pageseg_mode:mode,tessedit_char_whitelist:whitelist ?? ""} as any);
           };
@@ -1362,6 +1392,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           recoveredPeriodNumber = focusedPeriod ?? "";
           focusedOcrDebugText = [
             "[LECTURA FOCALIZADA FIN DE JORNADA]",
+            "Lecturas de página por rótulos: " + pageReadDiagnostics,
             "Identificadores (PSM 6): " + codesLine6.trim(),
             "Identificadores (PSM 7): " + codesLine7.trim(),
             "Dirección: " + addressLine.trim(),
