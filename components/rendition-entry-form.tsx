@@ -26,6 +26,71 @@ function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 }
 
+let paddleOcrEnginePromise: Promise<any> | null = null;
+
+async function getPaddleOcrEngine(): Promise<any> {
+  if (!paddleOcrEnginePromise) {
+    paddleOcrEnginePromise = import("@paddleocr/paddleocr-js")
+      .then(({ PaddleOCR }) => PaddleOCR.create({
+        lang: "es",
+        ocrVersion: "PP-OCRv6",
+        worker: true,
+        ortOptions: {
+          backend: "wasm",
+          wasmPaths: "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/",
+          numThreads: 1,
+          simd: true,
+        },
+      }))
+      .catch((error) => {
+        paddleOcrEnginePromise = null;
+        throw error;
+      });
+  }
+  return paddleOcrEnginePromise;
+}
+
+function paddleOcrItemsToText(rawItems: unknown): string {
+  if (!Array.isArray(rawItems)) return "";
+  const entries = rawItems.map((raw: any, index: number) => {
+    const text = String(raw?.text ?? "").trim();
+    if (!text) return null;
+    const points = Array.isArray(raw?.poly) ? raw.poly.map((point: any) => {
+      if (Array.isArray(point) && point.length >= 2) return { x: Number(point[0]), y: Number(point[1]) };
+      if (point && typeof point === "object") return { x: Number(point.x), y: Number(point.y) };
+      return null;
+    }).filter((point: any) => point && Number.isFinite(point.x) && Number.isFinite(point.y)) : [];
+    if (!points.length) return { text, left: index, centerY: index * 24, height: 18, hasGeometry: false };
+    const xs = points.map((point: any) => point.x);
+    const ys = points.map((point: any) => point.y);
+    const top = Math.min(...ys);
+    const bottom = Math.max(...ys);
+    return { text, left: Math.min(...xs), centerY: (top + bottom) / 2, height: Math.max(1, bottom - top), hasGeometry: true };
+  }).filter(Boolean) as Array<{text:string;left:number;centerY:number;height:number;hasGeometry:boolean}>;
+  if (!entries.length) return "";
+  if (!entries.some((entry) => entry.hasGeometry)) return entries.map((entry) => entry.text).join("\n");
+  entries.sort((a,b) => a.centerY-b.centerY || a.left-b.left);
+  const rows: Array<{centerY:number;height:number;entries:typeof entries}> = [];
+  for (const entry of entries) {
+    let row = rows.find((candidate) =>
+      Math.abs(candidate.centerY-entry.centerY) <= Math.max(8, Math.min(candidate.height,entry.height)*0.65)
+    );
+    if (!row) {
+      row = {centerY:entry.centerY,height:entry.height,entries:[]};
+      rows.push(row);
+    }
+    row.entries.push(entry);
+    row.centerY = row.entries.reduce((sum,item)=>sum+item.centerY,0)/row.entries.length;
+    row.height = Math.max(row.height,entry.height);
+  }
+  return rows
+    .sort((a,b)=>a.centerY-b.centerY)
+    .map((row)=>row.entries.sort((a,b)=>a.left-b.left).map((entry)=>entry.text).join(" "))
+    .filter(Boolean)
+    .join("\n");
+}
+
+
 
 // Recompone renglones usando las cajas reales que devuelve Tesseract.
 // A diferencia de los recortes por coordenadas, la asociación depende de dónde
@@ -869,7 +934,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     try {
       setProgress("Buscando el QR del ticket…");
       setProgressPercent(10);
-      detectedQr = (await readQrFromImage(file)) ?? "";
+      // El QR es complementario: un fallo al decodificarlo nunca debe cancelar el OCR principal.
+      try {
+        detectedQr = (await readQrFromImage(file)) ?? "";
+      } catch {
+        detectedQr = "";
+      }
       if (detectedQr) {
         setQrPayload(detectedQr);
         const qr = structuredQr(detectedQr);
@@ -885,35 +955,54 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         }
       }
 
-      setProgress("Leyendo el texto del ticket…");
+      setProgress("Iniciando lector avanzado de texto…");
       setProgressPercent(18);
-      const { createWorker } = await import("tesseract.js");
-      const worker = await createWorker("spa+eng", 1, {
-        logger: (message) => {
-          if (message.status === "recognizing text" && typeof message.progress === "number") {
-            const percent = Math.min(96, 18 + Math.round(message.progress * 78));
-            setProgressPercent(percent);
-            setProgress("Reconociendo ticket…");
-          }
-        },
-      });
       let recognizedText = "";
       let recoveredPeriodNumber = "";
       let focusedClosureMetadata: FocusedClosureMetadata = {};
       let focusedOcrDebugText = "";
-      // Una lectura general de la foto completa, como en la versión histórica.
-      // Sin recortes, umbrales ni consenso artificial entre múltiples pasadas.
       let closureTextCandidates: string[] = [];
       let receiptAmountsValidated = false;
       let receiptPrizesValidated = false;
+
+      // Motor principal nuevo: PaddleOCR v6 en español, ejecutado localmente en el navegador.
+      // Tesseract queda únicamente como respaldo si el motor/modelo no puede iniciarse.
       try {
-        const result = await worker.recognize(file);
-        recognizedText = result.data.text ?? "";
-        if (dailyMode || receiptOnlyMode || batchMode) {
-          closureTextCandidates = recognizedText.trim() ? [recognizedText] : [];
+        const paddle = await getPaddleOcrEngine();
+        setProgress("Reconociendo los renglones impresos del cupón…");
+        setProgressPercent(35);
+        const [paddleResult] = await paddle.predict(file);
+        recognizedText = paddleOcrItemsToText(paddleResult?.items ?? []);
+      } catch {
+        recognizedText = "";
+      }
+
+      if (!recognizedText.trim()) {
+        setProgress("Activando lector de respaldo…");
+        setProgressPercent(42);
+        const { createWorker } = await import("tesseract.js");
+        const worker = await createWorker("spa+eng", 1, {
+          logger: (message) => {
+            if (message.status === "recognizing text" && typeof message.progress === "number") {
+              const percent = Math.min(96, 42 + Math.round(message.progress * 52));
+              setProgressPercent(percent);
+              setProgress("Reconociendo ticket…");
+            }
+          },
+        });
+        try {
+          const result = await worker.recognize(file);
+          recognizedText = result.data.text ?? "";
+        } finally {
+          await worker.terminate();
         }
-      } finally {
-        await worker.terminate();
+      }
+
+      if (!recognizedText.trim()) {
+        throw new Error("No se pudo reconocer texto de la foto. Volvé a capturar el cupón completo, enfocado y con buena luz.");
+      }
+      if (dailyMode || receiptOnlyMode || batchMode) {
+        closureTextCandidates = [recognizedText];
       }
 
       setOcrText(recognizedText);
