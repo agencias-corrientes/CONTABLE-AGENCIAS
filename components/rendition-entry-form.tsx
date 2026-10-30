@@ -854,7 +854,7 @@ function readClosureIdentityFromText(text:string):{agencyCode:string|null;subage
       if(!match?.[1])continue;
       let digits=ocrDigitSequence(match[1],false);
       if(expected===4&&digits.length===4&&/^[01]\d{3}$/.test(digits))digits=digits.slice(1);
-      if(digits.length===expected)values.push(digits);
+      if(expected===4 ? /^\d{3}$/.test(digits) : digits.length===expected)values.push(digits);
     }
     const counts=new Map<string,number>();
     for(const value of values)counts.set(value,(counts.get(value)??0)+1);
