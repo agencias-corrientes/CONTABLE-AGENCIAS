@@ -52,6 +52,62 @@ function reconstructLinesFromOcrWords(rawWords: unknown): string {
   return rows.sort((a,b)=>a.center-b.center).map(row=>row.words.sort((a,b)=>a.x-b.x).map(word=>word.text).join(" ")).filter(Boolean).join("\n");
 }
 
+
+function makeIdentifierRowCrop(source: HTMLCanvasElement, rawWords: unknown): HTMLCanvasElement | null {
+  if (!Array.isArray(rawWords)) return null;
+  const words = rawWords.map((item: any) => {
+    const value = String(item?.text ?? "").trim();
+    const box = item?.bbox;
+    if (!value || !box || ![box.x0, box.y0, box.x1, box.y1].every((n: unknown) => typeof n === "number" && Number.isFinite(n))) return null;
+    return { value, x0: box.x0, y0: box.y0, x1: box.x1, y1: box.y1, cy: (box.y0 + box.y1) / 2 };
+  }).filter(Boolean) as Array<{value:string;x0:number;y0:number;x1:number;y1:number;cy:number}>;
+  if (words.length < 3) return null;
+  words.sort((a,b)=>a.cy-b.cy || a.x0-b.x0);
+  const rows: Array<{cy:number; words:typeof words}> = [];
+  for (const word of words) {
+    let row=rows.find((candidate)=>Math.abs(candidate.cy-word.cy)<=Math.max(6,Math.min(
+      Math.max(1,word.y1-word.y0),
+      Math.max(1,(candidate.words[0]?.y1??word.y1)-(candidate.words[0]?.y0??word.y0))
+    )*.7));
+    if(!row){row={cy:word.cy,words:[]};rows.push(row);}
+    row.words.push(word);
+    row.cy=row.words.reduce((sum,item)=>sum+item.cy,0)/row.words.length;
+  }
+  const candidates=rows.map(row=>{
+    const ordered=row.words.sort((a,b)=>a.x0-b.x0);
+    const line=ordered.map(word=>word.value).join(" ").toUpperCase();
+    const hasAgency=/AGENCIA|\\bAG\\b|A\\s*[:.]?\\s*B\\s*\\d/i.test(line);
+    const hasSubagent=/SUBAG|SUBA?G|SIBAG|SILAG|SIEAG/i.test(line);
+    const hasCode=/\\d{2,}/.test(line);
+    const forbidden=/TOTALES|TOTAL GENERAL|VALIDOS|PREMIOS|OTROS JUEGOS/i.test(line);
+    return {row,line,score:(hasAgency?5:0)+(hasSubagent?5:0)+(hasCode?2:0)-(forbidden?20:0)};
+  }).filter(item=>item.score>=7).sort((a,b)=>b.score-a.score);
+  const selected=candidates[0]?.row;
+  if(!selected)return null;
+  const left=Math.max(0,Math.floor(Math.min(...selected.words.map(word=>word.x0))-source.width*.025));
+  const right=Math.min(source.width,Math.ceil(Math.max(...selected.words.map(word=>word.x1))+source.width*.025));
+  const top=Math.max(0,Math.floor(Math.min(...selected.words.map(word=>word.y0))-source.height*.008));
+  const bottom=Math.min(source.height,Math.ceil(Math.max(...selected.words.map(word=>word.y1))+source.height*.008));
+  if(right-left<source.width*.12||bottom-top<4)return null;
+  const scale=Math.min(8,2600/Math.max(right-left,bottom-top));
+  const crop=document.createElement("canvas");
+  crop.width=Math.max(1,Math.round((right-left)*scale));
+  crop.height=Math.max(1,Math.round((bottom-top)*scale));
+  const context=crop.getContext("2d",{willReadFrequently:true});
+  if(!context)return null;
+  context.imageSmoothingEnabled=true;
+  context.imageSmoothingQuality="high";
+  context.drawImage(source,left,top,right-left,bottom-top,0,0,crop.width,crop.height);
+  const image=context.getImageData(0,0,crop.width,crop.height);
+  for(let i=0;i<image.data.length;i+=4){
+    const gray=.299*image.data[i]!+.587*image.data[i+1]!+.114*image.data[i+2]!;
+    const value=Math.max(0,Math.min(255,(gray-128)*1.7+128));
+    image.data[i]=value;image.data[i+1]=value;image.data[i+2]=value;
+  }
+  context.putImageData(image,0,0);
+  return crop;
+}
+
 function closureBatchKey(ticket: TicketClosureData): string {
   const agency = String(ticket.agencyCode ?? "").replace(/\D/g, "");
   const subagent = String(ticket.subagentCode ?? "").replace(/\D/g, "");
@@ -1248,17 +1304,27 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             return labelHits * 12 + Math.min(numericLines,24) + Math.min(moneyLines,12) * 3;
           };
           const pageCandidates:[string,string][] = [];
+          const pageWordCandidates: Array<{mode:number; words:unknown; score:number}> = [];
           for (const mode of [4,6,11,12]) {
             await worker.setParameters({tessedit_pageseg_mode:mode,tessedit_char_whitelist:"",preserve_interword_spaces:"1"} as any);
             const pageResult = await worker.recognize(crops.paper);
             const plainText = pageResult.data.text ?? "";
-            const geometryText = reconstructLinesFromOcrWords((pageResult.data as any).words);
+            const rawWords = (pageResult.data as any).words;
+            const geometryText = reconstructLinesFromOcrWords(rawWords);
             // Se prefiere el texto reconstruido por coordenadas de palabras cuando
             // conserva más rótulos/códigos del cierre que la salida lineal de Tesseract.
             const candidate = geometryText && closureReadScore(geometryText) > closureReadScore(plainText)
               ? geometryText : plainText;
             pageCandidates.push(["PSM "+mode,candidate]);
+            pageWordCandidates.push({mode,words:rawWords,score:closureReadScore(candidate)});
           }
+          // Localizar la fila de identificadores por sus palabras y cajas reales.
+          // Si no hay una fila inequívoca, no se inventan códigos desde un recorte fijo.
+          const identifierWords = pageWordCandidates
+            .filter(item=>item.words)
+            .sort((a,b)=>b.score-a.score)
+            .map(item=>makeIdentifierRowCrop(crops.paper,item.words))
+            .find((crop):crop is HTMLCanvasElement=>Boolean(crop)) ?? null;
           closureTextCandidates = Array.from(new Set([
             originalPageText,
             enhancedText,
@@ -1281,10 +1347,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           // para confirmar SUBAG/MAQ, y una por cada campo independiente. Evita decenas
           // de pasadas sobre variantes del mismo recorte.
           await setOcrMode(6);
-          const codesLine6 = (await worker.recognize(crops.codes)).data.text ?? "";
+          const codesLine6 = identifierWords ? (await worker.recognize(identifierWords)).data.text ?? "" : "";
           await setOcrMode(7);
-          const codesLine7 = (await worker.recognize(crops.codes)).data.text ?? "";
-          const codesLineThreshold170 = (await worker.recognize(crops.codesThreshold170)).data.text ?? "";
+          const codesLine7 = identifierWords ? (await worker.recognize(identifierWords)).data.text ?? "" : "";
+          const codesLineThreshold170 = "";
           const codeRead6 = readFocusedCodes(codesLine6,"","");
           const codeRead7 = readFocusedCodes(codesLine7,"","");
           const codeReadThreshold170 = readFocusedCodes(codesLineThreshold170,"","");
@@ -1332,16 +1398,18 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             ? subagentGlyph1 + subagentGlyph0 + subagentGlyph2
             : null;
           await setOcrMode(8,digitWhitelist);
-          const focusedAgency = readFocusedAgencyCode([agencyCropRaw7,agencyCrop160,agencyCrop175,agencyCrop185,agencyCrop195])
-            ?? codeRead7.agencyCode ?? codeRead6.agencyCode;
+          const dynamicCodeRead = readFocusedCodes(codesLine6,"","");
+          const dynamicCodeRead7 = readFocusedCodes(codesLine7,"","");
+          const focusedAgency = dynamicCodeRead.agencyCode === dynamicCodeRead7.agencyCode
+            ? dynamicCodeRead.agencyCode : null;
           const validSubagentCode = (value:string|null|undefined) => value && /^\d{3}$/.test(value) ? value : null;
           const subagentFrom140 = readSubagentCandidate(subagentCrop140);
           const subagentFrom160 = readSubagentCandidate(subagentCrop160);
           const cropConsensusSubagent = readFocusedSubagentCode([subagentCropRaw7,subagentCrop140,subagentCrop160,subagentCrop170,subagentCrop175,subagentCropPsm7,subagentCropPsm13]);
           // Para SUBAG solo aceptar consenso de la franja independiente, nunca cifras del renglón completo.
-          const focusedSubagent = subagentFromIndividualGlyphs ??
-            cropConsensusSubagent ??
-            (subagentFrom140 && subagentFrom140 === subagentFrom160 ? subagentFrom140 : null);
+          const focusedSubagent = validSubagentCode(dynamicCodeRead.subagentCode) &&
+            dynamicCodeRead.subagentCode === dynamicCodeRead7.subagentCode
+            ? dynamicCodeRead.subagentCode : null;
 
           await setOcrMode(10,digitWhitelist);
           const machineTensIsZero = looksLikeZeroGlyph(crops.machineDigit0);
@@ -1350,8 +1418,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const machineTens = machineTensIsZero ? "0" : readSingleDigitGlyph(machineTensRaw);
           const machineUnits = readSingleDigitGlyph(machineUnitsRaw);
           const isolatedMachine = machineTens && machineUnits ? machineTens + machineUnits : null;
-          const focusedMachine = isolatedMachine ?? readFocusedMachineCode([machineCropRaw7,machineCrop140,machineCrop160,machineCrop175,machineCrop185]) ??
-            codeReadThreshold170.machineCode ?? codeRead7.machineCode ?? codeRead6.machineCode;
+          const focusedMachine = dynamicCodeRead.machineCode &&
+            dynamicCodeRead.machineCode === dynamicCodeRead7.machineCode
+            ? dynamicCodeRead.machineCode : null;
 
           await setOcrMode(6);
           const addressLine = (await worker.recognize(crops.address)).data.text ?? "";
@@ -1565,12 +1634,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         };
         const closureReceipt = {
           ...parsed.receiptData,
-          agencyCode: validAgencyCode(focusedClosureMetadata.agencyCode) ?? validAgencyCode(parsed.receiptData.agencyCode),
-          // No rescatar SUBAG desde el OCR general: solo vale la franja identificada.
-          // Si el recorte fijo no devuelve SUBAG, aceptar solo el valor que el parser
-          // encuentre asociado al rótulo SUBAG en los renglones reconstruidos por bbox.
-          subagentCode: validSubagent(focusedClosureMetadata.subagentCode) ?? validSubagent(parsed.receiptData.subagentCode),
-          machineCode: focusedClosureMetadata.machineCode ?? parsed.receiptData.machineCode,
+          // Los identificadores solo se aceptan desde la fila localizada por bounding boxes.
+          // El parser general puede leer cifras de TOTALES EN o de importes como si fueran códigos.
+          agencyCode: validAgencyCode(focusedClosureMetadata.agencyCode),
+          subagentCode: validSubagent(focusedClosureMetadata.subagentCode),
+          machineCode: focusedClosureMetadata.machineCode ?? null,
           address: focusedClosureMetadata.address ?? parsed.receiptData.address,
           terminalId: focusedClosureMetadata.terminalId ?? null,
           printedAt: focusedClosureMetadata.printedAt ?? parsed.receiptData.printedAt,
