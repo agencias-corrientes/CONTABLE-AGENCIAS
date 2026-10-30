@@ -80,7 +80,7 @@ function metricInRange(lines: string[], start: number, end: number, matcher: Reg
     if (!metric) {
       for (let j = i + 1; j < Math.min(end, i + 3); j += 1) {
         const nextText = normalizeTicketText(lines[j] ?? "");
-        if (/^(QUINIELA|OTROS\s+JU|MEDIOS\s+DIGITALES|NEDIOS\s+DIGITALES|TOTAL\s+(?:O|0)\.?\s*JUEGOS|TOTAL\s+GENERAL|PREMIOS?\s+P[A-Z]{2,3})/.test(nextText)) break;
+        if (/^(QUINIELA|OTROS\s+JU|MEDIOS\s+DIGITALES|NEDIOS\s+DIGITALES|TOTAL\s+(?:O|0)\.?\s*JUEGOS|TOTAL\s+GENERAL|PREMIOS?\s+P[A-Z0-9]{2,3})/.test(nextText)) break;
         metric = metricFromLine(lines[j] ?? "");
         if (metric) break;
       }
@@ -241,14 +241,14 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
 
   const qValid = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /\bVALIDOS?\b/);
   const qCancelled = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /ANULADOS?\s*(?:ESP|ESPECIALES?)/);
-  const qPrizes = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /PREMIOS?\s+P[A-Z]{2,3}/);
+  const qPrizes = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /PREMIOS?\s+P[A-Z0-9]{2,3}/);
   // Si el ticket no contiene la sección «Quiniela al Toque», no reutilizar
   // el primer renglón Válidos: pertenece a Quiniela y duplicaría sus ventas.
   const toqueValid = qToqueIndex >= 0
     ? metricInRange(lines, qToqueIndex, qToqueEnd, /\bVALIDOS?\b/)
     : emptyMetric();
   const toquePrizes = qToqueIndex >= 0
-    ? metricInRange(lines, qToqueIndex, qToqueEnd, /PREMIOS?\s+P[A-Z]{2,3}/)
+    ? metricInRange(lines, qToqueIndex, qToqueEnd, /PREMIOS?\s+P[A-Z0-9]{2,3}/)
     : emptyMetric();
 
   const gameLabels: Array<{ name: string; matcher: RegExp }> = [
@@ -273,7 +273,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
     if (!metric && index >= 0) {
       for (let j = index + 1; j < Math.min(otherRowsEnd, index + 3); j += 1) {
         const nextText = normalizeTicketText(lines[j] ?? "");
-        if (/^(?:L?OTO|QUINI|MUINI|HUI|POZO|020|BRINCO|BR\s+INTO|LOTERIA|ATERIA|QUINIELA|TELEK|TOTAL|PREMIOS?\s+P[A-Z]{2,3})/.test(nextText)) break;
+        if (/^(?:L?OTO|QUINI|MUINI|HUI|POZO|020|BRINCO|BR\s+INTO|LOTERIA|ATERIA|QUINIELA|TELEK|TOTAL|PREMIOS?\s+P[A-Z0-9]{2,3})/.test(nextText)) break;
         metric = metricFromLine(lines[j] ?? "");
         if (metric) break;
       }
@@ -281,18 +281,18 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
     return { name, count: metric?.count ?? null, amount: metric?.amount ?? null };
   });
   const totalOtherGames = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, totalOtherMatcher);
-  const otherGamesPrizes = metricInRange(lines, totalOtherIndex >= 0 ? totalOtherIndex + 1 : (otherIndex >= 0 ? otherIndex : 0), otherEnd, /PREMIOS?\s+P[A-Z]{2,3}/);
-  const totalPrizes = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /PREMIOS?\s+P[A-Z]{2,3}/, true);
+  const otherGamesPrizes = metricInRange(lines, totalOtherIndex >= 0 ? totalOtherIndex + 1 : (otherIndex >= 0 ? otherIndex : 0), otherEnd, /PREMIOS?\s+P[A-Z0-9]{2,3}/);
+  const totalPrizes = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /PREMIOS?\s+P[A-Z0-9]{2,3}/, true);
   const generalTotal = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /TOTAL\s+GENERAL/);
   const cobros = digitalIndex >= 0 ? metricInRange(lines, digitalIndex, lines.length, /^COBROS?\b/) : emptyMetric();
   const devoluciones = digitalIndex >= 0 ? metricInRange(lines, digitalIndex, lines.length, /^DEVOLUCIONES?\b/) : emptyMetric();
 
   const agencyCode = readCodeAfterLabel(lines, /\b(?:AGENCIA|AG)\b/);
   const subagentCode = readCodeAfterLabel(lines, /\b(?:SUBAGENTE|SUBAG)\b/);
-  const machineCode = readCodeAfterLabel(lines, /\b(?:MAQUINA|MAQ)\b/, /\bMAQU[I1L]N[A4]?\s+REAL\b|\bMAQ\s+REAL\b/);
+  const machineCode = readCodeAfterLabel(lines, /\b(?:MAQUINA|MAQ|MA[0O])\b/, /\b(?:MAQU[I1L]N[A4]?|MAQ|MAYU[I1L]ND?)\s+REAL\b/);
 
   const normalizedLines = lines.map(normalizeTicketText);
-  const terminalPattern = /\b(?:MAQU[I1L]N[A4]?\s+REAL|MAQ\s+REAL)\b/;
+  const terminalPattern = /\b(?:MAQU[I1L]N[A4]?\s+REAL|MAQ\s+REAL|MAYU[I1L]ND?\s+REAL|M[A4]YU[I1L]ND?\s+REAL)\b/;
   const terminalIndex = normalizedLines.findIndex((line) => terminalPattern.test(line));
   let terminalId = terminalIndex >= 0
     ? readNumberAfterLabel(normalizedLines[terminalIndex] ?? "", terminalPattern)
@@ -303,10 +303,10 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
   }
 
   const explicitAddressIndex = normalizedLines.findIndex((line) => /\b(?:DOMICILIO|DIRECCION|DIREC)\b/.test(line));
-  const streetAddressIndex = normalizedLines.findIndex((line) => /\b(?:CALLE|AVENIDA|AV\.|RUTA|LA RIOJA)\b/.test(line));
+  const streetAddressIndex = normalizedLines.findIndex((line) => /\b(?:CALLE|AVENIDA|AV\.|RUTA|LA RIOJA|LA RIOTA)\b/.test(line));
   const addressIndex = explicitAddressIndex >= 0 ? explicitAddressIndex : streetAddressIndex;
   let address: string | null = addressIndex >= 0 ? (lines[addressIndex] ?? "").trim() || null : null;
-  if (addressIndex >= 0 && address && !/\d|\b(?:CALLE|AVENIDA|AV\.|RUTA|LA RIOJA)\b/i.test(address)) {
+  if (addressIndex >= 0 && address && !/\d|\b(?:CALLE|AVENIDA|AV\.|RUTA|LA RIOJA|LA RIOTA)\b/i.test(address)) {
     const nextLine = lines[addressIndex + 1]?.trim() ?? "";
     if (nextLine && !/^(?:AGENCIA|AG|SUBAG|MAQ|ABIERTO|CERRADO|IMPRESO|TOTAL|FIN DE JORNADA)\b/i.test(normalizedLines[addressIndex + 1] ?? "")) {
       address = nextLine;
