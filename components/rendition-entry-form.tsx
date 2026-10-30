@@ -239,7 +239,7 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
   const agency=first(rows.map(row=>digitsAfter(row.text,agencyLabel,3)));
   const subagent=first(rows.map(row=>digitsAfter(row.text,subagentLabel,3)));
   const machine=first(rows.flatMap((row,index)=>{
-    if(/MAQU[I1L]NA\s+REAL|MAQ\s+REAL/i.test(row.text))return [];
+    if(/MAQU[I1L]N[A4]\s+REAL|M\s*A\s*Q\s+REAL/i.test(row.text))return [];
     const sameLine=digitsAfter(row.text,machineLabel,2);
     if(sameLine)return [sameLine];
     if(!machineLabel.test(row.text))return [];
