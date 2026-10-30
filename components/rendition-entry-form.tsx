@@ -212,7 +212,10 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
   };
   const agencyLabel=/(?:\bAGENCIA\b|\bAG\b|\bA\s*[:.]\s*B)\s*[:.]?\s*/i;
   const subagentLabel=/(?:\bSUBAG(?:ENTE)?\b|\bSIBAG\b|\bSILAG\b|\bSIEAG\b|\bS[UI1]B?A?G\b)\s*[:.]?\s*/i;
-  const machineLabel=/(?:\bMAQUINA\b|\bMAQ\b)\s*[:.]?\s*/i;
+  // MAQ puede llegar unido al rótulo SUBAG (p. ej. "AGSUBAGMAQ")
+  // o separado en una línea propia. Aceptar esas variantes sin tocar los
+  // demás campos ni confundir "MAQ REAL" con el número de máquina.
+  const machineLabel=/(?:\bMAQU[I1L]N[A4]\b|\bM\s*A\s*Q\b|SUBAGMAQ)\s*[:.]?\s*/i;
   const terminalLabel=/(?:\bMAQUINA\b|\bMAQ\b)\s+REAL\s*[:.]?\s*/i;
   const periodLabel=/\bPER[I1]ODO\b\s*(?:NRO|NO|N[º°.]?)?\s*[:.]?\s*/i;
   const addressLabel=/\b(?:DOMICILIO|DIRECCION|DIREC)\b\s*[:.]?\s*/i;
@@ -235,7 +238,17 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
 
   const agency=first(rows.map(row=>digitsAfter(row.text,agencyLabel,3)));
   const subagent=first(rows.map(row=>digitsAfter(row.text,subagentLabel,3)));
-  const machine=first(rows.map(row=>/MAQUINA\s+REAL/i.test(row.text)?null:digitsAfter(row.text,machineLabel,2)));
+  const machine=first(rows.flatMap((row,index)=>{
+    if(/MAQU[I1L]NA\s+REAL|MAQ\s+REAL/i.test(row.text))return [];
+    const sameLine=digitsAfter(row.text,machineLabel,2);
+    if(sameLine)return [sameLine];
+    if(!machineLabel.test(row.text))return [];
+    const next=rows[index+1];
+    if(!next||next.y-row.y>Math.max(row.height,next.height)*1.8)return [];
+    if(!/^[0-9OQIL|! .:_-]{1,12}$/.test(next.text))return [];
+    const nextCode=normalizeCode(next.text,2);
+    return nextCode?[nextCode]:[];
+  }));
   const terminal=first(rows.map(row=>tokenAfter(row.text,terminalLabel,4,6)));
   const period=first(rows.map((_,index)=>readPeriod(index)));
 
