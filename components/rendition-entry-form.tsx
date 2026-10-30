@@ -26,6 +26,32 @@ function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 }
 
+
+// Recompone renglones usando las cajas reales que devuelve Tesseract.
+// A diferencia de los recortes por coordenadas, la asociación depende de dónde
+// encontró cada palabra en esta fotografía concreta.
+function reconstructLinesFromOcrWords(rawWords: unknown): string {
+  if (!Array.isArray(rawWords)) return "";
+  const words = rawWords.map((item: any) => {
+    const text = String(item?.text ?? "").trim();
+    const box = item?.bbox;
+    if (!text || !box || ![box.x0, box.y0, box.x1, box.y1].every((n: unknown) => typeof n === "number" && Number.isFinite(n))) return null;
+    const height = Math.max(1, box.y1 - box.y0);
+    return { text, x: box.x0, y: (box.y0 + box.y1) / 2, top: box.y0, bottom: box.y1, height, confidence: Number(item?.confidence ?? 0) };
+  }).filter(Boolean) as Array<{text:string;x:number;y:number;top:number;bottom:number;height:number;confidence:number}>;
+  if (words.length < 5) return "";
+  words.sort((a,b)=>a.y-b.y || a.x-b.x);
+  const rows: Array<{ center:number; height:number; words: typeof words }> = [];
+  for (const word of words) {
+    let row = rows.find((candidate) => Math.abs(candidate.center-word.y) <= Math.max(7, Math.min(candidate.height,word.height)*0.62));
+    if (!row) { row={center:word.y,height:word.height,words:[]}; rows.push(row); }
+    row.words.push(word);
+    row.center=row.words.reduce((sum,item)=>sum+item.y,0)/row.words.length;
+    row.height=Math.max(row.height,word.height);
+  }
+  return rows.sort((a,b)=>a.center-b.center).map(row=>row.words.sort((a,b)=>a.x-b.x).map(word=>word.text).join(" ")).filter(Boolean).join("\\n");
+}
+
 function closureBatchKey(ticket: TicketClosureData): string {
   const agency = String(ticket.agencyCode ?? "").replace(/\D/g, "");
   const subagent = String(ticket.subagentCode ?? "").replace(/\D/g, "");
@@ -1223,7 +1249,13 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const pageCandidates:[string,string][] = [];
           for (const mode of [4,6,11,12]) {
             await worker.setParameters({tessedit_pageseg_mode:mode,tessedit_char_whitelist:"",preserve_interword_spaces:"1"} as any);
-            const candidate = (await worker.recognize(crops.paper)).data.text ?? "";
+            const pageResult = await worker.recognize(crops.paper);
+            const plainText = pageResult.data.text ?? "";
+            const geometryText = reconstructLinesFromOcrWords((pageResult.data as any).words);
+            // Se prefiere el texto reconstruido por coordenadas de palabras cuando
+            // conserva más rótulos/códigos del cierre que la salida lineal de Tesseract.
+            const candidate = geometryText && closureReadScore(geometryText) > closureReadScore(plainText)
+              ? geometryText : plainText;
             pageCandidates.push(["PSM "+mode,candidate]);
           }
           const bestPaperRead = pageCandidates
@@ -1460,7 +1492,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         // No usar el período del parser general, que puede confundirlo con otra cifra del ticket.
         // No recurrir al OCR general si las dos lecturas del recorte rotulado no coinciden:
         // es preferible dejar Período vacío a mostrar un código inventado de otra zona.
-        const labelledPeriod = validPeriod(focusedClosureMetadata.periodNumber);
+        const labelledPeriod = validPeriod(focusedClosureMetadata.periodNumber) ?? validPeriod(extractTicketPeriodNumber(recognizedText));
         const validSubagent = (value: string | null | undefined) => {
           const digits = String(value ?? "").replace(/\D/g, "");
           return /^\d{3}$/.test(digits) ? digits : null;
@@ -1475,8 +1507,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           ...parsed.receiptData,
           agencyCode: validAgencyCode(focusedClosureMetadata.agencyCode) ?? validAgencyCode(parsed.receiptData.agencyCode),
           // No rescatar SUBAG desde el OCR general: solo vale la franja identificada.
-          subagentCode: validSubagent(focusedClosureMetadata.subagentCode),
-          machineCode: focusedClosureMetadata.machineCode ?? null,
+          // Si el recorte fijo no devuelve SUBAG, aceptar solo el valor que el parser
+          // encuentre asociado al rótulo SUBAG en los renglones reconstruidos por bbox.
+          subagentCode: validSubagent(focusedClosureMetadata.subagentCode) ?? validSubagent(parsed.receiptData.subagentCode),
+          machineCode: focusedClosureMetadata.machineCode ?? parsed.receiptData.machineCode,
           address: focusedClosureMetadata.address ?? parsed.receiptData.address,
           terminalId: focusedClosureMetadata.terminalId ?? null,
           printedAt: focusedClosureMetadata.printedAt ?? parsed.receiptData.printedAt,
