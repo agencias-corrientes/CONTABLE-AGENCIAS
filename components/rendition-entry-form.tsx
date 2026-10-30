@@ -76,9 +76,9 @@ function makeIdentifierRowCrop(source: HTMLCanvasElement, rawWords: unknown): HT
   const candidates=rows.map(row=>{
     const ordered=row.words.sort((a,b)=>a.x0-b.x0);
     const line=ordered.map(word=>word.value).join(" ").toUpperCase();
-    const hasAgency=/AGENCIA|\\bAG\\b|A\\s*[:.]?\\s*B\\s*\\d/i.test(line);
+    const hasAgency=/AGENCIA|\bAG\b|A\s*[:.]?\s*B\s*\d/i.test(line);
     const hasSubagent=/SUBAG|SUBA?G|SIBAG|SILAG|SIEAG/i.test(line);
-    const hasCode=/\\d{2,}/.test(line);
+    const hasCode=/\d{2,}/.test(line);
     const forbidden=/TOTALES|TOTAL GENERAL|VALIDOS|PREMIOS|OTROS JUEGOS/i.test(line);
     return {row,line,score:(hasAgency?5:0)+(hasSubagent?5:0)+(hasCode?2:0)-(forbidden?20:0)};
   }).filter(item=>item.score>=7).sort((a,b)=>b.score-a.score);
