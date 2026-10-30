@@ -1269,7 +1269,13 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           );
           // Los siete glifos alineados con sus casilleros son la fuente de verdad.
           // La lectura de la línea completa confundía los ceros cuadrados y daba 0100011.
-          const focusedPeriod = periodFromIndividualGlyphs;
+          // Si los siete glifos individuales no alcanzan consenso, recuperar el período
+          // solo cuando al menos dos lecturas independientes del renglón rotulado coinciden.
+          // Nunca tomar una cifra de otra zona del ticket ni completar dígitos por suposición.
+          const focusedPeriod = periodFromIndividualGlyphs ?? readLabelledPeriodNumber(
+            [periodLineWide160, periodLineTight160, periodLineWide170],
+            focusedPeriodTail
+          );
           const focusedTerminal = readFocusedDigitValue([terminalLine],4,6);
           const focusedPrint = readFocusedPrintedAt([printedLine]);
           const focusedAddress = readFocusedAddress([addressLine],null);
