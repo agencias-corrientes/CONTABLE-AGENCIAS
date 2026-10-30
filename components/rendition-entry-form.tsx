@@ -155,8 +155,10 @@ function aliasesFor(game: Game) {
   return [name];
 }
 
-function parseTicketText(text: string, games: Game[], recoveredPeriodNumber = "") {
-  const receiptData = parseTicketClosure(text);
+function parseTicketText(text: string, games: Game[], recoveredPeriodNumber = "", assumeEndOfDay = false) {
+  // En modalidad diaria, la foto corresponde al cierre de jornada. No exigir que
+  // el OCR general transcriba perfectamente el encabezado para analizar el cuerpo.
+  const receiptData = parseTicketClosure(text, assumeEndOfDay);
   if (receiptData) {
     return {
       amountMap: mapTicketClosureAmounts(receiptData, games),
@@ -1343,7 +1345,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       setOcrText([recognizedText, focusedOcrDebugText].filter(Boolean).join("\n\n"));
       const activeGames = games.filter((game) => game.enabled !== false);
-      const parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber);
+      const parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber, dailyMode || receiptOnlyMode || batchMode);
       if (batchMode && !parsed.receiptData) {
         setError("Esta modalidad acepta comprobantes oficiales FIN DE JORNADA. El cupón no se agregó al lote.");
         setProgress("No se incorporó el archivo. Elegí un cierre oficial o continuá con otro cupón.");
