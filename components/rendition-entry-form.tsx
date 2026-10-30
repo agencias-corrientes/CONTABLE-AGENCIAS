@@ -460,7 +460,13 @@ async function makeFocusedReceiptCrops(file:File) {
   const bitmap=await createImageBitmap(file);
   try {
     const bounds=detectReceiptPaperBounds(bitmap);
+    const paperCanvas=document.createElement("canvas");
+    paperCanvas.width=Math.max(1,bounds.width);
+    paperCanvas.height=Math.max(1,bounds.height);
+    const paperContext=paperCanvas.getContext("2d");
+    if(paperContext)paperContext.drawImage(bitmap,bounds.left,bounds.top,bounds.width,bounds.height,0,0,paperCanvas.width,paperCanvas.height);
     const crops={
+      paper:paperCanvas,
       codes:makeReceiptFocusCrop(bitmap,bounds,"codes"),
       agencyCode:makeReceiptFocusCrop(bitmap,bounds,"agencyCode"),
       subagentCode:makeReceiptFocusCrop(bitmap,bounds,"subagentCode"),
@@ -556,6 +562,11 @@ function readFocusedAddress(values:string[],fallback:string|null):string|null {
     const number=[...text.matchAll(/\b\d{1,5}\b/g)].at(-1)?.[0]??null;
     if(number&&/\b(?:RIOJA|RIOJ|RIGT?A|RIGIA|RITA|RIUTA)\b/i.test(text))return "LA RIOJA N.º "+number;
     if(number&&/\b(?:CALLE|AVENIDA|AV\.?|RUTA|DOMICILIO|DIRECCION)\b/i.test(text))return value.trim();
+    // Muchos cierres imprimen directamente el nombre de la calle, sin el rótulo
+    // "Domicilio" (por ejemplo, "CATAMARCA 834"). Admitir ese formato sin
+    // confundir las líneas de códigos, fechas o importes con una dirección.
+    if(number&&/^[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ .'-]{2,}\s+(?:N[º°.]?\s*)?\d{1,5}$/i.test(text)&&
+      !/\b(?:AG|AGENCIA|SUBAG|MAQ|TOTAL|PERIODO|IMPRESO|ABIERTO|CERRADO)\b/i.test(text))return value.trim();
   }
   return fallback;
 }
@@ -1179,6 +1190,13 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           setProgress("Leyendo los datos impresos del FIN DE JORNADA…");
           setProgressPercent(72);
           const crops = await makeFocusedReceiptCrops(file);
+          // Volver a reconocer el ticket completo, pero aislando primero el papel del fondo.
+          // La pasada original sobre toda la foto pierde renglones pequeños cuando el ticket
+          // ocupa solo una parte de la imagen; esta lectura aporta los importes y totales.
+          await worker.setParameters({tessedit_pageseg_mode:6,tessedit_char_whitelist:"",preserve_interword_spaces:"1"} as any);
+          const paperResult=await worker.recognize(crops.paper);
+          const paperText=paperResult.data.text??"";
+          if(textScore(paperText)>textScore(recognizedText))recognizedText=paperText;
           const setOcrMode = async (mode:number, whitelist?:string) => {
             await worker.setParameters({tessedit_pageseg_mode:mode,tessedit_char_whitelist:whitelist ?? ""} as any);
           };
