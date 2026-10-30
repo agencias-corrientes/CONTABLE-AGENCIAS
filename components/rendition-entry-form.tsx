@@ -303,29 +303,29 @@ type FocusedClosureMetadata = Partial<Pick<TicketClosureData,
 >>;
 
 const receiptFocusSpecs: Record<ReceiptFocusRegion, ReceiptFocusSpec> = {
-  codes:       {left:0.030,right:0.955,top:0.263,bottom:0.292,scale:5,contrast:1.8},
-  agencyCode:  {left:0.140,right:0.365,top:0.263,bottom:0.292,scale:6,contrast:1.8},
+  codes:       {left:0.030,right:0.955,top:0.235,bottom:0.263,scale:5,contrast:1.8},
+  agencyCode:  {left:0.140,right:0.365,top:0.235,bottom:0.263,scale:6,contrast:1.8},
   // Recorte del campo SUBAG en el formato común del comprobante FIN DE JORNADA.
   // Se limita al espacio entre agencia y máquina para no mezclar sus identificadores.
-  subagentCode:{left:0.512,right:0.656,top:0.263,bottom:0.292,scale:6,contrast:1.6},
+  subagentCode:{left:0.512,right:0.656,top:0.235,bottom:0.263,scale:6,contrast:1.6},
   // Recortes independientes por casillero del campo SUBAG para verificar cualquier
   // combinación de tres dígitos sin depender del número de subagente de un ticket ejemplo.
-  subagentDigit1:{left:0.522,right:0.556,top:0.263,bottom:0.292,scale:10,contrast:1.6},
-  subagentDigit0:{left:0.568,right:0.602,top:0.263,bottom:0.292,scale:10,contrast:1.6},
-  subagentDigit2:{left:0.613,right:0.651,top:0.263,bottom:0.292,scale:10,contrast:1.6},
+  subagentDigit1:{left:0.522,right:0.556,top:0.235,bottom:0.263,scale:10,contrast:1.6},
+  subagentDigit0:{left:0.568,right:0.602,top:0.235,bottom:0.263,scale:10,contrast:1.6},
+  subagentDigit2:{left:0.613,right:0.651,top:0.235,bottom:0.263,scale:10,contrast:1.6},
   // MAQ: lectura de los dos glifos individuales; sin incluir los puntos del rótulo.
-  machineCode: {left:0.775,right:0.879,top:0.263,bottom:0.292,scale:8,contrast:1.5},
-  machineDigit0:{left:0.778,right:0.827,top:0.263,bottom:0.292,scale:10,contrast:1.4},
-  machineDigit1:{left:0.828,right:0.875,top:0.263,bottom:0.292,scale:10,contrast:1.4},
-  address:     {left:0.040,right:0.555,top:0.285,bottom:0.307,scale:5,contrast:1.8},
+  machineCode: {left:0.775,right:0.879,top:0.235,bottom:0.263,scale:8,contrast:1.5},
+  machineDigit0:{left:0.778,right:0.827,top:0.235,bottom:0.263,scale:10,contrast:1.4},
+  machineDigit1:{left:0.828,right:0.875,top:0.235,bottom:0.263,scale:10,contrast:1.4},
+  address:     {left:0.040,right:0.555,top:0.263,bottom:0.284,scale:5,contrast:1.8},
   // La máquina real está en su propia línea; no incluir la dirección que termina en 410.
-  terminalId:  {left:0.362,right:0.534,top:0.3075,bottom:0.3295,scale:6,contrast:1.6},
+  terminalId:  {left:0.362,right:0.534,top:0.284,bottom:0.308,scale:6,contrast:1.6},
   printedAt:   {left:0.035,right:0.965,top:0.324,bottom:0.347,scale:5,contrast:1.8},
   // Recortes estrechos: excluir el renglón ABIERTO que está justo debajo del período.
-  periodNumber:{left:0.375,right:0.800,top:0.885,bottom:0.909,scale:10,contrast:1.5},
-  periodLabelled:{left:0.022,right:0.830,top:0.885,bottom:0.909,scale:3,contrast:1.0},
-  periodLabelledTight:{left:0.022,right:0.830,top:0.887,bottom:0.908,scale:3,contrast:1.0},
-  periodTail:  {left:0.625,right:0.805,top:0.885,bottom:0.909,scale:11,contrast:1.5},
+  periodNumber:{left:0.375,right:0.800,top:0.865,bottom:0.891,scale:10,contrast:1.5},
+  periodLabelled:{left:0.022,right:0.830,top:0.865,bottom:0.891,scale:3,contrast:1.0},
+  periodLabelledTight:{left:0.022,right:0.830,top:0.868,bottom:0.889,scale:3,contrast:1.0},
+  periodTail:  {left:0.625,right:0.805,top:0.865,bottom:0.891,scale:11,contrast:1.5},
   // El número del cupón tiene siete casilleros de ancho fijo; se leen glifo por glifo.
   periodGlyph1:{left:0.375,right:0.414,top:0.885,bottom:0.909,scale:10,contrast:1.4},
   periodGlyph2:{left:0.425,right:0.463,top:0.885,bottom:0.909,scale:10,contrast:1.4},
