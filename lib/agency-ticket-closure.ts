@@ -289,7 +289,29 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
 
   const agencyCode = readCodeAfterLabel(lines, /\b(?:AGENCIA|AG)\b/);
   const subagentCode = readCodeAfterLabel(lines, /\b(?:SUBAGENTE|SUBAG)\b/);
-  const machineCode = readCodeAfterLabel(lines, /\b(?:MAQUINA|MAQ)\b/, /\bMAQU[I1L]N[A4]?\s+REAL\b|\bMAQ\s+REAL\b/);
+  // El OCR puede pegar los rótulos de cabecera ("AGSUBAGMAQ") sin espacios
+  // o dejar el código de máquina en el renglón inmediatamente posterior.
+  const machineCode = (() => {
+    const normalized = lines.map(normalizeTicketText);
+    const label = /M\s*A\s*Q(?:U[I1L]N[A4]?)?/i;
+    for (let index = 0; index < normalized.length; index += 1) {
+      const line = normalized[index] ?? "";
+      const match = label.exec(line);
+      if (!match || match.index === undefined) continue;
+      const suffix = line.slice(match.index + match[0].length);
+      if (/^\s*REAL\b/i.test(suffix) || /\bMAQU[I1L]N[A4]?\s+REAL\b|\bMAQ\s+REAL\b/i.test(line)) continue;
+      const sameLine = readShortCode(suffix.replace(/^\s*[:#.,-]?\s*/, ""));
+      if (sameLine && sameLine.length === 2) return sameLine;
+      for (let next = index + 1; next < Math.min(normalized.length, index + 3); next += 1) {
+        const candidate = normalized[next] ?? "";
+        if (/\b(?:AGENCIA|SUBAG(?:ENTE)?|DOMICILIO|DIRECCION|ABIERTO|CERRADO|IMPRESO|TOTAL|FIN DE JORNADA)\b/i.test(candidate)) break;
+        if (!/^[0-9OQIL|! .:_-]{1,12}$/.test(candidate)) continue;
+        const code = readShortCode(candidate);
+        if (code && code.length === 2) return code;
+      }
+    }
+    return null;
+  })();
 
   const normalizedLines = lines.map(normalizeTicketText);
   const terminalPattern = /\b(?:MAQU[I1L]N[A4]?\s+REAL|MAQ\s+REAL)\b/;
