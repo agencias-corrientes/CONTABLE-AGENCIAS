@@ -23,12 +23,12 @@ function commissionText(data: TicketClosureData, label: string, amount: number |
   return "Comisión " + rate.toLocaleString("es-AR") + "% · " + (commission === null ? "importe pendiente" : peso(commission));
 }
 
-function peso(value: number | null) { return value === null ? "—" : new Intl.NumberFormat("es-AR", {style:"currency",currency:"ARS"}).format(value); }
+function peso(value: number | null) { return value === null ? "—" : new Intl.NumberFormat("es-AR", {style:"currency",currency:"ARS",minimumFractionDigits:0,maximumFractionDigits:0}).format(Math.round(value)); }
 function MetricRow({label,metric,editable=false,onChange}:{label:string;metric:TicketReceiptMetric;editable?:boolean;onChange?:(v:TicketReceiptMetric)=>void}) {
  if(!editable||!onChange)return <div className="ticket-closure-line"><span>{label}</span><strong>{(metric.count===null?"—":String(metric.count))+" · "+peso(metric.amount)}</strong></div>;
  return <div className="ticket-closure-edit-line"><strong>{label}</strong>
  <label><span>Cantidad</span><input aria-label={label+" cantidad"} type="number" min="0" step="1" value={metric.count??""} placeholder="0" onChange={e=>onChange({...metric,count:e.target.value===""?null:Math.max(0,Math.trunc(Number(e.target.value)))})}/></label>
- <label><span>Importe ($)</span><input aria-label={label+" importe"} type="number" min="0" step="0.01" inputMode="decimal" value={metric.amount??""} placeholder="0,00" onChange={e=>onChange({...metric,amount:e.target.value===""?null:Math.max(0,Number(e.target.value))})}/></label>
+ <label><span>Importe ($)</span><input aria-label={label+" importe"} type="number" min="0" step="1" inputMode="numeric" value={metric.amount===null?"":String(Math.round(metric.amount))} placeholder="0" onChange={e=>onChange({...metric,amount:e.target.value===""?null:Math.max(0,Math.round(Number(e.target.value)))})}/></label>
  <button type="button" className="ticket-clear-row" title={"Limpiar "+label} onClick={()=>onChange({count:0,amount:0})}>Limpiar</button></div>;
 }
 function TextField({label,value,editable,onChange}:{label:string;value:string|null;editable:boolean;onChange:(v:string)=>void}) {
