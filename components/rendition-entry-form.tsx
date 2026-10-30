@@ -28,9 +28,29 @@ function normalize(value: string) {
 
 let paddleOcrEnginePromise: Promise<any> | null = null;
 
+async function loadPaddleOcrSdk(): Promise<any> {
+  const browserWindow = window as any;
+  if (browserWindow.__agenciasPaddleOcrSdk) return browserWindow.__agenciasPaddleOcrSdk;
+  if (!browserWindow.__agenciasPaddleOcrSdkPromise) {
+    browserWindow.__agenciasPaddleOcrSdkPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.type = "module";
+      script.src = "/paddleocr-loader.js";
+      script.onload = () => {
+        const sdk = browserWindow.__agenciasPaddleOcrSdk;
+        if (sdk) resolve(sdk);
+        else reject(new Error("No se pudo inicializar el motor PaddleOCR."));
+      };
+      script.onerror = () => reject(new Error("No se pudo descargar el motor PaddleOCR."));
+      document.head.appendChild(script);
+    });
+  }
+  return browserWindow.__agenciasPaddleOcrSdkPromise;
+}
+
 async function getPaddleOcrEngine(): Promise<any> {
   if (!paddleOcrEnginePromise) {
-    paddleOcrEnginePromise = import("@paddleocr/paddleocr-js")
+    paddleOcrEnginePromise = loadPaddleOcrSdk()
       .then(({ PaddleOCR }) => PaddleOCR.create({
         lang: "es",
         ocrVersion: "PP-OCRv6",
