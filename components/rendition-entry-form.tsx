@@ -1194,6 +1194,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const subagentCrop160 = (await worker.recognize(crops.subagentCodeThreshold160)).data.text ?? "";
           const subagentCrop170 = (await worker.recognize(crops.subagentCodeThreshold170)).data.text ?? "";
           const subagentCrop175 = (await worker.recognize(crops.subagentCodeThreshold175)).data.text ?? "";
+          // Variar la segmentación sobre dos recortes ya aislados: algunos tickets térmicos
+          // separan el rótulo SUBAG del valor y PSM 8 puede descartar los tres dígitos.
+          await setOcrMode(7,"0123456789OQIL");
+          const subagentCropPsm7 = (await worker.recognize(crops.subagentCodeThreshold160)).data.text ?? "";
+          await setOcrMode(13,"0123456789OQIL");
+          const subagentCropPsm13 = (await worker.recognize(crops.subagentCodeThreshold140)).data.text ?? "";
           // PSM 13 distingue el cero cuadrado en el centro de SUBAG:102; PSM 10 lo confundía con 1.
           await setOcrMode(13,"0123456789OQIL");
           const subagentGlyph1Raw = (await worker.recognize(crops.subagentDigit1)).data.text ?? "";
@@ -1211,7 +1217,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const validSubagentCode = (value:string|null|undefined) => value && /^\d{3}$/.test(value) ? value : null;
           const subagentFrom140 = readSubagentCandidate(subagentCrop140);
           const subagentFrom160 = readSubagentCandidate(subagentCrop160);
-          const cropConsensusSubagent = readFocusedSubagentCode([subagentCropRaw7,subagentCrop140,subagentCrop160,subagentCrop170,subagentCrop175]);
+          const cropConsensusSubagent = readFocusedSubagentCode([subagentCropRaw7,subagentCrop140,subagentCrop160,subagentCrop170,subagentCrop175,subagentCropPsm7,subagentCropPsm13]);
           // Para SUBAG solo aceptar consenso de la franja independiente, nunca cifras del renglón completo.
           const focusedSubagent = subagentFromIndividualGlyphs ??
             cropConsensusSubagent ??
