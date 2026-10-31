@@ -192,7 +192,7 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
   const normalizeCode=(raw:string,length:number):string|null=>{
     const compact=raw.toUpperCase().replace(/[\s.:_-]/g,"")
       .replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
-    return new RegExp("^\\d{"+length+"}$").test(compact)?compact:null;
+    return new RegExp("^\d{"+length+"}$").test(compact)?compact:null;
   };
   const digitsAfter=(text:string,label:RegExp,length:number):string|null=>{
     const match=label.exec(text);
@@ -208,7 +208,7 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
     const suffix=text.slice(match.index+match[0].length);
     const token=suffix.match(/^\s*[:#.,-]?\s*([0-9OQIL|!]{4,7})(?![A-Z0-9])/i)?.[1]??"";
     const compact=token.replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
-    return new RegExp("^\\d{"+min+","+max+"}$").test(compact)?compact:null;
+    return new RegExp("^\d{"+min+","+max+"}$").test(compact)?compact:null;
   };
   const agencyLabel=/(?:\bAGENCIA\b|\bAG\b|\bA\s*[:.]\s*B)\s*[:.]?\s*/i;
   const subagentLabel=/(?:\bSUBAG(?:ENTE)?\b|\bSIBAG\b|\bSILAG\b|\bSIEAG\b|\bS[UI1]B?A?G\b)\s*[:.]?\s*/i;
@@ -1200,8 +1200,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               ? parseTicketClosure(focusedOcrDebugText, true)
               : null;
             const printedRaw = positioned.printedAt ?? textReceipt?.printedAt.raw ?? null;
-            const printedDate = printedRaw?.match(/\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}/)?.[0] ?? null;
-            const printedTime = printedRaw?.match(/\\d{1,2}:\\d{2}(?::\\d{2})?/)?.[0] ?? null;
+            const printedDate = printedRaw?.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0] ?? null;
+            const printedTime = printedRaw?.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0] ?? null;
             focusedClosureMetadata = {
               agencyCode: positioned.agencyCode ?? textReceipt?.agencyCode ?? undefined,
               subagentCode: positioned.subagentCode ?? textReceipt?.subagentCode ?? undefined,
@@ -1257,7 +1257,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           printedAt: focusedClosureMetadata.printedAt ?? parsed.receiptData.printedAt ?? {date:null,time:null,raw:null},
           periodNumber: labelledPeriod,
           rawText: focusedOcrDebugText.trim()
-            ? parsed.receiptData.rawText + "\\n\\nLECTURA ENFOCADA DE DATOS IDENTIFICATORIOS:\\n" + focusedOcrDebugText
+            ? parsed.receiptData.rawText + "\n\nLECTURA ENFOCADA DE DATOS IDENTIFICATORIOS:\n" + focusedOcrDebugText
             : parsed.receiptData.rawText,
           // Cantidades, ventas, premios y medios digitales no verificados quedan vacíos.
           // No mostrar números estimados solo porque Tesseract haya devuelto cifras.
