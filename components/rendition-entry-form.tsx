@@ -1075,7 +1075,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         });
         try {
           const result = await worker.recognize(file);
-          focusedOcrWords = Array.isArray(result.data.words) ? result.data.words : null;
+          focusedOcrWords = Array.isArray((result.data as any).words) ? (result.data as any).words : null;
           const tesseractText = result.data.text ?? "";
           if (ocrTextHasEnoughSignals(tesseractText, closureReadExpected) || tesseractText.length >= paddlePartialText.length) {
             recognizedText = tesseractText;
@@ -1216,7 +1216,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             try {
               const enhancedImage = await makeEnhancedTicketImage(file);
               const metadataResult = await metadataWorker.recognize(enhancedImage);
-              focusedOcrWords = Array.isArray(metadataResult.data.words) ? metadataResult.data.words : [];
+              focusedOcrWords = Array.isArray((metadataResult.data as any).words) ? (metadataResult.data as any).words : [];
             } finally {
               await metadataWorker.terminate();
             }
