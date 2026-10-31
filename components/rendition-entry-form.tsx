@@ -293,7 +293,7 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
   const agency=first(rows.map(row=>codeAfterFlexible(row.text,agencyLabel,3,true)??digitsAfter(row.text,agencyLabel,3)));
   const subagent=first(rows.map(row=>codeAfterFlexible(row.text,subagentLabel,3)??digitsAfter(row.text,subagentLabel,3)));
   const machine=first(rows.flatMap((row,index)=>{
-    if(/MAQU[I1L]NA\s*REAL|MAQ\s*REAL/i.test(row.text))return [];
+    if(/MAQU[I1L]NA\s*REAL|MA[QO0]\s*REAL/i.test(row.text))return [];
     const machineMatch=machineLabel.exec(row.text);
     if(machineMatch&&machineMatch.index!==undefined){
       const suffix=row.text.slice(machineMatch.index+machineMatch[0].length);
@@ -344,7 +344,7 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
       .find(value=>{
         const letters=value.replace(/[^A-Z]/g,"").length;
         const digits=(value.match(/\d/g)??[]).length;
-        return letters>=3&&digits>=1&&!/(?:IMPRES[O0]|PER[I1]ODO|AB[I1L]ERTO|CERRADO|MAQU[I1L]NA\s*REAL|SORTEOS|QUINIELA|VALIDOS|PREMIOS|TOTALES)/i.test(value);
+        return letters>=3&&digits>=1&&!/(?:IMPRES[O0]|PER[I1]ODO|AB[I1L]ERTO|CERRADO|MAQU[I1L]NA\s*REAL|MA[QO0]\s*REAL|SORTEOS|QUINIELA|VALIDOS|PREMIOS|TOTALES)/i.test(value);
       })??null
     : null;
   const address=addressByPosition??first(rows.flatMap((row,index)=>{
