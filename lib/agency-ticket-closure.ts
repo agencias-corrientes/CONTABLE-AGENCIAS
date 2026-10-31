@@ -31,6 +31,48 @@ export type TicketClosureData = {
 const normalizeTicketText = (value: string) =>
   value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
 
+const ARGENTINA_PROVINCE_NAMES = [
+  "BUENOS AIRES", "CATAMARCA", "CHACO", "CHUBUT", "CORDOBA", "CORRIENTES",
+  "ENTRE RIOS", "FORMOSA", "JUJUY", "LA PAMPA", "LA RIOJA", "MENDOZA",
+  "MISIONES", "NEUQUEN", "RIO NEGRO", "SALTA", "SAN JUAN", "SAN LUIS",
+  "SANTA CRUZ", "SANTA FE", "SANTIAGO DEL ESTERO", "TIERRA DEL FUEGO", "TUCUMAN",
+];
+
+function addressTokenDistance(left:string,right:string):number {
+  const previous=Array.from({length:right.length+1},(_,index)=>index);
+  for(let i=1;i<=left.length;i+=1){
+    const current=[i];
+    for(let j=1;j<=right.length;j+=1){
+      current[j]=Math.min(
+        (current[j-1]??0)+1,
+        (previous[j]??0)+1,
+        (previous[j-1]??0)+(left[i-1]===right[j-1]?0:1),
+      );
+    }
+    for(let j=0;j<previous.length;j+=1)previous[j]=current[j]??0;
+  }
+  return previous[right.length]??left.length;
+}
+
+// Corrección conservadora de confusiones OCR en nombres oficiales de provincias.
+// No aporta direcciones ni números: solo corrige una palabra si está a 1-2
+// caracteres de un nombre geográfico conocido.
+export function correctTicketAddressOcr(value:string|null|undefined):string|null {
+  if(!value?.trim())return null;
+  return value.trim().replace(/[A-ZÁÉÍÓÚÜÑa-záéíóúüñ\[]+/g,(raw)=>{
+    const token=raw.toUpperCase().replace(/\\[/g,"L").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"");
+    if(token.length<5)return raw;
+    let best:string|null=null,bestDistance=3;
+    for(const province of ARGENTINA_PROVINCE_NAMES){
+      if(province.includes(" "))continue;
+      const distance=addressTokenDistance(token,province);
+      if(distance<bestDistance){best=province;bestDistance=distance;}
+    }
+    return best&&bestDistance<=2?best:raw;
+  });
+}
+
+
 function moneyAllowZero(value: string): number | null {
   let amount = value.replace(/[^0-9,.-]/g, "");
   if (!amount || !/\d/.test(amount)) return null;
@@ -419,7 +461,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
         return letters >= 4 &&
           !/(?:IMPRES[O0]|PER[I1]ODO|AB[I1L]ERTO|CERRADO|MAQU[I1L]N[A4]?\s*REAL|SORTEOS|QUINIELA|VALIDOS|PREMIOS|TOTALES|TOTAL GENERAL)/i.test(normalized);
       });
-      if (candidate) address = candidate.trim() || null;
+      if (candidate) address = correctTicketAddressOcr(candidate.trim()) ?? null;
     }
   }
   const printedLine = lines.find((line) => /\bIMPRES[O0]\b/i.test(normalizeTicketText(line))) ?? null;
