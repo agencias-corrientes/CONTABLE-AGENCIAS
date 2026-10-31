@@ -60,7 +60,7 @@ function addressTokenDistance(left:string,right:string):number {
 export function correctTicketAddressOcr(value:string|null|undefined):string|null {
   if(!value?.trim())return null;
   return value.trim().replace(/[A-ZÁÉÍÓÚÜÑa-záéíóúüñ\[]+/g,(raw)=>{
-    const token=raw.toUpperCase().replace(/\\[/g,"L").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"");
+    const token=raw.toUpperCase().replace(/\[/g,"L").normalize("NFD").replace(/[\u0300-\u036f]/g,"");
     if(token.length<5)return raw;
     let best:string|null=null,bestDistance=3;
     for(const province of ARGENTINA_PROVINCE_NAMES){
@@ -501,7 +501,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
     agencyCode,
     subagentCode,
     machineCode,
-    address: address?.trim() ?? null,
+    address: correctTicketAddressOcr(address?.trim() ?? null),
     terminalId,
     printedAt,
     openDraws,
