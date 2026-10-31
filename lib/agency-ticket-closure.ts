@@ -314,8 +314,6 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
     return value;
   };
 
-  const agencyCode = readCodeAfterLabel(lines, /\\b(?:AGENCIA|AG)\\b/);
-  const subagentCode = readCodeAfterLabel(lines, /\\b(?:SUBAGENTE|SUBAG)\\b/);
   const machineCode = (() => {
     const label = /M\\s*A\\s*Q(?:U[I1L]N[A4]?)?/i;
     for (let index = 0; index < normalizedLines.length; index += 1) {
@@ -332,7 +330,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
         const candidate = normalizedLines[next] ?? "";
         const compactCandidate = compactLines[next] ?? "";
         if (/^(?:DIRECCION|DOMICILIO|MAQU[I1L]N[A4]?REAL|MAQREAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL)/i.test(compactCandidate)) continue;
-        if (/^(?:SORTEOS|QUINIELA|OTROSJUEGOS|MEDIOSDIGITALES|TOTALGENERAL|FIND E JORNADA)/i.test(compactCandidate)) break;
+        if (/^(?:SORTEOS|QUINIELA|OTROSJUEGOS|MEDIOSDIGITALES|TOTALGENERAL|FINDEJORNADA)/i.test(compactCandidate)) break;
         if (!/^[0-9OQIL|! .:_-]{1,12}$/.test(candidate)) continue;
         const code = readShortCode(candidate);
         if (code && code.length === 2) return code;
