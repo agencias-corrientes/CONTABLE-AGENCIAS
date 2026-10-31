@@ -875,10 +875,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   }, [amounts, busy, confirmationOpen, dailyStatusChoice, date, defaultPeriod, drawNumber, fileName, initialRendition, notes, period, periodManuallySelected, periods, photoPreviewUrl, qrPayload, reference, ticketNumbers, today]);
 
   async function makeEnhancedTicketImage(file: File): Promise<HTMLCanvasElement> {
-    // Para los datos identificatorios primero aislar el papel del fondo/UI.
-    // Así la segunda pasada no pierde la cabecera en fotos tomadas desde la app.
+    // Primero aislar el papel del fondo y de la interfaz de la aplicación.
     const paper = await makeReceiptPaperCanvas(file);
-    const scale = Math.max(1, Math.min(3, 1500 / Math.max(1, paper.width)));
+    const scale = Math.max(1, Math.min(2.5, 1300 / Math.max(1, paper.width)));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(paper.width * scale));
     canvas.height = Math.max(1, Math.round(paper.height * scale));
@@ -886,20 +885,40 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     if (!context) throw new Error("No se pudo preparar la imagen del comprobante.");
     context.drawImage(paper, 0, 0, canvas.width, canvas.height);
 
-    // Grises + contraste moderado sobre el papel ya recortado y ampliado.
+    // Escala de grises y contraste moderado para papel térmico.
     const image = context.getImageData(0, 0, canvas.width, canvas.height);
     const pixels = image.data;
     for (let i = 0; i < pixels.length; i += 4) {
       const gray = 0.299 * pixels[i]! + 0.587 * pixels[i + 1]! + 0.114 * pixels[i + 2]!;
-      const contrasted = Math.max(0, Math.min(255, (gray - 132) * 1.65 + 132));
+      const contrasted = Math.max(0, Math.min(255, (gray - 132) * 1.3 + 132));
       pixels[i] = contrasted;
       pixels[i + 1] = contrasted;
       pixels[i + 2] = contrasted;
     }
     context.putImageData(image, 0, 0);
+
+    // Máscara de enfoque suave: recupera trazos térmicos finos y caracteres
+    // pálidos sin imponer una estructura fija a las líneas del ticket.
+    const blurred = document.createElement("canvas");
+    blurred.width = canvas.width;
+    blurred.height = canvas.height;
+    const blurContext = blurred.getContext("2d", { willReadFrequently: true });
+    if (blurContext) {
+      blurContext.filter = "blur(1px)";
+      blurContext.drawImage(canvas, 0, 0);
+      blurContext.filter = "none";
+      const original = context.getImageData(0, 0, canvas.width, canvas.height);
+      const soft = blurContext.getImageData(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < original.data.length; i += 4) {
+        const sharpened = Math.max(0, Math.min(255, original.data[i]! * 4 - soft.data[i]! * 3));
+        original.data[i] = sharpened;
+        original.data[i + 1] = sharpened;
+        original.data[i + 2] = sharpened;
+      }
+      context.putImageData(original, 0, 0);
+    }
     return canvas;
   }
-
   function processSelectedTicketFile(file: File) {
     const declaredType = String(file.type ?? "").toLowerCase();
     const isDefinitelyVideo =
@@ -1112,6 +1131,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let focusedOcrDebugText = "";
       let focusedOcrWords: unknown = null;
       let paddleMetadataWords: unknown[] = [];
+      let focusedPaddleMetadataWords: unknown[] = [];
+      let focusedPaddleDebugText = "";
       let closureTextCandidates: string[] = [];
       let paddleFailure = "";
 
@@ -1290,6 +1311,20 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             const metadataWorker = await createWorker("spa+eng", 1);
             try {
               const enhancedImage = await makeEnhancedTicketImage(file);
+              try {
+                const paddle = await getPaddleOcrEngine();
+                const [focusedPaddleResult] = await paddle.predict(enhancedImage, {
+                  textDetBoxThresh: 0.4,
+                  textDetUnclipRatio: 1.8,
+                  textRecScoreThresh: 0.0,
+                });
+                focusedPaddleMetadataWords = paddleItemsToWordBoxes(focusedPaddleResult?.items ?? []);
+                focusedPaddleDebugText = paddleOcrItemsToText(focusedPaddleResult?.items ?? []);
+              } catch {
+                focusedPaddleMetadataWords = [];
+                focusedPaddleDebugText = "";
+              }
+              await metadataWorker.setParameters({ tessedit_pageseg_mode: "6" } as any);
               const metadataResult = await metadataWorker.recognize(enhancedImage, {}, { blocks: true });
               focusedOcrWords = tesseractWordBoxes(metadataResult.data);
               focusedOcrDebugText = String(metadataResult.data.text ?? "").trim();
@@ -1299,30 +1334,41 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           }
           const tesseractText = focusedOcrDebugText;
           const tesseractLines = tesseractText ? parseTicketClosure(tesseractText, true) : null;
+          const focusedPaddleLines = focusedPaddleDebugText
+            ? parseTicketClosure(focusedPaddleDebugText, true)
+            : null;
           const tesseractWords = Array.isArray(focusedOcrWords) ? focusedOcrWords : [];
           const tesseractPositioned = readClosureMetadataFromOcrWords(tesseractWords);
+          const focusedPaddlePositioned = readClosureMetadataFromOcrWords(focusedPaddleMetadataWords);
           const paddlePositioned = readClosureMetadataFromOcrWords(paddleMetadataWords);
-          const fallbackText = tesseractText || reconstructLinesFromOcrWords(tesseractWords);
+          const fallbackText = focusedPaddleDebugText || tesseractText || reconstructLinesFromOcrWords(tesseractWords);
           const textReceipt = fallbackText ? parseTicketClosure(fallbackText, true) : null;
-          const printedRaw = tesseractPositioned.printedAt
+          const printedRaw = focusedPaddlePositioned.printedAt
+            ?? tesseractPositioned.printedAt
             ?? paddlePositioned.printedAt
+            ?? focusedPaddleLines?.printedAt.raw
             ?? tesseractLines?.printedAt.raw
             ?? textReceipt?.printedAt.raw
             ?? null;
           const printedDate = printedRaw?.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0] ?? null;
           const printedTime = printedRaw?.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0] ?? null;
           focusedClosureMetadata = {
-            agencyCode: tesseractPositioned.agencyCode ?? paddlePositioned.agencyCode ?? textReceipt?.agencyCode ?? undefined,
-            subagentCode: tesseractPositioned.subagentCode ?? paddlePositioned.subagentCode ?? textReceipt?.subagentCode ?? undefined,
-            machineCode: tesseractPositioned.machineCode ?? paddlePositioned.machineCode ?? textReceipt?.machineCode ?? undefined,
-            address: correctTicketAddressOcr(tesseractPositioned.address ?? paddlePositioned.address ?? textReceipt?.address) ?? undefined,
-            terminalId: tesseractPositioned.terminalId ?? paddlePositioned.terminalId ?? textReceipt?.terminalId ?? undefined,
+            agencyCode: focusedPaddlePositioned.agencyCode ?? tesseractPositioned.agencyCode ?? paddlePositioned.agencyCode ?? textReceipt?.agencyCode ?? undefined,
+            subagentCode: focusedPaddlePositioned.subagentCode ?? tesseractPositioned.subagentCode ?? paddlePositioned.subagentCode ?? textReceipt?.subagentCode ?? undefined,
+            machineCode: focusedPaddlePositioned.machineCode ?? tesseractPositioned.machineCode ?? paddlePositioned.machineCode ?? textReceipt?.machineCode ?? undefined,
+            address: correctTicketAddressOcr(focusedPaddlePositioned.address ?? tesseractPositioned.address ?? paddlePositioned.address ?? textReceipt?.address) ?? undefined,
+            terminalId: focusedPaddlePositioned.terminalId ?? tesseractPositioned.terminalId ?? paddlePositioned.terminalId ?? textReceipt?.terminalId ?? undefined,
             printedAt: printedRaw
               ? { date: printedDate, time: printedTime, raw: printedRaw }
               : textReceipt?.printedAt ?? undefined,
-            periodNumber: tesseractPositioned.periodNumber ?? paddlePositioned.periodNumber ?? textReceipt?.periodNumber ?? undefined,
+            periodNumber: focusedPaddlePositioned.periodNumber ?? tesseractPositioned.periodNumber ?? paddlePositioned.periodNumber ?? textReceipt?.periodNumber ?? undefined,
           };
-          if (!focusedOcrDebugText && fallbackText) focusedOcrDebugText = fallbackText;
+          const focusedDebugParts = [
+            focusedPaddleDebugText ? "PADDLE OCR (RECORTE):\n" + focusedPaddleDebugText : "",
+            tesseractText ? "TESSERACT OCR (RECORTE):\n" + tesseractText : "",
+          ].filter(Boolean);
+          if (focusedDebugParts.length) focusedOcrDebugText = focusedDebugParts.join("\n\n");
+          else if (fallbackText) focusedOcrDebugText = fallbackText;
         } catch {
           // Un fallo de esta pasada complementaria no invalida la lectura principal.
           focusedClosureMetadata = {};
