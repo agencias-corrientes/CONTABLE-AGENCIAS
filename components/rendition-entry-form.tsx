@@ -315,7 +315,7 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
     return nextCode?[nextCode]:[];
   }));
 
-  const terminal=first(rows.flatMap((row,index)=>{
+  let terminal=first(rows.flatMap((row,index)=>{
     const direct=tokenAfter(row.text,terminalLabel,4,7);
     if(direct)return [direct];
     if(!terminalLabel.test(row.text))return [];
@@ -331,27 +331,29 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
   }));
   const period=first(rows.map((_,index)=>readPeriod(index)));
 
-  // Dirección: no todos los tickets imprimen la etiqueta "Dirección".
-  // En los dos formatos de referencia está entre la fila AG/SUBAG/MAQ y "Máquina Real".
+  // Dirección: puede no tener rótulo; se busca por posición relativa a la cabecera.
   const headerIndex=rows.findIndex(row=>
     (/(?:AGENCIA|AG)\s*[:.]?\s*[0-9OQIL|!]+.*(?:SUBAG|SIBAG|SILAG|SIEAG)/i.test(row.text)
       || /(?:SUBAG|SIBAG|SILAG|SIEAG).*?(?:MAQ|MA0|MAO|MAQU)/i.test(row.text))
   );
   const terminalRowIndex=rows.findIndex(row=>terminalLabel.test(row.text));
-  const addressByPosition=headerIndex>=0
-    ? rows.slice(headerIndex+1,terminalRowIndex>headerIndex?terminalRowIndex:Math.min(rows.length,headerIndex+4))
-      .map(row=>row.text.trim())
-      .find(value=>{
-        const letters=value.replace(/[^A-Z]/g,"").length;
-        const digits=(value.match(/\d/g)??[]).length;
-        return letters>=3&&digits>=1&&!/(?:IMPRES[O0]|PER[I1]ODO|AB[I1L]ERTO|CERRADO|MAQU[I1L]NA\s*REAL|MA[QO0]\s*REAL|SORTEOS|QUINIELA|VALIDOS|PREMIOS|TOTALES)/i.test(value);
-      })??null
-    : null;
+  const addressRangeEnd=headerIndex>=0
+    ? (terminalRowIndex>headerIndex?terminalRowIndex:Math.min(rows.length,headerIndex+4))
+    : -1;
+  const isAddressRow=(value:string)=>{
+    const letters=value.replace(/[^A-Z]/g,"").length;
+    const digits=(value.match(/\d/g)??[]).length;
+    return letters>=3&&digits>=1&&!/(?:IMPRES[O0]|PER[I1]ODO|AB[I1L]ERTO|CERRADO|MAQU[I1L]NA\s*REAL|MA[QO0]\s*REAL|SORTEOS|QUINIELA|VALIDOS|PREMIOS|TOTALES)/i.test(value);
+  };
+  const addressPositionIndex=headerIndex>=0
+    ? rows.findIndex((row,index)=>index>headerIndex&&index<addressRangeEnd&&isAddressRow(row.text))
+    : -1;
+  const addressByPosition=addressPositionIndex>=0?rows[addressPositionIndex]?.text.trim()??null:null;
   const address=addressByPosition??first(rows.flatMap((row,index)=>{
     const label=addressLabel.exec(row.text);
     if(label&&label.index!==undefined){
       let value=row.text.slice(label.index+label[0].length);
-      value=value.replace(/(?:MAQU[I1L]NA\s*REAL|MAQ\s*REAL|IMPRES[O0]\s*EL|AB[I1L]ERTO\s*EL|CERRADO\s*EL).*$/i,"").trim();
+      value=value.replace(/(?:MAQU[I1L]NA\s*REAL|MA[QO0]\s*REAL|IMPRES[O0]\s*EL|AB[I1L]ERTO\s*EL|CERRADO\s*EL).*$/i,"").trim();
       if(/[A-Z]/i.test(value))return [value];
       const next=nextRow(index);
       if(next){
@@ -368,6 +370,15 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
       ? [row.text] : [];
   }));
 
+  // Si "Máquina real" quedó mal reconocida, tomar solo el código numérico
+  // del renglón inmediatamente posterior a la dirección ya identificada.
+  if(!terminal&&addressPositionIndex>=0){
+    const nextText=rows[addressPositionIndex+1]?.text??"";
+    const candidates=(nextText.match(/[0-9OQIL|!]+/g)??[])
+      .map(token=>token.toUpperCase().replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1"))
+      .filter(token=>token.length>=4&&token.length<=7&&/^\d+$/.test(token));
+    terminal=candidates[candidates.length-1]??null;
+  }
   const printed=first(rows.flatMap((row,index)=>{
     if(!/IMPRES[O0]/i.test(row.text))return [];
     const text=row.text+" "+(nextRow(index)?.text??"");
