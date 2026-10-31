@@ -289,22 +289,50 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
 
   const agencyCode = readCodeAfterLabel(lines, /\b(?:AGENCIA|AG)\b/);
   const subagentCode = readCodeAfterLabel(lines, /\b(?:SUBAGENTE|SUBAG)\b/);
-  // El OCR puede pegar los rótulos de cabecera ("AGSUBAGMAQ") sin espacios
-  // o dejar el código de máquina en el renglón inmediatamente posterior.
+  // El OCR puede pegar los rótulos de cabecera y los campos identificatorios
+  // (por ejemplo: "AGSUBAGMAQ" o "DIRECCIONMAQUINAREALIMPRESOEL").
+  // Normalizar sin espacios permite reconocerlos sin cambiar el texto de importes.
+  const normalizedLines = lines.map(normalizeTicketText);
+  const compactLines = normalizedLines.map((line) => line.replace(/\\s+/g, ""));
+  const afterCompactChars = (value: string, count: number) => {
+    let seen = 0;
+    for (let index = 0; index < value.length; index += 1) {
+      if (/\\s/.test(value[index] ?? "")) continue;
+      seen += 1;
+      if (seen === count) return value.slice(index + 1);
+    }
+    return "";
+  };
+  const beforeCompactChars = (value: string, count: number) => {
+    if (count <= 0) return "";
+    let seen = 0;
+    for (let index = 0; index < value.length; index += 1) {
+      if (/\\s/.test(value[index] ?? "")) continue;
+      seen += 1;
+      if (seen === count) return value.slice(0, index + 1);
+    }
+    return value;
+  };
+
+  const agencyCode = readCodeAfterLabel(lines, /\\b(?:AGENCIA|AG)\\b/);
+  const subagentCode = readCodeAfterLabel(lines, /\\b(?:SUBAGENTE|SUBAG)\\b/);
   const machineCode = (() => {
-    const normalized = lines.map(normalizeTicketText);
-    const label = /M\s*A\s*Q(?:U[I1L]N[A4]?)?/i;
-    for (let index = 0; index < normalized.length; index += 1) {
-      const line = normalized[index] ?? "";
+    const label = /M\\s*A\\s*Q(?:U[I1L]N[A4]?)?/i;
+    for (let index = 0; index < normalizedLines.length; index += 1) {
+      const line = normalizedLines[index] ?? "";
+      const compact = compactLines[index] ?? "";
+      // MAQUINA REAL es otro dato; no confundirlo con el código MAQ.
+      if (/MAQU[I1L]N[A4]?REAL|MAQREAL/i.test(compact)) continue;
       const match = label.exec(line);
       if (!match || match.index === undefined) continue;
       const suffix = line.slice(match.index + match[0].length);
-      if (/^\s*REAL\b/i.test(suffix) || /\bMAQU[I1L]N[A4]?\s+REAL\b|\bMAQ\s+REAL\b/i.test(line)) continue;
-      const sameLine = readShortCode(suffix.replace(/^\s*[:#.,-]?\s*/, ""));
+      const sameLine = readShortCode(suffix.replace(/^\\s*[:#.,-]?\\s*/, ""));
       if (sameLine && sameLine.length === 2) return sameLine;
-      for (let next = index + 1; next < Math.min(normalized.length, index + 3); next += 1) {
-        const candidate = normalized[next] ?? "";
-        if (/\b(?:AGENCIA|SUBAG(?:ENTE)?|DOMICILIO|DIRECCION|ABIERTO|CERRADO|IMPRESO|TOTAL|FIN DE JORNADA)\b/i.test(candidate)) break;
+      for (let next = index + 1; next < Math.min(normalizedLines.length, index + 5); next += 1) {
+        const candidate = normalizedLines[next] ?? "";
+        const compactCandidate = compactLines[next] ?? "";
+        if (/^(?:DIRECCION|DOMICILIO|MAQU[I1L]N[A4]?REAL|MAQREAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL)/i.test(compactCandidate)) continue;
+        if (/^(?:SORTEOS|QUINIELA|OTROSJUEGOS|MEDIOSDIGITALES|TOTALGENERAL|FIND E JORNADA)/i.test(compactCandidate)) break;
         if (!/^[0-9OQIL|! .:_-]{1,12}$/.test(candidate)) continue;
         const code = readShortCode(candidate);
         if (code && code.length === 2) return code;
@@ -313,25 +341,62 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
     return null;
   })();
 
-  const normalizedLines = lines.map(normalizeTicketText);
-  const terminalPattern = /\b(?:MAQU[I1L]N[A4]?\s+REAL|MAQ\s+REAL)\b/;
-  const terminalIndex = normalizedLines.findIndex((line) => terminalPattern.test(line));
-  let terminalId = terminalIndex >= 0
-    ? readNumberAfterLabel(normalizedLines[terminalIndex] ?? "", terminalPattern)
-    : null;
-  if (!terminalId && terminalIndex >= 0 && terminalIndex + 1 < lines.length) {
-    const nextLine = normalizedLines[terminalIndex + 1] ?? "";
-    if (/^[0-9OQIL|!\s.-]{1,20}$/.test(nextLine)) terminalId = readShortCode(nextLine);
+  const terminalPattern = /MAQU[I1L]N[A4]?REAL|MAQREAL/i;
+  const terminalIndex = compactLines.findIndex((line) => terminalPattern.test(line));
+  let terminalId: string | null = null;
+  if (terminalIndex >= 0) {
+    const compactLine = compactLines[terminalIndex] ?? "";
+    const labelMatch = terminalPattern.exec(compactLine);
+    if (labelMatch && labelMatch.index !== undefined) {
+      const tail = compactLine.slice(labelMatch.index + labelMatch[0].length);
+      const boundary = tail.search(/IMPRES[O0]EL|DIRECCION|DOMICILIO|AGENCIA|SUBAGENTE|ABIERTOEL|CERRADOEL/i);
+      const value = boundary >= 0 ? tail.slice(0, boundary) : tail;
+      terminalId = readShortCode(value);
+    }
+    if (!terminalId) {
+      for (let next = terminalIndex + 1; next < Math.min(normalizedLines.length, terminalIndex + 4); next += 1) {
+        const candidate = normalizedLines[next] ?? "";
+        const compactCandidate = compactLines[next] ?? "";
+        if (/^(?:DIRECCION|DOMICILIO|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL)/i.test(compactCandidate)) continue;
+        if (/^[0-9OQIL|!\\s.-]{1,20}$/.test(candidate)) {
+          terminalId = readShortCode(candidate);
+          if (terminalId) break;
+        }
+      }
+    }
   }
 
-  const explicitAddressIndex = normalizedLines.findIndex((line) => /\b(?:DOMICILIO|DIRECCION|DIREC)\b/.test(line));
-  const streetAddressIndex = normalizedLines.findIndex((line) => /\b(?:CALLE|AVENIDA|AV\.|RUTA|LA RIOJA)\b/.test(line));
+  const addressLabelPattern = /DOMICILIO|DIRECCION|DIREC/;
+  const explicitAddressIndex = compactLines.findIndex((line) => addressLabelPattern.test(line));
+  const streetAddressIndex = compactLines.findIndex((line) => /^(?:CALLE|AVENIDA|AV\\.?|RUTA|LARIOJA)/.test(line));
   const addressIndex = explicitAddressIndex >= 0 ? explicitAddressIndex : streetAddressIndex;
-  let address: string | null = addressIndex >= 0 ? (lines[addressIndex] ?? "").trim() || null : null;
-  if (addressIndex >= 0 && address && !/\d|\b(?:CALLE|AVENIDA|AV\.|RUTA|LA RIOJA)\b/i.test(address)) {
-    const nextLine = lines[addressIndex + 1]?.trim() ?? "";
-    if (nextLine && !/^(?:AGENCIA|AG|SUBAG|MAQ|ABIERTO|CERRADO|IMPRESO|TOTAL|FIN DE JORNADA)\b/i.test(normalizedLines[addressIndex + 1] ?? "")) {
-      address = nextLine;
+  let address: string | null = null;
+  if (addressIndex >= 0) {
+    const compactLine = compactLines[addressIndex] ?? "";
+    const labelMatch = explicitAddressIndex >= 0 ? addressLabelPattern.exec(compactLine) : null;
+    if (labelMatch && labelMatch.index !== undefined) {
+      const tail = afterCompactChars(normalizedLines[addressIndex] ?? "", labelMatch.index + labelMatch[0].length);
+      const compactTail = tail.replace(/\\s+/g, "");
+      const boundary = compactTail.search(/MAQU[I1L]N[A4]?REAL|MAQREAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL/i);
+      const inlineValue = (boundary >= 0 ? beforeCompactChars(tail, boundary) : tail).trim();
+      if (inlineValue && /[A-Z]/i.test(inlineValue)) address = inlineValue;
+    } else {
+      const value = (lines[addressIndex] ?? "").trim();
+      if (value && !/^(?:DIRECCION|DOMICILIO|DIREC)$/i.test(value.replace(/\\s+/g, ""))) address = value;
+    }
+    if (!address) {
+      for (let next = addressIndex + 1; next < Math.min(lines.length, addressIndex + 4); next += 1) {
+        const candidate = (lines[next] ?? "").trim();
+        const compactCandidate = compactLines[next] ?? "";
+        if (!candidate) continue;
+        if (/^(?:DIRECCION|DOMICILIO|DIREC|MAQU[I1L]N[A4]?REAL|MAQREAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL)/i.test(compactCandidate)) continue;
+        if (/^(?:SORTEOS|QUINIELA|OTROSJUEGOS|MEDIOSDIGITALES|TOTALGENERAL|FINDEJORNADA)/i.test(compactCandidate)) break;
+        if (/^[0-9 .:/-]+$/.test(candidate)) continue;
+        if (/[A-Z]/i.test(candidate)) {
+          address = candidate;
+          break;
+        }
+      }
     }
   }
   const printedLine = lines.find((line) => /\bIMPRES[O0]\b/i.test(normalizeTicketText(line))) ?? null;
