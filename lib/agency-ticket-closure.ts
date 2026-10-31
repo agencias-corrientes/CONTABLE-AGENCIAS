@@ -315,17 +315,18 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
   };
 
   const machineCode = (() => {
-    const label = /M\s*A\s*Q(?:U[I1L]N[A4]?)?/i;
+    const label = /M\s*A\s*[QO0](?:U[I1L]N[A4]?)?/i;
     for (let index = 0; index < normalizedLines.length; index += 1) {
       const line = normalizedLines[index] ?? "";
       const compact = compactLines[index] ?? "";
       // MAQUINA REAL es otro dato; no confundirlo con el código MAQ.
-      if (/MAQU[I1L]N[A4]?REAL|MAQREAL/i.test(compact)) continue;
+      if (/MAQU[I1L]N[A4]?REAL|MA[QO0]REAL/i.test(compact)) continue;
       const match = label.exec(line);
       if (!match || match.index === undefined) continue;
       const suffix = line.slice(match.index + match[0].length);
       const sameLine = readShortCode(suffix.replace(/^\s*[:#.,-]?\s*/, ""));
       if (sameLine && sameLine.length === 2) return sameLine;
+      if (sameLine && sameLine.length === 3 && sameLine[1] === sameLine[2]) return sameLine.slice(0, 2);
       for (let next = index + 1; next < Math.min(normalizedLines.length, index + 5); next += 1) {
         const candidate = normalizedLines[next] ?? "";
         const compactCandidate = compactLines[next] ?? "";
@@ -395,6 +396,30 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
           break;
         }
       }
+    }
+  }
+  // Algunos cierres no imprimen la etiqueta DIRECCION/DOMICILIO.
+  // En ese caso, tomar el renglón de identificación ubicado entre AG/SUBAG/MAQ
+  // y MAQUINA REAL, sin asumir una dirección fija ni una cantidad de juegos.
+  if (!address) {
+    const identityHeaderIndex = normalizedLines.findIndex((line) =>
+      (/(?:AGENCIA|AG)\s*[:.]?\s*[0-9OQIL|!]+.*(?:SUBAG|SIBAG|SILAG|SIEAG)/i.test(line)
+        || /(?:SUBAG|SIBAG|SILAG|SIEAG).*?(?:MAQ|MA0|MAO|MAQU)/i.test(line))
+    );
+    const identityMachineIndex = normalizedLines.findIndex((line) =>
+      /MAQU[I1L]N[A4]?\s*REAL|MA[QO0]\s*REAL/i.test(line)
+    );
+    if (identityHeaderIndex >= 0) {
+      const end = identityMachineIndex > identityHeaderIndex
+        ? identityMachineIndex
+        : Math.min(lines.length, identityHeaderIndex + 4);
+      const candidate = lines.slice(identityHeaderIndex + 1, end).find((rawLine, offset) => {
+        const normalized = normalizedLines[identityHeaderIndex + 1 + offset] ?? "";
+        const letters = (normalized.match(/[A-Z]/g) ?? []).length;
+        return letters >= 4 &&
+          !/(?:IMPRES[O0]|PER[I1]ODO|AB[I1L]ERTO|CERRADO|MAQU[I1L]N[A4]?\s*REAL|SORTEOS|QUINIELA|VALIDOS|PREMIOS|TOTALES|TOTAL GENERAL)/i.test(normalized);
+      });
+      if (candidate) address = candidate.trim() || null;
     }
   }
   const printedLine = lines.find((line) => /\bIMPRES[O0]\b/i.test(normalizeTicketText(line))) ?? null;
