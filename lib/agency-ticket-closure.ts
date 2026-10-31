@@ -293,11 +293,11 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
   // (por ejemplo: "AGSUBAGMAQ" o "DIRECCIONMAQUINAREALIMPRESOEL").
   // Normalizar sin espacios permite reconocerlos sin cambiar el texto de importes.
   const normalizedLines = lines.map(normalizeTicketText);
-  const compactLines = normalizedLines.map((line) => line.replace(/\\s+/g, ""));
+  const compactLines = normalizedLines.map((line) => line.replace(/\s+/g, ""));
   const afterCompactChars = (value: string, count: number) => {
     let seen = 0;
     for (let index = 0; index < value.length; index += 1) {
-      if (/\\s/.test(value[index] ?? "")) continue;
+      if (/\s/.test(value[index] ?? "")) continue;
       seen += 1;
       if (seen === count) return value.slice(index + 1);
     }
@@ -307,7 +307,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
     if (count <= 0) return "";
     let seen = 0;
     for (let index = 0; index < value.length; index += 1) {
-      if (/\\s/.test(value[index] ?? "")) continue;
+      if (/\s/.test(value[index] ?? "")) continue;
       seen += 1;
       if (seen === count) return value.slice(0, index + 1);
     }
@@ -315,7 +315,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
   };
 
   const machineCode = (() => {
-    const label = /M\\s*A\\s*Q(?:U[I1L]N[A4]?)?/i;
+    const label = /M\s*A\s*Q(?:U[I1L]N[A4]?)?/i;
     for (let index = 0; index < normalizedLines.length; index += 1) {
       const line = normalizedLines[index] ?? "";
       const compact = compactLines[index] ?? "";
@@ -324,7 +324,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
       const match = label.exec(line);
       if (!match || match.index === undefined) continue;
       const suffix = line.slice(match.index + match[0].length);
-      const sameLine = readShortCode(suffix.replace(/^\\s*[:#.,-]?\\s*/, ""));
+      const sameLine = readShortCode(suffix.replace(/^\s*[:#.,-]?\s*/, ""));
       if (sameLine && sameLine.length === 2) return sameLine;
       for (let next = index + 1; next < Math.min(normalizedLines.length, index + 5); next += 1) {
         const candidate = normalizedLines[next] ?? "";
@@ -356,7 +356,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
         const candidate = normalizedLines[next] ?? "";
         const compactCandidate = compactLines[next] ?? "";
         if (/^(?:DIRECCION|DOMICILIO|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL)/i.test(compactCandidate)) continue;
-        if (/^[0-9OQIL|!\\s.-]{1,20}$/.test(candidate)) {
+        if (/^[0-9OQIL|!\s.-]{1,20}$/.test(candidate)) {
           terminalId = readShortCode(candidate);
           if (terminalId) break;
         }
@@ -366,7 +366,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
 
   const addressLabelPattern = /DOMICILIO|DIRECCION|DIREC/;
   const explicitAddressIndex = compactLines.findIndex((line) => addressLabelPattern.test(line));
-  const streetAddressIndex = compactLines.findIndex((line) => /^(?:CALLE|AVENIDA|AV\\.?|RUTA|LARIOJA)/.test(line));
+  const streetAddressIndex = compactLines.findIndex((line) => /^(?:CALLE|AVENIDA|AV\.?|RUTA|LARIOJA)/.test(line));
   const addressIndex = explicitAddressIndex >= 0 ? explicitAddressIndex : streetAddressIndex;
   let address: string | null = null;
   if (addressIndex >= 0) {
@@ -374,13 +374,13 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
     const labelMatch = explicitAddressIndex >= 0 ? addressLabelPattern.exec(compactLine) : null;
     if (labelMatch && labelMatch.index !== undefined) {
       const tail = afterCompactChars(normalizedLines[addressIndex] ?? "", labelMatch.index + labelMatch[0].length);
-      const compactTail = tail.replace(/\\s+/g, "");
+      const compactTail = tail.replace(/\s+/g, "");
       const boundary = compactTail.search(/MAQU[I1L]N[A4]?REAL|MAQREAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL/i);
       const inlineValue = (boundary >= 0 ? beforeCompactChars(tail, boundary) : tail).trim();
       if (inlineValue && /[A-Z]/i.test(inlineValue)) address = inlineValue;
     } else {
       const value = (lines[addressIndex] ?? "").trim();
-      if (value && !/^(?:DIRECCION|DOMICILIO|DIREC)$/i.test(value.replace(/\\s+/g, ""))) address = value;
+      if (value && !/^(?:DIRECCION|DOMICILIO|DIREC)$/i.test(value.replace(/\s+/g, ""))) address = value;
     }
     if (!address) {
       for (let next = addressIndex + 1; next < Math.min(lines.length, addressIndex + 4); next += 1) {
