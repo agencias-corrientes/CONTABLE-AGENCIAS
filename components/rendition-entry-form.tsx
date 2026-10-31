@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { attachAgencyRenditionTicketReceiptDataToExisting, createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
 import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod } from "@/lib/agency-draw-schedule";
-import { extractTicketPeriodNumber, mapTicketClosureAmounts, parseTicketClosure, type TicketClosureData } from "@/lib/agency-ticket-closure";
+import { correctTicketAddressOcr, extractTicketPeriodNumber, mapTicketClosureAmounts, parseTicketClosure, type TicketClosureData } from "@/lib/agency-ticket-closure";
 import { TicketClosureReceipt } from "@/components/ticket-closure-receipt";
 
 type Game = { id: string; name: string; category: string; enabled?: boolean; commissionPercent?: number | null };
@@ -1315,7 +1315,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             agencyCode: tesseractPositioned.agencyCode ?? paddlePositioned.agencyCode ?? textReceipt?.agencyCode ?? undefined,
             subagentCode: tesseractPositioned.subagentCode ?? paddlePositioned.subagentCode ?? textReceipt?.subagentCode ?? undefined,
             machineCode: tesseractPositioned.machineCode ?? paddlePositioned.machineCode ?? textReceipt?.machineCode ?? undefined,
-            address: tesseractPositioned.address ?? paddlePositioned.address ?? textReceipt?.address ?? undefined,
+            address: correctTicketAddressOcr(tesseractPositioned.address ?? paddlePositioned.address ?? textReceipt?.address) ?? undefined,
             terminalId: tesseractPositioned.terminalId ?? paddlePositioned.terminalId ?? textReceipt?.terminalId ?? undefined,
             printedAt: printedRaw
               ? { date: printedDate, time: printedTime, raw: printedRaw }
