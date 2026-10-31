@@ -59,17 +59,23 @@ function addressTokenDistance(left:string,right:string):number {
 // caracteres de un nombre geográfico conocido.
 export function correctTicketAddressOcr(value:string|null|undefined):string|null {
   if(!value?.trim())return null;
-  return value.trim().replace(/[A-ZÁÉÍÓÚÜÑa-záéíóúüñ\[]+/g,(raw)=>{
+  const knownTokens=[...new Set(ARGENTINA_PROVINCE_NAMES.flatMap((province)=>province.split(" ").filter((part)=>part.length>=5)))];
+  let corrected=value.trim().replace(/[A-ZÁÉÍÓÚÜÑa-záéíóúüñ\[]+/g,(raw)=>{
     const token=raw.toUpperCase().replace(/\[/g,"L").normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-    if(token.length<5)return raw;
-    let best:string|null=null,bestDistance=3;
-    for(const province of ARGENTINA_PROVINCE_NAMES){
-      if(province.includes(" "))continue;
-      const distance=addressTokenDistance(token,province);
-      if(distance<bestDistance){best=province;bestDistance=distance;}
+    if(token==="LA")return token;
+    if(token.length<5)return token==="LN"?"LN":raw;
+    let best:string|null=null,bestDistance=4;
+    for(const provinceToken of knownTokens){
+      const distance=addressTokenDistance(token,provinceToken);
+      if(distance<bestDistance){best=provinceToken;bestDistance=distance;}
     }
-    return best&&bestDistance<=2?best:raw;
+    const allowedDistance=token.length>=8?3:2;
+    return best&&bestDistance<=allowedDistance?best:raw;
   });
+  const parts=corrected.split(/\s+/);
+  // Confusión frecuente de OCR entre LA y LN delante de un nombre geográfico.
+  if(parts[0]?.toUpperCase()==="LN"&&parts[1]&&knownTokens.includes(parts[1].toUpperCase()))parts[0]="LA";
+  return parts.join(" ");
 }
 
 
