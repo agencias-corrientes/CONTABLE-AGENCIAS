@@ -372,7 +372,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
       for (let next = index + 1; next < Math.min(normalizedLines.length, index + 5); next += 1) {
         const candidate = normalizedLines[next] ?? "";
         const compactCandidate = compactLines[next] ?? "";
-        if (/^(?:DIRECCION|DOMICILIO|MAQU[I1L]N[A4]?REAL|MAQREAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL)/i.test(compactCandidate)) continue;
+        if (/^(?:DIRECCION|DOMICILIO|MAQU[I1L]N[A4]?REAL|MA[QO0]REAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL)/i.test(compactCandidate)) continue;
         if (/^(?:SORTEOS|QUINIELA|OTROSJUEGOS|MEDIOSDIGITALES|TOTALGENERAL|FINDEJORNADA)/i.test(compactCandidate)) break;
         if (!/^[0-9OQIL|! .:_-]{1,12}$/.test(candidate)) continue;
         const code = readShortCode(candidate);
@@ -382,7 +382,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
     return null;
   })();
 
-  const terminalPattern = /MAQU[I1L]N[A4]?REAL|MAQREAL/i;
+  const terminalPattern = /MAQU[I1L]N[A4]?REAL|MA[QO0]REAL/i;
   const terminalIndex = compactLines.findIndex((line) => terminalPattern.test(line));
   let terminalId: string | null = null;
   if (terminalIndex >= 0) {
@@ -418,7 +418,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
     if (labelMatch && labelMatch.index !== undefined) {
       const tail = afterCompactChars(normalizedLines[addressIndex] ?? "", labelMatch.index + labelMatch[0].length);
       const compactTail = tail.replace(/\s+/g, "");
-      const boundary = compactTail.search(/MAQU[I1L]N[A4]?REAL|MAQREAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL/i);
+      const boundary = compactTail.search(/MAQU[I1L]N[A4]?REAL|MA[QO0]REAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL/i);
       const inlineValue = (boundary >= 0 ? beforeCompactChars(tail, boundary) : tail).trim();
       if (inlineValue && /[A-Z]/i.test(inlineValue)) address = inlineValue;
     } else {
@@ -430,7 +430,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
         const candidate = (lines[next] ?? "").trim();
         const compactCandidate = compactLines[next] ?? "";
         if (!candidate) continue;
-        if (/^(?:DIRECCION|DOMICILIO|DIREC|MAQU[I1L]N[A4]?REAL|MAQREAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL)/i.test(compactCandidate)) continue;
+        if (/^(?:DIRECCION|DOMICILIO|DIREC|MAQU[I1L]N[A4]?REAL|MA[QO0]REAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL)/i.test(compactCandidate)) continue;
         if (/^(?:SORTEOS|QUINIELA|OTROSJUEGOS|MEDIOSDIGITALES|TOTALGENERAL|FINDEJORNADA)/i.test(compactCandidate)) break;
         if (/^[0-9 .:/-]+$/.test(candidate)) continue;
         if (/[A-Z]/i.test(candidate)) {
