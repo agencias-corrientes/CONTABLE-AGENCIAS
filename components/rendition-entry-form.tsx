@@ -157,10 +157,11 @@ function reconstructLinesFromOcrWords(rawWords: unknown): string {
 // No presupone que el papel ocupe un porcentaje fijo de la foto ni que el ticket
 // tenga siempre la misma escala, márgenes o encuadre.
 function readClosureMetadataFromOcrWords(rawWords: unknown) {
-  if (!Array.isArray(rawWords)) return {
+  const empty = {
     agencyCode:null, subagentCode:null, machineCode:null, address:null,
     terminalId:null, printedAt:null, periodNumber:null,
   };
+  if (!Array.isArray(rawWords)) return empty;
   const words = rawWords.map((item: any) => {
     const text = String(item?.text ?? "").trim();
     const box = item?.bbox;
@@ -192,81 +193,109 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
   const normalizeCode=(raw:string,length:number):string|null=>{
     const compact=raw.toUpperCase().replace(/[\s.:_-]/g,"")
       .replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
-    return new RegExp("^\d{"+length+"}$").test(compact)?compact:null;
+    return compact.length===length&&/^\d+$/.test(compact)?compact:null;
+  };
+  const nextRow=(index:number)=>{
+    const row=rows[index],next=rows[index+1];
+    if(!row||!next||next.y-row.y>Math.max(row.height,next.height)*1.8)return null;
+    return next;
+  };
+  const codeTokens=(value:string,length:number)=>{
+    return (value.match(/[0-9OQIL|!]+/g)??[])
+      .map(token=>normalizeCode(token,length))
+      .filter((token):token is string=>Boolean(token));
   };
   const digitsAfter=(text:string,label:RegExp,length:number):string|null=>{
     const match=label.exec(text);
     if(!match||match.index===undefined)return null;
     const suffix=text.slice(match.index+match[0].length);
-    const pattern=new RegExp("^\\s*[:#.,-]?\\s*([0-9OQIL|!](?:[\\s.:_-]*[0-9OQIL|!]){"+(length-1)+"})(?![A-Z0-9])","i");
-    const value=suffix.match(pattern)?.[1];
-    return value?normalizeCode(value,length):null;
+    return codeTokens(suffix,length)[0]??null;
   };
   const tokenAfter=(text:string,label:RegExp,min:number,max:number):string|null=>{
     const match=label.exec(text);
     if(!match||match.index===undefined)return null;
     const suffix=text.slice(match.index+match[0].length);
-    const token=suffix.match(/^\s*[:#.,-]?\s*([0-9OQIL|!]{4,7})(?![A-Z0-9])/i)?.[1]??"";
-    const compact=token.replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1");
-    return new RegExp("^\d{"+min+","+max+"}$").test(compact)?compact:null;
+    const tokens=(suffix.match(/[0-9OQIL|!]+/g)??[])
+      .map(token=>token.toUpperCase().replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1"))
+      .filter(token=>token.length>=min&&token.length<=max&&/^\d+$/.test(token));
+    return tokens[0]??null;
   };
-  const agencyLabel=/(?:\bAGENCIA\b|\bAG\b|\bA\s*[:.]\s*B)\s*[:.]?\s*/i;
-  const subagentLabel=/(?:\bSUBAG(?:ENTE)?\b|\bSIBAG\b|\bSILAG\b|\bSIEAG\b|\bS[UI1]B?A?G\b)\s*[:.]?\s*/i;
-  // MAQ puede llegar unido al rótulo SUBAG (p. ej. "AGSUBAGMAQ")
-  // o separado en una línea propia. Aceptar esas variantes sin tocar los
-  // demás campos ni confundir "MAQ REAL" con el número de máquina.
-  const machineLabel=/(?:\bMAQU[I1L]N[A4]\b|\bM\s*A\s*Q\b|SUBAGMAQ)\s*[:.]?\s*/i;
-  const terminalLabel=/(?:\bMAQUINA\b|\bMAQ\b)\s+REAL\s*[:.]?\s*/i;
-  const periodLabel=/\bPER[I1]ODO\b\s*(?:NRO|NO|N[º°.]?)?\s*[:.]?\s*/i;
-  const addressLabel=/\b(?:DOMICILIO|DIRECCION|DIREC)\b\s*[:.]?\s*/i;
+  const agencyLabel=/(?:AGENCIA|AG)\s*[:.]?\s*/i;
+  const subagentLabel=/(?:SUBAG(?:ENTE)?|SIBAG|SILAG|SIEAG|S[UI1]B?A?G)\s*[:.]?\s*/i;
+  // Aceptar el encabezado completo incluso cuando el OCR lo devuelve unido.
+  const machineLabel=/(?:SUBAGMAQ|MAQU[I1L]NA|MAQ)\s*[:.]?\s*/i;
+  const terminalLabel=/(?:MAQU[I1L]NA|MAQ)\s*REAL\s*[:.]?\s*/i;
+  const periodLabel=/(?:PER[I1]ODO)\s*(?:NRO|NO|N[º°.]?)?\s*[:.]?\s*/i;
+  const addressLabel=/(?:DOMICILIO|DIRECCION|DIREC)\s*[:.]?\s*/i;
+  const first=(values:Array<string|null>)=>values.find(value=>value!==null)??null;
   const readPeriod=(index:number):string|null=>{
     const row=rows[index];
     if(!row)return null;
     const match=periodLabel.exec(row.text);
     if(!match||match.index===undefined)return null;
-    const suffix=row.text.slice(match.index+match[0].length);
-    const pattern=/^\s*[:#.,-]?\s*([0-9OQIL|!](?:[\s.:_-]*[0-9OQIL|!]){6})(?![A-Z0-9])/i;
-    const direct=suffix.match(pattern)?.[1];
-    if(direct)return normalizeCode(direct,7);
-    const next=rows[index+1];
-    if(!next||next.y-row.y>Math.max(row.height,next.height)*1.8)return null;
-    if(!/^[0-9OQIL|! .:_-]+$/.test(next.text))return null;
-    const nextMatch=next.text.match(/^\s*([0-9OQIL|!](?:[\s.:_-]*[0-9OQIL|!]){6})\s*$/i)?.[1];
-    return nextMatch?normalizeCode(nextMatch,7):null;
+    const direct=codeTokens(row.text.slice(match.index+match[0].length),7)[0];
+    if(direct)return direct;
+    const next=nextRow(index);
+    return next?codeTokens(next.text,7)[0]??null:null;
   };
-  const first=(values:Array<string|null>)=>values.find(value=>value!==null)??null;
 
   const agency=first(rows.map(row=>digitsAfter(row.text,agencyLabel,3)));
   const subagent=first(rows.map(row=>digitsAfter(row.text,subagentLabel,3)));
   const machine=first(rows.flatMap((row,index)=>{
-    if(/MAQU[I1L]N[A4]\s+REAL|M\s*A\s*Q\s+REAL/i.test(row.text))return [];
-    const sameLine=digitsAfter(row.text,machineLabel,2);
-    if(sameLine)return [sameLine];
+    if(/MAQU[I1L]NA\s*REAL|MAQ\s*REAL/i.test(row.text))return [];
+    const direct=digitsAfter(row.text,machineLabel,2);
+    if(direct)return [direct];
     if(!machineLabel.test(row.text))return [];
-    const next=rows[index+1];
-    if(!next||next.y-row.y>Math.max(row.height,next.height)*1.8)return [];
-    if(!/^[0-9OQIL|! .:_-]{1,12}$/.test(next.text))return [];
-    const nextCode=normalizeCode(next.text,2);
+    const next=nextRow(index);
+    if(!next)return [];
+    // En la fila inferior pueden aparecer AG, SUBAG y MAQ juntos.
+    // El último código de dos cifras corresponde a la columna MAQ.
+    const candidates=codeTokens(next.text,2);
+    const nextCode=candidates.at(-1)??null;
     return nextCode?[nextCode]:[];
   }));
-  const terminal=first(rows.map(row=>tokenAfter(row.text,terminalLabel,4,6)));
+
+  const terminal=first(rows.flatMap((row,index)=>{
+    const direct=tokenAfter(row.text,terminalLabel,4,7);
+    if(direct)return [direct];
+    if(!terminalLabel.test(row.text))return [];
+    const next=nextRow(index);
+    if(!next)return [];
+    const withoutDate=next.text
+      .replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g," ")
+      .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g," ");
+    const candidates=codeTokens(withoutDate,4).concat(codeTokens(withoutDate,5),codeTokens(withoutDate,6),codeTokens(withoutDate,7));
+    return candidates.length?[candidates[0]!]:[];
+  }));
   const period=first(rows.map((_,index)=>readPeriod(index)));
 
-  const address=first(rows.map(row=>{
+  const address=first(rows.flatMap((row,index)=>{
     const label=addressLabel.exec(row.text);
     if(label&&label.index!==undefined){
-      const value=row.text.slice(label.index+label[0].length).trim();
-      return /\d/.test(value)&&/[A-Z]/.test(value)?value:null;
+      let value=row.text.slice(label.index+label[0].length);
+      value=value.replace(/(?:MAQU[I1L]NA\s*REAL|MAQ\s*REAL|IMPRES[O0]\s*EL|AB[I1L]ERTO\s*EL|CERRADO\s*EL).*$/i,"").trim();
+      if(/[A-Z]/i.test(value))return [value];
+      const next=nextRow(index);
+      if(next){
+        const candidate=next.text
+          .replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g," ")
+          .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g," ")
+          .replace(/\b\d{6,7}\b/g," ")
+          .replace(/\s+/g," ").trim();
+        if(/[A-Z]/i.test(candidate)&&! /^(?:SORTEOS|QUINIELA|OTROS JUEGOS|MEDIOS DIGITALES|TOTAL GENERAL)/i.test(candidate))
+          return [candidate];
+      }
     }
-    return /\b(?:LA RIOJA|CATAMARCA|CORRIENTES|CALLE|AVENIDA|RUTA)\b/.test(row.text)&&/\b\d{1,5}\b/.test(row.text)
-      ? row.text : null;
+    return /\b(?:LA RIOJA|CATAMARCA|CORRIENTES|CALLE|AVENIDA|RUTA)\b/i.test(row.text)&&/\b\d{1,5}\b/.test(row.text)
+      ? [row.text] : [];
   }));
 
-  const printed=first(rows.map(row=>{
-    if(!/\bIMPRES[O0]\b/.test(row.text))return null;
-    const date=row.text.match(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/)?.[0];
-    const time=row.text.match(/\b\d{1,2}:\d{2}(?::\d{2})?\b/)?.[0];
-    return date&&time?date+" "+time:null;
+  const printed=first(rows.flatMap((row,index)=>{
+    if(!/IMPRES[O0]/i.test(row.text))return [];
+    const text=row.text+" "+(nextRow(index)?.text??"");
+    const date=text.match(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/)?.[0];
+    const time=text.match(/\b\d{1,2}:\d{2}(?::\d{2})?\b/)?.[0];
+    return date&&time?[date+" "+time]:[];
   }));
 
   return {
@@ -279,7 +308,6 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
     periodNumber:period,
   };
 }
-
 function readOcrConsensus(values:Array<string|null|undefined>):string|null {
   const counts=new Map<string,number>();
   for(const raw of values){
