@@ -1009,6 +1009,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let recoveredPeriodNumber = "";
       let focusedClosureMetadata: FocusedClosureMetadata = {};
       let focusedOcrDebugText = "";
+      let focusedOcrWords: unknown = null;
       let closureTextCandidates: string[] = [];
       let paddleFailure = "";
 
@@ -1046,6 +1047,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         });
         try {
           const result = await worker.recognize(file);
+          focusedOcrWords = Array.isArray(result.data.words) ? result.data.words : null;
           const tesseractText = result.data.text ?? "";
           if (ocrTextHasEnoughSignals(tesseractText, closureReadExpected) || tesseractText.length >= paddlePartialText.length) {
             recognizedText = tesseractText;
@@ -1168,6 +1170,57 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       const parsedAmountMap = Object.fromEntries(
         Object.entries(parsed.amountMap).filter(([gameId]) => gamesForDetectedPeriod.some((game) => game.id === gameId))
       );
+      if (parsed.receiptData && (
+        !parsed.receiptData.machineCode ||
+        !parsed.receiptData.address ||
+        !parsed.receiptData.terminalId ||
+        !parsed.receiptData.printedAt.raw
+      )) {
+        // La lectura principal conserva los importes. Si falta identificación,
+        // hacer una pasada independiente con Tesseract y usar las cajas de cada
+        // palabra para ubicar MAQ, Dirección y Máquina real sin alterar ventas.
+        try {
+          if (!Array.isArray(focusedOcrWords) || focusedOcrWords.length === 0) {
+            setProgress("Revisando los datos identificatorios del ticket…");
+            setProgressPercent(88);
+            const { createWorker } = await import("tesseract.js");
+            const metadataWorker = await createWorker("spa+eng", 1);
+            try {
+              const enhancedImage = await makeEnhancedTicketImage(file);
+              const metadataResult = await metadataWorker.recognize(enhancedImage);
+              focusedOcrWords = Array.isArray(metadataResult.data.words) ? metadataResult.data.words : [];
+            } finally {
+              await metadataWorker.terminate();
+            }
+          }
+          if (Array.isArray(focusedOcrWords) && focusedOcrWords.length > 0) {
+            focusedOcrDebugText = reconstructLinesFromOcrWords(focusedOcrWords);
+            const positioned = readClosureMetadataFromOcrWords(focusedOcrWords);
+            const textReceipt = focusedOcrDebugText
+              ? parseTicketClosure(focusedOcrDebugText, true)
+              : null;
+            const printedRaw = positioned.printedAt ?? textReceipt?.printedAt.raw ?? null;
+            const printedDate = printedRaw?.match(/\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}/)?.[0] ?? null;
+            const printedTime = printedRaw?.match(/\\d{1,2}:\\d{2}(?::\\d{2})?/)?.[0] ?? null;
+            focusedClosureMetadata = {
+              agencyCode: positioned.agencyCode ?? textReceipt?.agencyCode ?? undefined,
+              subagentCode: positioned.subagentCode ?? textReceipt?.subagentCode ?? undefined,
+              machineCode: positioned.machineCode ?? textReceipt?.machineCode ?? undefined,
+              address: positioned.address ?? textReceipt?.address ?? undefined,
+              terminalId: positioned.terminalId ?? textReceipt?.terminalId ?? undefined,
+              printedAt: printedRaw
+                ? { date: printedDate, time: printedTime, raw: printedRaw }
+                : textReceipt?.printedAt ?? undefined,
+              periodNumber: positioned.periodNumber ?? textReceipt?.periodNumber ?? undefined,
+            };
+          }
+        } catch {
+          // Un fallo de esta pasada complementaria no invalida la lectura principal.
+          focusedClosureMetadata = {};
+          focusedOcrDebugText = "";
+        }
+      }
+
       if (parsed.receiptData) {
         const commissionRates = Object.fromEntries(periodGames.map((game) => [
           normalize(game.name),
@@ -1203,6 +1256,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           terminalId: focusedClosureMetadata.terminalId ?? parsed.receiptData.terminalId ?? null,
           printedAt: focusedClosureMetadata.printedAt ?? parsed.receiptData.printedAt ?? {date:null,time:null,raw:null},
           periodNumber: labelledPeriod,
+          rawText: focusedOcrDebugText.trim()
+            ? parsed.receiptData.rawText + "\\n\\nLECTURA ENFOCADA DE DATOS IDENTIFICATORIOS:\\n" + focusedOcrDebugText
+            : parsed.receiptData.rawText,
           // Cantidades, ventas, premios y medios digitales no verificados quedan vacíos.
           // No mostrar números estimados solo porque Tesseract haya devuelto cifras.
           quiniela: {
