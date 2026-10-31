@@ -260,8 +260,8 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
   const agencyLabel=/(?:AGENCIA|AG)\s*[:.]?\s*/i;
   const subagentLabel=/(?:SUBAG(?:ENTE)?|SIBAG|SILAG|SIEAG|S[UI1]B?A?G)\s*[:.]?\s*/i;
   // Aceptar el encabezado completo incluso cuando el OCR lo devuelve unido.
-  const machineLabel=/(?:SUBAGMAQ|MAQU[I1L]NA|MAQ)\s*[:.]?\s*/i;
-  const terminalLabel=/(?:MAQU[I1L]NA|MAQ)\s*REAL\s*[:.]?\s*/i;
+  const machineLabel=/(?:SUBAGMAQ|MAQU[I1L]NA|MA[QO0])\s*[:.]?\s*/i;
+  const terminalLabel=/(?:MAQU[I1L]NA|MA[QO0])\s*REAL\s*[:.]?\s*/i;
   const periodLabel=/(?:PER[I1]ODO)\s*(?:NRO|NO|N[º°.]?)?\s*[:.]?\s*/i;
   const addressLabel=/(?:DOMICILIO|DIRECCION|DIREC)\s*[:.]?\s*/i;
   const first=(values:Array<string|null>)=>values.find(value=>value!==null)??null;
@@ -294,8 +294,16 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
   const subagent=first(rows.map(row=>codeAfterFlexible(row.text,subagentLabel,3)??digitsAfter(row.text,subagentLabel,3)));
   const machine=first(rows.flatMap((row,index)=>{
     if(/MAQU[I1L]NA\s*REAL|MAQ\s*REAL/i.test(row.text))return [];
-    const direct=digitsAfter(row.text,machineLabel,2);
-    if(direct)return [direct];
+    const machineMatch=machineLabel.exec(row.text);
+    if(machineMatch&&machineMatch.index!==undefined){
+      const suffix=row.text.slice(machineMatch.index+machineMatch[0].length);
+      const raw=(suffix.match(/[0-9OQIL|!]+/)??[])[0]??"";
+      const normalized=raw.toUpperCase().replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1").replace(/\D/g,"");
+      if(normalized.length===2)return [normalized];
+      // Algunos OCR duplican el último carácter de un código de dos cifras
+      // (por ejemplo 01 -> 011). Solo se descarta ese duplicado idéntico.
+      if(normalized.length===3&&normalized[1]===normalized[2])return [normalized.slice(0,2)];
+    }
     if(!machineLabel.test(row.text))return [];
     const next=nextRow(index);
     if(!next)return [];
@@ -324,7 +332,10 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
 
   // Dirección: no todos los tickets imprimen la etiqueta "Dirección".
   // En los dos formatos de referencia está entre la fila AG/SUBAG/MAQ y "Máquina Real".
-  const headerIndex=rows.findIndex(row=>/(?:AG(?:ENCIA)?\s*[:.]?\s*[0-9OQIL|!]+).*?(?:SUBAG|SIBAG|SILAG|SIEAG).*?(?:MAQ|MAQU)/i.test(row.text));
+  const headerIndex=rows.findIndex(row=>
+    (/(?:AGENCIA|AG)\s*[:.]?\s*[0-9OQIL|!]+.*(?:SUBAG|SIBAG|SILAG|SIEAG)/i.test(row.text)
+      || /(?:SUBAG|SIBAG|SILAG|SIEAG).*?(?:MAQ|MA0|MAO|MAQU)/i.test(row.text))
+  );
   const terminalRowIndex=rows.findIndex(row=>terminalLabel.test(row.text));
   const addressByPosition=headerIndex>=0
     ? rows.slice(headerIndex+1,terminalRowIndex>headerIndex?terminalRowIndex:Math.min(rows.length,headerIndex+4))
