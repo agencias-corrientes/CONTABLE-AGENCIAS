@@ -309,6 +309,7 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
     if(!next)return [];
     // En la fila inferior pueden aparecer AG, SUBAG y MAQ juntos.
     // El último código de dos cifras corresponde a la columna MAQ.
+    if(!/^[0-9OQIL|! .:_-]{1,12}$/.test(next.text))return [];
     const candidates=codeTokens(next.text,2);
     const nextCode=candidates.at(-1)??null;
     return nextCode?[nextCode]:[];
