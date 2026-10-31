@@ -112,6 +112,43 @@ function paddleOcrItemsToText(rawItems: unknown): string {
     .join("\n");
 }
 
+function tesseractWordBoxes(data: unknown): unknown[] {
+  const page = data as any;
+  if (Array.isArray(page?.words) && page.words.length) return page.words;
+  // Desde Tesseract.js v6 los bloques y palabras no se devuelven por defecto.
+  // Al solicitar blocks:true, las palabras quedan anidadas en
+  // blocks -> paragraphs -> lines -> words.
+  const blocks = Array.isArray(page?.blocks) ? page.blocks : [];
+  return blocks.flatMap((block:any) =>
+    (Array.isArray(block?.paragraphs) ? block.paragraphs : []).flatMap((paragraph:any) =>
+      (Array.isArray(paragraph?.lines) ? paragraph.lines : []).flatMap((line:any) =>
+        Array.isArray(line?.words) ? line.words : []
+      )
+    )
+  );
+}
+
+function paddleItemsToWordBoxes(rawItems: unknown): unknown[] {
+  if (!Array.isArray(rawItems)) return [];
+  return rawItems.map((item:any) => {
+    const points = Array.isArray(item?.poly) ? item.poly.map((point:any) => {
+      if (Array.isArray(point) && point.length >= 2) return {x:Number(point[0]),y:Number(point[1])};
+      if (point && typeof point === "object") return {x:Number(point.x),y:Number(point.y)};
+      return null;
+    }).filter((point:any) => point && Number.isFinite(point.x) && Number.isFinite(point.y)) : [];
+    if (!String(item?.text ?? "").trim() || !points.length) return null;
+    return {
+      text:String(item.text),
+      bbox:{
+        x0:Math.min(...points.map((point:any)=>point.x)),
+        y0:Math.min(...points.map((point:any)=>point.y)),
+        x1:Math.max(...points.map((point:any)=>point.x)),
+        y1:Math.max(...points.map((point:any)=>point.y)),
+      },
+    };
+  }).filter(Boolean);
+}
+
 function ocrTextHasEnoughSignals(value: string, closure: boolean): boolean {
   const text = value.trim();
   if (!text) return false;
@@ -827,27 +864,23 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   }, [amounts, busy, confirmationOpen, dailyStatusChoice, date, defaultPeriod, drawNumber, fileName, initialRendition, notes, period, periodManuallySelected, periods, photoPreviewUrl, qrPayload, reference, ticketNumbers, today]);
 
   async function makeEnhancedTicketImage(file: File): Promise<HTMLCanvasElement> {
-    const bitmap = await createImageBitmap(file);
-    const longestSide = Math.max(bitmap.width, bitmap.height);
-    const scale = Math.max(1, Math.min(2, 3000 / longestSide));
+    // Para los datos identificatorios primero aislar el papel del fondo/UI.
+    // Así la segunda pasada no pierde la cabecera en fotos tomadas desde la app.
+    const paper = await makeReceiptPaperCanvas(file);
+    const scale = Math.max(1, Math.min(3, 1500 / Math.max(1, paper.width)));
     const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.width = Math.max(1, Math.round(paper.width * scale));
+    canvas.height = Math.max(1, Math.round(paper.height * scale));
     const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) {
-      bitmap.close();
-      throw new Error("No se pudo preparar la imagen para mejorar la lectura.");
-    }
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close();
+    if (!context) throw new Error("No se pudo preparar la imagen del comprobante.");
+    context.drawImage(paper, 0, 0, canvas.width, canvas.height);
 
-    // Grises + contraste moderado: ayuda con papel térmico pálido sin umbralizar
-    // los números finos ni destruir los puntos y separadores del comprobante.
+    // Grises + contraste moderado sobre el papel ya recortado y ampliado.
     const image = context.getImageData(0, 0, canvas.width, canvas.height);
     const pixels = image.data;
     for (let i = 0; i < pixels.length; i += 4) {
       const gray = 0.299 * pixels[i]! + 0.587 * pixels[i + 1]! + 0.114 * pixels[i + 2]!;
-      const contrasted = Math.max(0, Math.min(255, (gray - 128) * 1.55 + 128));
+      const contrasted = Math.max(0, Math.min(255, (gray - 132) * 1.65 + 132));
       pixels[i] = contrasted;
       pixels[i + 1] = contrasted;
       pixels[i + 2] = contrasted;
@@ -1067,6 +1100,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let focusedClosureMetadata: FocusedClosureMetadata = {};
       let focusedOcrDebugText = "";
       let focusedOcrWords: unknown = null;
+      let paddleMetadataWords: unknown[] = [];
       let closureTextCandidates: string[] = [];
       let paddleFailure = "";
 
@@ -1081,6 +1115,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           textDetUnclipRatio: 1.8,
           textRecScoreThresh: 0.0,
         });
+        paddleMetadataWords = paddleItemsToWordBoxes(paddleResult?.items ?? []);
         recognizedText = paddleOcrItemsToText(paddleResult?.items ?? []);
       } catch (cause) {
         paddleFailure = cause instanceof Error ? cause.message : String(cause);
@@ -1103,8 +1138,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           },
         });
         try {
-          const result = await worker.recognize(file);
-          focusedOcrWords = Array.isArray((result.data as any).words) ? (result.data as any).words : null;
+          const result = await worker.recognize(file, {}, { blocks: true });
+          focusedOcrWords = tesseractWordBoxes(result.data);
           const tesseractText = result.data.text ?? "";
           if (ocrTextHasEnoughSignals(tesseractText, closureReadExpected) || tesseractText.length >= paddlePartialText.length) {
             recognizedText = tesseractText;
@@ -1244,33 +1279,39 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             const metadataWorker = await createWorker("spa+eng", 1);
             try {
               const enhancedImage = await makeEnhancedTicketImage(file);
-              const metadataResult = await metadataWorker.recognize(enhancedImage);
-              focusedOcrWords = Array.isArray((metadataResult.data as any).words) ? (metadataResult.data as any).words : [];
+              const metadataResult = await metadataWorker.recognize(enhancedImage, {}, { blocks: true });
+              focusedOcrWords = tesseractWordBoxes(metadataResult.data);
+              focusedOcrDebugText = String(metadataResult.data.text ?? "").trim();
             } finally {
               await metadataWorker.terminate();
             }
           }
-          if (Array.isArray(focusedOcrWords) && focusedOcrWords.length > 0) {
-            focusedOcrDebugText = reconstructLinesFromOcrWords(focusedOcrWords);
-            const positioned = readClosureMetadataFromOcrWords(focusedOcrWords);
-            const textReceipt = focusedOcrDebugText
-              ? parseTicketClosure(focusedOcrDebugText, true)
-              : null;
-            const printedRaw = positioned.printedAt ?? textReceipt?.printedAt.raw ?? null;
-            const printedDate = printedRaw?.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0] ?? null;
-            const printedTime = printedRaw?.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0] ?? null;
-            focusedClosureMetadata = {
-              agencyCode: positioned.agencyCode ?? textReceipt?.agencyCode ?? undefined,
-              subagentCode: positioned.subagentCode ?? textReceipt?.subagentCode ?? undefined,
-              machineCode: positioned.machineCode ?? textReceipt?.machineCode ?? undefined,
-              address: positioned.address ?? textReceipt?.address ?? undefined,
-              terminalId: positioned.terminalId ?? textReceipt?.terminalId ?? undefined,
-              printedAt: printedRaw
-                ? { date: printedDate, time: printedTime, raw: printedRaw }
-                : textReceipt?.printedAt ?? undefined,
-              periodNumber: positioned.periodNumber ?? textReceipt?.periodNumber ?? undefined,
-            };
-          }
+          const tesseractText = focusedOcrDebugText;
+          const tesseractLines = tesseractText ? parseTicketClosure(tesseractText, true) : null;
+          const tesseractWords = Array.isArray(focusedOcrWords) ? focusedOcrWords : [];
+          const tesseractPositioned = readClosureMetadataFromOcrWords(tesseractWords);
+          const paddlePositioned = readClosureMetadataFromOcrWords(paddleMetadataWords);
+          const fallbackText = tesseractText || reconstructLinesFromOcrWords(tesseractWords);
+          const textReceipt = fallbackText ? parseTicketClosure(fallbackText, true) : null;
+          const printedRaw = tesseractPositioned.printedAt
+            ?? paddlePositioned.printedAt
+            ?? tesseractLines?.printedAt.raw
+            ?? textReceipt?.printedAt.raw
+            ?? null;
+          const printedDate = printedRaw?.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0] ?? null;
+          const printedTime = printedRaw?.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0] ?? null;
+          focusedClosureMetadata = {
+            agencyCode: tesseractPositioned.agencyCode ?? paddlePositioned.agencyCode ?? textReceipt?.agencyCode ?? undefined,
+            subagentCode: tesseractPositioned.subagentCode ?? paddlePositioned.subagentCode ?? textReceipt?.subagentCode ?? undefined,
+            machineCode: tesseractPositioned.machineCode ?? paddlePositioned.machineCode ?? textReceipt?.machineCode ?? undefined,
+            address: tesseractPositioned.address ?? paddlePositioned.address ?? textReceipt?.address ?? undefined,
+            terminalId: tesseractPositioned.terminalId ?? paddlePositioned.terminalId ?? textReceipt?.terminalId ?? undefined,
+            printedAt: printedRaw
+              ? { date: printedDate, time: printedTime, raw: printedRaw }
+              : textReceipt?.printedAt ?? undefined,
+            periodNumber: tesseractPositioned.periodNumber ?? paddlePositioned.periodNumber ?? textReceipt?.periodNumber ?? undefined,
+          };
+          if (!focusedOcrDebugText && fallbackText) focusedOcrDebugText = fallbackText;
         } catch {
           // Un fallo de esta pasada complementaria no invalida la lectura principal.
           focusedClosureMetadata = {};
