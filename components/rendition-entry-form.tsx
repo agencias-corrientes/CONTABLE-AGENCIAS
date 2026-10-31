@@ -1305,7 +1305,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         // hacer una pasada independiente con Tesseract y usar las cajas de cada
         // palabra para ubicar MAQ, Dirección y Máquina real sin alterar ventas.
         try {
-          if (!Array.isArray(focusedOcrWords) || focusedOcrWords.length === 0) {
+          {
             setProgress("Revisando los datos identificatorios del ticket…");
             setProgressPercent(88);
             const { createWorker } = await import("tesseract.js");
@@ -1371,9 +1371,16 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           if (focusedDebugParts.length) focusedOcrDebugText = focusedDebugParts.join("\n\n");
           else if (fallbackText) focusedOcrDebugText = fallbackText;
         } catch {
-          // Un fallo de esta pasada complementaria no invalida la lectura principal.
-          focusedClosureMetadata = {};
-          focusedOcrDebugText = "";
+          // Si Tesseract falla, conservar los datos que Paddle pudo leer del recorte.
+          const paddleFallback = readClosureMetadataFromOcrWords(focusedPaddleMetadataWords);
+          focusedClosureMetadata = {
+            machineCode: paddleFallback.machineCode ?? undefined,
+            address: correctTicketAddressOcr(paddleFallback.address) ?? undefined,
+            terminalId: paddleFallback.terminalId ?? undefined,
+            agencyCode: paddleFallback.agencyCode ?? undefined,
+            subagentCode: paddleFallback.subagentCode ?? undefined,
+          };
+          focusedOcrDebugText = focusedPaddleDebugText;
         }
       }
 
