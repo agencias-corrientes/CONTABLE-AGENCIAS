@@ -239,8 +239,22 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
     return next?codeTokens(next.text,7)[0]??null:null;
   };
 
-  const agency=first(rows.map(row=>digitsAfter(row.text,agencyLabel,3)));
-  const subagent=first(rows.map(row=>digitsAfter(row.text,subagentLabel,3)));
+  // La cabecera puede venir en una sola línea: AG:0447 SUBAG:014 MAQ:01.
+  // Se leen por etiqueta y no por una estructura fija de renglones.
+  const normalizedDigits=(raw:string)=>raw.toUpperCase().replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1").replace(/\D/g,"");
+  const codeAfterFlexible=(text:string,label:RegExp,length:number,allowLeadingZero=false):string|null=>{
+    const match=label.exec(text);
+    if(!match||match.index===undefined)return null;
+    const suffix=text.slice(match.index+match[0].length);
+    const raw=(suffix.match(/[0-9OQIL|!]+/)??[])[0];
+    if(!raw)return null;
+    const digits=normalizedDigits(raw);
+    if(digits.length===length)return digits;
+    if(allowLeadingZero&&digits.length===length+1&&digits.startsWith("0"))return digits.slice(-length);
+    return null;
+  };
+  const agency=first(rows.map(row=>codeAfterFlexible(row.text,agencyLabel,3,true)??digitsAfter(row.text,agencyLabel,3)));
+  const subagent=first(rows.map(row=>codeAfterFlexible(row.text,subagentLabel,3)??digitsAfter(row.text,subagentLabel,3)));
   const machine=first(rows.flatMap((row,index)=>{
     if(/MAQU[I1L]NA\s*REAL|MAQ\s*REAL/i.test(row.text))return [];
     const direct=digitsAfter(row.text,machineLabel,2);
@@ -271,7 +285,20 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
   }));
   const period=first(rows.map((_,index)=>readPeriod(index)));
 
-  const address=first(rows.flatMap((row,index)=>{
+  // Dirección: no todos los tickets imprimen la etiqueta "Dirección".
+  // En los dos formatos de referencia está entre la fila AG/SUBAG/MAQ y "Máquina Real".
+  const headerIndex=rows.findIndex(row=>/(?:AG(?:ENCIA)?\s*[:.]?\s*[0-9OQIL|!]+).*?(?:SUBAG|SIBAG|SILAG|SIEAG).*?(?:MAQ|MAQU)/i.test(row.text));
+  const terminalRowIndex=rows.findIndex(row=>terminalLabel.test(row.text));
+  const addressByPosition=headerIndex>=0
+    ? rows.slice(headerIndex+1,terminalRowIndex>headerIndex?terminalRowIndex:Math.min(rows.length,headerIndex+4))
+      .map(row=>row.text.trim())
+      .find(value=>{
+        const letters=value.replace(/[^A-Z]/g,"").length;
+        const digits=(value.match(/\d/g)??[]).length;
+        return letters>=3&&digits>=1&&!/(?:IMPRES[O0]|PER[I1]ODO|AB[I1L]ERTO|CERRADO|MAQU[I1L]NA\s*REAL|SORTEOS|QUINIELA|VALIDOS|PREMIOS|TOTALES)/i.test(value);
+      })??null
+    : null;
+  const address=addressByPosition??first(rows.flatMap((row,index)=>{
     const label=addressLabel.exec(row.text);
     if(label&&label.index!==undefined){
       let value=row.text.slice(label.index+label[0].length);
