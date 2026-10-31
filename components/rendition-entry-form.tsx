@@ -264,8 +264,10 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
     const withoutDate=next.text
       .replace(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g," ")
       .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g," ");
-    const candidates=codeTokens(withoutDate,4).concat(codeTokens(withoutDate,5),codeTokens(withoutDate,6),codeTokens(withoutDate,7));
-    return candidates.length?[candidates[0]!]:[];
+    const candidates=(withoutDate.match(/[0-9OQIL|!]+/g)??[])
+      .map(token=>token.toUpperCase().replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1"))
+      .filter(token=>token.length>=4&&token.length<=7&&/^\d+$/.test(token));
+    return candidates.length?[candidates[candidates.length-1]!]:[];
   }));
   const period=first(rows.map((_,index)=>readPeriod(index)));
 
