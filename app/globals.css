@@ -1636,7 +1636,7 @@ html, body { min-height:100%; }
   .prize-photo-picker > small { order: 5; }
 }
 
-/* Splash institucional: movimiento 3D aplicado al logo original, sin objetos ni símbolos sustitutos. */
+/* Splash institucional: logo original convertido en esfera 3D brillante. */
 .landing-splash-motion {
   position: fixed;
   inset: 0;
@@ -1644,10 +1644,11 @@ html, body { min-height:100%; }
   display: grid;
   place-items: center;
   overflow: hidden;
-  perspective: 1200px;
+  perspective: 1400px;
   background:
-    radial-gradient(ellipse at 50% 48%, rgba(190, 151, 66, .16) 0%, transparent 42%),
-    linear-gradient(145deg, #210d18 0%, #401526 48%, #170a12 100%);
+    radial-gradient(ellipse at 50% 47%, rgba(255,190,34,.20) 0%, transparent 34%),
+    radial-gradient(ellipse at 50% 110%, rgba(177,20,49,.35) 0%, transparent 48%),
+    linear-gradient(145deg, #18070d 0%, #4a1022 48%, #16070d 100%);
   opacity: 1;
   pointer-events: none;
   isolation: isolate;
@@ -1656,49 +1657,101 @@ html, body { min-height:100%; }
 .landing-splash-motion--fade { opacity: 0; }
 .landing-splash-stage {
   position: relative;
-  width: min(82vw, 390px);
-  height: min(72vh, 390px);
+  width: min(90vw, 520px);
+  height: min(78vh, 520px);
   display: grid;
   place-items: center;
   transform-style: preserve-3d;
 }
+.landing-splash-stage::before,
+.landing-splash-stage::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(88vw, 470px);
+  height: min(24vw, 118px);
+  border: 2px solid rgba(255,190,48,.72);
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(255,174,26,.7), inset 0 0 10px rgba(255,174,26,.25);
+  transform: translate(-50%,-50%) rotate(-24deg) rotateX(68deg) translateZ(-35px);
+  animation: splashOrbit 3.8s ease-in-out infinite;
+}
+.landing-splash-stage::after {
+  width: min(94vw, 500px);
+  height: min(31vw, 150px);
+  border-color: rgba(190,31,65,.82);
+  box-shadow: 0 0 15px rgba(194,27,64,.6), inset 0 0 10px rgba(255,174,26,.18);
+  transform: translate(-50%,-50%) rotate(28deg) rotateX(68deg) translateZ(-55px);
+  animation-delay: -1.9s;
+}
 .landing-splash-logo {
   position: relative;
-  width: min(68vw, 300px);
+  width: min(72vw, 340px);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
   transform-style: preserve-3d;
   transform-origin: center;
-  animation: splashOriginalLogo3D 2.15s cubic-bezier(.42,0,.32,1) both;
-  filter: drop-shadow(0 18px 25px rgba(0,0,0,.38))
-          drop-shadow(0 0 18px rgba(225,190,105,.14));
+  background: radial-gradient(circle at 32% 24%, #ffe36a 0%, #e7a900 44%, #8d1736 100%);
+  border: 2px solid rgba(255,225,133,.9);
+  box-shadow:
+    inset -20px -24px 38px rgba(48,5,20,.62),
+    inset 12px 12px 24px rgba(255,255,255,.5),
+    0 24px 48px rgba(0,0,0,.5),
+    0 0 36px rgba(255,190,48,.34);
+  animation: splashSphere3D 2.8s cubic-bezier(.2,.7,.2,1) both, splashSphereFloat 4.2s ease-in-out 2.8s infinite;
   will-change: transform, filter;
+}
+.landing-splash-logo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 28% 13%, rgba(255,255,255,.76) 0%, rgba(255,255,255,.22) 13%, transparent 35%),
+    linear-gradient(118deg, transparent 35%, rgba(255,255,255,.20) 48%, transparent 60%);
+  mix-blend-mode: screen;
+}
+.landing-splash-logo::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  z-index: 3;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset -12px -16px 24px rgba(35,4,16,.45), inset 5px 5px 12px rgba(255,255,255,.28);
 }
 .landing-splash-logo img {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
+  border-radius: 50%;
+  transform: scale(1.04);
   background: transparent !important;
 }
-@keyframes splashOriginalLogo3D {
-  0% {
-    opacity: 0;
-    transform: translateZ(-180px) rotateY(-28deg) rotateX(10deg) scale(.78);
-  }
-  38% {
-    opacity: 1;
-    transform: translateZ(30px) rotateY(12deg) rotateX(-5deg) scale(1.06);
-  }
-  68% {
-    opacity: 1;
-    transform: translateZ(12px) rotateY(-8deg) rotateX(4deg) scale(1.015);
-  }
-  100% {
-    opacity: 1;
-    transform: translateZ(0) rotateY(0) rotateX(0) scale(1);
-  }
+@keyframes splashSphere3D {
+  0% { opacity: 0; transform: translateZ(-220px) rotateY(-42deg) rotateX(18deg) scale(.72); }
+  48% { opacity: 1; transform: translateZ(34px) rotateY(18deg) rotateX(-8deg) scale(1.06); }
+  76% { transform: translateZ(10px) rotateY(-9deg) rotateX(4deg) scale(1.015); }
+  100% { opacity: 1; transform: translateZ(0) rotateY(0) rotateX(0) scale(1); }
+}
+@keyframes splashSphereFloat {
+  0%,100% { transform: translateY(0) rotateY(-4deg) rotateX(2deg); }
+  50% { transform: translateY(-9px) rotateY(5deg) rotateX(-2deg); }
+}
+@keyframes splashOrbit {
+  0%,100% { filter: brightness(.92); }
+  50% { filter: brightness(1.35); }
+}
+@media (max-width: 640px) {
+  .landing-splash-stage { width: 94vw; height: 70vh; }
+  .landing-splash-logo { width: min(76vw, 330px); }
 }
 @media (prefers-reduced-motion: reduce) {
   .landing-splash-motion,
