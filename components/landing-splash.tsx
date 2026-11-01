@@ -3,33 +3,26 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-/** Presentación institucional: el logo original es el único elemento animado. */
+/** Splash simple: muestra únicamente el logo completo, sin animaciones ni adornos. */
 export function LandingSplash() {
-  const [phase, setPhase] = useState<"show" | "fade" | "hidden">("show");
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    const fadeTimer = window.setTimeout(() => setPhase("fade"), 2600);
-    const removeTimer = window.setTimeout(() => setPhase("hidden"), 3100);
-    return () => {
-      window.clearTimeout(fadeTimer);
-      window.clearTimeout(removeTimer);
-    };
+    const timer = window.setTimeout(() => setVisible(false), 2600);
+    return () => window.clearTimeout(timer);
   }, []);
 
-  if (phase === "hidden") return null;
+  if (!visible) return null;
 
   return (
-    <div
-      aria-hidden="true"
-      className={`landing-splash-motion landing-splash-motion--${phase}`}
-    >
+    <div aria-hidden="true" className="landing-splash-motion">
       <div className="landing-splash-stage">
         <div className="landing-splash-logo">
           <Image
             src="/logo-agencias-corrientes-v2.webp"
             alt=""
-            width={256}
-            height={256}
+            width={512}
+            height={512}
             priority
             unoptimized
             style={{ display: "block", width: "100%", height: "100%", objectFit: "contain", background: "transparent" }}
