@@ -813,8 +813,67 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [cancelTicketPromptOpen, setCancelTicketPromptOpen] = useState(false);
   const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">(dailyMode && !dailyCloseAllowed ? "incomplete" : "complete");
   const [pendingAmount, setPendingAmount] = useState("");
+  const ticketDraftIsLoaded = Boolean(fileName || photoPreviewUrl);
+  const ticketBackGuardUrlRef = useRef<string | null>(null);
+  const ticketBackGuardStateRef = useRef<unknown>(null);
+
+  useEffect(() => {
+    if (!ticketDraftIsLoaded) return;
+    const guardedUrl = window.location.href;
+    const originalHistoryState = window.history.state;
+    ticketBackGuardUrlRef.current = guardedUrl;
+    ticketBackGuardStateRef.current = originalHistoryState;
+    const originalStateObject = originalHistoryState && typeof originalHistoryState === "object"
+      ? originalHistoryState as Record<string, unknown>
+      : {};
+    window.history.pushState(
+      { ...originalStateObject, __agenciasTicketBackGuard: true },
+      "",
+      guardedUrl
+    );
+
+    const handleBrowserBack = (event: PopStateEvent) => {
+      const urlToRestore = ticketBackGuardUrlRef.current;
+      if (!urlToRestore) return;
+      // Evita que el router cambie de página antes de mostrar la confirmación.
+      event.stopImmediatePropagation();
+      const savedState = ticketBackGuardStateRef.current;
+      const savedStateObject = savedState && typeof savedState === "object"
+        ? savedState as Record<string, unknown>
+        : {};
+      window.history.pushState(
+        { ...savedStateObject, __agenciasTicketBackGuard: true },
+        "",
+        urlToRestore
+      );
+      setCancelTicketPromptOpen(true);
+    };
+
+    window.addEventListener("popstate", handleBrowserBack, true);
+    return () => {
+      window.removeEventListener("popstate", handleBrowserBack, true);
+      ticketBackGuardUrlRef.current = null;
+      ticketBackGuardStateRef.current = null;
+    };
+  }, [ticketDraftIsLoaded]);
+
+  useEffect(() => {
+    if (!ticketDraftIsLoaded) return;
+    const handleInAppBack = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const backLink = target.closest<HTMLAnchorElement>(".rendition-selected-header a.back-link");
+      if (!backLink || backLink.getAttribute("href") !== "/pagos") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setCancelTicketPromptOpen(true);
+    };
+    document.addEventListener("click", handleInAppBack, true);
+    return () => document.removeEventListener("click", handleInAppBack, true);
+  }, [ticketDraftIsLoaded]);
 
   useEffect(() => {
     if (!cameraOpen) return;
@@ -1563,6 +1622,41 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     }
   }
 
+  function confirmCancelTicketAndReturn() {
+    const stream = cameraStreamRef.current;
+    if (stream) stream.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+    window.location.replace("/pagos");
+  }
+
+  function renderCancelTicketPrompt() {
+    if (!cancelTicketPromptOpen) return null;
+    return (
+      <div className="ticket-capture-dialog-backdrop" role="presentation">
+        <section
+          className="ticket-capture-dialog"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby={confirmationId + "-cancel-ticket-title"}
+          aria-describedby={confirmationId + "-cancel-ticket-description"}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="ticket-capture-dialog-heading">
+            <h3 id={confirmationId + "-cancel-ticket-title"}>¿Querés cancelar el ticket?</h3>
+            <p id={confirmationId + "-cancel-ticket-description"}>
+              Si elegís Sí, se descartan la foto y los datos cargados y volvés al panel general de rendiciones. Si elegís No, seguís en este lugar con el ticket.
+            </p>
+          </div>
+          <div className="ticket-capture-dialog-actions ticket-cancel-dialog-actions">
+            <button type="button" className="button ghost" onClick={() => setCancelTicketPromptOpen(false)}>No</button>
+            <button type="button" className="button danger" onClick={confirmCancelTicketAndReturn}>Sí</button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   if (receiptOnlyMode) {
     return (
       <form
@@ -1626,6 +1720,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           {busy ? "Leyendo ticket…" : "Adjuntar OCR a esta rendición existente"}
         </button>
         <p className="muted small-text">Esta acción solo guarda el detalle del comprobante en el registro seleccionado. No crea otra rendición, no modifica ventas o importes y no registra movimientos en Caja.</p>
+        {renderCancelTicketPrompt()}
       </form>
     );
   }
@@ -2095,6 +2190,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       )}
 
       <small className="muted">La fecha operativa se conserva en la rendición; las fechas y horarios impresos del ticket quedan en su detalle. Un cierre oficial aceptado puede confirmar la jornada antes del horario habitual.</small>
+      {renderCancelTicketPrompt()}
     </form>
   );
 }

@@ -998,6 +998,9 @@ input[type="reset"],
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
+.ticket-cancel-dialog-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 .ticket-capture-dialog button {
   width: 100%;
   min-height: 50px;
