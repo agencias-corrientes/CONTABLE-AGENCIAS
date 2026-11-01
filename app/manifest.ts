@@ -13,7 +13,7 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#ffffff",
     icons: [
       {
-        src: "/Esfera%20brillante%20de%20Agencias%20Corrientes.png",
+        src: "/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png",
         sizes: "any",
         type: "image/png",
         purpose: "any",
