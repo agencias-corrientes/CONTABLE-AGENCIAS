@@ -849,6 +849,41 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     };
   }, [cameraOpen, cameraStreamVersion]);
 
+  // Preparar los motores durante un momento ocioso, antes de que el usuario
+  // seleccione la foto. No cambia el orden ni los criterios de reconocimiento.
+  useEffect(() => {
+    if (mode !== "photo") return;
+    let cancelled = false;
+    let idleHandle: number | null = null;
+    let timeoutHandle: number | null = null;
+    const idleWindow = window as any;
+    const warmEngines = () => {
+      void (async () => {
+        try {
+          await getPaddleOcrEngine();
+        } catch {
+          // El flujo normal conserva el fallback si Paddle no puede inicializarse.
+        }
+        if (cancelled) return;
+        try {
+          await getTicketTesseractWorker();
+        } catch {
+          // El worker se vuelve a crear desde el flujo normal si hace falta.
+        }
+      })();
+    };
+    if (typeof idleWindow.requestIdleCallback === "function") {
+      idleHandle = idleWindow.requestIdleCallback(warmEngines, { timeout: 7000 });
+    } else {
+      timeoutHandle = window.setTimeout(warmEngines, 1800);
+    }
+    return () => {
+      cancelled = true;
+      if (idleHandle !== null) idleWindow.cancelIdleCallback?.(idleHandle);
+      if (timeoutHandle !== null) window.clearTimeout(timeoutHandle);
+    };
+  }, [mode]);
+
   useEffect(() => () => {
     const stream = cameraStreamRef.current;
     if (stream) stream.getTracks().forEach((track) => track.stop());
@@ -1201,10 +1236,16 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         const paddle = await paddleEnginePromise;
         setProgress("Reconociendo los renglones impresos del cupón…");
         setProgressPercent(35);
+        const paddlePredictStartedAt = performance.now();
         const [paddleResult] = await paddle.predict(file, {
           textDetBoxThresh: 0.4,
           textDetUnclipRatio: 1.8,
           textRecScoreThresh: 0.0,
+        });
+        console.info("[Agencias OCR] Lectura principal", {
+          elapsedMs: Math.round(performance.now() - paddlePredictStartedAt),
+          metrics: paddleResult?.metrics ?? null,
+          runtime: paddleResult?.runtime ?? null,
         });
         paddleMetadataWords = paddleItemsToWordBoxes(paddleResult?.items ?? []);
         recognizedText = paddleOcrItemsToText(paddleResult?.items ?? []);
@@ -1367,10 +1408,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           try {
             try {
               const paddle = await paddleEnginePromise;
+              const metadataPaddleStartedAt = performance.now();
               const [focusedPaddleResult] = await paddle.predict(enhancedImage, {
                 textDetBoxThresh: 0.4,
                 textDetUnclipRatio: 1.8,
                 textRecScoreThresh: 0.0,
+              });
+              console.info("[Agencias OCR] Segunda lectura Paddle", {
+                elapsedMs: Math.round(performance.now() - metadataPaddleStartedAt),
+                metrics: focusedPaddleResult?.metrics ?? null,
               });
               focusedPaddleMetadataWords = paddleItemsToWordBoxes(focusedPaddleResult?.items ?? []);
               focusedPaddleDebugText = paddleOcrItemsToText(focusedPaddleResult?.items ?? []);
@@ -1380,7 +1426,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             }
             const metadataWorker = await metadataWorkerPromise;
             await metadataWorker.setParameters({ tessedit_pageseg_mode: "6" } as any);
+            const metadataTesseractStartedAt = performance.now();
             const metadataResult = await metadataWorker.recognize(enhancedImage, {}, { blocks: true });
+            console.info("[Agencias OCR] Segunda lectura Tesseract", {
+              elapsedMs: Math.round(performance.now() - metadataTesseractStartedAt),
+            });
             focusedOcrWords = tesseractWordBoxes(metadataResult.data);
             focusedOcrDebugText = String(metadataResult.data.text ?? "").trim();
           } finally {
