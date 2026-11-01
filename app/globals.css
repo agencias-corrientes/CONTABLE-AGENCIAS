@@ -1612,3 +1612,183 @@ html, body { min-height:100%; }
   .landing-owner-register-button{width:100%}
   .landing-feature-strip{gap:9px 13px}
 }
+
+
+/* Ajustes visuales puntuales: portada, selector móvil y presentación de acceso. */
+.landing-role-choice,
+.login-role-selector .landing-role-choice {
+  min-height: 104px;
+  padding: 18px 19px;
+  border-radius: 8px !important;
+  border-width: 1px;
+  box-shadow: 0 5px 14px rgba(55, 24, 35, .09);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+.landing-role-admin {
+  border: 1px solid #64283a;
+  border-left: 5px solid #b79a45;
+  background: linear-gradient(135deg, #82394f 0%, #64283a 100%);
+  color: #fff;
+}
+.landing-role-employee {
+  border: 1px solid #d7c99f;
+  border-left: 5px solid #7c3347;
+  background: linear-gradient(135deg, #fffdf6 0%, #f0e5c5 100%);
+  color: #39252b;
+}
+.landing-role-choice strong {
+  font-size: 18px;
+  font-weight: 850;
+  letter-spacing: -.015em;
+}
+.landing-role-choice small {
+  font-size: 12px;
+  line-height: 1.45;
+}
+.landing-role-enter {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .015em;
+}
+.landing-role-choice:focus-visible {
+  outline: 3px solid #b79a45;
+  outline-offset: 3px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .landing-role-choice:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 11px 24px rgba(55, 24, 35, .15);
+  }
+}
+@media (max-width: 640px) {
+  .landing-role-choice,
+  .login-role-selector .landing-role-choice {
+    min-height: 88px;
+    padding: 14px 15px;
+    border-radius: 8px !important;
+  }
+  .landing-role-choice strong { font-size: 17px; }
+  .landing-role-enter { font-size: 11px; }
+}
+
+/* La opción nativa «Elegir foto o video» queda antes y más arriba en el panel móvil. */
+@media (max-width: 640px) {
+  .prize-photo-picker {
+    gap: 7px !important;
+    padding: 12px !important;
+    scroll-margin-top: 12px;
+  }
+  .prize-photo-picker > .ticket-photo-icon { order: 0; }
+  .prize-photo-picker > strong { order: 1; }
+  .prize-photo-picker .prize-photo-file-input {
+    order: 2;
+    margin: 1px 0 0 !important;
+    min-height: 44px !important;
+    padding: 7px 8px !important;
+  }
+  .prize-photo-picker > span:not(.ticket-photo-icon) { order: 3; }
+  .prize-photo-picker .ticket-photo-picker-cta { order: 4; margin-top: 0; }
+  .prize-photo-picker > small { order: 5; }
+}
+
+/* Splash institucional amarillo con movimiento suave y sin alterar la navegación. */
+.landing-splash-motion {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 24px;
+  background: #f4d66e;
+  opacity: 1;
+  pointer-events: none;
+  isolation: isolate;
+  transition: opacity 850ms cubic-bezier(.22,.75,.25,1);
+}
+.landing-splash-motion--fade { opacity: 0; }
+.landing-splash-logo {
+  position: relative;
+  z-index: 2;
+  width: min(54vw, 220px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  animation: landingSplashLogoIn 1250ms cubic-bezier(.2,.8,.2,1) both, landingSplashLogoFloat 1900ms ease-in-out 850ms infinite;
+  filter: drop-shadow(0 16px 22px rgba(79, 28, 45, .2));
+}
+.landing-splash-orbit {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 50%;
+  border: 1px solid rgba(124, 51, 71, .3);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.landing-splash-orbit--outer {
+  width: min(82vw, 430px);
+  aspect-ratio: 1;
+  animation: landingSplashOrbit 8s linear infinite;
+}
+.landing-splash-orbit--inner {
+  width: min(66vw, 340px);
+  aspect-ratio: 1;
+  border-style: dashed;
+  border-color: rgba(124, 51, 71, .22);
+  animation: landingSplashOrbit 16s linear infinite reverse;
+}
+.landing-splash-particle {
+  position: absolute;
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: #7c3347;
+  box-shadow: 0 0 0 5px rgba(124, 51, 71, .08);
+  animation: landingSplashParticle 3.8s ease-in-out infinite;
+}
+.landing-splash-particle--one { top: 24%; left: 23%; }
+.landing-splash-particle--two { right: 22%; top: 31%; width: 6px; height: 6px; animation-delay: .7s; }
+.landing-splash-particle--three { bottom: 23%; left: 30%; width: 7px; height: 7px; animation-delay: 1.2s; }
+.landing-splash-bottom-line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 7px;
+  background: #7c3347;
+  transform-origin: left center;
+  animation: landingSplashLine 1.25s ease-out both;
+}
+@keyframes landingSplashLogoIn {
+  0% { opacity: 0; transform: translateY(18px) scale(.82) rotate(-5deg); }
+  65% { opacity: 1; transform: translateY(-3px) scale(1.035) rotate(1deg); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+}
+@keyframes landingSplashLogoFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-7px) scale(1.012); }
+}
+@keyframes landingSplashOrbit {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+@keyframes landingSplashParticle {
+  0%, 100% { opacity: .45; transform: translateY(0) rotate(0deg) scale(.85); }
+  50% { opacity: 1; transform: translateY(-13px) rotate(45deg) scale(1.15); }
+}
+@keyframes landingSplashLine {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-splash-motion,
+  .landing-splash-logo,
+  .landing-splash-orbit,
+  .landing-splash-particle,
+  .landing-splash-bottom-line {
+    animation: none !important;
+    transition: opacity 120ms linear !important;
+  }
+}
