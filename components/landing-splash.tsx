@@ -47,8 +47,10 @@ export function LandingSplash() {
           display: "block",
           width: "min(72vw, 176px)",
           height: "auto",
-          borderRadius: "18%",
-          boxShadow: "0 24px 64px rgba(67, 23, 39, .25)",
+          borderRadius: 0,
+          background: "transparent",
+          boxShadow: "none",
+          filter: "none",
         }}
       />
     </div>
