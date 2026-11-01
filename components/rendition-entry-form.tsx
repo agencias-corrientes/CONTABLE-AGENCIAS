@@ -957,20 +957,21 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     return canvas;
   }
   async function getTicketTesseractWorker(): Promise<any> {
-    if (!tesseractWorkerRef.current) {
-      const workerPromise = import("tesseract.js").then(({ createWorker }) =>
-        createWorker("spa+eng", 1, {
-          logger: (message) => tesseractProgressHandlerRef.current?.(message),
-        })
-      );
-      tesseractWorkerRef.current = workerPromise;
-      void workerPromise.catch(() => {
-        if (tesseractWorkerRef.current === workerPromise) {
-          tesseractWorkerRef.current = null;
-        }
-      });
-    }
-    return tesseractWorkerRef.current;
+    const existingWorkerPromise = tesseractWorkerRef.current;
+    if (existingWorkerPromise) return existingWorkerPromise;
+
+    const workerPromise = import("tesseract.js").then(({ createWorker }) =>
+      createWorker("spa+eng", 1, {
+        logger: (message) => tesseractProgressHandlerRef.current?.(message),
+      })
+    );
+    tesseractWorkerRef.current = workerPromise;
+    void workerPromise.catch(() => {
+      if (tesseractWorkerRef.current === workerPromise) {
+        tesseractWorkerRef.current = null;
+      }
+    });
+    return workerPromise;
   }
 
   function processSelectedTicketFile(file: File) {
@@ -1359,31 +1360,36 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         // hacer una pasada independiente con Tesseract y usar las cajas de cada
         // palabra para ubicar MAQ, Dirección y Máquina real sin alterar ventas.
         try {
-          {
-            setProgress("Revisando los datos identificatorios del ticket…");
-            setProgressPercent(88);
-            const metadataWorkerPromise = getTicketTesseractWorker();
-            const enhancedImage = await makeEnhancedTicketImage(file);
+          setProgress("Revisando los datos identificatorios del ticket…");
+          setProgressPercent(88);
+          const metadataWorkerPromise = getTicketTesseractWorker();
+          const enhancedImage = await makeEnhancedTicketImage(file);
+          try {
             try {
-              try {
-                const paddle = await getPaddleOcrEngine();
-                const [focusedPaddleResult] = await paddle.predict(enhancedImage, {
-                  textDetBoxThresh: 0.4,
-                  textDetUnclipRatio: 1.8,
-                  textRecScoreThresh: 0.0,
-                });
-                focusedPaddleMetadataWords = paddleItemsToWordBoxes(focusedPaddleResult?.items ?? []);
-                focusedPaddleDebugText = paddleOcrItemsToText(focusedPaddleResult?.items ?? []);
-              } catch {
-                focusedPaddleMetadataWords = [];
-                focusedPaddleDebugText = "";
-              }
+              const paddle = await paddleEnginePromise;
+              const [focusedPaddleResult] = await paddle.predict(enhancedImage, {
+                textDetBoxThresh: 0.4,
+                textDetUnclipRatio: 1.8,
+                textRecScoreThresh: 0.0,
+              });
+              focusedPaddleMetadataWords = paddleItemsToWordBoxes(focusedPaddleResult?.items ?? []);
+              focusedPaddleDebugText = paddleOcrItemsToText(focusedPaddleResult?.items ?? []);
+            } catch {
+              focusedPaddleMetadataWords = [];
+              focusedPaddleDebugText = "";
+            }
+            const metadataWorker = await metadataWorkerPromise;
+            await metadataWorker.setParameters({ tessedit_pageseg_mode: "6" } as any);
+            const metadataResult = await metadataWorker.recognize(enhancedImage, {}, { blocks: true });
+            focusedOcrWords = tesseractWordBoxes(metadataResult.data);
+            focusedOcrDebugText = String(metadataResult.data.text ?? "").trim();
+          } finally {
+            // Restore the general segmentation mode even when this pass fails.
+            try {
               const metadataWorker = await metadataWorkerPromise;
-              await metadataWorker.setParameters({ tessedit_pageseg_mode: "6" } as any);
-              const metadataResult = await metadataWorker.recognize(enhancedImage, {}, { blocks: true });
-              focusedOcrWords = tesseractWordBoxes(metadataResult.data);
-              focusedOcrDebugText = String(metadataResult.data.text ?? "").trim();
               await metadataWorker.setParameters({ tessedit_pageseg_mode: "3" } as any);
+            } catch {
+              // The outer recovery path keeps any text already obtained from Paddle.
             }
           }
           const tesseractText = focusedOcrDebugText;
@@ -1601,6 +1607,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       setError(cause instanceof Error ? cause.message : "No se pudo leer la foto del ticket.");
       setProgress("La lectura no pudo completarse. Corregí la imagen e intentá de nuevo.");
     } finally {
+      tesseractProgressHandlerRef.current = null;
       setBusy(false);
     }
   }
