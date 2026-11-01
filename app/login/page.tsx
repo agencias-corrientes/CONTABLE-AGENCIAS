@@ -118,7 +118,11 @@ function LoginForm() {
   if (!profile) {
     return (
       <div className="form-stack login-role-selector">
-        <p className="muted">Seleccioná el perfil de tu cuenta existente.</p>
+        <div className="login-form-intro">
+          <span className="login-form-kicker">TIPO DE ACCESO</span>
+          <h2>¿Cómo vas a ingresar?</h2>
+          <p>Elegí el perfil asociado a tu cuenta.</p>
+        </div>
         <Link className="landing-role-choice landing-role-admin" href="/login?perfil=administrador">
           <span className="landing-role-copy"><strong>Agenciero</strong><small>Acceso del titular y configuración de la agencia</small></span>
           <span className="landing-role-enter">Ingresar →</span>
@@ -127,15 +131,26 @@ function LoginForm() {
           <span className="landing-role-copy"><strong>Empleado</strong><small>Acceso según los permisos asignados</small></span>
           <span className="landing-role-enter">Ingresar →</span>
         </Link>
-        <p className="muted small-text">¿Sos titular y todavía no tenés cuenta? <Link href="/registro">Crear cuenta de propietario</Link></p>
+        <div className="login-register-note">
+          <span>¿Todavía no tenés cuenta?</span>
+          <Link href="/registro">Crear cuenta de titular <span aria-hidden="true">→</span></Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={submit} className="form-stack">
+    <form onSubmit={submit} className="form-stack login-credentials-form">
+      <div className="login-form-intro">
+        <span className="login-form-kicker">INICIO DE SESIÓN</span>
+        <h2>Ingresá a tu cuenta</h2>
+        <p>Usá tus credenciales para acceder a la gestión de tu agencia.</p>
+      </div>
       <div className="login-selected-profile">
-        <span className="user-role-pill">{profile === "administrador" ? "Agenciero" : "Empleado"}</span>
+        <div className="login-selected-profile-copy">
+          <span className="login-profile-caption">PERFIL SELECCIONADO</span>
+          <strong>{profile === "administrador" ? "Agenciero" : "Empleado"}</strong>
+        </div>
         <Link href="/login">Cambiar perfil</Link>
       </div>
       {searchParams.get("confirmado") === "1" && <p className="message success-message">Correo confirmado. Ingresá con el correo del empleado y la contraseña inicial que le asignó el titular.</p>}
@@ -170,10 +185,17 @@ export default function LoginPage() {
     <main className="auth-page login-auth-page">
       <div className="auth-card">
         <Link href="/" className="back-link">← Volver</Link>
-        <div className="brand-logo-wrap brand-logo-top-left login-agency-brand"><Image src="/logo-agencias-corrientes.webp" alt="Agencias Corrientes — Quiniela Oficial" width={88} height={88} priority unoptimized /></div>
-        <p className="eyebrow">AGENCIAS CORRIENTES</p>
-        <h1>Control de Agencias</h1>
-        <p className="muted">Ingresá con una cuenta existente. El sistema verifica el rol asignado por cada agencia.</p>
+        <header className="login-brand-header">
+          <div className="brand-logo-wrap brand-logo-top-left login-agency-brand">
+            <Image src="/logo-agencias-corrientes.webp" alt="Agencias Corrientes — Quiniela Oficial" width={88} height={88} priority unoptimized />
+          </div>
+          <div className="login-brand-copy">
+            <p className="eyebrow">PLATAFORMA DE GESTIÓN</p>
+            <h1>Control de Agencias</h1>
+            <p>Un acceso para administrar la operación de tu agencia.</p>
+          </div>
+        </header>
+        <div className="login-section-divider"><span>ACCESO A TU AGENCIA</span></div>
         <Suspense fallback={<div className="empty-state">Cargando acceso…</div>}><LoginForm /></Suspense>
       </div>
     </main>
