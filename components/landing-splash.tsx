@@ -26,7 +26,7 @@ export function LandingSplash() {
       <div className="landing-splash-stage">
         <div className="landing-splash-logo">
           <Image
-            src="/logo-agencias-quiniela.svg"
+            src="/logo-agencias-corrientes-v2.webp"
             alt=""
             width={256}
             height={256}
