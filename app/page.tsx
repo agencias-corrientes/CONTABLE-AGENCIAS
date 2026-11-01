@@ -44,11 +44,16 @@ export default async function HomePage() {
   return (
     <main className="landing">
       <LandingSplash />
-      <section className="landing-card landing-role-card">
-        <div className="brand-logo-wrap brand-logo-top-left"><Image src="/logo-agencias-corrientes.webp" alt="Agencias Corrientes — Quiniela Oficial" width={128} height={128} priority /></div>
-        <p className="eyebrow">AGENCIAS CORRIENTES</p>
-        <h1>Control de Agencias</h1>
-        <p className="lead">Gestión diaria de subagentes y ambulantes, con una agencia independiente para cada titular.</p>
+      <section className="landing-card landing-role-card landing-access-card">
+        <header className="landing-brand-header">
+          <div className="brand-logo-wrap landing-agency-brand"><Image src="/logo-agencias-corrientes.webp" alt="Agencias Corrientes — Quiniela Oficial" width={104} height={104} priority /></div>
+          <div className="landing-brand-copy">
+            <p className="eyebrow">AGENCIAS CORRIENTES</p>
+            <h1>Control de Agencias</h1>
+            <p>Gestión diaria de subagentes y ambulantes, con una agencia independiente para cada titular.</p>
+          </div>
+        </header>
+        <div className="landing-section-divider"><span>ELEGÍ CÓMO INGRESAR</span></div>
         <div className="landing-role-grid">
           <Link className="landing-role-choice landing-role-admin" href="/login?perfil=administrador">
             <span className="landing-role-copy"><strong>Agenciero</strong><small>Ingresar como titular de una agencia ya configurada</small></span>
@@ -59,11 +64,15 @@ export default async function HomePage() {
             <span className="landing-role-enter">Ingresar →</span>
           </Link>
         </div>
-        <div className="landing-actions">
-          <Link className="button primary full" href="/registro">Soy titular: crear cuenta y configurar mi agencia</Link>
+        <div className="landing-owner-register">
+          <div className="landing-owner-register-copy">
+            <span className="landing-form-kicker">¿TODAVÍA NO TENÉS CUENTA?</span>
+            <strong>Soy titular: crear cuenta y configurar mi agencia</strong>
+            <small>El alta queda pendiente hasta la autorización del administrador maestro.</small>
+          </div>
+          <Link className="button primary landing-owner-register-button" href="/registro">Crear mi cuenta →</Link>
         </div>
-        <p className="muted small-text">El alta de cada nuevo propietario queda pendiente hasta que el administrador maestro la autorice.</p>
-        <div className="feature-strip"><span>✓ Rendiciones diarias</span><span>✓ Subagentes</span><span>✓ Ambulantes</span><span>✓ Cobranzas en Caja</span></div>
+        <div className="feature-strip landing-feature-strip"><span>✓ Rendiciones diarias</span><span>✓ Subagentes</span><span>✓ Ambulantes</span><span>✓ Cobranzas en Caja</span></div>
       </section>
     </main>
   );
