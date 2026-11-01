@@ -1315,7 +1315,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       try {
         setProgress("Cargando lector rápido de texto…");
         setProgressPercent(20);
-        const paddle = await withOcrTimeout(
+        const paddle = await withOcrTimeout<any>(
           paddleEnginePromise,
           10000,
           "inicio del lector rápido"
@@ -1323,7 +1323,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         setProgress("Reconociendo los renglones impresos del cupón…");
         setProgressPercent(35);
         const paddlePredictStartedAt = performance.now();
-        const [paddleResult] = await withOcrTimeout(
+        const [paddleResult] = await withOcrTimeout<any>(
           paddle.predict(file, {
             textDetBoxThresh: 0.4,
             textDetUnclipRatio: 1.8,
@@ -1358,8 +1358,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       const closureReadExpected = dailyMode || receiptOnlyMode || batchMode;
       if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
         const paddlePartialText = recognizedText;
-        setProgress("Activando lector de respaldo…");
-        setProgressPercent(42);
         setProgress("Preparando lector alternativo…");
         setProgressPercent(42);
         tesseractProgressHandlerRef.current = (message) => {
@@ -1373,7 +1371,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             setProgress("Preparando lector alternativo…");
           }
         };
-        const worker = await withOcrTimeout(
+        const worker = await withOcrTimeout<any>(
           getTicketTesseractWorker(),
           20000,
           "inicio del lector alternativo"
@@ -1381,7 +1379,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         // La pasada de metadatos usa PSM 6; volver a PSM 3 mantiene el modo
         // automático para la lectura general de los próximos tickets.
         await worker.setParameters({ tessedit_pageseg_mode: "3" } as any);
-        const result = await withOcrTimeout(
+        const result = await withOcrTimeout<any>(
           worker.recognize(file, {}, { blocks: true }),
           35000,
           "lectura con el lector alternativo"
@@ -1518,7 +1516,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         try {
           setProgress("Revisando los datos identificatorios del ticket…");
           setProgressPercent(88);
-          const metadataWorkerPromise = withOcrTimeout(
+          const metadataWorkerPromise = withOcrTimeout<any>(
             getTicketTesseractWorker(),
             15000,
             "inicio del lector alternativo para datos identificatorios"
@@ -1527,9 +1525,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           try {
             try {
               if (paddleOcrTimedOutForSession) throw new Error("Se omite el lector rápido porque superó el tiempo de espera inicial.");
-              const paddle = await withOcrTimeout(paddleEnginePromise, 5000, "inicio del lector rápido para datos identificatorios");
+              const paddle = await withOcrTimeout<any>(paddleEnginePromise, 5000, "inicio del lector rápido para datos identificatorios");
               const metadataPaddleStartedAt = performance.now();
-              const [focusedPaddleResult] = await withOcrTimeout(
+              const [focusedPaddleResult] = await withOcrTimeout<any>(
                 paddle.predict(enhancedImage, {
                   textDetBoxThresh: 0.4,
                   textDetUnclipRatio: 1.8,
@@ -1551,7 +1549,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             const metadataWorker = await metadataWorkerPromise;
             await metadataWorker.setParameters({ tessedit_pageseg_mode: "6" } as any);
             const metadataTesseractStartedAt = performance.now();
-            const metadataResult = await withOcrTimeout(
+            const metadataResult = await withOcrTimeout<any>(
               metadataWorker.recognize(enhancedImage, {}, { blocks: true }),
               30000,
               "lectura de datos identificatorios con el lector alternativo"
