@@ -369,6 +369,54 @@ export function AppShell({
           .content-area { width:100% !important; min-width:0 !important; padding:12px !important; }
           .sidebar .nav-list .nav-item { transition:none !important; }
         }
+
+        :global(.app-shell.menu-open) { display:block !important; min-height:100dvh; background:#f7f2e7; }
+        :global(.app-shell.menu-open .sidebar) { display:none !important; }
+        :global(.app-shell.menu-open .content-area) { width:100% !important; min-height:100dvh; padding:clamp(16px,3vw,32px) !important; box-sizing:border-box; background:#f7f2e7; }
+        :global(.agency-home-menu) { display:grid; align-content:center; gap:22px; width:min(920px,100%); min-height:calc(100dvh - 64px); margin:0 auto; }
+        :global(.agency-home-menu-heading) { display:grid; gap:8px; }
+        :global(.agency-home-menu-heading > p) { margin:0; color:#665b60; font-size:15px; }
+        :global(.agency-home-menu-brand) { display:flex; align-items:center; gap:15px; }
+        :global(.agency-home-menu-brand .brand-logo-wrap) { flex:0 0 72px; width:72px; height:72px; overflow:hidden; border-radius:18%; }
+        :global(.agency-home-menu-brand p) { margin:0 0 3px; color:#8a6a2c; font-size:10px; font-weight:900; letter-spacing:.12em; }
+        :global(.agency-home-menu-brand h1) { margin:0; color:#542033; font-size:clamp(25px,5vw,36px); line-height:1.1; }
+        :global(.agency-home-menu-brand span) { display:block; margin-top:4px; color:#756b66; font-size:13px; }
+        :global(.agency-home-menu-grid) { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; }
+        :global(.agency-home-menu-item) { display:flex; flex-direction:column; justify-content:center; gap:10px; min-height:116px; padding:18px; border:2px solid #632538; border-bottom:5px solid #4a1b2a; border-radius:10px; background:#7c3347; color:#fff !important; text-decoration:none; box-shadow:0 3px 0 rgba(50,15,25,.13); }
+        :global(.agency-home-menu-item strong) { font-size:clamp(17px,3vw,22px); line-height:1.2; }
+        :global(.agency-home-menu-item span) { font-size:13px; font-weight:800; color:#ffe5a0; }
+        :global(.agency-home-menu-item:active) { transform:translateY(1px); }
+        :global(.agency-home-menu-footer) { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding-top:8px; color:#756b66; font-size:12px; }
+        :global(.agency-home-menu-footer .button) { min-height:40px; }
+        :global(.app-shell.section-open) { display:block !important; min-height:100dvh; }
+        :global(.app-shell.section-open .sidebar) { display:none !important; }
+        :global(.app-shell.section-open .content-area) { width:100% !important; min-width:0 !important; min-height:100dvh; padding:12px clamp(12px,2vw,24px) 24px !important; box-sizing:border-box; }
+        :global(.section-navigation-bar) { position:sticky; top:0; z-index:30; display:flex; justify-content:flex-start; padding:4px 0 12px; background:inherit; }
+        :global(.section-menu-return) { min-height:42px; padding:9px 15px; border:1px solid #6b3344; border-radius:8px; background:#fff; color:#572338; font-size:14px; font-weight:850; cursor:pointer; }
+        :global(.section-rendiciones) { background:#fff7e6 !important; }
+        :global(.section-agentes) { background:#eaf4ec !important; }
+        :global(.section-buscar) { background:#eaf1fb !important; }
+        :global(.section-juegos) { background:#f1ecfa !important; }
+        :global(.section-loteria) { background:#fff0dc !important; }
+        :global(.section-configuracion) { background:#f8eaf0 !important; }
+        :global(.section-active .page) { min-height:calc(100dvh - 58px); background:transparent !important; }
+        :global(.ticket-cancel-dialog-backdrop) { position:fixed; inset:0; z-index:1800; display:grid; place-items:center; padding:18px; background:rgba(25,13,18,.72); }
+        :global(.ticket-cancel-dialog) { display:grid; gap:16px; width:min(440px,100%); padding:24px; border:2px solid #7c3347; border-radius:12px; background:#fff; color:#241d20; box-shadow:0 18px 54px rgba(0,0,0,.3); }
+        :global(.ticket-cancel-dialog h3) { margin:0; color:#64283a; font-size:22px; text-align:center; }
+        :global(.ticket-cancel-dialog p) { margin:0; color:#5f5559; line-height:1.45; text-align:center; }
+        :global(.ticket-cancel-dialog-actions) { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+        :global(.ticket-cancel-dialog-actions button) { min-height:48px; font-size:16px; font-weight:850; }
+        :global(.ticket-cancel-dialog-actions .ticket-cancel-yes) { border:1px solid #632538; background:#7c3347; color:#fff; }
+        :global(.ticket-cancel-dialog-actions .ticket-cancel-no) { border:1px solid #b79a45; background:#ffe58a; color:#3f1825; }
+        @media(max-width:640px) {
+          :global(.agency-home-menu) { min-height:calc(100dvh - 32px); gap:18px; }
+          :global(.agency-home-menu-grid) { gap:10px; }
+          :global(.agency-home-menu-item) { min-height:108px; padding:14px 12px; }
+          :global(.agency-home-menu-footer) { justify-content:center; text-align:center; }
+          :global(.section-menu-return) { width:100%; }
+          :global(.ticket-cancel-dialog) { padding:20px 16px; }
+        }
+
       `}</style>
     </div>
   );
