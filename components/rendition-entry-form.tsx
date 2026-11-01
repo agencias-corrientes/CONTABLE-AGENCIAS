@@ -834,6 +834,29 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">(dailyMode && !dailyCloseAllowed ? "incomplete" : "complete");
   const [pendingAmount, setPendingAmount] = useState("");
+  const [cancelTicketOpen, setCancelTicketOpen] = useState(false);
+  const cancelTicketOpenRef = useRef(false);
+  const ticketExitAllowedRef = useRef(false);
+  const ticketHistoryGuardRef = useRef(false);
+  const hasTicketInProgress = Boolean(receiptData || batchTickets.length || fileName || photoPreviewUrl || busy);
+
+  useEffect(() => {
+    if (!hasTicketInProgress || ticketExitAllowedRef.current || ticketHistoryGuardRef.current) return;
+    const pushTicketHistoryGuard = () => {
+      window.history.pushState({ ...(window.history.state ?? {}), __agencyTicketGuard: true }, "", window.location.href);
+    };
+    pushTicketHistoryGuard();
+    ticketHistoryGuardRef.current = true;
+    const handleBackNavigation = () => {
+      if (ticketExitAllowedRef.current) return;
+      pushTicketHistoryGuard();
+      if (cancelTicketOpenRef.current) return;
+      cancelTicketOpenRef.current = true;
+      setCancelTicketOpen(true);
+    };
+    window.addEventListener("popstate", handleBackNavigation);
+    return () => window.removeEventListener("popstate", handleBackNavigation);
+  }, [hasTicketInProgress]);
 
   useEffect(() => {
     if (!cameraOpen) return;
@@ -2194,6 +2217,27 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         </div>
       )}
 
+      {cancelTicketOpen && (
+        <div className="ticket-cancel-dialog-backdrop">
+          <section className="ticket-cancel-dialog" role="dialog" aria-modal="true" aria-labelledby={confirmationId + "-cancel-title"}>
+            <h3 id={confirmationId + "-cancel-title"}>¿Desea cancelar cupón?</h3>
+            <p>Si elegís Sí, saldrás de esta carga y volverás a la pantalla anterior. Si elegís No, el cupón y los datos cargados permanecerán en esta pantalla.</p>
+            <div className="ticket-cancel-dialog-actions">
+              <button type="button" className="ticket-cancel-no" onClick={() => {
+                cancelTicketOpenRef.current = false;
+                setCancelTicketOpen(false);
+              }}>No</button>
+              <button type="button" className="ticket-cancel-yes" onClick={() => {
+                ticketExitAllowedRef.current = true;
+                ticketHistoryGuardRef.current = false;
+                cancelTicketOpenRef.current = false;
+                setCancelTicketOpen(false);
+                window.history.go(-2);
+              }}>Sí</button>
+            </div>
+          </section>
+        </div>
+      )}
       <small className="muted">La fecha operativa se conserva en la rendición; las fechas y horarios impresos del ticket quedan en su detalle. Un cierre oficial aceptado puede confirmar la jornada antes del horario habitual.</small>
     </form>
   );
