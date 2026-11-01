@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-/** Splash simple: muestra únicamente el logo completo, sin animaciones ni adornos. */
+/** Splash institucional: muestra el logo 3D completo, sin adornos ni animaciones. */
 export function LandingSplash() {
   const [visible, setVisible] = useState(true);
 
@@ -19,10 +19,10 @@ export function LandingSplash() {
       <div className="landing-splash-stage">
         <div className="landing-splash-logo">
           <Image
-            src="/logo-agencias-corrientes-v2.webp"
+            src="/agencias-corrientes-logo-3d.svg"
             alt=""
-            width={512}
-            height={512}
+            width={800}
+            height={800}
             priority
             unoptimized
             style={{ display: "block", width: "100%", height: "100%", objectFit: "contain", background: "transparent" }}
