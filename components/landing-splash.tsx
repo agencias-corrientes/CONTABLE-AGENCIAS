@@ -34,9 +34,11 @@ export function LandingSplash() {
           "linear-gradient(180deg, #fff9e8 0%, #f4edcf 79%, #70243a 79%, #70243a 100%)",
         opacity: phase === "fade" ? 0 : 1,
         transition: "opacity 850ms ease-in-out",
-        pointerEvents: phase === "fade" ? "none" : "auto",
+        animation: "landingSplashFailsafe 2.2s ease-in-out forwards",
+        pointerEvents: "none",
       }}
     >
+      <style>{`@keyframes landingSplashFailsafe { 0%, 52% { opacity: 1; visibility: visible; } 100% { opacity: 0; visibility: hidden; } }`}</style>
       <Image
         src="/logo-agencias-corrientes.webp"
         alt=""
