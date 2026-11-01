@@ -373,6 +373,54 @@ export function AppShell({
           .content-area { width:100% !important; min-width:0 !important; padding:12px !important; }
           .sidebar .nav-list .nav-item { transition:none !important; }
         }
+
+        /* En celular, el menú general debe quedar arriba y compacto; nunca ocupar una pantalla entera. */
+        @media (max-width: 1000px) {
+          :global(.app-shell) {
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: 100dvh !important;
+          }
+          :global(.app-shell .sidebar) {
+            position: relative !important;
+            top: auto !important;
+            width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            padding: max(10px, env(safe-area-inset-top)) 12px 12px !important;
+            box-sizing: border-box !important;
+          }
+          :global(.app-shell .sidebar-brand) {
+            padding: 2px 6px 8px !important;
+          }
+          :global(.app-shell .sidebar .nav-list) {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            grid-auto-rows: minmax(58px, auto) !important;
+            align-content: start !important;
+            gap: 8px !important;
+            margin: 8px 0 10px !important;
+          }
+          :global(.app-shell .sidebar .nav-list .nav-item),
+          :global(.app-shell .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell .sidebar .nav-list .nav-item:focus-visible),
+          :global(.app-shell .sidebar .nav-list .nav-item:active) {
+            min-height: 58px !important;
+            height: auto !important;
+            padding: 9px 7px !important;
+            font-size: clamp(16px, 4.3vw, 19px) !important;
+            line-height: 1.15 !important;
+          }
+          :global(.app-shell .sidebar .sidebar-footer) {
+            margin-top: 4px !important;
+          }
+          :global(.app-shell .content-area) {
+            flex: 1 0 auto !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            padding: 12px !important;
+          }
+        }
       `}</style>
     </div>
   );
