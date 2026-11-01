@@ -1252,3 +1252,225 @@ html, body { min-height:100%; }
   border: 0 !important;
   z-index: -1 !important;
 }
+
+
+/* Jerarquía profesional del ingreso: marca, contexto, perfil y formulario. */
+.login-auth-page {
+  background:
+    radial-gradient(circle at 12% 10%, rgba(255,255,255,.82), transparent 32%),
+    linear-gradient(145deg, #f8f1dd 0%, #eee3c5 58%, #752b40 58%, #64283a 100%);
+}
+.login-auth-page .auth-card {
+  width:min(560px,100%);
+  padding:38px 42px 34px;
+  border:1px solid #dfd0a9;
+  border-top:5px solid #7c3347;
+  border-radius:24px;
+  background:rgba(255,254,249,.98);
+  box-shadow:0 24px 64px rgba(57,25,34,.16),inset 0 1px 0 #fff;
+}
+.login-brand-header {
+  display:grid;
+  grid-template-columns:96px minmax(0,1fr);
+  align-items:center;
+  gap:20px;
+  padding:0 0 23px;
+}
+.login-brand-header .login-agency-brand {
+  width:92px!important;
+  height:92px!important;
+  flex:0 0 92px!important;
+  margin:0!important;
+}
+.login-brand-header .login-agency-brand img {
+  object-fit:contain;
+  filter:drop-shadow(0 5px 9px rgba(42,22,25,.14));
+}
+.login-brand-copy { min-width:0; }
+.login-brand-copy .eyebrow {
+  margin:0 0 7px;
+  font-size:10px;
+  letter-spacing:.16em;
+  color:#8a6a2c;
+}
+.login-brand-copy h1 {
+  margin:0 0 8px;
+  color:#3f202b;
+  font-size:31px;
+  line-height:1.06;
+  letter-spacing:-.045em;
+}
+.login-brand-copy>p:last-child {
+  margin:0;
+  max-width:330px;
+  color:#766b69;
+  font-size:13px;
+  line-height:1.5;
+}
+.login-section-divider {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin:0 0 22px;
+  color:#8a7a60;
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.16em;
+}
+.login-section-divider:before,
+.login-section-divider:after {
+  content:"";
+  height:1px;
+  flex:1;
+  background:#e8ddc4;
+}
+.login-auth-page .form-stack {
+  margin-top:0!important;
+  gap:16px;
+}
+.login-form-intro {
+  display:grid;
+  gap:6px;
+  margin:0 0 2px;
+}
+.login-form-kicker {
+  color:#8a6a2c;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.15em;
+}
+.login-form-intro h2 {
+  margin:0;
+  color:#3f202b;
+  font-size:23px;
+  line-height:1.15;
+  letter-spacing:-.035em;
+}
+.login-form-intro p {
+  margin:0;
+  color:#776d6a;
+  font-size:13px;
+  line-height:1.5;
+}
+.login-auth-page .login-selected-profile {
+  padding:12px 14px;
+  border:1px solid #e5d8b8;
+  border-radius:11px;
+  background:#faf5e8;
+}
+.login-selected-profile-copy {display:grid;gap:3px;}
+.login-profile-caption {
+  color:#8a7a60;
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.12em;
+}
+.login-selected-profile-copy strong {color:#70293e;font-size:14px;}
+.login-auth-page .form-stack label {
+  gap:7px!important;
+  color:#4b3339;
+  font-size:13px!important;
+  font-weight:800!important;
+}
+.login-auth-page .form-stack input,
+.login-auth-page .login-password-field input {
+  min-height:56px!important;
+  border-color:#1a1717!important;
+  border-width:1.5px!important;
+  border-radius:10px!important;
+  background:#fff!important;
+  font-size:16px!important;
+}
+.login-auth-page .login-password-field {
+  border:1.5px solid #1a1717!important;
+  border-radius:10px!important;
+}
+.login-auth-page .login-password-field input {
+  border:0!important;
+  min-height:54px!important;
+}
+.login-auth-page .login-password-toggle {
+  border:1px solid #181515!important;
+  border-radius:8px!important;
+}
+.login-auth-page .button.full {
+  min-height:54px!important;
+  border-radius:10px;
+  background:#762d43;
+  font-size:15px;
+  font-weight:850;
+  letter-spacing:.01em;
+  box-shadow:0 5px 0 #542033,0 9px 18px rgba(84,32,51,.13);
+}
+.login-auth-page .button.full:active {
+  transform:translateY(2px);
+  box-shadow:0 3px 0 #542033;
+}
+.login-role-selector {gap:13px!important;}
+.login-role-selector .landing-role-choice {
+  min-height:78px;
+  padding:15px 17px;
+  border:1px solid #e2d5b5;
+  border-left:4px solid #7c3347;
+  border-radius:12px;
+  background:linear-gradient(135deg,#fffefa,#f7f0df);
+  box-shadow:0 4px 12px rgba(73,45,31,.05);
+}
+.login-role-selector .landing-role-choice.landing-role-employee {border-left-color:#c5a348;}
+.login-role-selector .landing-role-copy strong {font-size:16px;}
+.login-role-selector .landing-role-copy small {font-size:12px;}
+.login-register-note {
+  display:grid;
+  gap:5px;
+  margin-top:5px;
+  padding:14px 15px;
+  border:1px solid #eadfc6;
+  border-radius:11px;
+  background:#fffaf0;
+}
+.login-register-note>span {color:#756b66;font-size:11px;}
+.login-register-note>a {
+  width:max-content;
+  color:#762d43;
+  font-size:13px;
+  font-weight:850;
+}
+.login-auth-page .form-stack>.muted.small-text {margin:0;text-align:center;}
+.login-auth-page .form-stack>.muted.small-text a {
+  color:#762d43;
+  font-weight:800;
+  text-decoration:underline;
+  text-underline-offset:3px;
+}
+@media(max-width:640px) {
+  .login-auth-page .auth-card {
+    width:100%!important;
+    max-width:none!important;
+    min-height:calc(100dvh - 28px)!important;
+    margin:0!important;
+    padding:24px 19px 22px!important;
+    border:1px solid #dfd0a9!important;
+    border-top:5px solid #7c3347!important;
+    border-radius:19px!important;
+  }
+  .login-brand-header {
+    grid-template-columns:72px minmax(0,1fr);
+    gap:13px;
+    padding-bottom:19px;
+  }
+  .login-brand-header .login-agency-brand {
+    width:70px!important;
+    height:70px!important;
+    flex-basis:70px!important;
+  }
+  .login-brand-copy h1 {font-size:25px!important;line-height:1.08!important;}
+  .login-brand-copy .eyebrow {font-size:9px;}
+  .login-brand-copy>p:last-child {font-size:11px;line-height:1.4;}
+  .login-section-divider {margin-bottom:18px;}
+  .login-form-intro h2 {font-size:21px;}
+  .login-auth-page .form-stack {gap:14px!important;}
+  .login-auth-page .form-stack label {font-size:14px!important;}
+  .login-auth-page .form-stack input,
+  .login-auth-page .login-password-field input {min-height:56px!important;font-size:16px!important;}
+  .login-auth-page .button.full {min-height:54px!important;font-size:16px!important;}
+}
