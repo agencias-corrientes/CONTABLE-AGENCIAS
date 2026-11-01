@@ -368,10 +368,12 @@ export function AppShell({
 
 
         @media (max-width: 1000px) {
-          .app-shell { display:block !important; width:100% !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; }
-          .sidebar { position:relative !important; top:auto !important; width:100% !important; height:auto !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; box-sizing:border-box !important; padding-top:max(16px,env(safe-area-inset-top)) !important; padding-bottom:max(18px,env(safe-area-inset-bottom)) !important; }
-          .content-area { width:100% !important; min-width:0 !important; padding:12px !important; }
-          .sidebar .nav-list .nav-item { transition:none !important; }
+          .app-shell { display:flex !important; flex-direction:column !important; width:100% !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; }
+          .sidebar { position:relative !important; top:auto !important; width:100% !important; height:auto !important; min-height:0 !important; box-sizing:border-box !important; padding-top:max(10px,env(safe-area-inset-top)) !important; padding-bottom:max(10px,env(safe-area-inset-bottom)) !important; }
+          .sidebar .nav-list { grid-auto-rows:minmax(58px,auto) !important; gap:8px !important; margin:10px 0 !important; }
+          .sidebar .nav-list .nav-item { min-height:58px !important; height:auto !important; padding:9px 8px !important; font-size:16px !important; line-height:1.2 !important; transition:none !important; }
+          .sidebar .sidebar-footer { margin-top:4px !important; }
+          .content-area { flex:1 1 auto !important; width:100% !important; min-width:0 !important; padding:12px !important; }
         }
       `}</style>
     </div>
