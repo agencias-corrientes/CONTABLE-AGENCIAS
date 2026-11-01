@@ -8,8 +8,8 @@ export function LandingSplash() {
   const [phase, setPhase] = useState<"show" | "fade" | "hidden">("show");
 
   useEffect(() => {
-    const fadeTimer = window.setTimeout(() => setPhase("fade"), 1320);
-    const removeTimer = window.setTimeout(() => setPhase("hidden"), 1780);
+    const fadeTimer = window.setTimeout(() => setPhase("fade"), 2600);
+    const removeTimer = window.setTimeout(() => setPhase("hidden"), 3100);
     return () => {
       window.clearTimeout(fadeTimer);
       window.clearTimeout(removeTimer);
