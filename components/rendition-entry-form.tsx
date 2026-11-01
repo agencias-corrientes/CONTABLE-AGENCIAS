@@ -838,6 +838,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const cancelTicketOpenRef = useRef(false);
   const ticketExitAllowedRef = useRef(false);
   const ticketHistoryGuardRef = useRef(false);
+  const ticketExitDestinationRef = useRef<"menu" | "back-link" | null>(null);
   const hasTicketInProgress = Boolean(receiptData || batchTickets.length || fileName || photoPreviewUrl || busy);
 
   useEffect(() => {
@@ -847,15 +848,35 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     };
     pushTicketHistoryGuard();
     ticketHistoryGuardRef.current = true;
-    const handleBackNavigation = () => {
-      if (ticketExitAllowedRef.current) return;
-      pushTicketHistoryGuard();
+    const openCancelConfirmation = () => {
       if (cancelTicketOpenRef.current) return;
       cancelTicketOpenRef.current = true;
       setCancelTicketOpen(true);
     };
+    const handleBackNavigation = () => {
+      if (ticketExitAllowedRef.current) return;
+      ticketExitDestinationRef.current = null;
+      pushTicketHistoryGuard();
+      openCancelConfirmation();
+    };
+    const handleExitClick = (event: MouseEvent) => {
+      if (ticketExitAllowedRef.current) return;
+      const target = event.target instanceof Element ? event.target : null;
+      const menuButton = target?.closest(".section-menu-return");
+      const backLink = target?.closest(".rendition-selected-header .back-link");
+      if (!menuButton && !backLink) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      ticketExitDestinationRef.current = menuButton ? "menu" : "back-link";
+      openCancelConfirmation();
+    };
     window.addEventListener("popstate", handleBackNavigation);
-    return () => window.removeEventListener("popstate", handleBackNavigation);
+    window.addEventListener("click", handleExitClick, true);
+    return () => {
+      window.removeEventListener("popstate", handleBackNavigation);
+      window.removeEventListener("click", handleExitClick, true);
+    };
   }, [hasTicketInProgress]);
 
   useEffect(() => {
@@ -2225,6 +2246,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             <div className="ticket-cancel-dialog-actions">
               <button type="button" className="ticket-cancel-no" onClick={() => {
                 cancelTicketOpenRef.current = false;
+                ticketExitDestinationRef.current = null;
                 setCancelTicketOpen(false);
               }}>No</button>
               <button type="button" className="ticket-cancel-yes" onClick={() => {
@@ -2232,7 +2254,13 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                 ticketHistoryGuardRef.current = false;
                 cancelTicketOpenRef.current = false;
                 setCancelTicketOpen(false);
-                window.history.go(-2);
+                const destination = ticketExitDestinationRef.current;
+                ticketExitDestinationRef.current = null;
+                if (destination === "menu") {
+                  window.dispatchEvent(new Event("agency-menu-return-confirmed"));
+                } else {
+                  window.history.go(-2);
+                }
               }}>Sí</button>
             </div>
           </section>
