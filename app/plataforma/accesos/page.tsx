@@ -312,7 +312,7 @@ export default async function PlatformAccessPage({ searchParams }: { searchParam
   return (
     <main className="auth-page">
       <section className="auth-card wide platform-admin-page">
-        <div className="brand-logo-wrap brand-logo-top-left auth-page-logo"><Image src="/Esfera%20brillante%20de%20Agencias%20Corrientes.png" alt="Agencias Corrientes — Quiniela Oficial" width={88} height={88} priority /></div>
+        <div className="brand-logo-wrap brand-logo-top-left auth-page-logo"><Image src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png" alt="Agencias Corrientes — Quiniela Oficial" width={88} height={88} priority /></div>
         <p className="eyebrow">ADMINISTRACIÓN CENTRAL</p>
         <h1>Control de acceso a agencias</h1>
         <p className="muted">Este es el panel central. Las solicitudes nuevas aparecen arriba; las agencias y cuentas existentes se consultan abajo. El titular administra el alta, la baja y los permisos de sus empleados; desde acá solo podés suspender o reactivar globalmente una cuenta, sin borrar rendiciones ni movimientos.</p>
