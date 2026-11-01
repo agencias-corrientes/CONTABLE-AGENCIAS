@@ -2,7 +2,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { LandingSplash } from "@/components/landing-splash";
 import { SignOutButton } from "@/components/sign-out-button";
 
 export default async function HomePage() {
@@ -43,7 +42,6 @@ export default async function HomePage() {
 
   return (
     <main className="landing">
-      <LandingSplash />
       <section className="landing-card landing-role-card landing-access-card">
         <header className="landing-brand-header">
           <div className="brand-logo-wrap landing-agency-brand"><Image src="/logo-agencias-corrientes.webp" alt="Agencias Corrientes — Quiniela Oficial" width={104} height={104} priority /></div>
