@@ -1693,11 +1693,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                 <strong>{batchTickets.length === 0 ? "Carga acumulada de FIN DE JORNADA" : `${batchTickets.length} cupón${batchTickets.length === 1 ? "" : "es"} agregado${batchTickets.length === 1 ? "" : "s"}`}</strong>
                 <p>{batchTickets.length === 0 ? "Elegí el primer comprobante. Después podés agregar los demás, uno por uno, sin registrar una rendición todavía." : "El cupón ya está en este lote. Volvé a elegir otro archivo para sumar el siguiente comprobante a la misma rendición."}</p>
               </div>
-              <button type="button" className="button ghost small" disabled={busy || batchTickets.length >= 12} onClick={() => {
-                setCameraError("");
-                setTicketCaptureChoiceOpen(true);
-              }}>{batchTickets.length === 0 ? "Elegir primer FIN DE JORNADA" : "Agregar otro FIN DE JORNADA"}</button>
-              <small>Repetí esta operación por cada cupón. Revisá la lista y marcá la revisión antes de tocar “Confirmar rendición acumulada”. Máximo 12 cupones por lote.</small>
+              <small>Para cargar cada cupón del lote, volvé a usar el mismo botón Foto o archivo de arriba. Revisá todos los comprobantes y marcá la revisión antes de tocar “Confirmar rendición acumulada”. Máximo 12 cupones por lote.</small>
             </div>
           )}
           {photoPreviewUrl && <div className="ticket-photo-preview"><button type="button" className="ticket-photo-preview-button" onClick={() => setPhotoExpanded(true)} aria-label="Ampliar foto del ticket"><img src={photoPreviewUrl} alt="Vista previa del ticket cargado" /><span>Ampliar foto</span></button></div>}
