@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const nav = [
@@ -31,6 +31,10 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const [sectionSelected, setSectionSelected] = useState(() => pathname !== "/pagos");
+  useEffect(() => {
+    if (pathname === "/pagos" && new URLSearchParams(window.location.search).has("agent")) setSectionSelected(true);
+    else if (pathname !== "/pagos") setSectionSelected(true);
+  }, [pathname]);
   const sectionKey = pathname.startsWith("/pagos") ? "rendiciones" : pathname.startsWith("/agencias") ? "agentes" : pathname.startsWith("/buscar") ? "buscar" : pathname.startsWith("/juegos") ? "juegos" : pathname.startsWith("/loteria-correntina") ? "loteria" : pathname.startsWith("/configuracion") ? "configuracion" : "general";
   const officialAgencyNumber = organizationName.match(/\b(\d{3})\b/)?.[1] ?? null;
 
