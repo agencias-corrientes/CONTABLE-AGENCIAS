@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const nav = [
@@ -29,6 +30,8 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [sectionSelected, setSectionSelected] = useState(() => pathname !== "/pagos");
+  const sectionKey = pathname.startsWith("/pagos") ? "rendiciones" : pathname.startsWith("/agencias") ? "agentes" : pathname.startsWith("/buscar") ? "buscar" : pathname.startsWith("/juegos") ? "juegos" : pathname.startsWith("/loteria-correntina") ? "loteria" : pathname.startsWith("/configuracion") ? "configuracion" : "general";
   const officialAgencyNumber = organizationName.match(/\b(\d{3})\b/)?.[1] ?? null;
 
   const isOwner = userRole === "owner";
@@ -44,8 +47,8 @@ export function AppShell({
   const displayRole = isOwner || userRole === "admin" ? "Administrador" : "Empleado";
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div className={"app-shell " + (sectionSelected ? "section-open" : "menu-open")}>
+      <aside className={"sidebar " + (sectionSelected ? "sidebar-hidden" : "sidebar-menu")}>
         <div className="sidebar-brand">
           <div className="brand-logo-wrap sidebar-logo"><Image src="/logo-agencias-corrientes.webp" alt="Agencias Corrientes — Quiniela Oficial" width={48} height={48} priority /></div>
           <div className="brand-copy">
@@ -60,10 +63,13 @@ export function AppShell({
               <Link
                 key={slug}
                 href={href}
-                onClick={slug === "pagos" ? (event) => {
-                  event.preventDefault();
-                  router.push("/pagos");
-                } : undefined}
+                onClick={(event) => {
+                  setSectionSelected(true);
+                  if (slug === "pagos") {
+                    event.preventDefault();
+                    router.push("/pagos");
+                  }
+                }}
                 className={pathname.startsWith(href) ? "nav-item active" : "nav-item"}
               >
                 {label}
@@ -80,7 +86,38 @@ export function AppShell({
           <button className="button ghost full" onClick={signOut}>Cerrar sesión</button>
         </div>
       </aside>
-      <main className="content-area">{children}</main>
+      <main className={"content-area " + (sectionSelected ? "section-active section-" + sectionKey : "agency-menu-screen")}>
+        {sectionSelected ? (
+          <>
+            <div className="section-navigation-bar">
+              <button type="button" className="section-menu-return" onClick={() => setSectionSelected(false)}>← Menú principal</button>
+            </div>
+            {children}
+          </>
+        ) : (
+          <section className="agency-home-menu">
+            <header className="agency-home-menu-heading">
+              <div className="agency-home-menu-brand">
+                <div className="brand-logo-wrap"><Image src="/logo-agencias-corrientes.webp" alt="Agencias Corrientes" width={72} height={72} priority /></div>
+                <div><p>AGENCIA {officialAgencyNumber ?? ""}</p><h1>Menú principal</h1><span>{organizationName}</span></div>
+              </div>
+              <p>Elegí el sector que necesitás utilizar.</p>
+            </header>
+            <nav className="agency-home-menu-grid" aria-label="Menú principal de la agencia">
+              {visibleNav.map(([slug, label]) => (
+                <Link key={slug} href={"/" + slug} onClick={() => setSectionSelected(true)} className={"agency-home-menu-item agency-menu-" + slug}>
+                  <strong>{label}</strong><span>Ingresar →</span>
+                </Link>
+              ))}
+            </nav>
+            <footer className="agency-home-menu-footer">
+              <span>{displayRole} · {userEmail}</span>
+              {isPlatformAdmin && <Link href="/plataforma/accesos" className="button ghost">Control central</Link>}
+              <button className="button ghost" onClick={signOut}>Cerrar sesión</button>
+            </footer>
+          </section>
+        )}
+      </main>
       <style jsx>{`
         .sidebar { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
         .sidebar-brand strong { font-size: 17px; font-weight: 800; letter-spacing: -.025em; }
