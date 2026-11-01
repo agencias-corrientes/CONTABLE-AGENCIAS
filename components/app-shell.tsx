@@ -74,10 +74,12 @@ export function AppShell({
                 key={slug}
                 href={href}
                 onClick={(event) => {
-                  setSectionSelected(true);
                   if (slug === "pagos" && pathname.startsWith("/pagos")) {
                     event.preventDefault();
+                    setSectionSelected(true);
+                    return;
                   }
+                  setSectionSelected(true);
                 }}
                 className={pathname.startsWith(href) ? "nav-item active" : "nav-item"}
               >
@@ -118,8 +120,12 @@ export function AppShell({
                   key={slug}
                   href={"/" + slug}
                   onClick={(event) => {
+                    if (slug === "pagos" && pathname.startsWith("/pagos")) {
+                      event.preventDefault();
+                      setSectionSelected(true);
+                      return;
+                    }
                     setSectionSelected(true);
-                    if (slug === "pagos" && pathname.startsWith("/pagos")) event.preventDefault();
                   }}
                   className={"agency-home-menu-item agency-menu-" + slug}
                 >
