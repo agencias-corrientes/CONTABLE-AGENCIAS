@@ -27,6 +27,7 @@ function normalize(value: string) {
 }
 
 let paddleOcrEnginePromise: Promise<any> | null = null;
+let paddleOcrTimedOutForSession = false;
 
 async function loadPaddleOcrSdk(): Promise<any> {
   const browserWindow = window as any;
@@ -49,12 +50,17 @@ async function loadPaddleOcrSdk(): Promise<any> {
 }
 
 async function getPaddleOcrEngine(): Promise<any> {
+  if (paddleOcrTimedOutForSession) {
+    throw new Error("El lector rápido demoró demasiado en esta sesión; se usará el lector alternativo.");
+  }
   if (!paddleOcrEnginePromise) {
     paddleOcrEnginePromise = loadPaddleOcrSdk()
       .then(async ({ PaddleOCR }) => {
         const commonOptions = {
-          lang: "es",
-          ocrVersion: "PP-OCRv6",
+          // PP-OCRv6_tiny conserva compatibilidad con español y reduce el modelo
+          // de 31,2 MB a 6,3 MB para acelerar la primera carga, especialmente en móvil.
+          textDetectionModelName: "PP-OCRv6_tiny_det",
+          textRecognitionModelName: "PP-OCRv6_tiny_rec",
           // El CDN +esm no trae el worker empaquetado por el build de Next/Vercel.
           // Conservamos la ejecución principal compatible con Android.
           worker: false,
@@ -87,6 +93,20 @@ async function getPaddleOcrEngine(): Promise<any> {
       });
   }
   return paddleOcrEnginePromise;
+}
+
+function withOcrTimeout<T>(operation: Promise<T>, timeoutMs: number, stage: string): Promise<T> {
+  let timeoutId: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      const error = new Error("La " + stage + " superó el tiempo máximo de espera.");
+      error.name = "OcrTimeoutError";
+      reject(error);
+    }, timeoutMs);
+  });
+  return Promise.race([operation, timeout]).finally(() => {
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+  });
 }
 
 function paddleOcrItemsToText(rawItems: unknown): string {
@@ -1293,15 +1313,25 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       // Motor principal nuevo: PaddleOCR v6 en español, ejecutado localmente en el navegador.
       // Tesseract queda únicamente como respaldo si el motor/modelo no puede iniciarse.
       try {
-        const paddle = await paddleEnginePromise;
+        setProgress("Cargando lector rápido de texto…");
+        setProgressPercent(20);
+        const paddle = await withOcrTimeout(
+          paddleEnginePromise,
+          10000,
+          "inicio del lector rápido"
+        );
         setProgress("Reconociendo los renglones impresos del cupón…");
         setProgressPercent(35);
         const paddlePredictStartedAt = performance.now();
-        const [paddleResult] = await paddle.predict(file, {
-          textDetBoxThresh: 0.4,
-          textDetUnclipRatio: 1.8,
-          textRecScoreThresh: 0.0,
-        });
+        const [paddleResult] = await withOcrTimeout(
+          paddle.predict(file, {
+            textDetBoxThresh: 0.4,
+            textDetUnclipRatio: 1.8,
+            textRecScoreThresh: 0.0,
+          }),
+          25000,
+          "lectura del cupón"
+        );
         console.info("[Agencias OCR] Lectura principal", {
           elapsedMs: Math.round(performance.now() - paddlePredictStartedAt),
           metrics: paddleResult?.metrics ?? null,
@@ -1310,6 +1340,17 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         paddleMetadataWords = paddleItemsToWordBoxes(paddleResult?.items ?? []);
         recognizedText = paddleOcrItemsToText(paddleResult?.items ?? []);
       } catch (cause) {
+        if (
+          cause instanceof Error &&
+          cause.name === "OcrTimeoutError" &&
+          cause.message.includes("inicio del lector rápido")
+        ) {
+          paddleOcrTimedOutForSession = true;
+          void paddleEnginePromise.then(
+            () => { paddleOcrTimedOutForSession = false; },
+            () => { paddleOcrTimedOutForSession = false; }
+          );
+        }
         paddleFailure = cause instanceof Error ? cause.message : String(cause);
         recognizedText = "";
       }
@@ -1319,18 +1360,32 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         const paddlePartialText = recognizedText;
         setProgress("Activando lector de respaldo…");
         setProgressPercent(42);
+        setProgress("Preparando lector alternativo…");
+        setProgressPercent(42);
         tesseractProgressHandlerRef.current = (message) => {
-          if (message.status === "recognizing text" && typeof message.progress === "number") {
-            const percent = Math.min(96, 42 + Math.round(message.progress * 52));
+          if (typeof message.progress !== "number") return;
+          if (message.status === "recognizing text") {
+            const percent = Math.min(96, 52 + Math.round(message.progress * 44));
             setProgressPercent(percent);
             setProgress("Reconociendo ticket…");
+          } else if (/load|init|download/i.test(String(message.status ?? ""))) {
+            setProgressPercent(Math.min(51, 42 + Math.round(message.progress * 9)));
+            setProgress("Preparando lector alternativo…");
           }
         };
-        const worker = await getTicketTesseractWorker();
+        const worker = await withOcrTimeout(
+          getTicketTesseractWorker(),
+          20000,
+          "inicio del lector alternativo"
+        );
         // La pasada de metadatos usa PSM 6; volver a PSM 3 mantiene el modo
         // automático para la lectura general de los próximos tickets.
         await worker.setParameters({ tessedit_pageseg_mode: "3" } as any);
-        const result = await worker.recognize(file, {}, { blocks: true });
+        const result = await withOcrTimeout(
+          worker.recognize(file, {}, { blocks: true }),
+          35000,
+          "lectura con el lector alternativo"
+        );
         focusedOcrWords = tesseractWordBoxes(result.data);
         const tesseractText = result.data.text ?? "";
         if (ocrTextHasEnoughSignals(tesseractText, closureReadExpected) || tesseractText.length >= paddlePartialText.length) {
@@ -1463,17 +1518,26 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         try {
           setProgress("Revisando los datos identificatorios del ticket…");
           setProgressPercent(88);
-          const metadataWorkerPromise = getTicketTesseractWorker();
+          const metadataWorkerPromise = withOcrTimeout(
+            getTicketTesseractWorker(),
+            15000,
+            "inicio del lector alternativo para datos identificatorios"
+          );
           const enhancedImage = await makeEnhancedTicketImage(file);
           try {
             try {
-              const paddle = await paddleEnginePromise;
+              if (paddleOcrTimedOutForSession) throw new Error("Se omite el lector rápido porque superó el tiempo de espera inicial.");
+              const paddle = await withOcrTimeout(paddleEnginePromise, 5000, "inicio del lector rápido para datos identificatorios");
               const metadataPaddleStartedAt = performance.now();
-              const [focusedPaddleResult] = await paddle.predict(enhancedImage, {
-                textDetBoxThresh: 0.4,
-                textDetUnclipRatio: 1.8,
-                textRecScoreThresh: 0.0,
-              });
+              const [focusedPaddleResult] = await withOcrTimeout(
+                paddle.predict(enhancedImage, {
+                  textDetBoxThresh: 0.4,
+                  textDetUnclipRatio: 1.8,
+                  textRecScoreThresh: 0.0,
+                }),
+                15000,
+                "lectura de datos identificatorios"
+              );
               console.info("[Agencias OCR] Segunda lectura Paddle", {
                 elapsedMs: Math.round(performance.now() - metadataPaddleStartedAt),
                 metrics: focusedPaddleResult?.metrics ?? null,
@@ -1487,7 +1551,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             const metadataWorker = await metadataWorkerPromise;
             await metadataWorker.setParameters({ tessedit_pageseg_mode: "6" } as any);
             const metadataTesseractStartedAt = performance.now();
-            const metadataResult = await metadataWorker.recognize(enhancedImage, {}, { blocks: true });
+            const metadataResult = await withOcrTimeout(
+              metadataWorker.recognize(enhancedImage, {}, { blocks: true }),
+              30000,
+              "lectura de datos identificatorios con el lector alternativo"
+            );
             console.info("[Agencias OCR] Segunda lectura Tesseract", {
               elapsedMs: Math.round(performance.now() - metadataTesseractStartedAt),
             });
