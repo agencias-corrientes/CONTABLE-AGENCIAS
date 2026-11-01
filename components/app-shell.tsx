@@ -35,6 +35,12 @@ export function AppShell({
     if (pathname === "/pagos" && new URLSearchParams(window.location.search).has("agent")) setSectionSelected(true);
     else if (pathname !== "/pagos") setSectionSelected(true);
   }, [pathname]);
+
+  useEffect(() => {
+    const returnToAgencyMenu = () => setSectionSelected(false);
+    window.addEventListener("agency-menu-return-confirmed", returnToAgencyMenu);
+    return () => window.removeEventListener("agency-menu-return-confirmed", returnToAgencyMenu);
+  }, []);
   const sectionKey = pathname.startsWith("/pagos") ? "rendiciones" : pathname.startsWith("/agencias") ? "agentes" : pathname.startsWith("/buscar") ? "buscar" : pathname.startsWith("/juegos") ? "juegos" : pathname.startsWith("/loteria-correntina") ? "loteria" : pathname.startsWith("/configuracion") ? "configuracion" : "general";
   const officialAgencyNumber = organizationName.match(/\b(\d{3})\b/)?.[1] ?? null;
 
