@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-/** Intro institucional breve con objetos 3D en movimiento. */
+/** Presentación institucional: el logo original es el único elemento animado. */
 export function LandingSplash() {
   const [phase, setPhase] = useState<"show" | "fade" | "hidden">("show");
 
@@ -24,15 +24,6 @@ export function LandingSplash() {
       className={`landing-splash-motion landing-splash-motion--${phase}`}
     >
       <div className="landing-splash-stage">
-        <div className="landing-splash-ring landing-splash-ring--outer" />
-        <div className="landing-splash-ring landing-splash-ring--inner" />
-        <span className="landing-splash-object landing-splash-object--gold" />
-        <span className="landing-splash-object landing-splash-object--ruby" />
-        <span className="landing-splash-object landing-splash-object--blue" />
-        <span className="landing-splash-cube" />
-        <span className="landing-splash-glint landing-splash-glint--one" />
-        <span className="landing-splash-glint landing-splash-glint--two" />
-        <span className="landing-splash-glint landing-splash-glint--three" />
         <div className="landing-splash-logo">
           <Image
             src="/logo-agencias-quiniela.svg"
