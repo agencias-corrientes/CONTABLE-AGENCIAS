@@ -934,26 +934,6 @@ input[type="reset"],
   border-radius: 8px !important;
 }
 
-/* El selector de archivos debe permanecer visible y activable también en móviles.
-   Los navegadores móviles bloquean a menudo inputs de archivo fuera de pantalla. */
-.ticket-photo-picker .ticket-photo-operational-input {
-  position: static !important;
-  inset: auto !important;
-  display: block !important;
-  width: 100% !important;
-  height: auto !important;
-  min-height: 48px !important;
-  max-width: 100% !important;
-  margin-top: 8px !important;
-  padding: 10px !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
-  z-index: auto !important;
-  border: 1px solid #d4c18b !important;
-  border-radius: 9px !important;
-  background: #fff !important;
-  color: #40242a !important;
-}
 .ticket-photo-picker-cta {
   border: 0 !important;
   cursor: pointer;
@@ -1253,9 +1233,11 @@ html, body { min-height:100%; }
 .login-password-toggle svg { display:block; width:24px; height:24px; }
 
 
-/* Selector unificado de foto: un solo botón visible; el input sigue montado y recibe el clic desde el diálogo. */
-.ticket-photo-picker .ticket-photo-operational-input {
+/* Selector unificado: input diminuto y fuera de la zona táctil; el diálogo lo activa
+   programáticamente. Así no puede tapar "Ampliar foto" ni otros controles. */
+.ticket-photo-operational-input {
   position: fixed !important;
+  inset: auto !important;
   left: 0 !important;
   top: 0 !important;
   width: 1px !important;
