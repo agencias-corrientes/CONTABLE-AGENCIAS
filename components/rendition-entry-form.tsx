@@ -829,7 +829,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [cameraError, setCameraError] = useState("");
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
-  const renditionToolbarRef = useRef<HTMLDivElement | null>(null);
   const renditionSettlementRef = useRef<HTMLDivElement | null>(null);
   const pendingSettlementScrollRef = useRef(false);
   const tesseractWorkerRef = useRef<Promise<any> | null>(null);
@@ -843,15 +842,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const ticketHistoryGuardRef = useRef(false);
   const ticketExitDestinationRef = useRef<"menu" | "back-link" | null>(null);
   const hasTicketInProgress = Boolean(receiptData || batchTickets.length || fileName || photoPreviewUrl || busy);
-
-  // Al entrar a una rendición nueva, dejar el selector de foto/archivo a la vista.
-  useEffect(() => {
-    if (receiptOnlyMode || initialRendition) return;
-    const frame = window.requestAnimationFrame(() => {
-      renditionToolbarRef.current?.scrollIntoView({ behavior: "auto", block: "start" });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [receiptOnlyMode, initialRendition?.id]);
 
   // Después de leer un FIN DE JORNADA, mostrar la zona de configuración y guardado.
   useEffect(() => {
@@ -1852,7 +1842,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         </>
       )}
 
-      <div className="rendition-mode-toolbar" ref={renditionToolbarRef}>
+      <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
           <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => {
             setMode("photo");
