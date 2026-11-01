@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./agency-ops.css";
+import "./watermark.css";
 
 const productionSiteUrl = "https://contable-agencias.vercel.app";
 const previewHost = process.env.VERCEL_URL;
