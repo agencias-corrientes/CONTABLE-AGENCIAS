@@ -6,7 +6,7 @@ type BrandAppIconProps = {
 export function BrandAppIcon({ scale = 1 }: BrandAppIconProps) {
   return (
     <img
-      src="/logo-agencias-corrientes.webp"
+      src="/Esfera%20brillante%20de%20Agencias%20Corrientes.png"
       alt="Agencias Corrientes — Quiniela Oficial"
       width={320}
       height={320}
