@@ -829,6 +829,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [cameraError, setCameraError] = useState("");
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
+  const renditionToolbarRef = useRef<HTMLDivElement | null>(null);
+  const renditionSettlementRef = useRef<HTMLDivElement | null>(null);
+  const pendingSettlementScrollRef = useRef(false);
   const tesseractWorkerRef = useRef<Promise<any> | null>(null);
   const tesseractProgressHandlerRef = useRef<((message: any) => void) | null>(null);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
@@ -840,6 +843,25 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const ticketHistoryGuardRef = useRef(false);
   const ticketExitDestinationRef = useRef<"menu" | "back-link" | null>(null);
   const hasTicketInProgress = Boolean(receiptData || batchTickets.length || fileName || photoPreviewUrl || busy);
+
+  // Al entrar a una rendición nueva, dejar el selector de foto/archivo a la vista.
+  useEffect(() => {
+    if (receiptOnlyMode || initialRendition) return;
+    const frame = window.requestAnimationFrame(() => {
+      renditionToolbarRef.current?.scrollIntoView({ behavior: "auto", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [receiptOnlyMode, initialRendition?.id]);
+
+  // Después de leer un FIN DE JORNADA, mostrar la zona de configuración y guardado.
+  useEffect(() => {
+    if (receiptOnlyMode || !pendingSettlementScrollRef.current || busy || progressPercent < 100) return;
+    pendingSettlementScrollRef.current = false;
+    const frame = window.requestAnimationFrame(() => {
+      renditionSettlementRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [busy, progressPercent, receiptOnlyMode]);
 
   useEffect(() => {
     if (!hasTicketInProgress || ticketExitAllowedRef.current || ticketHistoryGuardRef.current) return;
@@ -893,38 +915,42 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     };
   }, [cameraOpen, cameraStreamVersion]);
 
-  // Preparar los motores durante un momento ocioso, antes de que el usuario
-  // seleccione la foto. No cambia el orden ni los criterios de reconocimiento.
+  // Preparar únicamente el motor principal cuando la pantalla lleva un rato
+  // sin interacción. Si el usuario empieza a navegar o cargar una foto, se
+  // cancela esta tarea para no competir con los botones ni con el OCR activo.
   useEffect(() => {
     if (mode !== "photo") return;
     let cancelled = false;
     let idleHandle: number | null = null;
     let timeoutHandle: number | null = null;
     const idleWindow = window as any;
-    const warmEngines = () => {
-      void (async () => {
-        try {
-          await getPaddleOcrEngine();
-        } catch {
-          // El flujo normal conserva el fallback si Paddle no puede inicializarse.
-        }
-        if (cancelled) return;
-        try {
-          await getTicketTesseractWorker();
-        } catch {
-          // El worker se vuelve a crear desde el flujo normal si hace falta.
-        }
-      })();
+    const cancelScheduledWarmup = () => {
+      cancelled = true;
+      if (idleHandle !== null) idleWindow.cancelIdleCallback?.(idleHandle);
+      if (timeoutHandle !== null) window.clearTimeout(timeoutHandle);
     };
+    const cancelOnInteraction = () => cancelScheduledWarmup();
+    const warmPrimaryEngine = () => {
+      if (cancelled) return;
+      window.removeEventListener("pointerdown", cancelOnInteraction, true);
+      window.removeEventListener("keydown", cancelOnInteraction, true);
+      void getPaddleOcrEngine().catch(() => {
+        // El flujo normal inicializa el motor y conserva el fallback si falla.
+      });
+    };
+    window.addEventListener("pointerdown", cancelOnInteraction, true);
+    window.addEventListener("keydown", cancelOnInteraction, true);
     if (typeof idleWindow.requestIdleCallback === "function") {
-      idleHandle = idleWindow.requestIdleCallback(warmEngines, { timeout: 7000 });
+      idleHandle = idleWindow.requestIdleCallback(warmPrimaryEngine, { timeout: 12000 });
     } else {
-      timeoutHandle = window.setTimeout(warmEngines, 1800);
+      timeoutHandle = window.setTimeout(warmPrimaryEngine, 10000);
     }
     return () => {
       cancelled = true;
       if (idleHandle !== null) idleWindow.cancelIdleCallback?.(idleHandle);
       if (timeoutHandle !== null) window.clearTimeout(timeoutHandle);
+      window.removeEventListener("pointerdown", cancelOnInteraction, true);
+      window.removeEventListener("keydown", cancelOnInteraction, true);
     };
   }, [mode]);
 
@@ -1685,7 +1711,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           ". La rendición financiera se registrará en la jornada operativa " + formatDateDdMmYyyy(today) +
           "; la fecha impresa queda en el comprobante y no modifica la Caja de ese día. Los renglones editables están abajo en Juegos e importes."
         );
-        document.querySelector(".game-rendition-block")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        pendingSettlementScrollRef.current = true;
       } else if (detectedQr && recognizedCount) {
         setNotice("QR e importes detectados. Revisá fecha, período y valores antes de registrar.");
       } else if (detectedQr) {
@@ -1826,14 +1852,14 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         </>
       )}
 
-      <div className="rendition-mode-toolbar">
+      <div className="rendition-mode-toolbar" ref={renditionToolbarRef}>
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
           <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => {
             setMode("photo");
             setCameraError("");
             setTicketCaptureTarget("main");
             setTicketCaptureChoiceOpen(true);
-          }}>Foto o archivo</button>
+          }}>Elegir foto o archivo</button>
           <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
             setMode("manual");
             if (!receiptData && !initialRendition) {
@@ -2130,7 +2156,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       <label className="ticket-input-block"><span>Número(s) de ticket / cupón</span><textarea name="ticket_numbers" rows={2} value={ticketNumbers} onChange={(event) => setTicketNumbers(event.target.value)} readOnly={batchMode} placeholder={batchMode ? "El detalle de cada cupón queda en el lote." : "Se completa desde la lectura o ingresalo manualmente."} /></label>
       <label className="ticket-input-block"><span>Observaciones</span><textarea name="notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Opcional." /></label>
-      <div className="rendition-settlement-bar">
+      <div className="rendition-settlement-bar" ref={renditionSettlementRef}>
         <div className="rendition-settlement-values">
           <div><span>Ventas brutas</span><strong>{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(total)}</strong></div>
           <div><span>Comisión aplicada ({new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(effectiveCommissionPercent)}%)</span><strong className="commission-deduction">− {new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(commissionTotal)}</strong></div>
