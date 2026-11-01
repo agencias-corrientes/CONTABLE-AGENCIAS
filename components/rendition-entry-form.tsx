@@ -53,8 +53,11 @@ async function getPaddleOcrEngine(): Promise<any> {
     paddleOcrEnginePromise = loadPaddleOcrSdk()
       .then(async ({ PaddleOCR }) => {
         const commonOptions = {
-          lang: "es",
-          ocrVersion: "PP-OCRv6",
+          // Modelo tiny oficial PP-OCRv6 para español y textos latinos.
+          // Reduce el paquete de modelos de 31,2 MB a 6,3 MB.
+          // La asignación contable sigue protegida por validación de totales y revisión humana.
+          textDetectionModelName: "PP-OCRv6_tiny_det",
+          textRecognitionModelName: "PP-OCRv6_tiny_rec",
           // El CDN +esm no trae el worker empaquetado por el build de Next/Vercel.
           // Conservamos la ejecución principal compatible con Android.
           worker: false,
@@ -1214,25 +1217,44 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       }
 
       const closureReadExpected = dailyMode || receiptOnlyMode || batchMode;
-      if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
+      const initialClosureCandidate = closureReadExpected && ocrTextHasEnoughSignals(recognizedText, true)
+        ? parseTicketClosure(recognizedText, true)
+        : null;
+      const needsTesseractFallback =
+        !ocrTextHasEnoughSignals(recognizedText, closureReadExpected) ||
+        (closureReadExpected && initialClosureCandidate?.consistency.salesTotalsMatch !== true);
+      if (needsTesseractFallback) {
         const paddlePartialText = recognizedText;
-        setProgress("Activando lector de respaldo…");
+        setProgress("Validando lectura con el lector de respaldo…");
         setProgressPercent(42);
         tesseractProgressHandlerRef.current = (message) => {
           if (message.status === "recognizing text" && typeof message.progress === "number") {
             const percent = Math.min(96, 42 + Math.round(message.progress * 52));
             setProgressPercent(percent);
-            setProgress("Reconociendo ticket…");
+            setProgress("Verificando lectura del ticket…");
           }
         };
         const worker = await getTicketTesseractWorker();
-        // La pasada de metadatos usa PSM 6; volver a PSM 3 mantiene el modo
-        // automático para la lectura general de los próximos tickets.
         await worker.setParameters({ tessedit_pageseg_mode: "3" } as any);
         const result = await worker.recognize(file, {}, { blocks: true });
         focusedOcrWords = tesseractWordBoxes(result.data);
         const tesseractText = result.data.text ?? "";
-        if (ocrTextHasEnoughSignals(tesseractText, closureReadExpected) || tesseractText.length >= paddlePartialText.length) {
+        if (closureReadExpected) {
+          const paddleCandidate = ocrTextHasEnoughSignals(paddlePartialText, true)
+            ? parseTicketClosure(paddlePartialText, true)
+            : null;
+          const tesseractCandidate = ocrTextHasEnoughSignals(tesseractText, true)
+            ? parseTicketClosure(tesseractText, true)
+            : null;
+          const paddleSalesVerified = paddleCandidate?.consistency.salesTotalsMatch === true;
+          const tesseractSalesVerified = tesseractCandidate?.consistency.salesTotalsMatch === true;
+          if (
+            (tesseractSalesVerified && !paddleSalesVerified) ||
+            (!paddleSalesVerified && !tesseractSalesVerified && tesseractText.length > paddlePartialText.length)
+          ) {
+            recognizedText = tesseractText;
+          }
+        } else if (ocrTextHasEnoughSignals(tesseractText, false) || tesseractText.length >= paddlePartialText.length) {
           recognizedText = tesseractText;
         }
       }
@@ -1354,54 +1376,82 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         !parsed.receiptData.machineCode ||
         !parsed.receiptData.address ||
         !parsed.receiptData.terminalId ||
-        !parsed.receiptData.printedAt.raw
+        !parsed.receiptData.printedAt.raw ||
+        (batchMode && !/^\d{7}$/.test(String(parsed.receiptData.periodNumber ?? "")))
       )) {
-        // La lectura principal conserva los importes. Si falta identificación,
-        // hacer una pasada independiente con Tesseract y usar las cajas de cada
-        // palabra para ubicar MAQ, Dirección y Máquina real sin alterar ventas.
+        // Pase enfocado rápido: Paddle intenta recuperar los identificadores.
+        // Tesseract queda reservado para campos que todavía falten.
         try {
           setProgress("Revisando los datos identificatorios del ticket…");
           setProgressPercent(88);
-          const metadataWorkerPromise = getTicketTesseractWorker();
           const enhancedImage = await makeEnhancedTicketImage(file);
           try {
-            try {
-              const paddle = await paddleEnginePromise;
-              const [focusedPaddleResult] = await paddle.predict(enhancedImage, {
-                textDetBoxThresh: 0.4,
-                textDetUnclipRatio: 1.8,
-                textRecScoreThresh: 0.0,
-              });
-              focusedPaddleMetadataWords = paddleItemsToWordBoxes(focusedPaddleResult?.items ?? []);
-              focusedPaddleDebugText = paddleOcrItemsToText(focusedPaddleResult?.items ?? []);
-            } catch {
-              focusedPaddleMetadataWords = [];
-              focusedPaddleDebugText = "";
-            }
-            const metadataWorker = await metadataWorkerPromise;
-            await metadataWorker.setParameters({ tessedit_pageseg_mode: "6" } as any);
-            const metadataResult = await metadataWorker.recognize(enhancedImage, {}, { blocks: true });
-            focusedOcrWords = tesseractWordBoxes(metadataResult.data);
-            focusedOcrDebugText = String(metadataResult.data.text ?? "").trim();
-          } finally {
-            // Restore the general segmentation mode even when this pass fails.
-            try {
-              const metadataWorker = await metadataWorkerPromise;
-              await metadataWorker.setParameters({ tessedit_pageseg_mode: "3" } as any);
-            } catch {
-              // The outer recovery path keeps any text already obtained from Paddle.
-            }
+            const paddle = await paddleEnginePromise;
+            const [focusedPaddleResult] = await paddle.predict(enhancedImage, {
+              textDetBoxThresh: 0.4,
+              textDetUnclipRatio: 1.8,
+              textRecScoreThresh: 0.0,
+            });
+            focusedPaddleMetadataWords = paddleItemsToWordBoxes(focusedPaddleResult?.items ?? []);
+            focusedPaddleDebugText = paddleOcrItemsToText(focusedPaddleResult?.items ?? []);
+          } catch {
+            focusedPaddleMetadataWords = [];
+            focusedPaddleDebugText = "";
           }
-          const tesseractText = focusedOcrDebugText;
-          const tesseractLines = tesseractText ? parseTicketClosure(tesseractText, true) : null;
+
+          const paddlePositioned = readClosureMetadataFromOcrWords(paddleMetadataWords);
+          const focusedPaddlePositioned = readClosureMetadataFromOcrWords(focusedPaddleMetadataWords);
           const focusedPaddleLines = focusedPaddleDebugText
             ? parseTicketClosure(focusedPaddleDebugText, true)
             : null;
-          const tesseractWords = Array.isArray(focusedOcrWords) ? focusedOcrWords : [];
-          const tesseractPositioned = readClosureMetadataFromOcrWords(tesseractWords);
-          const focusedPaddlePositioned = readClosureMetadataFromOcrWords(focusedPaddleMetadataWords);
-          const paddlePositioned = readClosureMetadataFromOcrWords(paddleMetadataWords);
-          const fallbackText = focusedPaddleDebugText || tesseractText || reconstructLinesFromOcrWords(tesseractWords);
+          const paddleMachine = focusedPaddlePositioned.machineCode
+            ?? paddlePositioned.machineCode
+            ?? focusedPaddleLines?.machineCode
+            ?? parsed.receiptData.machineCode;
+          const paddleAddress = correctTicketAddressOcr(
+            focusedPaddlePositioned.address
+              ?? paddlePositioned.address
+              ?? focusedPaddleLines?.address
+              ?? parsed.receiptData.address
+          );
+          const paddleTerminal = focusedPaddlePositioned.terminalId
+            ?? paddlePositioned.terminalId
+            ?? focusedPaddleLines?.terminalId
+            ?? parsed.receiptData.terminalId;
+          const paddlePrintedAt = focusedPaddlePositioned.printedAt
+            ?? paddlePositioned.printedAt
+            ?? focusedPaddleLines?.printedAt.raw
+            ?? parsed.receiptData.printedAt.raw;
+          const paddlePeriod = focusedPaddlePositioned.periodNumber
+            ?? paddlePositioned.periodNumber
+            ?? focusedPaddleLines?.periodNumber
+            ?? parsed.receiptData.periodNumber;
+          const needsTesseractMetadata =
+            !paddleMachine ||
+            !paddleAddress ||
+            !paddleTerminal ||
+            !paddlePrintedAt ||
+            (batchMode && !/^\d{7}$/.test(String(paddlePeriod ?? "").replace(/\s+/g, "")));
+
+          let tesseractText = "";
+          let tesseractLines: TicketClosureData | null = null;
+          let tesseractPositioned = readClosureMetadataFromOcrWords([]);
+          if (needsTesseractMetadata) {
+            const metadataWorker = await getTicketTesseractWorker();
+            try {
+              await metadataWorker.setParameters({ tessedit_pageseg_mode: "6" } as any);
+              const metadataResult = await metadataWorker.recognize(enhancedImage, {}, { blocks: true });
+              focusedOcrWords = tesseractWordBoxes(metadataResult.data);
+              tesseractText = String(metadataResult.data.text ?? "").trim();
+              tesseractLines = tesseractText ? parseTicketClosure(tesseractText, true) : null;
+              tesseractPositioned = readClosureMetadataFromOcrWords(focusedOcrWords);
+              focusedOcrDebugText = tesseractText;
+            } finally {
+              await metadataWorker.setParameters({ tessedit_pageseg_mode: "3" } as any).catch(() => undefined);
+            }
+          }
+
+          const fallbackText = focusedPaddleDebugText || tesseractText || reconstructLinesFromOcrWords(focusedOcrWords);
           const textReceipt = fallbackText ? parseTicketClosure(fallbackText, true) : null;
           const printedRaw = focusedPaddlePositioned.printedAt
             ?? tesseractPositioned.printedAt
@@ -1430,7 +1480,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           if (focusedDebugParts.length) focusedOcrDebugText = focusedDebugParts.join("\n\n");
           else if (fallbackText) focusedOcrDebugText = fallbackText;
         } catch {
-          // Si Tesseract falla, conservar los datos que Paddle pudo leer del recorte.
           const paddleFallback = readClosureMetadataFromOcrWords(focusedPaddleMetadataWords);
           focusedClosureMetadata = {
             machineCode: paddleFallback.machineCode ?? undefined,
@@ -1438,6 +1487,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             terminalId: paddleFallback.terminalId ?? undefined,
             agencyCode: paddleFallback.agencyCode ?? undefined,
             subagentCode: paddleFallback.subagentCode ?? undefined,
+            periodNumber: paddleFallback.periodNumber ?? undefined,
           };
           focusedOcrDebugText = focusedPaddleDebugText;
         }
