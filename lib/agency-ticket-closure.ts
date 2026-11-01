@@ -31,6 +31,54 @@ export type TicketClosureData = {
 const normalizeTicketText = (value: string) =>
   value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
 
+const ARGENTINA_PROVINCE_NAMES = [
+  "BUENOS AIRES", "CATAMARCA", "CHACO", "CHUBUT", "CORDOBA", "CORRIENTES",
+  "ENTRE RIOS", "FORMOSA", "JUJUY", "LA PAMPA", "LA RIOJA", "MENDOZA",
+  "MISIONES", "NEUQUEN", "RIO NEGRO", "SALTA", "SAN JUAN", "SAN LUIS",
+  "SANTA CRUZ", "SANTA FE", "SANTIAGO DEL ESTERO", "TIERRA DEL FUEGO", "TUCUMAN",
+];
+
+function addressTokenDistance(left:string,right:string):number {
+  const previous=Array.from({length:right.length+1},(_,index)=>index);
+  for(let i=1;i<=left.length;i+=1){
+    const current=[i];
+    for(let j=1;j<=right.length;j+=1){
+      current[j]=Math.min(
+        (current[j-1]??0)+1,
+        (previous[j]??0)+1,
+        (previous[j-1]??0)+(left[i-1]===right[j-1]?0:1),
+      );
+    }
+    for(let j=0;j<previous.length;j+=1)previous[j]=current[j]??0;
+  }
+  return previous[right.length]??left.length;
+}
+
+// Corrección conservadora de confusiones OCR en nombres oficiales de provincias.
+// No aporta direcciones ni números: solo corrige una palabra si está a 1-2
+// caracteres de un nombre geográfico conocido.
+export function correctTicketAddressOcr(value:string|null|undefined):string|null {
+  if(!value?.trim())return null;
+  const knownTokens=[...new Set(ARGENTINA_PROVINCE_NAMES.flatMap((province)=>province.split(" ").filter((part)=>part.length>=5)))];
+  let corrected=value.trim().replace(/[A-ZÁÉÍÓÚÜÑa-záéíóúüñ\[]+/g,(raw)=>{
+    const token=raw.toUpperCase().replace(/\[/g,"L").normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    if(token==="LA")return token;
+    if(token.length<5)return token==="LN"?"LN":raw;
+    let best:string|null=null,bestDistance=4;
+    for(const provinceToken of knownTokens){
+      const distance=addressTokenDistance(token,provinceToken);
+      if(distance<bestDistance){best=provinceToken;bestDistance=distance;}
+    }
+    const allowedDistance=token.length>=8?3:2;
+    return best&&bestDistance<=allowedDistance?best:raw;
+  });
+  const parts=corrected.split(/\s+/);
+  // Confusión frecuente de OCR entre LA y LN delante de un nombre geográfico.
+  if(parts[0]?.toUpperCase()==="LN"&&parts[1]&&knownTokens.includes(parts[1].toUpperCase()))parts[0]="LA";
+  return parts.join(" ");
+}
+
+
 function moneyAllowZero(value: string): number | null {
   let amount = value.replace(/[^0-9,.-]/g, "");
   if (!amount || !/\d/.test(amount)) return null;
@@ -193,7 +241,7 @@ export function extractTicketPeriodNumber(text: string): string | null {
   }
   return null;
 }
-export function parseTicketClosure(text: string): TicketClosureData | null {
+export function parseTicketClosure(text: string, assumeEndOfDay = false): TicketClosureData | null {
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   if (!lines.length) return null;
   const normalized = lines.map(normalizeTicketText);
@@ -213,13 +261,23 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
     alToque: /AL\s+TOQUE/.test(joined),
   };
   const markerCount = Object.values(closureMarkers).filter(Boolean).length;
-  const hasClosureFooter = closureMarkers.totalsTj && closureMarkers.general &&
-    (closureMarkers.opened || closureMarkers.closed || closureMarkers.period);
-  const isEndOfDay = (closureMarkers.header && markerCount >= 2) ||
+  // El encabezado térmico puede quedar ilegible. Reconocer el formato por una
+  // combinación de secciones independientes del cierre, sin exigir todos los rótulos.
+  const hasClosureFooter = closureMarkers.general && (
+    closureMarkers.totalsTj ||
+    closureMarkers.opened ||
+    closureMarkers.closed ||
+    closureMarkers.period ||
+    closureMarkers.digital ||
+    closureMarkers.prizes ||
+    closureMarkers.otherGames ||
+    closureMarkers.alToque
+  );
+  const isEndOfDay = (closureMarkers.header && markerCount >= 1) ||
     hasClosureFooter ||
-    (markerCount >= 4 && (closureMarkers.general || closureMarkers.totalsTj) &&
-      (closureMarkers.opened || closureMarkers.closed || closureMarkers.period));
-  if (!isEndOfDay) return null;
+    (markerCount >= 3 && (closureMarkers.general || closureMarkers.totalsTj) &&
+      (closureMarkers.opened || closureMarkers.closed || closureMarkers.period || closureMarkers.digital));
+  if (!isEndOfDay && !assumeEndOfDay) return null;
 
   const qIndex = findIndex(lines, /^QUINIELA(?:\s+CORRIENTES?)?$/);
   const qToqueIndex = findIndex(lines, /AL\s+TOQUE/);
@@ -232,8 +290,14 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
   const qValid = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /\bVALIDOS?\b/);
   const qCancelled = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /ANULADOS?\s*(?:ESP|ESPECIALES?)/);
   const qPrizes = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /PREMIOS?\s+P[A-Z]{2,3}/);
-  const toqueValid = metricInRange(lines, qToqueIndex >= 0 ? qToqueIndex : 0, qToqueEnd, /\bVALIDOS?\b/);
-  const toquePrizes = metricInRange(lines, qToqueIndex >= 0 ? qToqueIndex : 0, qToqueEnd, /PREMIOS?\s+P[A-Z]{2,3}/);
+  // Si el ticket no contiene la sección «Quiniela al Toque», no reutilizar
+  // el primer renglón Válidos: pertenece a Quiniela y duplicaría sus ventas.
+  const toqueValid = qToqueIndex >= 0
+    ? metricInRange(lines, qToqueIndex, qToqueEnd, /\bVALIDOS?\b/)
+    : emptyMetric();
+  const toquePrizes = qToqueIndex >= 0
+    ? metricInRange(lines, qToqueIndex, qToqueEnd, /PREMIOS?\s+P[A-Z]{2,3}/)
+    : emptyMetric();
 
   const gameLabels: Array<{ name: string; matcher: RegExp }> = [
     { name: "Loto Plus", matcher: /^(?:L?OTO)\s+PLUS(?!\s+EXTRA)(?!\s+5)/ },
@@ -273,27 +337,137 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
 
   const agencyCode = readCodeAfterLabel(lines, /\b(?:AGENCIA|AG)\b/);
   const subagentCode = readCodeAfterLabel(lines, /\b(?:SUBAGENTE|SUBAG)\b/);
-  const machineCode = readCodeAfterLabel(lines, /\b(?:MAQUINA|MAQ)\b/, /\bMAQU[I1L]N[A4]?\s+REAL\b|\bMAQ\s+REAL\b/);
-
+  // El OCR puede pegar los rótulos de cabecera y los campos identificatorios
+  // (por ejemplo: "AGSUBAGMAQ" o "DIRECCIONMAQUINAREALIMPRESOEL").
+  // Normalizar sin espacios permite reconocerlos sin cambiar el texto de importes.
   const normalizedLines = lines.map(normalizeTicketText);
-  const terminalPattern = /\b(?:MAQU[I1L]N[A4]?\s+REAL|MAQ\s+REAL)\b/;
-  const terminalIndex = normalizedLines.findIndex((line) => terminalPattern.test(line));
-  let terminalId = terminalIndex >= 0
-    ? readNumberAfterLabel(normalizedLines[terminalIndex] ?? "", terminalPattern)
-    : null;
-  if (!terminalId && terminalIndex >= 0 && terminalIndex + 1 < lines.length) {
-    const nextLine = normalizedLines[terminalIndex + 1] ?? "";
-    if (/^[0-9OQIL|!\s.-]{1,20}$/.test(nextLine)) terminalId = readShortCode(nextLine);
+  const compactLines = normalizedLines.map((line) => line.replace(/\s+/g, ""));
+  const afterCompactChars = (value: string, count: number) => {
+    let seen = 0;
+    for (let index = 0; index < value.length; index += 1) {
+      if (/\s/.test(value[index] ?? "")) continue;
+      seen += 1;
+      if (seen === count) return value.slice(index + 1);
+    }
+    return "";
+  };
+  const beforeCompactChars = (value: string, count: number) => {
+    if (count <= 0) return "";
+    let seen = 0;
+    for (let index = 0; index < value.length; index += 1) {
+      if (/\s/.test(value[index] ?? "")) continue;
+      seen += 1;
+      if (seen === count) return value.slice(0, index + 1);
+    }
+    return value;
+  };
+
+  const machineCode = (() => {
+    const label = /M\s*A\s*[QO0](?:U[I1L]N[A4]?)?/i;
+    for (let index = 0; index < normalizedLines.length; index += 1) {
+      const line = normalizedLines[index] ?? "";
+      const compact = compactLines[index] ?? "";
+      // MAQUINA REAL es otro dato; no confundirlo con el código MAQ.
+      if (/MAQU[I1L]N[A4]?REAL|MA[QO0]REAL/i.test(compact)) continue;
+      const match = label.exec(line);
+      if (!match || match.index === undefined) continue;
+      const suffix = line.slice(match.index + match[0].length);
+      const sameLine = readShortCode(suffix.replace(/^\s*[:#.,-]?\s*/, ""));
+      if (sameLine && sameLine.length === 2) return sameLine;
+      if (sameLine && sameLine.length === 3 && sameLine[1] === sameLine[2]) return sameLine.slice(0, 2);
+      for (let next = index + 1; next < Math.min(normalizedLines.length, index + 5); next += 1) {
+        const candidate = normalizedLines[next] ?? "";
+        const compactCandidate = compactLines[next] ?? "";
+        if (/^(?:DIRECCION|DOMICILIO|MAQU[I1L]N[A4]?REAL|MA[QO0]REAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL)/i.test(compactCandidate)) continue;
+        if (/^(?:SORTEOS|QUINIELA|OTROSJUEGOS|MEDIOSDIGITALES|TOTALGENERAL|FINDEJORNADA)/i.test(compactCandidate)) break;
+        if (!/^[0-9OQIL|! .:_-]{1,12}$/.test(candidate)) continue;
+        const code = readShortCode(candidate);
+        if (code && code.length === 2) return code;
+      }
+    }
+    return null;
+  })();
+
+  const terminalPattern = /MAQU[I1L]N[A4]?REAL|MA[QO0]REAL/i;
+  const terminalIndex = compactLines.findIndex((line) => terminalPattern.test(line));
+  let terminalId: string | null = null;
+  if (terminalIndex >= 0) {
+    const compactLine = compactLines[terminalIndex] ?? "";
+    const labelMatch = terminalPattern.exec(compactLine);
+    if (labelMatch && labelMatch.index !== undefined) {
+      const tail = compactLine.slice(labelMatch.index + labelMatch[0].length);
+      const boundary = tail.search(/IMPRES[O0]EL|DIRECCION|DOMICILIO|AGENCIA|SUBAGENTE|ABIERTOEL|CERRADOEL/i);
+      const value = boundary >= 0 ? tail.slice(0, boundary) : tail;
+      terminalId = readShortCode(value);
+    }
+    if (!terminalId) {
+      for (let next = terminalIndex + 1; next < Math.min(normalizedLines.length, terminalIndex + 4); next += 1) {
+        const candidate = normalizedLines[next] ?? "";
+        const compactCandidate = compactLines[next] ?? "";
+        if (/^(?:DIRECCION|DOMICILIO|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL)/i.test(compactCandidate)) continue;
+        if (/^[0-9OQIL|!\s.-]{1,20}$/.test(candidate)) {
+          terminalId = readShortCode(candidate);
+          if (terminalId) break;
+        }
+      }
+    }
   }
 
-  const explicitAddressIndex = normalizedLines.findIndex((line) => /\b(?:DOMICILIO|DIRECCION|DIREC)\b/.test(line));
-  const streetAddressIndex = normalizedLines.findIndex((line) => /\b(?:CALLE|AVENIDA|AV\.|RUTA|LA RIOJA)\b/.test(line));
+  const addressLabelPattern = /DOMICILIO|DIRECCION|DIREC/;
+  const explicitAddressIndex = compactLines.findIndex((line) => addressLabelPattern.test(line));
+  const streetAddressIndex = compactLines.findIndex((line) => /^(?:CALLE|AVENIDA|AV\.?|RUTA|LARIOJA)/.test(line));
   const addressIndex = explicitAddressIndex >= 0 ? explicitAddressIndex : streetAddressIndex;
-  let address: string | null = addressIndex >= 0 ? (lines[addressIndex] ?? "").trim() || null : null;
-  if (addressIndex >= 0 && address && !/\d|\b(?:CALLE|AVENIDA|AV\.|RUTA|LA RIOJA)\b/i.test(address)) {
-    const nextLine = lines[addressIndex + 1]?.trim() ?? "";
-    if (nextLine && !/^(?:AGENCIA|AG|SUBAG|MAQ|ABIERTO|CERRADO|IMPRESO|TOTAL|FIN DE JORNADA)\b/i.test(normalizedLines[addressIndex + 1] ?? "")) {
-      address = nextLine;
+  let address: string | null = null;
+  if (addressIndex >= 0) {
+    const compactLine = compactLines[addressIndex] ?? "";
+    const labelMatch = explicitAddressIndex >= 0 ? addressLabelPattern.exec(compactLine) : null;
+    if (labelMatch && labelMatch.index !== undefined) {
+      const tail = afterCompactChars(normalizedLines[addressIndex] ?? "", labelMatch.index + labelMatch[0].length);
+      const compactTail = tail.replace(/\s+/g, "");
+      const boundary = compactTail.search(/MAQU[I1L]N[A4]?REAL|MA[QO0]REAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL/i);
+      const inlineValue = (boundary >= 0 ? beforeCompactChars(tail, boundary) : tail).trim();
+      if (inlineValue && /[A-Z]/i.test(inlineValue)) address = inlineValue;
+    } else {
+      const value = (lines[addressIndex] ?? "").trim();
+      if (value && !/^(?:DIRECCION|DOMICILIO|DIREC)$/i.test(value.replace(/\s+/g, ""))) address = value;
+    }
+    if (!address) {
+      for (let next = addressIndex + 1; next < Math.min(lines.length, addressIndex + 4); next += 1) {
+        const candidate = (lines[next] ?? "").trim();
+        const compactCandidate = compactLines[next] ?? "";
+        if (!candidate) continue;
+        if (/^(?:DIRECCION|DOMICILIO|DIREC|MAQU[I1L]N[A4]?REAL|MA[QO0]REAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL)/i.test(compactCandidate)) continue;
+        if (/^(?:SORTEOS|QUINIELA|OTROSJUEGOS|MEDIOSDIGITALES|TOTALGENERAL|FINDEJORNADA)/i.test(compactCandidate)) break;
+        if (/^[0-9 .:/-]+$/.test(candidate)) continue;
+        if (/[A-Z]/i.test(candidate)) {
+          address = candidate;
+          break;
+        }
+      }
+    }
+  }
+  // Algunos cierres no imprimen la etiqueta DIRECCION/DOMICILIO.
+  // En ese caso, tomar el renglón de identificación ubicado entre AG/SUBAG/MAQ
+  // y MAQUINA REAL, sin asumir una dirección fija ni una cantidad de juegos.
+  if (!address) {
+    const identityHeaderIndex = normalizedLines.findIndex((line) =>
+      (/(?:AGENCIA|AG)\s*[:.]?\s*[0-9OQIL|!]+.*(?:SUBAG|SIBAG|SILAG|SIEAG)/i.test(line)
+        || /(?:SUBAG|SIBAG|SILAG|SIEAG).*?(?:MAQ|MA0|MAO|MAQU)/i.test(line))
+    );
+    const identityMachineIndex = normalizedLines.findIndex((line) =>
+      /MAQU[I1L]N[A4]?\s*REAL|MA[QO0]\s*REAL/i.test(line)
+    );
+    if (identityHeaderIndex >= 0) {
+      const end = identityMachineIndex > identityHeaderIndex
+        ? identityMachineIndex
+        : Math.min(lines.length, identityHeaderIndex + 4);
+      const candidate = lines.slice(identityHeaderIndex + 1, end).find((rawLine, offset) => {
+        const normalized = normalizedLines[identityHeaderIndex + 1 + offset] ?? "";
+        const letters = (normalized.match(/[A-Z]/g) ?? []).length;
+        return letters >= 4 &&
+          !/(?:IMPRES[O0]|PER[I1]ODO|AB[I1L]ERTO|CERRADO|MAQU[I1L]N[A4]?\s*REAL|SORTEOS|QUINIELA|VALIDOS|PREMIOS|TOTALES|TOTAL GENERAL)/i.test(normalized);
+      });
+      if (candidate) address = correctTicketAddressOcr(candidate.trim()) ?? null;
     }
   }
   const printedLine = lines.find((line) => /\bIMPRES[O0]\b/i.test(normalizeTicketText(line))) ?? null;
@@ -333,7 +507,7 @@ export function parseTicketClosure(text: string): TicketClosureData | null {
     agencyCode,
     subagentCode,
     machineCode,
-    address: address?.trim() ?? null,
+    address: correctTicketAddressOcr(address?.trim() ?? null),
     terminalId,
     printedAt,
     openDraws,
@@ -368,6 +542,24 @@ export function mapTicketClosureAmounts(receipt: TicketClosureData, games: { id:
     { amount: receipt.otherGames.find((item) => item.name === "Lotería Online")?.amount ?? null, match: (name) => name.includes("LOTERIA ONLINE") },
   ];
   const mapped: Record<string, string> = {};
+  // Calcular el control con los valores actuales, no con el booleano guardado
+  // durante la primera lectura OCR. Así el usuario puede corregir una cifra y validar.
+  const salesAmounts = [
+    receipt.quiniela.valids.amount,
+    receipt.quinielaAlToque.valids.amount,
+    ...receipt.otherGames.map((item) => item.amount),
+  ];
+  const salesTotal = receipt.generalTotal.amount;
+  // No bloquear todos los importes válidos porque una línea secundaria quedó
+  // sin lectura. Solo trasladar cifras realmente reconocidas y exigir que la suma
+  // de esas cifras coincida exactamente con el total impreso antes de proponerlas.
+  // Las líneas null permanecen sin asignar: nunca se inventan ceros.
+  const knownSalesAmounts = salesAmounts.filter((amount): amount is number => amount !== null);
+  const salesMatch = salesTotal !== null &&
+    knownSalesAmounts.length > 0 &&
+    Math.round(knownSalesAmounts.reduce<number>((sum, amount) => sum + amount, 0) * 100) ===
+      Math.round(salesTotal * 100);
+  if (!salesMatch) return mapped;
   for (const entry of entries) {
     if (entry.amount === null) continue;
     const game = games.find((candidate) => entry.match(normalizeTicketText(candidate.name)));
