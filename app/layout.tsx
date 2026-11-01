@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LandingSplash } from "@/components/landing-splash";
 import "./globals.css";
 import "./agency-ops.css";
 
@@ -63,7 +64,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <LandingSplash />
+        {children}
+      </body>
     </html>
   );
 }
