@@ -1636,7 +1636,7 @@ html, body { min-height:100%; }
   .prize-photo-picker > small { order: 5; }
 }
 
-/* Splash premium: escena tridimensional breve, con piezas metálicas en movimiento. */
+/* Splash institucional: movimiento 3D aplicado al logo original, sin objetos ni símbolos sustitutos. */
 .landing-splash-motion {
   position: fixed;
   inset: 0;
@@ -1644,10 +1644,9 @@ html, body { min-height:100%; }
   display: grid;
   place-items: center;
   overflow: hidden;
-  perspective: 1100px;
+  perspective: 1200px;
   background:
-    radial-gradient(ellipse at 50% 45%, rgba(153, 65, 83, .42) 0%, transparent 46%),
-    radial-gradient(ellipse at 50% 110%, rgba(194, 145, 45, .18) 0%, transparent 52%),
+    radial-gradient(ellipse at 50% 48%, rgba(190, 151, 66, .16) 0%, transparent 42%),
     linear-gradient(145deg, #210d18 0%, #401526 48%, #170a12 100%);
   opacity: 1;
   pointer-events: none;
@@ -1657,22 +1656,24 @@ html, body { min-height:100%; }
 .landing-splash-motion--fade { opacity: 0; }
 .landing-splash-stage {
   position: relative;
-  width: min(88vw, 460px);
-  height: min(78vh, 520px);
+  width: min(82vw, 390px);
+  height: min(72vh, 390px);
   display: grid;
   place-items: center;
   transform-style: preserve-3d;
 }
 .landing-splash-logo {
   position: relative;
-  z-index: 5;
-  width: min(46vw, 208px);
+  width: min(68vw, 300px);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
   transform-style: preserve-3d;
-  animation: splashLogoReveal 720ms cubic-bezier(.16,.82,.24,1) both;
-  filter: drop-shadow(0 18px 26px rgba(0,0,0,.42));
+  transform-origin: center;
+  animation: splashOriginalLogo3D 2.15s cubic-bezier(.42,0,.32,1) both;
+  filter: drop-shadow(0 18px 25px rgba(0,0,0,.38))
+          drop-shadow(0 0 18px rgba(225,190,105,.14));
+  will-change: transform, filter;
 }
 .landing-splash-logo img {
   display: block;
@@ -1681,128 +1682,23 @@ html, body { min-height:100%; }
   object-fit: contain;
   background: transparent !important;
 }
-.landing-splash-object {
-  position: absolute;
-  transform-style: preserve-3d;
-  will-change: transform;
-}
-.landing-splash-object--gold {
-  width: 66px;
-  height: 66px;
-  top: 13%;
-  left: 12%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 28% 22%, #fff4bd 0%, #e6bb55 18%, #a66c19 53%, #4f2a12 100%);
-  box-shadow: inset -9px -11px 18px rgba(32,10,8,.52), inset 5px 5px 12px rgba(255,244,191,.78), 0 18px 24px rgba(0,0,0,.3);
-  animation: splashGoldOrb 1.75s cubic-bezier(.2,.65,.25,1) both;
-}
-.landing-splash-object--ruby {
-  width: 42px;
-  height: 42px;
-  right: 11%;
-  top: 25%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 28% 22%, #ffc2ae 0%, #bd4052 23%, #6c142f 66%, #250b1b 100%);
-  box-shadow: inset -7px -8px 13px rgba(20,0,8,.55), inset 4px 4px 9px rgba(255,210,185,.55), 0 15px 22px rgba(0,0,0,.35);
-  animation: splashRubyOrb 1.55s cubic-bezier(.2,.65,.25,1) both;
-}
-.landing-splash-object--blue {
-  width: 27px;
-  height: 27px;
-  bottom: 17%;
-  left: 19%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 28% 22%, #c5f4ff 0%, #378acb 25%, #123c75 72%, #08172d 100%);
-  box-shadow: inset -5px -6px 9px rgba(0,0,0,.52), inset 3px 3px 6px rgba(230,250,255,.6), 0 12px 18px rgba(0,0,0,.32);
-  animation: splashBlueOrb 1.8s cubic-bezier(.2,.65,.25,1) both;
-}
-.landing-splash-ring {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  border: 2px solid transparent;
-  border-radius: 50%;
-  transform-style: preserve-3d;
-  pointer-events: none;
-}
-.landing-splash-ring--outer {
-  width: min(76vw, 350px);
-  aspect-ratio: 1;
-  border-top-color: rgba(255,220,133,.95);
-  border-bottom-color: rgba(173,111,34,.65);
-  box-shadow: 0 0 18px rgba(235,184,83,.18), inset 0 0 15px rgba(235,184,83,.08);
-  animation: splashRingOuter 1.9s cubic-bezier(.18,.7,.2,1) both;
-}
-.landing-splash-ring--inner {
-  width: min(61vw, 280px);
-  aspect-ratio: 1;
-  border-left-color: rgba(255,238,190,.75);
-  border-right-color: rgba(172,69,86,.75);
-  animation: splashRingInner 1.7s cubic-bezier(.18,.7,.2,1) both;
-}
-.landing-splash-cube {
-  position: absolute;
-  right: 13%;
-  bottom: 17%;
-  width: 32px;
-  height: 32px;
-  border: 1px solid rgba(255,224,157,.9);
-  background: linear-gradient(135deg, rgba(242,202,111,.7), rgba(119,53,40,.35));
-  box-shadow: 0 12px 24px rgba(0,0,0,.3), inset 0 0 14px rgba(255,240,192,.28);
-  transform-style: preserve-3d;
-  animation: splashCube 1.8s cubic-bezier(.18,.7,.2,1) both;
-}
-.landing-splash-glint {
-  position: absolute;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #ffe9a6;
-  box-shadow: 0 0 12px 4px rgba(255,219,132,.48);
-  animation: splashGlint 1.15s ease-out both;
-}
-.landing-splash-glint--one { left: 19%; top: 39%; }
-.landing-splash-glint--two { right: 20%; bottom: 36%; animation-delay: .18s; }
-.landing-splash-glint--three { right: 31%; top: 14%; animation-delay: .3s; }
-@keyframes splashLogoReveal {
-  0% { opacity: 0; transform: translateZ(-150px) scale(.62) rotateY(-24deg); }
-  65% { opacity: 1; transform: translateZ(24px) scale(1.045) rotateY(5deg); }
-  100% { opacity: 1; transform: translateZ(0) scale(1) rotateY(0); }
-}
-@keyframes splashGoldOrb {
-  0% { opacity: 0; transform: translate3d(-130px,-95px,-160px) rotateX(70deg) scale(.2); }
-  65% { opacity: 1; transform: translate3d(14px,12px,85px) rotateX(210deg) scale(1.1); }
-  100% { opacity: 1; transform: translate3d(0,0,0) rotateX(360deg) scale(1); }
-}
-@keyframes splashRubyOrb {
-  0% { opacity: 0; transform: translate3d(130px,-100px,-140px) rotateY(0) scale(.15); }
-  70% { opacity: 1; transform: translate3d(-8px,14px,70px) rotateY(300deg) scale(1.12); }
-  100% { opacity: 1; transform: translate3d(0,0,0) rotateY(360deg) scale(1); }
-}
-@keyframes splashBlueOrb {
-  0% { opacity: 0; transform: translate3d(-90px,110px,-120px) rotateZ(0) scale(.1); }
-  70% { opacity: 1; transform: translate3d(8px,-12px,60px) rotateZ(270deg) scale(1.12); }
-  100% { opacity: 1; transform: translate3d(0,0,0) rotateZ(360deg) scale(1); }
-}
-@keyframes splashRingOuter {
-  0% { opacity: 0; transform: translate(-50%,-50%) rotateX(78deg) rotateZ(-85deg) scale(.35); }
-  70% { opacity: 1; transform: translate(-50%,-50%) rotateX(68deg) rotateZ(12deg) scale(1.04); }
-  100% { opacity: 1; transform: translate(-50%,-50%) rotateX(68deg) rotateZ(0) scale(1); }
-}
-@keyframes splashRingInner {
-  0% { opacity: 0; transform: translate(-50%,-50%) rotateY(80deg) rotateZ(130deg) scale(.2); }
-  75% { opacity: .85; transform: translate(-50%,-50%) rotateY(58deg) rotateZ(-8deg) scale(1.05); }
-  100% { opacity: .85; transform: translate(-50%,-50%) rotateY(58deg) rotateZ(0) scale(1); }
-}
-@keyframes splashCube {
-  0% { opacity: 0; transform: translate3d(110px,100px,-120px) rotate3d(1,1,0,0) scale(.1); }
-  75% { opacity: 1; transform: translate3d(-8px,-10px,70px) rotate3d(1,1,0,270deg) scale(1.1); }
-  100% { opacity: 1; transform: translate3d(0,0,0) rotate3d(1,1,0,360deg) scale(1); }
-}
-@keyframes splashGlint {
-  0% { opacity: 0; transform: translateZ(-30px) scale(.2); }
-  35% { opacity: 1; transform: translateZ(55px) scale(1.6); }
-  100% { opacity: 0; transform: translateZ(90px) scale(.1); }
+@keyframes splashOriginalLogo3D {
+  0% {
+    opacity: 0;
+    transform: translateZ(-180px) rotateY(-28deg) rotateX(10deg) scale(.78);
+  }
+  38% {
+    opacity: 1;
+    transform: translateZ(30px) rotateY(12deg) rotateX(-5deg) scale(1.06);
+  }
+  68% {
+    opacity: 1;
+    transform: translateZ(12px) rotateY(-8deg) rotateX(4deg) scale(1.015);
+  }
+  100% {
+    opacity: 1;
+    transform: translateZ(0) rotateY(0) rotateX(0) scale(1);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .landing-splash-motion,
