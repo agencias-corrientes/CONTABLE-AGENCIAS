@@ -79,23 +79,16 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   ]);
   const cutoffTime = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);
   const today = agencyBusinessDateForCutoff(cutoffTime);
-  const { data: todayPrizePaymentRows, error: todayPrizePaymentError } = await supabase
-    .from("agency_prize_payments")
-    .select("prize_amount,included_in_ticket_ocr")
-    .eq("organization_id", activeOrganization.id)
-    .eq("payment_date", today);
-  if (todayPrizePaymentError) throw new Error("No se pudieron cargar los premios pagados de hoy: " + todayPrizePaymentError.message);
-  const todayCashPrizeTotal = (todayPrizePaymentRows ?? []).reduce((sum: number, row: any) =>
-    sum + (row.included_in_ticket_ocr ? 0 : Number(row.prize_amount ?? 0)), 0);
-
   async function loadAllRenditions() {
     const accumulated: any[] = [];
-    const pageSize = 500;
+    const pageSize = 1000;
     for (let offset = 0; ; offset += pageSize) {
-      const { data, error } = await supabase
+      let query = supabase
         .from("agency_renditions")
         .select("id,agent_id,rendition_date,created_at,updated_at,game_period,draw_number,capture_method,amount_due,net_due,status,reference,notes,ticket_receipt_data,agency_rendition_payments!agency_rendition_payments_rendition_id_fkey(id,payment_date,amount,reference),agency_rendition_game_amounts(id,game_type_id,amount,commission_percent,commission_amount,agency_game_types(id,name,category)),agency_rendition_tickets(id,ticket_number,ticket_qr_payload)")
-        .eq("organization_id", activeOrganization.id)
+        .eq("organization_id", activeOrganization.id);
+      if (selectedAgentId) query = query.eq("agent_id", selectedAgentId);
+      const { data, error } = await query
         .order("created_at", { ascending: false })
         .order("id", { ascending: true })
         .range(offset, offset + pageSize - 1);
@@ -105,20 +98,11 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       if (batch.length < pageSize) return accumulated;
     }
   }
-  const renditions = await loadAllRenditions();
-  const { data: drawStatusRows } = await supabase
-    .from("agency_agent_draw_status")
-    .select("agent_id,draw_period,rendition_id,status,notes,reported_amount,updated_at")
-    .eq("organization_id", activeOrganization.id)
-    .eq("operational_date", today);
-  const drawStatusByKey = new Map((drawStatusRows ?? []).map((row: any) => [String(row.agent_id) + "|" + String(row.draw_period), row]));
-  const { data: dailyStatusRows } = await supabase.from("agency_agent_daily_status")
-    .select("agent_id,status,notes,reported_amount,updated_at").eq("organization_id", activeOrganization.id).eq("operational_date", today);
-  const dailyStatusByAgent = new Map((dailyStatusRows ?? []).map((row: any) => [String(row.agent_id), row]));
 
   async function loadHistoricalDailyStatuses() {
+    if (selectedAgentId) return [];
     const accumulated: any[] = [];
-    const pageSize = 500;
+    const pageSize = 1000;
     for (let offset = 0; ; offset += pageSize) {
       const { data, error } = await supabase
         .from("agency_agent_daily_status")
@@ -134,9 +118,11 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       if (batch.length < pageSize) return accumulated;
     }
   }
+
   async function loadHistoricalDrawStatuses() {
+    if (selectedAgentId) return [];
     const accumulated: any[] = [];
-    const pageSize = 500;
+    const pageSize = 1000;
     for (let offset = 0; ; offset += pageSize) {
       const { data, error } = await supabase
         .from("agency_agent_draw_status")
@@ -153,10 +139,53 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       if (batch.length < pageSize) return accumulated;
     }
   }
-  const [historicalDailyStatusRows, historicalDrawStatusRows] = await Promise.all([
+
+  const todayPrizePaymentQuery = supabase
+    .from("agency_prize_payments")
+    .select("prize_amount,included_in_ticket_ocr")
+    .eq("organization_id", activeOrganization.id)
+    .eq("payment_date", today);
+  let drawStatusQuery = supabase
+    .from("agency_agent_draw_status")
+    .select("agent_id,draw_period,rendition_id,status,notes,reported_amount,updated_at")
+    .eq("organization_id", activeOrganization.id)
+    .eq("operational_date", today);
+  let dailyStatusQuery = supabase
+    .from("agency_agent_daily_status")
+    .select("agent_id,status,notes,reported_amount,updated_at")
+    .eq("organization_id", activeOrganization.id)
+    .eq("operational_date", today);
+  if (selectedAgentId) {
+    drawStatusQuery = drawStatusQuery.eq("agent_id", selectedAgentId);
+    dailyStatusQuery = dailyStatusQuery.eq("agent_id", selectedAgentId);
+  }
+
+  // Las lecturas independientes se resuelven en paralelo. En la ficha de un
+  // operador no se descarga el historial de toda la agencia: solo sus datos.
+  const [
+    todayPrizePaymentResult,
+    renditions,
+    drawStatusResult,
+    dailyStatusResult,
+    historicalDailyStatusRows,
+    historicalDrawStatusRows,
+  ] = await Promise.all([
+    todayPrizePaymentQuery,
+    loadAllRenditions(),
+    drawStatusQuery,
+    dailyStatusQuery,
     loadHistoricalDailyStatuses(),
     loadHistoricalDrawStatuses(),
   ]);
+  const { data: todayPrizePaymentRows, error: todayPrizePaymentError } = todayPrizePaymentResult;
+  if (todayPrizePaymentError) throw new Error("No se pudieron cargar los premios pagados de hoy: " + todayPrizePaymentError.message);
+  const todayCashPrizeTotal = (todayPrizePaymentRows ?? []).reduce((sum: number, row: any) =>
+    sum + (row.included_in_ticket_ocr ? 0 : Number(row.prize_amount ?? 0)), 0);
+
+  const { data: drawStatusRows } = drawStatusResult;
+  const drawStatusByKey = new Map((drawStatusRows ?? []).map((row: any) => [String(row.agent_id) + "|" + String(row.draw_period), row]));
+  const { data: dailyStatusRows } = dailyStatusResult;
+  const dailyStatusByAgent = new Map((dailyStatusRows ?? []).map((row: any) => [String(row.agent_id), row]));
   const drawPeriods = getOfficialDrawPeriodsForDate(today);
   const allOfficialDrawPeriods = getAllOfficialDrawPeriods();
   const dailyClosurePeriod = { label: "Cierre diario", shortLabel: "Cierre diario", time: null, gameName: "Cierre diario", kind: "daily" as const };
