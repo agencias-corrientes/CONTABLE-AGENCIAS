@@ -38,10 +38,10 @@ export function LandingSplash() {
       }}
     >
       <Image
-        src="/logo-agencias-corrientes.webp"
+        src="/Esfera%20brillante%20de%20Agencias%20Corrientes.png"
         alt=""
-        width={176}
-        height={360}
+        width={512}
+        height={512}
         priority
         style={{
           display: "block",
