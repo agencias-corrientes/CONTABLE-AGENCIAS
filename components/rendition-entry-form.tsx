@@ -1666,21 +1666,26 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       {mode === "photo" && (
         <>
-          <input
-            id={ticketPhotoInputId}
-            className="ticket-photo-native-input ticket-photo-operational-input ticket-rendition-native-file-input"
-            type="file"
-            name="ticket_photo"
-            aria-label="Elegir foto o archivo del ticket"
-            disabled={busy}
-            onChange={(event) => {
-              const file = event.currentTarget.files?.[0];
-              if (file) {
-                processSelectedTicketFile(file);
-              }
-              event.currentTarget.value = "";
-            }}
-          />
+          {/* Mantiene el input dentro del mismo host de selección usado por Producción.
+              El botón Foto o archivo abre el menú; el diálogo dispara este input nativo. */}
+          <div className="ticket-photo-picker" style={{ display: "contents" }}>
+            <input
+              id={ticketPhotoInputId}
+              className="ticket-photo-native-input ticket-photo-operational-input"
+              type="file"
+              name="ticket_photo"
+              accept="image/*,.heic,.heif,.avif,.bmp,.gif,.tif,.tiff"
+              aria-label="Elegir foto o archivo del comprobante del ticket"
+              disabled={busy}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                if (file) {
+                  processSelectedTicketFile(file);
+                }
+                event.currentTarget.value = "";
+              }}
+            />
+          </div>
           {renderTicketCaptureDialogs()}
           {batchMode && (
             <div className="weekly-ticket-batch-upload-help">
@@ -1705,10 +1710,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           {receiptData && <p className="ticket-read-notice">Ticket de cierre identificado. El detalle completo, los porcentajes y las comisiones estimadas están en <strong>Juegos e importes</strong>.</p>}
           {qrPayload && <div className="qr-detected"><strong>✓ QR detectado</strong><code>{qrPayload.slice(0, 100)}{qrPayload.length > 100 ? "…" : ""}</code><button type="button" className="button ghost small" onClick={() => setQrPayload("")}>Quitar QR</button></div>}
           {ocrText && <details className="ticket-ocr-text"><summary>Ver texto reconocido</summary><pre>{ocrText}</pre></details>}
-
         </>
       )}
-
       <div className="detail-grid rendition-meta-grid">
         <label>Fecha de la jornada financiera
           <input type="date" name={receiptData ? undefined : "rendition_date"} value={date} onChange={(event) => setDate(event.target.value)} disabled={Boolean(receiptData)} required />
