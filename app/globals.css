@@ -1272,24 +1272,4 @@ html, body { min-height:100%; }
 }
 
 
-/* Campo nativo invisible, pero dentro del viewport para que Android y Chrome permitan
-   abrir el selector del sistema desde el botón Foto o archivo. No se muestra como control. */
-.rendition-entry-form input.ticket-rendition-native-file-input {
-  position: fixed !important;
-  left: 0 !important;
-  top: 0 !important;
-  display: block !important;
-  width: 1px !important;
-  height: 1px !important;
-  min-width: 1px !important;
-  min-height: 1px !important;
-  max-width: 1px !important;
-  max-height: 1px !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  opacity: 0.001 !important;
-  overflow: hidden !important;
-  pointer-events: none !important;
-  border: 0 !important;
-  z-index: -1 !important;
-}
+
