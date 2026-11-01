@@ -1,0 +1,81 @@
+/* Marca de agua institucional: utiliza el mismo logo oficial del acceso instalado. */
+:root {
+  --agency-brand-watermark: url("/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png");
+}
+
+/* Superficies claras de la aplicación. La capa blanca translúcida conserva el color
+   original de cada tarjeta y deja ver el logo apenas por debajo. */
+:where(
+  .landing-card,
+  .auth-card,
+  .stat-card,
+  .quick-card,
+  .report-card,
+  .settings-card,
+  .agency-profile,
+  .rendition-agent-expanded,
+  .rendition-record,
+  .rendition-record-detail,
+  .rendition-history-empty,
+  .team-member-card,
+  .team-backup-record,
+  .team-account-action-card,
+  .game-rendition-row,
+  .game-rendition-collapsed,
+  .ticket-input-block,
+  .ticket-capture-dialog,
+  .platform-admin-page .platform-agency-accordion,
+  .platform-admin-page .platform-user-accordion,
+  .platform-admin-page .platform-agency-manage-card,
+  .platform-admin-page .platform-user-access-row,
+  .agency-delete-content
+) {
+  background-image:
+    linear-gradient(rgba(255, 253, 246, .965), rgba(255, 253, 246, .965)),
+    var(--agency-brand-watermark) !important;
+  background-size: 100% 100%, min(62%, 220px) auto !important;
+  background-position: center, center !important;
+  background-repeat: no-repeat, no-repeat !important;
+}
+
+/* Los paneles alternados mantienen su tono amarillo/blanco actual. */
+.page .panel:nth-of-type(odd),
+.page section.panel:nth-of-type(odd) {
+  background-image:
+    linear-gradient(rgba(255, 246, 207, .965), rgba(255, 246, 207, .965)),
+    var(--agency-brand-watermark) !important;
+  background-size: 100% 100%, min(62%, 220px) auto !important;
+  background-position: center, center !important;
+  background-repeat: no-repeat, no-repeat !important;
+}
+.page .panel:nth-of-type(even),
+.page section.panel:nth-of-type(even) {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .965), rgba(255, 255, 255, .965)),
+    var(--agency-brand-watermark) !important;
+  background-size: 100% 100%, min(62%, 220px) auto !important;
+  background-position: center, center !important;
+  background-repeat: no-repeat, no-repeat !important;
+}
+
+/* Fichas amarillas de subagentes: mismo sello, conservando el fondo amarillo. */
+.agency-agent-card.agency-subagent {
+  background-image:
+    linear-gradient(rgba(238, 228, 188, .965), rgba(238, 228, 188, .965)),
+    var(--agency-brand-watermark) !important;
+  background-size: 100% 100%, min(62%, 190px) auto !important;
+  background-position: center, center !important;
+  background-repeat: no-repeat, no-repeat !important;
+}
+
+/* Campos blancos: marca pequeña y muy tenue, sin tapar lo que se escribe. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select,
+textarea {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .975), rgba(255, 255, 255, .975)),
+    var(--agency-brand-watermark) !important;
+  background-size: 100% 100%, 48px 48px !important;
+  background-position: center, right 12px center !important;
+  background-repeat: no-repeat, no-repeat !important;
+}
