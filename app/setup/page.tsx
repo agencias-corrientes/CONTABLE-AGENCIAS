@@ -25,7 +25,7 @@ export default async function SetupPage({ searchParams }: { searchParams?: Promi
   return (
     <main className="auth-page">
       <div className="auth-card wide">
-        <div className="brand-logo-wrap brand-logo-top-left auth-page-logo"><Image src="/Esfera%20brillante%20de%20Agencias%20Corrientes.png" alt="Agencias Corrientes — Quiniela Oficial" width={96} height={96} priority /></div>
+        <div className="brand-logo-wrap brand-logo-top-left auth-page-logo"><Image src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png" alt="Agencias Corrientes — Quiniela Oficial" width={96} height={96} priority /></div>
         <p className="eyebrow">PRIMERA CONFIGURACIÓN</p>
         <h1>Configurar tu agencia</h1>
         {params.error === "agencia-duplicada" && <p className="message error-message" role="alert">Ese número oficial de agencia ya está registrado por otro titular. No se creó una segunda agencia. Verificá el número o contactá Administración Central.</p>}
