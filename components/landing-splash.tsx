@@ -38,7 +38,7 @@ export function LandingSplash() {
       }}
     >
       <Image
-        src="/Esfera%20brillante%20de%20Agencias%20Corrientes.png"
+        src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png"
         alt=""
         width={512}
         height={512}
