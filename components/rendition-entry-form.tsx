@@ -1602,7 +1602,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       <div className="rendition-mode-toolbar">
         <div className="rendition-mode-switch" role="group" aria-label="Método de carga de rendición">
-          <button type="button" className={mode === "photo" ? "active" : ""} onClick={() => setMode("photo")}>Foto (automático)</button>
+          <button type="button" className={mode === "photo" ? "active" : ""} disabled={busy} onClick={() => {
+            setMode("photo");
+            setCameraError("");
+            setTicketCaptureTarget("main");
+            setTicketCaptureChoiceOpen(true);
+          }}>Foto o archivo</button>
           <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
             setMode("manual");
             if (!receiptData && !initialRendition) {
@@ -1628,7 +1633,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           <div className={"ticket-progress-panel" + (busy ? " is-reading" : progressPercent >= 100 ? " is-complete" : fileName ? " has-file" : "")} role="status" aria-live="polite">
             <div className="ticket-progress-heading">
               <div>
-                <span>{busy ? "LEYENDO TICKET" : progressPercent >= 100 ? "TICKET LEÍDO" : fileName ? "LECTURA PENDIENTE" : "LECTURA AUTOMÁTICA"}</span>
+                <span>{busy ? "LEYENDO TICKET" : progressPercent >= 100 ? "TICKET LEÍDO" : fileName ? "LECTURA PENDIENTE" : "FOTO O ARCHIVO"}</span>
                 <strong>{busy ? progress || "Procesando imagen…" : progressPercent >= 100 ? "Lectura completada" : fileName || "Esperando foto del ticket"}</strong>
               </div>
               <b>{progressPercent}%</b>
@@ -1660,37 +1665,22 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       )}
 
       {mode === "photo" && (
-        <div className="ticket-capture-panel">
-          <div
-            className="ticket-photo-picker ticket-photo-picker-trigger"
-            style={{ display: "inline-grid", justifyItems: "start", gap: 0, width: "max-content", maxWidth: "100%", padding: 0, border: 0, borderRadius: 0, background: "transparent", cursor: "default" }}
-          >
-            <button
-              type="button"
-              className="ticket-photo-select-button"
-              disabled={busy}
-              onClick={() => {
-                setCameraError("");
-                setTicketCaptureTarget("main");
-                setTicketCaptureChoiceOpen(true);
-              }}
-            >Foto o archivo</button>
-            <input
-              id={ticketPhotoInputId}
-              className="ticket-photo-native-input ticket-photo-operational-input"
-              type="file"
-              name="ticket_photo"
-              aria-label="Elegir foto o archivo del comprobante del ticket"
-              disabled={busy}
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                if (file) {
-                  processSelectedTicketFile(file);
-                }
-                event.currentTarget.value = "";
-              }}
-            />
-          </div>
+        <>
+          <input
+            id={ticketPhotoInputId}
+            className="ticket-photo-native-input ticket-photo-operational-input ticket-rendition-native-file-input"
+            type="file"
+            name="ticket_photo"
+            aria-label="Elegir foto o archivo del ticket"
+            disabled={busy}
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              if (file) {
+                processSelectedTicketFile(file);
+              }
+              event.currentTarget.value = "";
+            }}
+          />
           {renderTicketCaptureDialogs()}
           {batchMode && (
             <div className="weekly-ticket-batch-upload-help">
@@ -1715,7 +1705,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           {receiptData && <p className="ticket-read-notice">Ticket de cierre identificado. El detalle completo, los porcentajes y las comisiones estimadas están en <strong>Juegos e importes</strong>.</p>}
           {qrPayload && <div className="qr-detected"><strong>✓ QR detectado</strong><code>{qrPayload.slice(0, 100)}{qrPayload.length > 100 ? "…" : ""}</code><button type="button" className="button ghost small" onClick={() => setQrPayload("")}>Quitar QR</button></div>}
           {ocrText && <details className="ticket-ocr-text"><summary>Ver texto reconocido</summary><pre>{ocrText}</pre></details>}
-        </div>
+
+        </>
       )}
 
       <div className="detail-grid rendition-meta-grid">

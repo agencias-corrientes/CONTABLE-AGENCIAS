@@ -310,12 +310,35 @@ export function AppShell({
             gap: 7px !important;
             margin: 8px 0 !important;
           }
-          :global(.app-shell .sidebar .nav-list .nav-item) {
+          :global(.app-shell .sidebar .nav-list .nav-item),
+          :global(.app-shell .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell .sidebar .nav-list .nav-item:focus-visible),
+          :global(.app-shell .sidebar .nav-list .nav-item:active) {
             min-height: 46px !important;
             height: auto !important;
             padding: 8px 10px !important;
             font-size: 16px !important;
             line-height: 1.15 !important;
+            transform: none !important;
+            transition: none !important;
+            box-sizing: border-box !important;
+          }
+          :global(.app-shell .sidebar .nav-list .nav-item:hover:not(.active)),
+          :global(.app-shell .sidebar .nav-list .nav-item:focus:not(.active)),
+          :global(.app-shell .sidebar .nav-list .nav-item:focus-visible:not(.active)),
+          :global(.app-shell .sidebar .nav-list .nav-item:active:not(.active)) {
+            border-width: 2px !important;
+            border-bottom-width: 5px !important;
+            box-shadow: 0 3px 0 rgba(50,15,25,.2) !important;
+          }
+          :global(.app-shell .sidebar .nav-list .nav-item.active),
+          :global(.app-shell .sidebar .nav-list .nav-item.active:hover),
+          :global(.app-shell .sidebar .nav-list .nav-item.active:focus),
+          :global(.app-shell .sidebar .nav-list .nav-item.active:focus-visible),
+          :global(.app-shell .sidebar .nav-list .nav-item.active:active) {
+            transform: none !important;
+            transition: none !important;
           }
           :global(.app-shell .sidebar .sidebar-footer) {
             flex: 0 0 auto;
