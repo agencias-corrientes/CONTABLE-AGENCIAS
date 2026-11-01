@@ -33,7 +33,7 @@ export default async function AccessBlockedPage() {
   return (
     <main className="auth-page">
       <section className="auth-card">
-        <div className="brand-logo-wrap brand-logo-top-left auth-page-logo"><Image src="/Esfera%20brillante%20de%20Agencias%20Corrientes.png" alt="Agencias Corrientes — Quiniela Oficial" width={76} height={76} priority /></div>
+        <div className="brand-logo-wrap brand-logo-top-left auth-page-logo"><Image src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png" alt="Agencias Corrientes — Quiniela Oficial" width={76} height={76} priority /></div>
         <p className="eyebrow">AUTORIZACIÓN DE PLATAFORMA</p>
         <h1>Acceso {statusLabel}</h1>
         <p className="muted">Esta cuenta no puede ingresar a la agencia ni operar sus datos mientras la autorización esté {statusLabel}. Los registros guardados no se eliminan por este bloqueo.</p>
