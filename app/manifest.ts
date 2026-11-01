@@ -13,10 +13,10 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#ffffff",
     icons: [
       {
-        src: "/logo-app-redondeado.svg",
+        src: "/Esfera%20brillante%20de%20Agencias%20Corrientes.png",
         sizes: "any",
-        type: "image/svg+xml",
-        purpose: "maskable",
+        type: "image/png",
+        purpose: "any",
       },
     ],
   };
