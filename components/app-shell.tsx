@@ -47,7 +47,7 @@ export function AppShell({
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <div className="brand-logo-wrap sidebar-logo"><Image src="/Esfera%20brillante%20de%20Agencias%20Corrientes.png" alt="Agencias Corrientes — Quiniela Oficial" width={48} height={48} priority /></div>
+          <div className="brand-logo-wrap sidebar-logo"><Image src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png" alt="Agencias Corrientes — Quiniela Oficial" width={48} height={48} priority /></div>
           <div className="brand-copy">
             <div className="brand-title-row"><strong>Agencias</strong>{officialAgencyNumber && <span className="official-agency-number" aria-label={"Agencia oficial " + officialAgencyNumber}>{officialAgencyNumber}</span>}</div>
             <span className="brand-subtitle">Subagentes · Ambulantes</span>
@@ -294,13 +294,31 @@ export function AppShell({
           display: none !important;
         }
         @media (min-width: 1001px) {
+          :global(.app-shell .sidebar) {
+            height: 100vh !important;
+            min-height: 0 !important;
+            overflow-y: auto !important;
+            overscroll-behavior: contain;
+            padding: 12px 10px !important;
+          }
+          :global(.app-shell .sidebar .sidebar-brand) {
+            padding: 4px 6px 10px !important;
+          }
           :global(.app-shell .sidebar .nav-list) {
             grid-template-columns: minmax(0, 1fr) !important;
-            grid-auto-rows: minmax(70px, auto) !important;
+            grid-auto-rows: minmax(46px, auto) !important;
+            gap: 7px !important;
+            margin: 8px 0 !important;
           }
           :global(.app-shell .sidebar .nav-list .nav-item) {
-            min-height: 70px !important;
-            font-size: 21px !important;
+            min-height: 46px !important;
+            height: auto !important;
+            padding: 8px 10px !important;
+            font-size: 16px !important;
+            line-height: 1.15 !important;
+          }
+          :global(.app-shell .sidebar .sidebar-footer) {
+            flex: 0 0 auto;
           }
         }
         @media (max-width: 1000px) {
