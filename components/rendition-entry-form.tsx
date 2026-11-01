@@ -1435,11 +1435,32 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       const parsedAmountMap = Object.fromEntries(
         Object.entries(parsed.amountMap).filter(([gameId]) => gamesForDetectedPeriod.some((game) => game.id === gameId))
       );
+      // Reutilizar primero las cajas de palabras de la lectura Paddle principal.
+      // Si ya identificó todos los datos físicos del ticket, evitamos repetir OCR
+      // sobre la misma foto; si falta cualquiera, se conserva intacta la segunda pasada.
+      if (parsed.receiptData) {
+        const initialPaddlePositioned = readClosureMetadataFromOcrWords(paddleMetadataWords);
+        const initialPrintedRaw = initialPaddlePositioned.printedAt ?? parsed.receiptData.printedAt.raw;
+        const initialPrintedDate = initialPrintedRaw?.match(/\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}/)?.[0] ?? null;
+        const initialPrintedTime = initialPrintedRaw?.match(/\\d{1,2}:\\d{2}(?::\\d{2})?/)?.[0] ?? null;
+        focusedClosureMetadata = {
+          agencyCode: initialPaddlePositioned.agencyCode ?? parsed.receiptData.agencyCode ?? undefined,
+          subagentCode: initialPaddlePositioned.subagentCode ?? parsed.receiptData.subagentCode ?? undefined,
+          machineCode: initialPaddlePositioned.machineCode ?? parsed.receiptData.machineCode ?? undefined,
+          address: correctTicketAddressOcr(initialPaddlePositioned.address ?? parsed.receiptData.address) ?? undefined,
+          terminalId: initialPaddlePositioned.terminalId ?? parsed.receiptData.terminalId ?? undefined,
+          printedAt: initialPrintedRaw
+            ? { date: initialPrintedDate, time: initialPrintedTime, raw: initialPrintedRaw }
+            : undefined,
+          periodNumber: initialPaddlePositioned.periodNumber ?? parsed.receiptData.periodNumber ?? undefined,
+        };
+      }
+
       if (parsed.receiptData && (
-        !parsed.receiptData.machineCode ||
-        !parsed.receiptData.address ||
-        !parsed.receiptData.terminalId ||
-        !parsed.receiptData.printedAt.raw
+        !(focusedClosureMetadata.machineCode ?? parsed.receiptData.machineCode) ||
+        !(focusedClosureMetadata.address ?? parsed.receiptData.address) ||
+        !(focusedClosureMetadata.terminalId ?? parsed.receiptData.terminalId) ||
+        !(focusedClosureMetadata.printedAt?.raw ?? parsed.receiptData.printedAt.raw)
       )) {
         // La lectura principal conserva los importes. Si falta identificación,
         // hacer una pasada independiente con Tesseract y usar las cajas de cada
