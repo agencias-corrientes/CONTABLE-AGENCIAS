@@ -75,9 +75,8 @@ export function AppShell({
                 href={href}
                 onClick={(event) => {
                   setSectionSelected(true);
-                  if (slug === "pagos") {
+                  if (slug === "pagos" && pathname.startsWith("/pagos")) {
                     event.preventDefault();
-                    router.push("/pagos");
                   }
                 }}
                 className={pathname.startsWith(href) ? "nav-item active" : "nav-item"}
@@ -115,7 +114,15 @@ export function AppShell({
             </header>
             <nav className="agency-home-menu-grid" aria-label="Menú principal de la agencia">
               {visibleNav.map(([slug, label]) => (
-                <Link key={slug} href={"/" + slug} onClick={() => setSectionSelected(true)} className={"agency-home-menu-item agency-menu-" + slug}>
+                <Link
+                  key={slug}
+                  href={"/" + slug}
+                  onClick={(event) => {
+                    setSectionSelected(true);
+                    if (slug === "pagos" && pathname.startsWith("/pagos")) event.preventDefault();
+                  }}
+                  className={"agency-home-menu-item agency-menu-" + slug}
+                >
                   <strong>{label}</strong><span>Ingresar →</span>
                 </Link>
               ))}
