@@ -11,7 +11,7 @@ const siteUrl =
 const siteTitle = "Agencias Corrientes";
 const siteDescription =
   "Gestión diaria de agencias de quiniela, rendiciones y cobranzas.";
-const brandLogo = "/Esfera%20brillante%20de%20Agencias%20Corrientes.png";
+const brandLogo = "/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png";
 const shareCard = brandLogo;
 
 export const metadata: Metadata = {
