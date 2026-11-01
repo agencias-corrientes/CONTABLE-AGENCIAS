@@ -3,13 +3,13 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-/** Breve presentación de marca al llegar a la pantalla de selección de acceso. */
+/** Presentación breve y animada de la identidad institucional al abrir la portada. */
 export function LandingSplash() {
   const [phase, setPhase] = useState<"show" | "fade" | "hidden">("show");
 
   useEffect(() => {
-    const fadeTimer = window.setTimeout(() => setPhase("fade"), 1150);
-    const removeTimer = window.setTimeout(() => setPhase("hidden"), 2050);
+    const fadeTimer = window.setTimeout(() => setPhase("fade"), 1450);
+    const removeTimer = window.setTimeout(() => setPhase("hidden"), 2350);
 
     return () => {
       window.clearTimeout(fadeTimer);
@@ -22,37 +22,25 @@ export function LandingSplash() {
   return (
     <div
       aria-hidden="true"
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 9999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "24px",
-        background:
-          "linear-gradient(180deg, #fff9e8 0%, #f4edcf 79%, #70243a 79%, #70243a 100%)",
-        opacity: phase === "fade" ? 0 : 1,
-        transition: "opacity 850ms ease-in-out",
-        animation: "landingSplashFailsafe 2.2s ease-in-out forwards",
-        pointerEvents: "none",
-      }}
+      className={`landing-splash-motion landing-splash-motion--${phase}`}
     >
-      <style>{`@keyframes landingSplashFailsafe { 0%, 52% { opacity: 1; visibility: visible; } 100% { opacity: 0; visibility: hidden; } }`}</style>
-      <Image
-        src="/logo-agencias-corrientes.webp"
-        alt=""
-        width={176}
-        height={360}
-        priority
-        style={{
-          display: "block",
-          width: "min(72vw, 176px)",
-          height: "auto",
-          borderRadius: "18%",
-          boxShadow: "0 24px 64px rgba(67, 23, 39, .25)",
-        }}
-      />
+      <div className="landing-splash-orbit landing-splash-orbit--outer" />
+      <div className="landing-splash-orbit landing-splash-orbit--inner" />
+      <span className="landing-splash-particle landing-splash-particle--one" />
+      <span className="landing-splash-particle landing-splash-particle--two" />
+      <span className="landing-splash-particle landing-splash-particle--three" />
+      <div className="landing-splash-logo">
+        <Image
+          src="/logo-agencias-corrientes.webp"
+          alt=""
+          width={220}
+          height={220}
+          priority
+          unoptimized
+          style={{ display: "block", width: "100%", height: "100%", objectFit: "contain" }}
+        />
+      </div>
+      <div className="landing-splash-bottom-line" />
     </div>
   );
 }
