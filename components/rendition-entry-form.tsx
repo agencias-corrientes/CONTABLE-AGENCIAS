@@ -51,19 +51,36 @@ async function loadPaddleOcrSdk(): Promise<any> {
 async function getPaddleOcrEngine(): Promise<any> {
   if (!paddleOcrEnginePromise) {
     paddleOcrEnginePromise = loadPaddleOcrSdk()
-      .then(({ PaddleOCR }) => PaddleOCR.create({
-        lang: "es",
-        ocrVersion: "PP-OCRv6",
-        // El CDN +esm no trae el worker empaquetado por el build de Next/Vercel.
-        // En Android ejecutamos el motor en el hilo principal para evitar ese fallo.
-        worker: false,
-        ortOptions: {
-          backend: "wasm",
+      .then(async ({ PaddleOCR }) => {
+        const commonOptions = {
+          lang: "es",
+          ocrVersion: "PP-OCRv6",
+          // El CDN +esm no trae el worker empaquetado por el build de Next/Vercel.
+          // Conservamos la ejecución principal compatible con Android.
+          worker: false,
+        };
+        const runtimeOptions = {
           wasmPaths: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.3/dist/",
-          numThreads: 1,
+          // 0 deja que ONNX Runtime use el paralelismo disponible y permitido
+          // por el navegador; en entornos sin aislamiento mantiene el modo seguro.
+          numThreads: 0,
           simd: true,
-        },
-      }))
+        };
+        try {
+          // WebGPU cuando está disponible; WASM como backend automático alternativo.
+          return await PaddleOCR.create({
+            ...commonOptions,
+            ortOptions: { ...runtimeOptions, backend: "auto" },
+          });
+        } catch {
+          // Algunos navegadores/dispositivos no inicializan WebGPU correctamente.
+          // En ese caso conservamos el lector WASM probado.
+          return await PaddleOCR.create({
+            ...commonOptions,
+            ortOptions: { ...runtimeOptions, backend: "wasm" },
+          });
+        }
+      })
       .catch((error) => {
         paddleOcrEnginePromise = null;
         throw error;
@@ -812,6 +829,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [cameraError, setCameraError] = useState("");
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
+  const tesseractWorkerRef = useRef<Promise<any> | null>(null);
+  const tesseractProgressHandlerRef = useRef<((message: any) => void) | null>(null);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">(dailyMode && !dailyCloseAllowed ? "incomplete" : "complete");
   const [pendingAmount, setPendingAmount] = useState("");
@@ -834,6 +853,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     const stream = cameraStreamRef.current;
     if (stream) stream.getTracks().forEach((track) => track.stop());
     cameraStreamRef.current = null;
+    tesseractProgressHandlerRef.current = null;
+    const workerPromise = tesseractWorkerRef.current;
+    tesseractWorkerRef.current = null;
+    if (workerPromise) {
+      void workerPromise.then((worker) => worker.terminate()).catch(() => undefined);
+    }
   }, []);
 
   const total = useMemo(() =>
@@ -931,6 +956,23 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     }
     return canvas;
   }
+  async function getTicketTesseractWorker(): Promise<any> {
+    if (!tesseractWorkerRef.current) {
+      const workerPromise = import("tesseract.js").then(({ createWorker }) =>
+        createWorker("spa+eng", 1, {
+          logger: (message) => tesseractProgressHandlerRef.current?.(message),
+        })
+      );
+      tesseractWorkerRef.current = workerPromise;
+      void workerPromise.catch(() => {
+        if (tesseractWorkerRef.current === workerPromise) {
+          tesseractWorkerRef.current = null;
+        }
+      });
+    }
+    return tesseractWorkerRef.current;
+  }
+
   function processSelectedTicketFile(file: File) {
     const declaredType = String(file.type ?? "").toLowerCase();
     const isDefinitelyVideo =
@@ -1102,6 +1144,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     setNotice("");
     setProgress("Preparando lectura del ticket…");
     setProgressPercent(3);
+    const paddleEnginePromise = getPaddleOcrEngine();
+    // Attach a rejection handler immediately; the normal OCR try/catch below
+    // still handles the failure and activates the existing Tesseract fallback.
+    void paddleEnginePromise.catch(() => undefined);
     setDetectedPeriodMismatch("");
     setReceiptData(null);
     setReceiptReviewed(false);
@@ -1151,7 +1197,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       // Motor principal nuevo: PaddleOCR v6 en español, ejecutado localmente en el navegador.
       // Tesseract queda únicamente como respaldo si el motor/modelo no puede iniciarse.
       try {
-        const paddle = await getPaddleOcrEngine();
+        const paddle = await paddleEnginePromise;
         setProgress("Reconociendo los renglones impresos del cupón…");
         setProgressPercent(35);
         const [paddleResult] = await paddle.predict(file, {
@@ -1171,25 +1217,22 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         const paddlePartialText = recognizedText;
         setProgress("Activando lector de respaldo…");
         setProgressPercent(42);
-        const { createWorker } = await import("tesseract.js");
-        const worker = await createWorker("spa+eng", 1, {
-          logger: (message) => {
-            if (message.status === "recognizing text" && typeof message.progress === "number") {
-              const percent = Math.min(96, 42 + Math.round(message.progress * 52));
-              setProgressPercent(percent);
-              setProgress("Reconociendo ticket…");
-            }
-          },
-        });
-        try {
-          const result = await worker.recognize(file, {}, { blocks: true });
-          focusedOcrWords = tesseractWordBoxes(result.data);
-          const tesseractText = result.data.text ?? "";
-          if (ocrTextHasEnoughSignals(tesseractText, closureReadExpected) || tesseractText.length >= paddlePartialText.length) {
-            recognizedText = tesseractText;
+        tesseractProgressHandlerRef.current = (message) => {
+          if (message.status === "recognizing text" && typeof message.progress === "number") {
+            const percent = Math.min(96, 42 + Math.round(message.progress * 52));
+            setProgressPercent(percent);
+            setProgress("Reconociendo ticket…");
           }
-        } finally {
-          await worker.terminate();
+        };
+        const worker = await getTicketTesseractWorker();
+        // La pasada de metadatos usa PSM 6; volver a PSM 3 mantiene el modo
+        // automático para la lectura general de los próximos tickets.
+        await worker.setParameters({ tessedit_pageseg_mode: "3" } as any);
+        const result = await worker.recognize(file, {}, { blocks: true });
+        focusedOcrWords = tesseractWordBoxes(result.data);
+        const tesseractText = result.data.text ?? "";
+        if (ocrTextHasEnoughSignals(tesseractText, closureReadExpected) || tesseractText.length >= paddlePartialText.length) {
+          recognizedText = tesseractText;
         }
       }
 
@@ -1319,10 +1362,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           {
             setProgress("Revisando los datos identificatorios del ticket…");
             setProgressPercent(88);
-            const { createWorker } = await import("tesseract.js");
-            const metadataWorker = await createWorker("spa+eng", 1);
+            const metadataWorkerPromise = getTicketTesseractWorker();
+            const enhancedImage = await makeEnhancedTicketImage(file);
             try {
-              const enhancedImage = await makeEnhancedTicketImage(file);
               try {
                 const paddle = await getPaddleOcrEngine();
                 const [focusedPaddleResult] = await paddle.predict(enhancedImage, {
@@ -1336,12 +1378,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                 focusedPaddleMetadataWords = [];
                 focusedPaddleDebugText = "";
               }
+              const metadataWorker = await metadataWorkerPromise;
               await metadataWorker.setParameters({ tessedit_pageseg_mode: "6" } as any);
               const metadataResult = await metadataWorker.recognize(enhancedImage, {}, { blocks: true });
               focusedOcrWords = tesseractWordBoxes(metadataResult.data);
               focusedOcrDebugText = String(metadataResult.data.text ?? "").trim();
-            } finally {
-              await metadataWorker.terminate();
+              await metadataWorker.setParameters({ tessedit_pageseg_mode: "3" } as any);
             }
           }
           const tesseractText = focusedOcrDebugText;
@@ -1774,7 +1816,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               <small>Repetí la carga desde el mismo botón Foto o archivo por cada cupón. Revisá la lista y marcá la revisión antes de tocar “Confirmar rendición acumulada”. Máximo 12 cupones por lote.</small>
             </div>
           )}
-          {photoPreviewUrl && <div className="ticket-photo-preview"><button type="button" className="ticket-photo-preview-button" onClick={() => setPhotoExpanded(true)} aria-label="Ampliar foto del ticket"><img src={photoPreviewUrl} alt="Vista previa del ticket cargado" /><span>Ampliar foto</span></button></div>}
+          {photoPreviewUrl && <div className="ticket-photo-preview"><button type="button" className="ticket-photo-preview-button" onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setPhotoExpanded(true);
+          }} aria-label="Ampliar foto del ticket"><img src={photoPreviewUrl} alt="Vista previa del ticket cargado" /><span>Ampliar foto</span></button></div>}
           {photoExpanded && photoPreviewUrl && <div className="ticket-photo-lightbox" role="dialog" aria-modal="true" aria-label="Foto del ticket ampliada" onClick={() => setPhotoExpanded(false)}><button type="button" className="ticket-photo-lightbox-close" onClick={() => setPhotoExpanded(false)}>Cerrar ✕</button><img src={photoPreviewUrl} alt="Foto del ticket ampliada" onClick={(event) => event.stopPropagation()} /></div>}
           <p className="muted small-text">También podés subir una foto guardada. La lectura se procesa en el navegador y la imagen se adjunta a la rendición para auditoría.</p>
           {fileName && <p className="ticket-file-label">Ticket cargado: <strong>{fileName}</strong></p>}
