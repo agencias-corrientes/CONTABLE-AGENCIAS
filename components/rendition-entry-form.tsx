@@ -1221,7 +1221,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       }
 
       const closureReadExpected = dailyMode || receiptOnlyMode || batchMode;
-      setProgress("Iniciando lector de texto…");
+      setProgress("Iniciando lector avanzado de texto…");
       setProgressPercent(18);
       let recognizedText = "";
       let recoveredPeriodNumber = "";
@@ -1234,98 +1234,23 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let closureTextCandidates: string[] = [];
       let paddleFailure = "";
 
-      if (closureReadExpected) {
-        // FIN DE JORNADA: ejecutar primero Tesseract en un Web Worker.
-        // PaddleOCR inicializaba el WASM en el hilo principal y en algunos Android
-        // bloqueaba la interfaz en 18% antes de que pudiera ejecutarse el timeout.
-        setProgress("Preparando lector de respaldo…");
-        setProgressPercent(24);
-        const { createWorker } = await import("tesseract.js");
-        const worker = await createWorker("spa+eng", 1, {
-          logger: (message) => {
-            if (message.status === "recognizing text" && typeof message.progress === "number") {
-              setProgressPercent(Math.min(94, 30 + Math.round(message.progress * 64)));
-              setProgress("Leyendo juegos e importes del cierre…");
-            } else if (message.status) {
-              setProgress("Preparando lectura del cupón…");
-            }
-          },
+      // Restauración del motor que reconocía los cierres en la versión validada:
+      // PaddleOCR PP-OCRv6 en español vuelve a ser el lector principal también
+      // para FIN DE JORNADA. Tesseract queda como respaldo en Web Worker.
+      try {
+        const paddle = await getPaddleOcrEngine();
+        setProgress("Reconociendo los renglones impresos del cupón…");
+        setProgressPercent(35);
+        const [paddleResult] = await paddle.predict(file, {
+          textDetBoxThresh: 0.4,
+          textDetUnclipRatio: 1.8,
+          textRecScoreThresh: 0.0,
         });
-        try {
-          const result = await worker.recognize(file, {}, { blocks: true });
-          focusedOcrWords = tesseractWordBoxes(result.data);
-          recognizedText = String(result.data.text ?? "").trim();
-        } finally {
-          await worker.terminate();
-        }
-      } else {
-        // Para comprobantes que no son FIN DE JORNADA se conserva PaddleOCR.
-        try {
-          const paddle = await getPaddleOcrEngine();
-          setProgress("Reconociendo los renglones impresos del cupón…");
-          setProgressPercent(35);
-          const [paddleResult] = await paddle.predict(file, {
-            textDetBoxThresh: 0.4,
-            textDetUnclipRatio: 1.8,
-            textRecScoreThresh: 0.0,
-          });
-          paddleMetadataWords = paddleItemsToWordBoxes(paddleResult?.items ?? []);
-          recognizedText = paddleOcrItemsToText(paddleResult?.items ?? []);
-        } catch (cause) {
-          paddleFailure = cause instanceof Error ? cause.message : String(cause);
-          recognizedText = "";
-        }
-        if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
-          const paddlePartialText = recognizedText;
-          setProgress("Activando lector de respaldo…");
-          setProgressPercent(42);
-          const { createWorker } = await import("tesseract.js");
-          const worker = await createWorker("spa+eng", 1, {
-            logger: (message) => {
-              if (message.status === "recognizing text" && typeof message.progress === "number") {
-                const percent = Math.min(96, 42 + Math.round(message.progress * 52));
-                setProgressPercent(percent);
-                setProgress("Reconociendo ticket…");
-              }
-            },
-          });
-          try {
-            const result = await worker.recognize(file, {}, { blocks: true });
-            focusedOcrWords = tesseractWordBoxes(result.data);
-            const tesseractText = String(result.data.text ?? "").trim();
-            if (ocrTextHasEnoughSignals(tesseractText, closureReadExpected) || tesseractText.length >= paddlePartialText.length) {
-              recognizedText = tesseractText;
-            }
-          } finally {
-            await worker.terminate();
-          }
-        }
-      }
-
-      if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
-        const paddlePartialText = recognizedText;
-        setProgress("Activando lector de respaldo…");
-        setProgressPercent(42);
-        const { createWorker } = await import("tesseract.js");
-        const worker = await createWorker("spa+eng", 1, {
-          logger: (message) => {
-            if (message.status === "recognizing text" && typeof message.progress === "number") {
-              const percent = Math.min(96, 42 + Math.round(message.progress * 52));
-              setProgressPercent(percent);
-              setProgress("Reconociendo ticket…");
-            }
-          },
-        });
-        try {
-          const result = await worker.recognize(file, {}, { blocks: true });
-          focusedOcrWords = tesseractWordBoxes(result.data);
-          const tesseractText = result.data.text ?? "";
-          if (ocrTextHasEnoughSignals(tesseractText, closureReadExpected) || tesseractText.length >= paddlePartialText.length) {
-            recognizedText = tesseractText;
-          }
-        } finally {
-          await worker.terminate();
-        }
+        paddleMetadataWords = paddleItemsToWordBoxes(paddleResult?.items ?? []);
+        recognizedText = paddleOcrItemsToText(paddleResult?.items ?? []);
+      } catch (cause) {
+        paddleFailure = cause instanceof Error ? cause.message : String(cause);
+        recognizedText = "";
       }
 
       // Mostrar texto parcial aunque no supere el control de calidad: no ocultar
