@@ -1678,10 +1678,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           onClick={(event) => event.stopPropagation()}
         >
           <div className="ticket-capture-dialog-heading">
-            <h3 id={confirmationId + "-cancel-ticket-title"}>¿Querés cancelar el ticket?</h3>
-            <p id={confirmationId + "-cancel-ticket-description"}>
-              Si elegís Sí, se descartan la foto y los datos cargados y volvés al panel general de rendiciones. Si elegís No, seguís en este lugar con el ticket.
-            </p>
+            <h3 id={confirmationId + "-cancel-ticket-title"}>¿Desea cancelar ticket?</h3>
           </div>
           <div className="ticket-capture-dialog-actions ticket-cancel-dialog-actions">
             <button type="button" className="button ghost" onClick={() => setCancelTicketPromptOpen(false)}>No</button>
