@@ -522,7 +522,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     const dailyStatusLabel = !dailyRendition ? "Pendiente: Rendición del día" : dailyStatusKind === "complete" ? "Rendición del día confirmada" : dailyStatusKind === "incomplete" ? "Rendición del día incompleta" : "Rendición del día registrada · revisar estado";
 
     return (
-      <div className={"rendition-agent-accordion " + (subagent ? "rendition-subagent" : "rendition-ambulant")}>
+      <div id="rendicion-del-dia" className={"rendition-agent-accordion " + (subagent ? "rendition-subagent" : "rendition-ambulant")}>
         <div className="rendition-agent-expanded">
           <div className="rendition-agent-expanded-head">
             <div><span className="eyebrow">{renditionFrequency === "weekly" ? "RENDICIÓN ACUMULADA" : renditionPolicy === "daily" ? "RENDICIÓN DEL DÍA" : renditionPolicy === "selected_draws" ? "SORTEOS SELECCIONADOS" : "RENDICIONES POR SORTEO"}</span><h3>{agentLabel(agent)} {agent.code} · {agent.full_name}</h3>{renditionPolicy === "daily" && <p className={"daily-review-inline status-" + dailyStatusKind}><strong>Revisión del día operativo:</strong> {dailyStatusLabel}</p>}{renditionPolicy !== "daily" && <p className="muted">{renditionFrequency === "weekly" ? "Acumula cupones oficiales de FIN DE JORNADA y registra una sola entrega en Caja el día habilitado." : renditionPolicy === "selected_draws" ? "Solo se controlan los sorteos habilitados para este operador." : "Cada sorteo tiene su rendición independiente."} Comisión acumulada: <strong>{money(commission, activeOrganization.currency_code)}</strong> · Neto estimado: <strong>{money(netDue, activeOrganization.currency_code)}</strong>.</p>}</div>
@@ -715,7 +715,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             <div className="agency-agent-button-list rendition-agent-code-list">
               {filteredActiveAgents.map((agent) => (
                 <div key={agent.id} className={"agency-agent-button-row " + (agent.kind === "subagent" ? "agency-subagent" : "agency-ambulant")}>
-                  <Link href={"/pagos?agent=" + agent.id} className={"agency-agent-code-button" + (String(agent.id) === selectedAgentId ? " is-selected" : "")}
+                  <Link href={"/pagos?agent=" + agent.id + "#rendicion-del-dia"} className={"agency-agent-code-button" + (String(agent.id) === selectedAgentId ? " is-selected" : "")}
                     aria-current={String(agent.id) === selectedAgentId ? "page" : undefined}
                     aria-label={"Abrir rendición de " + (agent.kind === "subagent" ? "subagente " : "ambulante ") + agent.code}>
                     {agent.code || "SIN CÓDIGO"}
