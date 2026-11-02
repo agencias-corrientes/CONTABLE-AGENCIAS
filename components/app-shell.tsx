@@ -79,7 +79,7 @@ export function AppShell({
         </div>
       </aside>
       <main className="content-area">
-        {pathname !== "/inicio" && <div className="mobile-panel-return"><Link href={"/inicio?seleccion=" + (pathname.split("/")[1] ?? "")} scroll={true}>↑ Volver al panel general</Link></div>}
+        {pathname !== "/inicio" && <div className="mobile-panel-return"><Link prefetch={true} href={"/inicio?seleccion=" + (pathname.split("/")[1] ?? "")} scroll={true}><span aria-hidden="true">⌂</span> Volver al panel general</Link></div>}
         {children}
       </main>
       <style jsx>{`
@@ -370,8 +370,10 @@ export function AppShell({
 
         .mobile-panel-return { display: none; }
         @media (max-width: 1000px) {
-          .mobile-panel-return { display: block; position: sticky; top: 0; z-index: 30; margin: -12px -12px 12px; padding: 9px 12px; background: rgba(255,255,255,.97); border-bottom: 1px solid #eadfcf; }
-          .mobile-panel-return a { display: inline-flex; align-items: center; min-height: 38px; padding: 7px 13px; border: 1px solid #d9c99c; border-radius: 9px; background: #fff8df; color: #632538; font-size: 14px; font-weight: 850; text-decoration: none; }
+          .mobile-panel-return { display: block; position: sticky; top: 0; z-index: 30; margin: -12px -12px 12px; padding: 9px 12px; background: rgba(255,255,255,.97); border-bottom: 1px solid #d9e3e8; }
+          .mobile-panel-return a { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 46px; width: 100%; box-sizing: border-box; padding: 9px 16px; border: 1px solid #075b78; border-bottom: 4px solid #063e56; border-radius: 11px; background: linear-gradient(180deg,#1686a8 0%,#08617f 100%); color: #ffffff; font-size: 15px; font-weight: 900; letter-spacing: .01em; text-decoration: none; box-shadow: 0 3px 8px rgba(5,55,75,.2); -webkit-tap-highlight-color: transparent; }
+          .mobile-panel-return a span { font-size: 20px; line-height: 1; }
+          .mobile-panel-return a:active { background: #064c68; transform: translateY(1px); box-shadow: 0 1px 3px rgba(5,55,75,.2); }
           :global(.app-shell:not(.mobile-navigation-home) .sidebar) { display:none !important; }
           :global(.app-shell:not(.mobile-navigation-home) .content-area) { display:block !important; width:100% !important; min-width:0 !important; padding:12px !important; }
           .app-shell.mobile-navigation-home { display:block !important; width:100% !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; }
