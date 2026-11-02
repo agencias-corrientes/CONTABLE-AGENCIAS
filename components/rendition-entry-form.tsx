@@ -1334,6 +1334,13 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         paddleFailure = cause instanceof Error ? cause.message : String(cause);
       }
 
+      if (!cloudOcrUsed) {
+        recognizedText = "";
+        focusedOcrWords = null;
+        focusedClosureMetadata = {};
+        focusedOcrDebugText = "";
+      }
+
       // Respaldo local solo si el servicio externo no está configurado,
       // falla la conexión o no obtiene señales suficientes del comprobante.
       if (!cloudOcrUsed) {
