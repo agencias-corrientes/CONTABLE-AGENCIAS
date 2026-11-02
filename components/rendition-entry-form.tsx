@@ -1831,7 +1831,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             setCameraError("");
             setTicketCaptureTarget("main");
             setTicketCaptureChoiceOpen(true);
-          }}>Foto o archivo</button>
+          }}><span className="rendition-mode-option-title">Foto o archivo</span><small>Abrir cámara o elegir una imagen para leer el cupón.</small></button>
           <button type="button" className={mode === "manual" ? "active" : ""} onClick={() => {
             setMode("manual");
             if (!receiptData && !initialRendition) {
@@ -1851,7 +1851,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                 : "Plantilla lista. Para confirmar un FIN DE JORNADA completo, configurá modalidad Rendición diaria / cierre diario.");
               setError("");
             }
-          }}>Carga manual</button>
+          }}><span className="rendition-mode-option-title">Carga manual</span><small>Ingresar datos, juegos e importes sin adjuntar una foto.</small></button>
         </div>
         {mode === "photo" && (
           <div className={"ticket-progress-panel" + (busy ? " is-reading" : progressPercent >= 100 ? " is-complete" : fileName ? " has-file" : "")} role="status" aria-live="polite">
