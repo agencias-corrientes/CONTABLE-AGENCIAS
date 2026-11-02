@@ -107,7 +107,12 @@ function metricFromLine(line: string): TicketReceiptMetric | null {
   const amountToken = values[values.length - 1] ?? "";
   const hasCurrency = /\$|\bARS\b|PESOS/i.test(cleaned);
   const hasCents = /[.,]\d{2}\b/.test(amountToken);
-  if (values.length === 1 && !hasCurrency && !hasCents) return null;
+  // En los cierres impresos los importes enteros suelen salir sin símbolo $ ni
+  // centavos (por ejemplo 19.260 o 19260). Aceptarlos solo si tienen formato
+  // de miles o al menos cuatro dígitos; no confundir cantidades cortas con dinero.
+  const looksLikeGroupedAmount = /^\d{1,3}(?:[.,]\d{3})+$/.test(amountToken);
+  const looksLikeWholeAmount = /^\d{4,9}$/.test(amountToken);
+  if (values.length === 1 && !hasCurrency && !hasCents && !looksLikeGroupedAmount && !looksLikeWholeAmount) return null;
   const amount = moneyAllowZero(amountToken);
   if (amount === null) return null;
   if (values.length === 1) return { count: 0, amount };
