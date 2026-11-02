@@ -98,7 +98,10 @@ function paddleOcrItemsToText(rawItems: unknown): string {
   const rows: Array<{centerY:number;height:number;entries:typeof entries}> = [];
   for (const entry of entries) {
     let row = rows.find((candidate) =>
-      Math.abs(candidate.centerY-entry.centerY) <= Math.max(8, Math.min(candidate.height,entry.height)*0.65)
+      // Los importes suelen estar en una columna derecha y su caja puede
+      // quedar unos píxeles más arriba/abajo que la etiqueta de la misma fila.
+      // Agrupar con tolerancia proporcional evita separarlos en renglones distintos.
+      Math.abs(candidate.centerY-entry.centerY) <= Math.max(10, Math.min(candidate.height,entry.height)*0.85)
     );
     if (!row) {
       row = {centerY:entry.centerY,height:entry.height,entries:[]};
