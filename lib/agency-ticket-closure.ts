@@ -555,16 +555,11 @@ export function mapTicketClosureAmounts(receipt: TicketClosureData, games: { id:
     ...receipt.otherGames.map((item) => item.amount),
   ];
   const salesTotal = receipt.generalTotal.amount;
-  // No bloquear todos los importes válidos porque una línea secundaria quedó
-  // sin lectura. Solo trasladar cifras realmente reconocidas y exigir que la suma
-  // de esas cifras coincida exactamente con el total impreso antes de proponerlas.
-  // Las líneas null permanecen sin asignar: nunca se inventan ceros.
-  const knownSalesAmounts = salesAmounts.filter((amount): amount is number => amount !== null);
-  const salesMatch = salesTotal !== null &&
-    knownSalesAmounts.length > 0 &&
-    Math.round(knownSalesAmounts.reduce<number>((sum, amount) => sum + amount, 0) * 100) ===
-      Math.round(salesTotal * 100);
-  if (!salesMatch) return mapped;
+  // Mostrar cada importe que el OCR reconoció explícitamente, aunque el total
+  // general o alguna otra línea no haya podido leerse. El control de consistencia
+  // permanece en receipt.consistency.salesTotalsMatch para revisión; no debe
+  // borrar importes individuales que sí fueron detectados. Los null se omiten:
+  // nunca se inventan ceros.
   for (const entry of entries) {
     if (entry.amount === null) continue;
     const game = games.find((candidate) => entry.match(normalizeTicketText(candidate.name)));
