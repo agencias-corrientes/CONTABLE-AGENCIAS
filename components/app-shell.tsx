@@ -270,9 +270,9 @@ export function AppShell({
         :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:hover),
         :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:focus),
         :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:active) {
-          background: #7c3347 !important;
+          background: #ffe58a !important;
           background-image: none !important;
-          color: #ffffff !important;
+          color: #3f1825 !important;
           border-color: #8f6d26 !important;
           border-bottom-color: #632538 !important;
           box-shadow: 0 3px 0 rgba(50,15,25,.15) !important;
