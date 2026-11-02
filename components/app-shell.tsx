@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const nav = [
@@ -28,7 +28,9 @@ export function AppShell({
   isPlatformAdmin: boolean;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const selectedSection = searchParams.get("seleccion") ?? "";
   const officialAgencyNumber = organizationName.match(/\b(\d{3})\b/)?.[1] ?? null;
 
   const isOwner = userRole === "owner";
@@ -60,7 +62,7 @@ export function AppShell({
               <Link
                 key={slug}
                 href={href}
-                className={pathname.startsWith(href) ? "nav-item active" : "nav-item"}
+                className={pathname.startsWith(href) || (pathname === "/inicio" && selectedSection === slug) ? "nav-item active" : "nav-item"}
               >
                 {label}
               </Link>
@@ -76,7 +78,10 @@ export function AppShell({
           <button className="button ghost full" onClick={signOut}>Cerrar sesión</button>
         </div>
       </aside>
-      <main className="content-area">{children}</main>
+      <main className="content-area">
+        {pathname !== "/inicio" && <div className="mobile-panel-return"><Link href={"/inicio?seleccion=" + (pathname.split("/")[1] ?? "")} scroll={true}>↑ Volver al panel general</Link></div>}
+        {children}
+      </main>
       <style jsx>{`
         .sidebar { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
         .sidebar-brand strong { font-size: 17px; font-weight: 800; letter-spacing: -.025em; }
@@ -363,7 +368,10 @@ export function AppShell({
         }
 
 
+        .mobile-panel-return { display: none; }
         @media (max-width: 1000px) {
+          .mobile-panel-return { display: block; position: sticky; top: 0; z-index: 30; margin: -12px -12px 12px; padding: 9px 12px; background: rgba(255,255,255,.97); border-bottom: 1px solid #eadfcf; }
+          .mobile-panel-return a { display: inline-flex; align-items: center; min-height: 38px; padding: 7px 13px; border: 1px solid #d9c99c; border-radius: 9px; background: #fff8df; color: #632538; font-size: 14px; font-weight: 850; text-decoration: none; }
           :global(.app-shell:not(.mobile-navigation-home) .sidebar) { display:none !important; }
           :global(.app-shell:not(.mobile-navigation-home) .content-area) { display:block !important; width:100% !important; min-width:0 !important; padding:12px !important; }
           .app-shell.mobile-navigation-home { display:block !important; width:100% !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; }
