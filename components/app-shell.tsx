@@ -60,10 +60,8 @@ export function AppShell({
               <Link
                 key={slug}
                 href={href}
-                onClick={slug === "pagos" ? (event) => {
-                  event.preventDefault();
-                  router.push("/pagos");
-                } : undefined}
+                prefetch={true}
+                scroll={false}
                 className={pathname.startsWith(href) ? "nav-item active" : "nav-item"}
               >
                 {label}
@@ -85,11 +83,13 @@ export function AppShell({
         @media (max-width: 1000px) {
           :global(.app-shell.mobile-navigation-home) { display:block !important; height:100dvh !important; min-height:100dvh !important; overflow:hidden !important; }
           :global(.app-shell.mobile-navigation-home .sidebar) { display:flex !important; flex-direction:column !important; width:100% !important; height:100dvh !important; min-height:100dvh !important; padding:12px !important; box-sizing:border-box !important; overflow:hidden !important; }
-          :global(.app-shell.mobile-navigation-home .sidebar-brand),
-          :global(.app-shell.mobile-navigation-home .sidebar-footer),
           :global(.app-shell.mobile-navigation-home .content-area) { display:none !important; }
-          :global(.app-shell.mobile-navigation-home .sidebar .nav-list) { display:grid !important; flex:1 1 auto !important; min-height:0 !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; grid-template-rows:repeat(3,minmax(0,1fr)) !important; grid-auto-rows:unset !important; gap:12px !important; margin:0 !important; }
-          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item) { display:flex !important; min-height:0 !important; height:100% !important; align-items:center !important; justify-content:center !important; padding:12px !important; font-size:clamp(17px,4.5vw,22px) !important; line-height:1.2 !important; text-align:center !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar-brand),
+          :global(.app-shell.mobile-navigation-home .sidebar-footer) { display:flex !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar-brand) { flex:0 0 auto !important; min-height:150px !important; align-items:center !important; padding:20px 10px 26px !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar-footer) { flex:0 0 auto !important; padding:12px 8px 4px !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list) { display:grid !important; flex:1 1 auto !important; min-height:0 !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; grid-template-rows:repeat(3,minmax(0,1fr)) !important; grid-auto-rows:unset !important; gap:12px !important; margin:10px 0 12px !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item) { display:flex !important; min-height:0 !important; height:100% !important; align-items:center !important; justify-content:center !important; padding:16px 10px !important; font-size:clamp(19px,4.5vw,25px) !important; line-height:1.2 !important; text-align:center !important; }
         }
         .sidebar { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
         .sidebar-brand strong { font-size: 17px; font-weight: 800; letter-spacing: -.025em; }
@@ -234,11 +234,11 @@ export function AppShell({
 
 
         /* Corrección aislada del menú principal: no altera rutas ni lógica de negocio. */
-        :global(.app-shell .sidebar) {
+        :global(.app-shell.mobile-navigation-home .sidebar) {
           background: #ffffff !important;
           color: #241d20 !important;
         }
-        :global(.app-shell .sidebar .nav-list) {
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list) {
           display: grid !important;
           grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           grid-auto-rows: minmax(104px, auto) !important;
@@ -248,15 +248,15 @@ export function AppShell({
           margin: 16px 0 !important;
           padding: 0 !important;
         }
-        :global(.app-shell .sidebar .nav-list .nav-item),
-        :global(.app-shell .sidebar .nav-list .nav-item:hover),
-        :global(.app-shell .sidebar .nav-list .nav-item:focus),
-        :global(.app-shell .sidebar .nav-list .nav-item:focus-visible),
-        :global(.app-shell .sidebar .nav-list .nav-item:active) {
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus-visible),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:active) {
           display: flex !important;
           width: 100% !important;
           min-width: 0 !important;
-          min-height: 104px !important;
+          min-height: 0 !important;
           height: 100% !important;
           box-sizing: border-box !important;
           align-items: center !important;
@@ -279,11 +279,11 @@ export function AppShell({
           outline: none !important;
           -webkit-tap-highlight-color: transparent !important;
         }
-        :global(.app-shell .sidebar .nav-list .nav-item.active),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active),
         :global(.app-shell .sidebar .nav-list .nav-item.active:hover),
         :global(.app-shell .sidebar .nav-list .nav-item.active:focus),
         :global(.app-shell .sidebar .nav-list .nav-item.active:active) {
-          background: #ffe58a !important;
+          background: #7c3347 !important;
           background-image: none !important;
           color: #3f1825 !important;
           border-color: #8f6d26 !important;
@@ -299,21 +299,21 @@ export function AppShell({
           background: #7c3347 !important;
           color: #ffffff !important;
         }
-        :global(.app-shell .sidebar .nav-list .nav-item .nav-icon) {
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .nav-icon) {
           display: none !important;
         }
         @media (min-width: 1001px) {
-          :global(.app-shell .sidebar) {
+          :global(.app-shell.mobile-navigation-home .sidebar) {
             height: 100vh !important;
             min-height: 0 !important;
             overflow-y: auto !important;
             overscroll-behavior: contain;
             padding: 12px 10px !important;
           }
-          :global(.app-shell .sidebar .sidebar-brand) {
+          :global(.app-shell.mobile-navigation-home .sidebar .sidebar-brand) {
             padding: 4px 6px 10px !important;
           }
-          :global(.app-shell .sidebar .nav-list) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list) {
             grid-template-columns: minmax(0, 1fr) !important;
             grid-auto-rows: minmax(46px, auto) !important;
             gap: 7px !important;
@@ -349,7 +349,7 @@ export function AppShell({
             transform: none !important;
             transition: none !important;
           }
-          :global(.app-shell .sidebar .sidebar-footer) {
+          :global(.app-shell.mobile-navigation-home .sidebar .sidebar-footer) {
             flex: 0 0 auto;
           }
         }
