@@ -1280,6 +1280,37 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       // Elegir la pasada OCR por la información real que logra extraer del cierre,
       // no solo por cantidad de renglones o rótulos reconocidos.
       if (closureTextCandidates.length && (dailyMode || receiptOnlyMode || batchMode)) {
+        // Segunda lectura condicional: solo se ejecuta si la primera pasada no
+        // pudo extraer un cierre consistente. Evita sumar demora a los tickets
+        // que ya tienen importes completos y total verificado.
+        const firstReceipt = parseTicketClosure(recognizedText, true);
+        const needsAmountRecovery = !firstReceipt || firstReceipt.consistency.salesTotalsMatch !== true;
+        if (needsAmountRecovery) {
+          setProgress("Verificando importes faltantes con un segundo lector…");
+          setProgressPercent(52);
+          let recoveryWorker: Awaited<ReturnType<typeof import("tesseract.js").createWorker>> | null = null;
+          try {
+            const { createWorker } = await import("tesseract.js");
+            recoveryWorker = await createWorker("spa+eng", 1, {
+              logger: (message) => {
+                if (message.status === "recognizing text" && typeof message.progress === "number") {
+                  setProgressPercent(Math.min(84, 52 + Math.round(message.progress * 32)));
+                }
+              },
+            });
+            const recoveryResult = await recoveryWorker.recognize(file, {}, { blocks: true });
+            const recoveryText = String(recoveryResult.data.text ?? "").trim();
+            if (recoveryText && recoveryText !== recognizedText) {
+              closureTextCandidates.push(recoveryText);
+              focusedOcrWords = tesseractWordBoxes(recoveryResult.data);
+            }
+          } catch (recoveryError) {
+            // Una falla del segundo motor no descarta la primera lectura.
+            console.warn("No se pudo completar la segunda lectura de importes:", recoveryError);
+          } finally {
+            if (recoveryWorker) await recoveryWorker.terminate().catch(() => undefined);
+          }
+        }
         const candidateReceipts = closureTextCandidates
           .map((candidateText) => parseTicketClosure(candidateText, true))
           .filter((receipt): receipt is TicketClosureData => receipt !== null);
