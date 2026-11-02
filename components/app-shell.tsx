@@ -44,7 +44,7 @@ export function AppShell({
   const displayRole = isOwner || userRole === "admin" ? "Administrador" : "Empleado";
 
   return (
-    <div className="app-shell">
+    <div className={pathname === "/inicio" ? "app-shell mobile-navigation-home" : "app-shell"}>
       <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="brand-logo-wrap sidebar-logo"><Image src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png" alt="Agencias Corrientes — Quiniela Oficial" width={48} height={48} priority /></div>
@@ -60,10 +60,6 @@ export function AppShell({
               <Link
                 key={slug}
                 href={href}
-                onClick={slug === "pagos" ? (event) => {
-                  event.preventDefault();
-                  router.push("/pagos");
-                } : undefined}
                 className={pathname.startsWith(href) ? "nav-item active" : "nav-item"}
               >
                 {label}
@@ -225,29 +221,29 @@ export function AppShell({
 
 
         /* Corrección aislada del menú principal: no altera rutas ni lógica de negocio. */
-        :global(.app-shell .sidebar) {
+        :global(.app-shell.mobile-navigation-home .sidebar) {
           background: #ffffff !important;
           color: #241d20 !important;
         }
-        :global(.app-shell .sidebar .nav-list) {
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list) {
           display: grid !important;
           grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-          grid-auto-rows: minmax(104px, auto) !important;
-          grid-template-rows: none !important;
+          grid-auto-rows: minmax(0, 1fr) !important;
+          grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
           align-items: stretch !important;
           gap: 12px !important;
           margin: 16px 0 !important;
           padding: 0 !important;
         }
-        :global(.app-shell .sidebar .nav-list .nav-item),
-        :global(.app-shell .sidebar .nav-list .nav-item:hover),
-        :global(.app-shell .sidebar .nav-list .nav-item:focus),
-        :global(.app-shell .sidebar .nav-list .nav-item:focus-visible),
-        :global(.app-shell .sidebar .nav-list .nav-item:active) {
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus-visible),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:active) {
           display: flex !important;
           width: 100% !important;
           min-width: 0 !important;
-          min-height: 104px !important;
+          min-height: 0 !important;
           height: 100% !important;
           box-sizing: border-box !important;
           align-items: center !important;
@@ -270,13 +266,13 @@ export function AppShell({
           outline: none !important;
           -webkit-tap-highlight-color: transparent !important;
         }
-        :global(.app-shell .sidebar .nav-list .nav-item.active),
-        :global(.app-shell .sidebar .nav-list .nav-item.active:hover),
-        :global(.app-shell .sidebar .nav-list .nav-item.active:focus),
-        :global(.app-shell .sidebar .nav-list .nav-item.active:active) {
-          background: #ffe58a !important;
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:hover),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:focus),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:active) {
+          background: #7c3347 !important;
           background-image: none !important;
-          color: #3f1825 !important;
+          color: #ffffff !important;
           border-color: #8f6d26 !important;
           border-bottom-color: #632538 !important;
           box-shadow: 0 3px 0 rgba(50,15,25,.15) !important;
@@ -284,37 +280,37 @@ export function AppShell({
           transform: none !important;
           outline: none !important;
         }
-        :global(.app-shell .sidebar .nav-list .nav-item:not(.active):hover),
-        :global(.app-shell .sidebar .nav-list .nav-item:not(.active):focus),
-        :global(.app-shell .sidebar .nav-list .nav-item:not(.active):active) {
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:not(.active):hover),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:not(.active):focus),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:not(.active):active) {
           background: #7c3347 !important;
           color: #ffffff !important;
         }
-        :global(.app-shell .sidebar .nav-list .nav-item .nav-icon) {
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .nav-icon) {
           display: none !important;
         }
         @media (min-width: 1001px) {
-          :global(.app-shell .sidebar) {
+          :global(.app-shell.mobile-navigation-home .sidebar) {
             height: 100vh !important;
             min-height: 0 !important;
             overflow-y: auto !important;
             overscroll-behavior: contain;
             padding: 12px 10px !important;
           }
-          :global(.app-shell .sidebar .sidebar-brand) {
+          :global(.app-shell.mobile-navigation-home .sidebar .sidebar-brand) {
             padding: 4px 6px 10px !important;
           }
-          :global(.app-shell .sidebar .nav-list) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list) {
             grid-template-columns: minmax(0, 1fr) !important;
             grid-auto-rows: minmax(46px, auto) !important;
             gap: 7px !important;
             margin: 8px 0 !important;
           }
-          :global(.app-shell .sidebar .nav-list .nav-item),
-          :global(.app-shell .sidebar .nav-list .nav-item:hover),
-          :global(.app-shell .sidebar .nav-list .nav-item:focus),
-          :global(.app-shell .sidebar .nav-list .nav-item:focus-visible),
-          :global(.app-shell .sidebar .nav-list .nav-item:active) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus-visible),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:active) {
             min-height: 46px !important;
             height: auto !important;
             padding: 8px 10px !important;
@@ -324,43 +320,43 @@ export function AppShell({
             transition: none !important;
             box-sizing: border-box !important;
           }
-          :global(.app-shell .sidebar .nav-list .nav-item:hover:not(.active)),
-          :global(.app-shell .sidebar .nav-list .nav-item:focus:not(.active)),
-          :global(.app-shell .sidebar .nav-list .nav-item:focus-visible:not(.active)),
-          :global(.app-shell .sidebar .nav-list .nav-item:active:not(.active)) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover:not(.active)),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus:not(.active)),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus-visible:not(.active)),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:active:not(.active)) {
             border-width: 2px !important;
             border-bottom-width: 5px !important;
             box-shadow: 0 3px 0 rgba(50,15,25,.2) !important;
           }
-          :global(.app-shell .sidebar .nav-list .nav-item.active),
-          :global(.app-shell .sidebar .nav-list .nav-item.active:hover),
-          :global(.app-shell .sidebar .nav-list .nav-item.active:focus),
-          :global(.app-shell .sidebar .nav-list .nav-item.active:focus-visible),
-          :global(.app-shell .sidebar .nav-list .nav-item.active:active) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:focus),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:focus-visible),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:active) {
             transform: none !important;
             transition: none !important;
           }
-          :global(.app-shell .sidebar .sidebar-footer) {
+          :global(.app-shell.mobile-navigation-home .sidebar .sidebar-footer) {
             flex: 0 0 auto;
           }
         }
         @media (max-width: 1000px) {
-          :global(.app-shell .sidebar) {
+          :global(.app-shell.mobile-navigation-home .sidebar) {
             background: #ffffff !important;
             border-right: 0 !important;
             border-bottom: 4px solid #7c3347 !important;
           }
-          :global(.app-shell .sidebar .nav-list::before) { display: none !important; }
-          :global(.app-shell .sidebar .nav-list .nav-item),
-          :global(.app-shell .sidebar .nav-list .nav-item:hover),
-          :global(.app-shell .sidebar .nav-list .nav-item:focus),
-          :global(.app-shell .sidebar .nav-list .nav-item:active) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list::before) { display: none !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:active) {
             min-height: 104px !important;
             font-size: clamp(21px, 5.2vw, 25px) !important;
           }
         }
         @media (max-width: 390px) {
-          :global(.app-shell .sidebar .nav-list .nav-item) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item) {
             font-size: 21px !important;
             padding: 12px 7px !important;
           }
@@ -368,9 +364,11 @@ export function AppShell({
 
 
         @media (max-width: 1000px) {
-          .app-shell { display:block !important; width:100% !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; }
-          .sidebar { position:relative !important; top:auto !important; width:100% !important; height:auto !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; box-sizing:border-box !important; padding-top:max(16px,env(safe-area-inset-top)) !important; padding-bottom:max(18px,env(safe-area-inset-bottom)) !important; }
-          .content-area { width:100% !important; min-width:0 !important; padding:12px !important; }
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar) { display:none !important; }
+          :global(.app-shell:not(.mobile-navigation-home) .content-area) { display:block !important; width:100% !important; min-width:0 !important; padding:12px !important; }
+          .app-shell.mobile-navigation-home { display:block !important; width:100% !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; }
+          .app-shell.mobile-navigation-home .sidebar { position:relative !important; top:auto !important; width:100% !important; height:auto !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; box-sizing:border-box !important; padding-top:max(16px,env(safe-area-inset-top)) !important; padding-bottom:max(18px,env(safe-area-inset-bottom)) !important; }
+          .app-shell.mobile-navigation-home .content-area { display:none !important; width:100% !important; min-width:0 !important; padding:12px !important; }
           .sidebar .nav-list .nav-item { transition:none !important; }
         }
       `}</style>
