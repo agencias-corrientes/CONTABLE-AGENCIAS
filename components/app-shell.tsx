@@ -241,8 +241,8 @@ export function AppShell({
         :global(.app-shell.mobile-navigation-home .sidebar .nav-list) {
           display: grid !important;
           grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-          grid-auto-rows: minmax(104px, auto) !important;
-          grid-template-rows: none !important;
+          grid-auto-rows: minmax(0, 1fr) !important;
+          grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
           align-items: stretch !important;
           gap: 12px !important;
           margin: 16px 0 !important;
@@ -269,7 +269,7 @@ export function AppShell({
           background: #7c3347 !important;
           background-image: none !important;
           color: #ffffff !important;
-          font-size: clamp(21px, 5.2vw, 25px) !important;
+          font-size: clamp(19px, 4.5vw, 25px) !important;
           font-weight: 900 !important;
           line-height: 1.16 !important;
           text-align: center !important;
@@ -280,12 +280,12 @@ export function AppShell({
           -webkit-tap-highlight-color: transparent !important;
         }
         :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active),
-        :global(.app-shell .sidebar .nav-list .nav-item.active:hover),
-        :global(.app-shell .sidebar .nav-list .nav-item.active:focus),
-        :global(.app-shell .sidebar .nav-list .nav-item.active:active) {
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:hover),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:focus),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:active) {
           background: #7c3347 !important;
           background-image: none !important;
-          color: #3f1825 !important;
+          color: #ffffff !important;
           border-color: #8f6d26 !important;
           border-bottom-color: #632538 !important;
           box-shadow: 0 3px 0 rgba(50,15,25,.15) !important;
@@ -293,9 +293,9 @@ export function AppShell({
           transform: none !important;
           outline: none !important;
         }
-        :global(.app-shell .sidebar .nav-list .nav-item:not(.active):hover),
-        :global(.app-shell .sidebar .nav-list .nav-item:not(.active):focus),
-        :global(.app-shell .sidebar .nav-list .nav-item:not(.active):active) {
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:not(.active):hover),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:not(.active):focus),
+        :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:not(.active):active) {
           background: #7c3347 !important;
           color: #ffffff !important;
         }
@@ -319,11 +319,11 @@ export function AppShell({
             gap: 7px !important;
             margin: 8px 0 !important;
           }
-          :global(.app-shell .sidebar .nav-list .nav-item),
-          :global(.app-shell .sidebar .nav-list .nav-item:hover),
-          :global(.app-shell .sidebar .nav-list .nav-item:focus),
-          :global(.app-shell .sidebar .nav-list .nav-item:focus-visible),
-          :global(.app-shell .sidebar .nav-list .nav-item:active) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus-visible),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:active) {
             min-height: 46px !important;
             height: auto !important;
             padding: 8px 10px !important;
@@ -342,10 +342,10 @@ export function AppShell({
             box-shadow: 0 3px 0 rgba(50,15,25,.2) !important;
           }
           :global(.app-shell .sidebar .nav-list .nav-item.active),
-          :global(.app-shell .sidebar .nav-list .nav-item.active:hover),
-          :global(.app-shell .sidebar .nav-list .nav-item.active:focus),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:focus),
           :global(.app-shell .sidebar .nav-list .nav-item.active:focus-visible),
-          :global(.app-shell .sidebar .nav-list .nav-item.active:active) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:active) {
             transform: none !important;
             transition: none !important;
           }
@@ -354,33 +354,33 @@ export function AppShell({
           }
         }
         @media (max-width: 1000px) {
-          :global(.app-shell .sidebar) {
+          :global(.app-shell.mobile-navigation-home .sidebar) {
             background: #ffffff !important;
             border-right: 0 !important;
             border-bottom: 4px solid #7c3347 !important;
           }
-          :global(.app-shell .sidebar .nav-list::before) { display: none !important; }
-          :global(.app-shell .sidebar .nav-list .nav-item),
-          :global(.app-shell .sidebar .nav-list .nav-item:hover),
-          :global(.app-shell .sidebar .nav-list .nav-item:focus),
-          :global(.app-shell .sidebar .nav-list .nav-item:active) {
-            min-height: 104px !important;
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list::before) { display: none !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:active) {
+            min-height: 0 !important;
             font-size: clamp(21px, 5.2vw, 25px) !important;
           }
         }
         @media (max-width: 390px) {
           :global(.app-shell .sidebar .nav-list .nav-item) {
-            font-size: 21px !important;
+            font-size: 19px !important;
             padding: 12px 7px !important;
           }
         }
 
 
         @media (max-width: 1000px) {
-          .app-shell { display:block !important; width:100% !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; }
-          .sidebar { position:relative !important; top:auto !important; width:100% !important; height:auto !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; box-sizing:border-box !important; padding-top:max(16px,env(safe-area-inset-top)) !important; padding-bottom:max(18px,env(safe-area-inset-bottom)) !important; }
-          .content-area { width:100% !important; min-width:0 !important; padding:12px !important; }
-          .sidebar .nav-list .nav-item { transition:none !important; }
+          .app-shell.mobile-navigation-home { display:block !important; width:100% !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; }
+          .app-shell.mobile-navigation-home .sidebar { position:relative !important; top:auto !important; width:100% !important; height:100dvh !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; box-sizing:border-box !important; padding-top:max(16px,env(safe-area-inset-top)) !important; padding-bottom:max(18px,env(safe-area-inset-bottom)) !important; }
+          .app-shell.mobile-navigation-home .content-area { display:none !important; }
+          .app-shell.mobile-navigation-home .sidebar .nav-list .nav-item { transition:none !important; }
         }
       `}</style>
     </div>
