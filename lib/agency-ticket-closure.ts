@@ -101,7 +101,7 @@ function moneyAllowZero(value: string): number | null {
 function metricFromLine(line: string): TicketReceiptMetric | null {
   // The digits in "Quini 6" and "Loto 5 Plus" are game names, not amounts.
   const cleaned = normalizeTicketText(line)
-    .replace(/^(?:LOTO\s+5\s+PLUS|LOTO\s+PLUS|QUINI\s*6|MUINI\s*6|HUI[I1]NI\s*6|QUINIELA\s+POCEADA|LOTER[I1]A\s+ONLINE|POZO\s+QUINIELA|BRINCO|TELEKINO|QUINIELA\s+AL\s+TOQUE|QUINIELA(?:\s+CORRIENTES?)?)\s*/i, "").trim();
+    .replace(/^(?:LOTO\s+5\s+PLUS|LOTO\s+PLUS|QUINI\s*6|MUINI\s*6|HUI[I1]NI\s*6|QUINIELA\s+POCEADA|LOTER[I1]A\s+ONLINE|POZO\s+QUINIELA|BRINCO|TELEKINO|QUINIELA\s+AL\s+TOQUE|QUINIELA(?:\s+(?:CORRIENTE|CORRIENTES|CORRENTINA))?)\s*/i, "").trim();
   const values = cleaned.match(/\d[\d.,]*/g) ?? [];
   if (!values.length) return null;
   const amountToken = values[values.length - 1] ?? "";
@@ -535,7 +535,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
 
 export function mapTicketClosureAmounts(receipt: TicketClosureData, games: { id: string; name: string }[]): Record<string, string> {
   const entries: Array<{ amount: number | null; match: (name: string) => boolean }> = [
-    { amount: receipt.quiniela.valids.amount, match: (name) => /^QUINIELA(?:\\s+(?:CORRIENTE|CORRIENTES|CORRENTINA))?$/.test(name) },
+    { amount: receipt.quiniela.valids.amount, match: (name) => /^QUINIELA(?:\s+(?:CORRIENTE|CORRIENTES|CORRENTINA))?$/.test(name) },
     { amount: receipt.quinielaAlToque.valids.amount, match: (name) => name.includes("AL TOQUE") },
     { amount: receipt.otherGames.find((item) => item.name === "Loto Plus")?.amount ?? null, match: (name) => name === "LOTO PLUS" },
     { amount: receipt.otherGames.find((item) => item.name === "Quini 6")?.amount ?? null, match: (name) => name.includes("QUINI 6") || name === "QUINI6" },
