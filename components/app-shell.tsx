@@ -374,6 +374,20 @@ export function AppShell({
           .sidebar .nav-list .nav-item { min-height:58px !important; height:auto !important; padding:9px 8px !important; font-size:16px !important; line-height:1.2 !important; transition:none !important; }
           .sidebar .sidebar-footer { margin-top:4px !important; }
           .content-area { flex:1 1 auto !important; width:100% !important; min-width:0 !important; padding:12px !important; }
+        /* Menú principal: siempre visible antes del contenido en celular. */
+        @media (max-width: 1000px) {
+          :global(.app-shell) { display:flex !important; flex-direction:column !important; min-height:100dvh !important; }
+          :global(.app-shell .sidebar) { order:0 !important; position:relative !important; top:auto !important; width:100% !important; height:auto !important; min-height:0 !important; padding:8px 10px !important; overflow:visible !important; }
+          :global(.app-shell .sidebar-brand) { padding:2px 6px 6px !important; }
+          :global(.app-shell .sidebar .nav-list) { grid-template-columns:repeat(2,minmax(0,1fr)) !important; grid-auto-rows:minmax(52px,auto) !important; gap:7px !important; margin:6px 0 !important; padding:0 !important; }
+          :global(.app-shell .sidebar .nav-list .nav-item),
+          :global(.app-shell .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell .sidebar .nav-list .nav-item:focus-visible),
+          :global(.app-shell .sidebar .nav-list .nav-item:active) { min-height:52px !important; height:auto !important; padding:8px 7px !important; font-size:15px !important; line-height:1.15 !important; }
+          :global(.app-shell .sidebar .sidebar-footer) { margin-top:4px !important; }
+          :global(.app-shell .content-area) { order:1 !important; width:100% !important; min-width:0 !important; padding:10px 12px !important; }
+        }
         }
       `}</style>
     </div>
