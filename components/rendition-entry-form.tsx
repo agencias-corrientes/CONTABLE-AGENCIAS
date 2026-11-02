@@ -1277,105 +1277,23 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
       const activeGames = games.filter((game) => game.enabled !== false);
       let parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber, dailyMode || receiptOnlyMode || batchMode);
-      // Elegir la pasada OCR por la información real que logra extraer del cierre,
-      // no solo por cantidad de renglones o rótulos reconocidos.
+      // No ejecutar una segunda lectura completa de la misma foto solo porque
+      // los importes no cierren. Esa repetición agrega mucha demora y no mejora
+      // la geometría de las palabras ya detectadas por PaddleOCR. El respaldo
+      // Tesseract se reserva para cuando la primera lectura no obtiene texto suficiente.
       if (closureTextCandidates.length && (dailyMode || receiptOnlyMode || batchMode)) {
-        // Segunda lectura condicional: solo se ejecuta si la primera pasada no
-        // pudo extraer un cierre consistente. Evita sumar demora a los tickets
-        // que ya tienen importes completos y total verificado.
         const firstReceipt = parseTicketClosure(recognizedText, true);
-        const needsAmountRecovery = !firstReceipt || firstReceipt.consistency.salesTotalsMatch !== true;
-        if (needsAmountRecovery) {
-          setProgress("Verificando importes faltantes con un segundo lector…");
-          setProgressPercent(52);
-          let recoveryWorker: any = null;
-          try {
-            const { createWorker } = await import("tesseract.js");
-            recoveryWorker = await createWorker("spa+eng", 1, {
-              logger: (message) => {
-                if (message.status === "recognizing text" && typeof message.progress === "number") {
-                  setProgressPercent(Math.min(84, 52 + Math.round(message.progress * 32)));
-                }
-              },
-            });
-            const recoveryResult = await recoveryWorker.recognize(file, {}, { blocks: true });
-            const recoveryText = String(recoveryResult.data.text ?? "").trim();
-            if (recoveryText && recoveryText !== recognizedText) {
-              closureTextCandidates.push(recoveryText);
-              focusedOcrWords = tesseractWordBoxes(recoveryResult.data);
-            }
-          } catch (recoveryError) {
-            // Una falla del segundo motor no descarta la primera lectura.
-            console.warn("No se pudo completar la segunda lectura de importes:", recoveryError);
-          } finally {
-            if (recoveryWorker) await recoveryWorker.terminate().catch(() => undefined);
-          }
-        }
-        const candidateReceipts = closureTextCandidates
-          .map((candidateText) => parseTicketClosure(candidateText, true))
-          .filter((receipt): receipt is TicketClosureData => receipt !== null);
-        const completeness = (receipt: TicketClosureData) => {
-          const metrics = [
-            receipt.quiniela.valids,
-            receipt.quiniela.cancelledSpecial,
-            receipt.quiniela.prizesPaid,
-            receipt.quinielaAlToque.valids,
-            receipt.quinielaAlToque.prizesPaid,
-            ...receipt.otherGames.map((game) => ({ amount: game.amount })),
-            receipt.totalOtherGames,
-            receipt.otherGamesPrizes,
-            receipt.totalPrizes,
-            receipt.generalTotal,
-            receipt.digital.cobros,
-            receipt.digital.devoluciones,
-          ];
-          const populatedMetrics = metrics.filter((metric) => metric.amount !== null).length;
-          const populatedIdentity = [
-            receipt.agencyCode,
-            receipt.subagentCode,
-            receipt.machineCode,
-            receipt.address,
-            receipt.terminalId,
-            receipt.periodNumber,
-            receipt.printedAt.date,
-          ].filter(Boolean).length;
-          return populatedMetrics * 5 + populatedIdentity * 4 +
-            (receipt.consistency.salesTotalsMatch === true ? 12 : 0) +
-            (receipt.consistency.prizeTotalsMatch === true ? 8 : 0);
-        };
-        // La cantidad de cifras reconocidas no es una medida de exactitud.
-        // Solo aceptar importes cuando los renglones válidos suman TOTAL GENERAL.
-        const salesSignature = (receipt:TicketClosureData) => JSON.stringify([
-          receipt.quiniela.valids.amount,
-          receipt.quinielaAlToque.valids.amount,
-          ...receipt.otherGames.map(game=>game.amount),
-          receipt.generalTotal.amount,
-        ]);
-        const verifiedSales = candidateReceipts.filter(receipt=>receipt.consistency.salesTotalsMatch===true);
-        const salesVotes = new Map<string,number>();
-        for(const receipt of verifiedSales){
-          const signature=salesSignature(receipt);
-          salesVotes.set(signature,(salesVotes.get(signature)??0)+1);
-        }
-        const bestCandidate = verifiedSales
-          .filter(receipt=>(salesVotes.get(salesSignature(receipt))??0)>=1)
-          .map((receipt) => ({ receipt, score: completeness(receipt) }))
-          .sort((a, b) => b.score - a.score)[0];
-        if (bestCandidate) {
-          recognizedText = bestCandidate.receipt.rawText;
+        if (firstReceipt) {
           parsed = {
             ...parsed,
-            amountMap: mapTicketClosureAmounts(bestCandidate.receipt, activeGames),
+            amountMap: mapTicketClosureAmounts(firstReceipt, activeGames),
             period: "",
             drawNumber: "",
             date: null,
-            ticketNumber: bestCandidate.receipt.periodNumber ?? recoveredPeriodNumber ?? "",
+            ticketNumber: firstReceipt.periodNumber ?? recoveredPeriodNumber ?? "",
             detectedGames: ["Cierre de jornada"],
-            receiptData: bestCandidate.receipt,
+            receiptData: firstReceipt,
           };
-        } else {
-          // No dejar valores monetarios del OCR en el formulario cuando no cierran.
-          parsed = { ...parsed, amountMap: {} };
         }
       }
       if (batchMode && !parsed.receiptData) {
