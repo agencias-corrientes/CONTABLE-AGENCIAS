@@ -1182,21 +1182,16 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     setOcrText("");
     let detectedQr = "";
     let qrPeriodCandidate = "";
-    try {
-      setProgress("Buscando el QR del ticket…");
-      setProgressPercent(10);
-      // El QR es complementario: un fallo al decodificarlo nunca debe cancelar el OCR principal.
+    // La lectura del QR aporta datos complementarios. Se ejecuta en paralelo
+    // con la inicialización y lectura OCR para no sumar su tiempo al proceso.
+    const qrReadPromise = (async () => {
       try {
-        detectedQr = (await readQrFromImage(file)) ?? "";
-      } catch {
-        detectedQr = "";
-      }
-      if (detectedQr) {
-        setQrPayload(detectedQr);
-        const qr = structuredQr(detectedQr);
+        const payload = (await readQrFromImage(file)) ?? "";
+        if (!payload) return { payload: "", period: "" };
+        setQrPayload(payload);
+        const qr = structuredQr(payload);
         // A historical closure ticket keeps its printed date in receiptData; the financial posting must stay on today's operational day.
         if (qr.date && !dailyMode) setDate(qr.date);
-        if (qr.period) qrPeriodCandidate = qr.period;
         if (qr.drawNumber) setDrawNumber(qr.drawNumber);
         if (qr.ticketNumber) setTicketNumbers((previous) => previous.split(/\s+/).includes(qr.ticketNumber) ? previous : previous ? previous + "\n" + qr.ticketNumber : qr.ticketNumber);
         if (qr.amount && qr.game && !dailyMode) {
@@ -1204,8 +1199,13 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           const target = games.find((game) => game.enabled !== false && aliasesFor(game).some((alias) => normalizedGame.includes(alias)));
           if (target) setAmounts((previous) => ({ ...previous, [target.id]: String(Math.round(qr.amount!)) }));
         }
+        return { payload, period: qr.period };
+      } catch {
+        return { payload: "", period: "" };
       }
+    })();
 
+    try {
       setProgress("Iniciando lector avanzado de texto…");
       setProgressPercent(18);
       let recognizedText = "";
@@ -1263,6 +1263,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           await worker.terminate();
         }
       }
+
+      // Esperar el QR solo cuando el OCR ya terminó: su procesamiento quedó
+      // solapado con el lector y conserva los mismos datos complementarios.
+      const qrResult = await qrReadPromise;
+      detectedQr = qrResult.payload;
+      qrPeriodCandidate = qrResult.period;
 
       // Mostrar texto parcial aunque no supere el control de calidad: no ocultar
       // lo que sí logró detectar alguno de los motores.
