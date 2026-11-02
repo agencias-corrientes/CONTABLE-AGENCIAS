@@ -120,16 +120,37 @@ function metricFromLine(line: string): TicketReceiptMetric | null {
 const emptyMetric = (): TicketReceiptMetric => ({ count: null, amount: null });
 const cents = (value: number | null) => value === null ? null : Math.round(value * 100);
 
+function metricAtLine(lines: string[], index: number, end: number): TicketReceiptMetric | null {
+  const raw = lines[index] ?? "";
+  const direct = metricFromLine(raw);
+  if (!direct) return null;
+  // Los tickets suelen separar cantidad e importe: "89 $" / "389340,00".
+  // Si hay un entero seguido de moneda y una cifra en la línea siguiente,
+  // el primero es cantidad y el segundo es importe, no dos importes distintos.
+  const countAndCurrency = raw.match(/^\\s*([0-9][0-9.,]*)\\s*(?:\\$|ARS)\\s*$/i);
+  const following = index + 1 < end ? (lines[index + 1] ?? "").trim() : "";
+  if (countAndCurrency && following) {
+    const amountToken = following.match(/^\\s*([0-9][0-9.,]*)\\s*$/)?.[1];
+    const amount = amountToken ? moneyAllowZero(amountToken) : null;
+    const countToken = countAndCurrency[1] ?? "";
+    const count = moneyAllowZero(countToken);
+    if (amount !== null && count !== null && !/[.,]\\d{1,2}$/.test(countToken)) {
+      return { count: Math.max(0, Math.trunc(count)), amount };
+    }
+  }
+  return direct;
+}
+
 function metricInRange(lines: string[], start: number, end: number, matcher: RegExp, takeLast = false): TicketReceiptMetric {
   const found: TicketReceiptMetric[] = [];
   for (let i = Math.max(0, start); i < Math.min(lines.length, end); i += 1) {
     if (!matcher.test(normalizeTicketText(lines[i] ?? ""))) continue;
-    let metric = metricFromLine(lines[i] ?? "");
+    let metric = metricAtLine(lines, i, end);
     if (!metric) {
       for (let j = i + 1; j < Math.min(end, i + 3); j += 1) {
         const nextText = normalizeTicketText(lines[j] ?? "");
-        if (/^(QUINIELA|OTROS\s+JU|MEDIOS\s+DIGITALES|NEDIOS\s+DIGITALES|TOTAL\s+(?:O|0)\.?\s*JUEGOS|TOTAL\s+GENERAL|PREMIOS?\s+P[A-Z]{2,3})/.test(nextText)) break;
-        metric = metricFromLine(lines[j] ?? "");
+        if (/^(QUINIELA|OTROS\\s+JU|MEDIOS\\s+DIGITALES|NEDIOS\\s+DIGITALES|TOTAL\\s+(?:O|0)\\.?\\s*JUEGOS|TOTAL\\s+GENERAL|PREMIOS?\\s+P[A-Z]{2,3})/.test(nextText)) break;
+        metric = metricAtLine(lines, j, end) ?? metricFromLine(lines[j] ?? "");
         if (metric) break;
       }
     }
@@ -137,7 +158,6 @@ function metricInRange(lines: string[], start: number, end: number, matcher: Reg
   }
   return (takeLast ? found.at(-1) : found[0]) ?? emptyMetric();
 }
-
 function findIndex(lines: string[], matcher: RegExp, fallback = -1): number {
   const index = lines.findIndex((line) => matcher.test(normalizeTicketText(line)));
   return index >= 0 ? index : fallback;
@@ -317,12 +337,12 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
   const otherGames = gameLabels.map(({ name, matcher }) => {
     // Never map an arbitrary numeric row by position: that produced false prices.
     const index = normalized.findIndex((line, i) => i >= otherRowsStart && i < otherRowsEnd && matcher.test(line));
-    let metric = index >= 0 ? metricFromLine(lines[index] ?? "") : null;
+    let metric = index >= 0 ? metricAtLine(lines, index, otherRowsEnd) : null;
     if (!metric && index >= 0) {
       for (let j = index + 1; j < Math.min(otherRowsEnd, index + 3); j += 1) {
         const nextText = normalizeTicketText(lines[j] ?? "");
         if (/^(?:L?OTO|QUINI|MUINI|HUI|POZO|020|BRINCO|BR\s+INTO|LOTERIA|ATERIA|QUINIELA|TELEK|TOTAL|PREMIOS?\s+P[A-Z]{2,3})/.test(nextText)) break;
-        metric = metricFromLine(lines[j] ?? "");
+        metric = metricAtLine(lines, j, otherRowsEnd) ?? metricFromLine(lines[j] ?? "");
         if (metric) break;
       }
     }
