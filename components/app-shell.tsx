@@ -60,8 +60,6 @@ export function AppShell({
               <Link
                 key={slug}
                 href={href}
-                prefetch={true}
-                scroll={false}
                 className={pathname.startsWith(href) ? "nav-item active" : "nav-item"}
               >
                 {label}
@@ -333,18 +331,18 @@ export function AppShell({
             transition: none !important;
             box-sizing: border-box !important;
           }
-          :global(.app-shell .sidebar .nav-list .nav-item:hover:not(.active)),
-          :global(.app-shell .sidebar .nav-list .nav-item:focus:not(.active)),
-          :global(.app-shell .sidebar .nav-list .nav-item:focus-visible:not(.active)),
-          :global(.app-shell .sidebar .nav-list .nav-item:active:not(.active)) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover:not(.active)),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus:not(.active)),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus-visible:not(.active)),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:active:not(.active)) {
             border-width: 2px !important;
             border-bottom-width: 5px !important;
             box-shadow: 0 3px 0 rgba(50,15,25,.2) !important;
           }
-          :global(.app-shell .sidebar .nav-list .nav-item.active),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active),
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:hover),
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:focus),
-          :global(.app-shell .sidebar .nav-list .nav-item.active:focus-visible),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:focus-visible),
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:active) {
             transform: none !important;
             transition: none !important;
@@ -369,7 +367,7 @@ export function AppShell({
           }
         }
         @media (max-width: 390px) {
-          :global(.app-shell .sidebar .nav-list .nav-item) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item) {
             font-size: 19px !important;
             padding: 12px 7px !important;
           }
