@@ -1289,7 +1289,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         ocrTextHasEnoughSignals(candidate.text, closureReadExpected)
       );
       const allTexts = ocrCandidates.map((candidate) => candidate.text);
-      closureTextCandidates = closureReadExpected ? allTexts : [];
+      closureTextCandidates = closureReadExpected ? usableCandidates.map((candidate) => candidate.text) : [];
       const initialCandidate = (usableCandidates.length ? usableCandidates : ocrCandidates)
         .slice()
         .sort((a, b) => b.text.length - a.text.length)[0];
@@ -1357,6 +1357,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           .sort((a, b) => b.score - a.score)[0];
         if (bestCandidate) {
           recognizedText = bestCandidate.receipt.rawText;
+          setOcrText(recognizedText);
           parsed = {
             ...parsed,
             amountMap: mapTicketClosureAmounts(bestCandidate.receipt, activeGames),
