@@ -78,7 +78,14 @@ export function AppShell({
       </aside>
       <main className="content-area">{children}</main>
       <style jsx>{`
+        /* En las secciones internas, el menú completo no debe repetirse encima del contenido en celular. */
         @media (max-width: 1000px) {
+          :global(.app-shell:not(.mobile-navigation-home)) { display:flex !important; flex-direction:column !important; min-height:100dvh !important; }
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar) { display:block !important; width:100% !important; height:auto !important; min-height:0 !important; padding:8px 12px !important; background:#ffffff !important; border:0 !important; box-shadow:none !important; }
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .sidebar-brand) { display:flex !important; min-height:48px !important; padding:4px 6px !important; align-items:center !important; }
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .sidebar-footer) { display:none !important; }
+          :global(.app-shell:not(.mobile-navigation-home) .content-area) { display:block !important; width:100% !important; min-width:0 !important; flex:1 1 auto !important; }
           :global(.app-shell.mobile-navigation-home) { display:block !important; height:100dvh !important; min-height:100dvh !important; overflow:hidden !important; }
           :global(.app-shell.mobile-navigation-home .sidebar) { display:flex !important; flex-direction:column !important; width:100% !important; height:100dvh !important; min-height:100dvh !important; padding:12px !important; box-sizing:border-box !important; overflow:hidden !important; }
           :global(.app-shell.mobile-navigation-home .content-area) { display:none !important; }
