@@ -260,7 +260,7 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
       .filter(token=>token.length>=min&&token.length<=max&&/^\d+$/.test(token));
     return tokens[0]??null;
   };
-  const agencyLabel=/(?:AGENCIA|AG)\s*[:.]?\s*/i;
+  const agencyLabel=/(?:^|\\b)(?:AGENCIA|AG)\\b\\s*[:.]?\\s*/i;
   const subagentLabel=/(?:SUBAG(?:ENTE)?|SIBAG|SILAG|SIEAG|S[UI1]B?A?G)\s*[:.]?\s*/i;
   // Aceptar el encabezado completo incluso cuando el OCR lo devuelve unido.
   const machineLabel=/(?:SUBAGMAQ|MAQU[I1L]NA|MA[QO0])\s*[:.]?\s*/i;
