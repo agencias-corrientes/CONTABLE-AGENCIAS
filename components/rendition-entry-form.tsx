@@ -872,7 +872,16 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       setCancelTicketPromptOpen(true);
     };
     document.addEventListener("click", handleInAppBack, true);
-    return () => document.removeEventListener("click", handleInAppBack, true);
+    const handlePanelReturnRequest = (event: Event) => {
+      if (!ticketDraftIsLoaded) return;
+      event.preventDefault();
+      setCancelTicketPromptOpen(true);
+    };
+    window.addEventListener("agencias:request-panel-return", handlePanelReturnRequest);
+    return () => {
+      document.removeEventListener("click", handleInAppBack, true);
+      window.removeEventListener("agencias:request-panel-return", handlePanelReturnRequest);
+    };
   }, [ticketDraftIsLoaded]);
 
   useEffect(() => {
