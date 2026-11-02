@@ -1,3 +1,5 @@
+"use client";
+
 export default function PagosLoading() {
   return (
     <main className="rendition-loading" aria-live="polite" aria-busy="true">
