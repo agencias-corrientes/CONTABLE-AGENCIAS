@@ -1281,23 +1281,33 @@ html, body { min-height:100%; }
 
 
 
-/* Accesos de perfil: recuperar el diseño compacto anterior, sin alterar enlaces ni roles. */
-.landing-role-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:24px 0 10px}
-.landing-role-choice{display:flex;align-items:center;gap:12px;min-height:98px;width:100%;padding:18px;border:1px solid #ded3b4;border-left:5px solid #b79a45;border-radius:14px;background:#fffdf6;color:#2a2020;text-decoration:none;box-shadow:0 6px 18px rgba(74,51,26,.08);transition:transform .15s ease,box-shadow .15s ease}
-.landing-role-choice:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(74,51,26,.12)}
-.landing-role-admin{background:#7c3347;border-color:#7c3347;border-left:5px solid #b79a45;color:#fff}
-.landing-role-employee{background:#eee4bc;border-color:#ded3b4;border-left:5px solid #7c3347;color:#2a2020}
-.landing-role-choice .landing-role-icon{font-size:25px;color:inherit;flex:0 0 auto}
-.landing-role-copy{display:grid;gap:5px;flex:1;min-width:0}
-.landing-role-choice strong{font-size:16px;color:inherit}
-.landing-role-choice small{font-size:12px;line-height:1.4;color:inherit;opacity:.82}
-.landing-role-enter{font-size:12px;font-weight:850;color:inherit;white-space:nowrap}
-.landing-role-employee .landing-role-enter{color:#7c3347}
-.landing-role-card{width:min(860px,100%)}
+/* Control de acceso: jerarquía visual clara y profesional. */
+.landing-role-card{width:min(820px,100%)}
+.landing-role-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:26px 0 8px;align-items:stretch}
+.landing-role-choice{position:relative;display:flex;align-items:center;gap:14px;min-height:112px;width:100%;padding:22px 24px;border:1px solid #ded3b4;border-radius:16px;text-decoration:none;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+.landing-role-choice:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(74,35,43,.12)}
+.landing-role-admin{background:#713044;border:1px solid #713044;color:#fff;box-shadow:0 8px 20px rgba(113,48,68,.16)}
+.landing-role-admin:hover{background:#602638;border-color:#d1b35a}
+.landing-role-employee{background:#fffdf7;border:1px solid #d9cda9;color:#34272a;box-shadow:0 4px 14px rgba(74,51,26,.06)}
+.landing-role-employee:hover{border-color:#b79a45}
+.landing-role-copy{display:grid;gap:7px;flex:1;min-width:0}
+.landing-role-choice strong{font-size:18px;line-height:1.2;letter-spacing:-.02em;color:inherit}
+.landing-role-choice small{font-size:13px;line-height:1.45;color:inherit;opacity:.82}
+.landing-role-enter{flex:0 0 auto;font-size:12px;font-weight:800;letter-spacing:.01em;color:inherit;white-space:nowrap}
+.landing-role-admin .landing-role-enter{color:#f4df9d}
+.landing-role-employee .landing-role-enter{color:#713044}
 .login-role-selector{margin-top:20px}
-.login-role-selector .landing-role-choice{min-height:84px;padding:14px}
+.login-role-selector .landing-role-choice{min-height:86px;padding:16px 18px}
 .login-selected-profile{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .login-selected-profile a{font-size:12px;color:#7c3347;text-decoration:underline}
 .user-role-line{display:grid;gap:6px;padding:10px 6px}
 .user-role-pill{display:inline-flex;align-items:center;justify-content:center;width:max-content;padding:4px 8px;border-radius:999px;background:#eee4bc;border:1px solid #ded3b4;color:#572538;font-size:10px;font-weight:850}
-.sidebar .user-role-pill{
+@media(max-width:640px){
+ .landing-role-grid{grid-template-columns:1fr;gap:12px;margin-top:20px}
+ .landing-role-choice{min-height:94px;padding:18px 19px}
+ .landing-role-choice strong{font-size:17px}
+ .landing-role-choice small{font-size:12px}
+ .landing-role-enter{font-size:11px}
+ .login-role-selector .landing-role-choice{min-height:82px}
+ .user-role-line{grid-template-columns:1fr}
+}
