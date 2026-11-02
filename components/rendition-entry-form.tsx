@@ -1288,7 +1288,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         if (needsAmountRecovery) {
           setProgress("Verificando importes faltantes con un segundo lector…");
           setProgressPercent(52);
-          let recoveryWorker: Awaited<ReturnType<typeof import("tesseract.js").createWorker>> | null = null;
+          let recoveryWorker: any = null;
           try {
             const { createWorker } = await import("tesseract.js");
             recoveryWorker = await createWorker("spa+eng", 1, {
