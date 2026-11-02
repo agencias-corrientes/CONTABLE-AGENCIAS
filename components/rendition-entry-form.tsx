@@ -1313,14 +1313,14 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               terminalId: positioned.terminalId ?? undefined,
               printedAt: positioned.printedAt
                 ? {
-                    date: positioned.printedAt.match(/\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}/)?.[0] ?? null,
-                    time: positioned.printedAt.match(/\\d{1,2}:\\d{2}(?::\\d{2})?/)?.[0] ?? null,
+                    date: positioned.printedAt.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0] ?? null,
+                    time: positioned.printedAt.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0] ?? null,
                     raw: positioned.printedAt,
                   }
                 : undefined,
               periodNumber: positioned.periodNumber ?? undefined,
             };
-            focusedOcrDebugText = "GOOGLE CLOUD VISION DOCUMENT TEXT DETECTION:\\n" + recognizedText;
+            focusedOcrDebugText = "GOOGLE CLOUD VISION DOCUMENT TEXT DETECTION:\n" + recognizedText;
             cloudOcrUsed = ocrTextHasEnoughSignals(recognizedText, closureReadExpected);
           }
           if (!cloudOcrUsed) {
