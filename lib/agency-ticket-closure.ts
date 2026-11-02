@@ -131,7 +131,7 @@ function metricInRange(lines: string[], start: number, end: number, matcher: Reg
     if (!matcher.test(normalizeTicketText(lines[i] ?? ""))) continue;
     let metric = metricFromLine(lines[i] ?? "");
     if (!metric) {
-      for (let j = i + 1; j < Math.min(end, i + 3); j += 1) {
+      for (let j = i + 1; j < Math.min(end, i + 5); j += 1) {
         const nextText = normalizeTicketText(lines[j] ?? "");
         if (/^(QUINIELA|OTROS\s+JU|MEDIOS\s+DIGITALES|NEDIOS\s+DIGITALES|TOTAL\s+(?:O|0)\.?\s*JUEGOS|TOTAL\s+GENERAL|PREMIOS?\s+P[A-Z]{2,3})/.test(nextText)) break;
         metric = metricFromLine(lines[j] ?? "");
@@ -284,7 +284,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
       (closureMarkers.opened || closureMarkers.closed || closureMarkers.period || closureMarkers.digital));
   if (!isEndOfDay && !assumeEndOfDay) return null;
 
-  const qIndex = findIndex(lines, /^QUINIELA(?:\s+CORRIENTES?)?$/);
+  const qIndex = findIndex(lines, /^QUINIELA(?:\s+(?:CORRIENTE|CORRIENTES|CORRENTINA))?\b/);
   const qToqueIndex = findIndex(lines, /AL\s+TOQUE/);
   const otherIndex = findIndex(lines, /OTROS\s+JUE\w{2,3}/);
   const digitalIndex = findIndex(lines, /[MN]EDIOS\s+DIGITALES/);
