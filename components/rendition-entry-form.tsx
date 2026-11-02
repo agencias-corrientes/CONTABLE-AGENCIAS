@@ -1670,11 +1670,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     return (
       <div className="ticket-capture-dialog-backdrop" role="presentation">
         <section
-          className="ticket-capture-dialog"
+          className="ticket-capture-dialog ticket-cancel-confirmation"
           role="alertdialog"
           aria-modal="true"
           aria-labelledby={confirmationId + "-cancel-ticket-title"}
-          aria-describedby={confirmationId + "-cancel-ticket-description"}
           onClick={(event) => event.stopPropagation()}
         >
           <div className="ticket-capture-dialog-heading">
