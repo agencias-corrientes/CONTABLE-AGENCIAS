@@ -1299,7 +1299,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       // que PaddleOCR ya leyó correctamente ni utiliza servicios pagos.
       if ((dailyMode || receiptOnlyMode || batchMode) &&
           parsed.receiptData &&
-          parsed.receiptData.consistency.salesTotalsMatch !== true) {
+          (parsed.receiptData.quiniela.valids.amount === null ||
+           parsed.receiptData.consistency.salesTotalsMatch !== true)) {
         try {
           setProgress("Revisando importes con una segunda lectura local…");
           setProgressPercent(68);
@@ -1316,7 +1317,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             await retryWorker.setParameters({ tessedit_pageseg_mode: "6" } as any);
             const retryResult = await retryWorker.recognize(enhancedImage, {}, { blocks: true });
             const retryText = String(retryResult.data.text ?? "").trim();
-            const retryReceipt = retryText ? parseTicketClosure(retryText, true) : null;
+            const retryWords = tesseractWordBoxes(retryResult.data);
+            // La salida plana de Tesseract suele separar el importe de su rótulo.
+            // Reconstruir las filas con las coordenadas de cada palabra permite
+            // volver a unir las columnas sin asumir una posición fija del ticket.
+            const retryPositionedText = reconstructLinesFromOcrWords(retryWords);
             const amountCoverage = (receipt: TicketClosureData | null) => {
               if (!receipt) return -1;
               const values = [
@@ -1335,21 +1340,30 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               ];
               return values.filter((value) => value !== null).length;
             };
-            if (retryReceipt &&
-                (retryReceipt.consistency.salesTotalsMatch === true ||
-                 amountCoverage(retryReceipt) > amountCoverage(parsed.receiptData))) {
-              recognizedText = retryText;
-              focusedOcrWords = tesseractWordBoxes(retryResult.data);
-              focusedOcrDebugText = "TESSERACT OCR (SEGUNDA PASADA LOCAL):\\n" + retryText;
+            const retryCandidates = [
+              { text: retryText, receipt: retryText ? parseTicketClosure(retryText, true) : null },
+              { text: retryPositionedText, receipt: retryPositionedText ? parseTicketClosure(retryPositionedText, true) : null },
+            ].filter((candidate) => candidate.receipt);
+            const receiptScore = (receipt: TicketClosureData | null) =>
+              amountCoverage(receipt) +
+              (receipt?.quiniela.valids.amount !== null && receipt?.quiniela.valids.amount !== undefined ? 4 : 0) +
+              (receipt?.consistency.salesTotalsMatch === true ? 8 : 0);
+            const bestRetry = retryCandidates.reduce((best, candidate) =>
+              !best || receiptScore(candidate.receipt) > receiptScore(best.receipt) ? candidate : best,
+            null as (typeof retryCandidates)[number] | null);
+            if (bestRetry && receiptScore(bestRetry.receipt) > receiptScore(parsed.receiptData)) {
+              recognizedText = bestRetry.text;
+              focusedOcrWords = retryWords;
+              focusedOcrDebugText = "TESSERACT OCR (SEGUNDA PASADA LOCAL):\\n" + bestRetry.text;
               parsed = {
                 ...parsed,
-                amountMap: mapTicketClosureAmounts(retryReceipt, activeGames),
+                amountMap: mapTicketClosureAmounts(bestRetry.receipt!, activeGames),
                 period: "",
                 drawNumber: "",
                 date: null,
-                ticketNumber: retryReceipt.periodNumber ?? recoveredPeriodNumber ?? "",
+                ticketNumber: bestRetry.receipt!.periodNumber ?? recoveredPeriodNumber ?? "",
                 detectedGames: ["Cierre de jornada"],
-                receiptData: retryReceipt,
+                receiptData: bestRetry.receipt!,
               };
             }
           } finally {
@@ -1359,10 +1373,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           // Si la segunda lectura local falla, se conserva intacta la primera.
         }
       }
-      // No ejecutar una segunda lectura completa de la misma foto solo porque
-      // los importes no cierren. Esa repetición agrega mucha demora y no mejora
-      // la geometría de las palabras ya detectadas por PaddleOCR. El respaldo
-      // Tesseract se reserva para cuando la primera lectura no obtiene texto suficiente.
+      // La pasada de respaldo anterior solo se ejecuta cuando faltan importes
+      // de ventas o el control de totales no cierra. Si Tesseract aporta filas
+      // mejor reconstruidas, se conserva esa lectura para el detalle y el parser.
       if (closureTextCandidates.length && (dailyMode || receiptOnlyMode || batchMode)) {
         const firstReceipt = parseTicketClosure(recognizedText, true);
         if (firstReceipt) {
@@ -1378,6 +1391,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           };
         }
       }
+      // Reflejar en el panel de diagnóstico el texto final elegido, incluida
+      // la lectura reconstruida por coordenadas si mejoró los importes.
+      setOcrText(recognizedText);
       if (batchMode && !parsed.receiptData) {
         setError("Esta modalidad acepta comprobantes oficiales FIN DE JORNADA. El cupón no se agregó al lote.");
         setProgress("No se incorporó el archivo. Elegí un cierre oficial o continuá con otro cupón.");
