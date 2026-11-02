@@ -1412,19 +1412,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             const metadataWorker = await createWorker("spa+eng", 1);
             try {
               const enhancedImage = await makeEnhancedTicketImage(file);
-              try {
-                const paddle = await getPaddleOcrEngine();
-                const [focusedPaddleResult] = await paddle.predict(enhancedImage, {
-                  textDetBoxThresh: 0.4,
-                  textDetUnclipRatio: 1.8,
-                  textRecScoreThresh: 0.0,
-                });
-                focusedPaddleMetadataWords = paddleItemsToWordBoxes(focusedPaddleResult?.items ?? []);
-                focusedPaddleDebugText = paddleOcrItemsToText(focusedPaddleResult?.items ?? []);
-              } catch {
-                focusedPaddleMetadataWords = [];
-                focusedPaddleDebugText = "";
-              }
+              // La primera pasada de PaddleOCR ya produjo las cajas originales.
+              // Reutilizarlas evita ejecutar PaddleOCR por segunda vez sobre la misma foto.
+              focusedPaddleMetadataWords = paddleMetadataWords;
+              focusedPaddleDebugText = "";
               await metadataWorker.setParameters({ tessedit_pageseg_mode: "6" } as any);
               const metadataResult = await metadataWorker.recognize(enhancedImage, {}, { blocks: true });
               focusedOcrWords = tesseractWordBoxes(metadataResult.data);
