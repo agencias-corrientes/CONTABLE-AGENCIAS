@@ -52,10 +52,13 @@ async function getPaddleOcrEngine(): Promise<any> {
   if (!paddleOcrEnginePromise) {
     paddleOcrEnginePromise = loadPaddleOcrSdk()
       .then(({ PaddleOCR }) => PaddleOCR.create({
-        lang: "es",
-        ocrVersion: "PP-OCRv6",
-        // El CDN +esm no trae el worker empaquetado por el build de Next/Vercel.
-        // En Android ejecutamos el motor en el hilo principal para evitar ese fallo.
+        // PP-OCRv6 Tiny usa los modelos oficiales compactos (det + rec),
+        // con cobertura de escritura latina, incluido español. Reduce la
+        // descarga inicial frente al preset Small sin cambiar el parser.
+        textDetectionModelName: "PP-OCRv6_tiny_det",
+        textRecognitionModelName: "PP-OCRv6_tiny_rec",
+        // El CDN +esm no empaqueta el worker dentro del build de Next/Vercel.
+        // Se conserva el modo directo para no introducir un worker no probado.
         worker: false,
         ortOptions: {
           backend: "wasm",
