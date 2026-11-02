@@ -44,7 +44,7 @@ export function AppShell({
   const displayRole = isOwner || userRole === "admin" ? "Administrador" : "Empleado";
 
   return (
-    <div className="app-shell">
+    <div className={pathname === "/inicio" ? "app-shell mobile-navigation-home" : "app-shell"}>
       <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="brand-logo-wrap sidebar-logo"><Image src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png" alt="Agencias Corrientes — Quiniela Oficial" width={48} height={48} priority /></div>
@@ -82,6 +82,15 @@ export function AppShell({
       </aside>
       <main className="content-area">{children}</main>
       <style jsx>{`
+        @media (max-width: 1000px) {
+          :global(.app-shell.mobile-navigation-home) { display:block !important; height:100dvh !important; min-height:100dvh !important; overflow:hidden !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar) { display:flex !important; flex-direction:column !important; width:100% !important; height:100dvh !important; min-height:100dvh !important; padding:12px !important; box-sizing:border-box !important; overflow:hidden !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar-brand),
+          :global(.app-shell.mobile-navigation-home .sidebar-footer),
+          :global(.app-shell.mobile-navigation-home .content-area) { display:none !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list) { display:grid !important; flex:1 1 auto !important; min-height:0 !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; grid-template-rows:repeat(3,minmax(0,1fr)) !important; grid-auto-rows:unset !important; gap:12px !important; margin:0 !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item) { display:flex !important; min-height:0 !important; height:100% !important; align-items:center !important; justify-content:center !important; padding:12px !important; font-size:clamp(17px,4.5vw,22px) !important; line-height:1.2 !important; text-align:center !important; }
+        }
         .sidebar { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
         .sidebar-brand strong { font-size: 17px; font-weight: 800; letter-spacing: -.025em; }
         .sidebar-brand span { font-size: 11px; line-height: 1.45; letter-spacing: .015em; }
