@@ -79,7 +79,7 @@ export function AppShell({
         </div>
       </aside>
       <main className="content-area">
-        {pathname !== "/inicio" && <div className="mobile-panel-return"><Link prefetch={true} href={"/inicio?seleccion=" + (pathname.split("/")[1] ?? "")} scroll={true}><span aria-hidden="true">⌂</span> Volver al panel general</Link></div>}
+        {pathname !== "/inicio" && <div className="mobile-panel-return"><Link prefetch={true} href={"/inicio?seleccion=" + (pathname.split("/")[1] ?? "")} scroll={true}><span aria-hidden="true">←</span> Volver al panel general</Link></div>}
         {children}
       </main>
       <style jsx>{`
@@ -371,9 +371,9 @@ export function AppShell({
         .mobile-panel-return { display: none; }
         @media (max-width: 1000px) {
           .mobile-panel-return { display: block; position: sticky; top: 0; z-index: 30; margin: -12px -12px 12px; padding: 9px 12px; background: rgba(255,255,255,.97); border-bottom: 1px solid #d9e3e8; }
-          .mobile-panel-return a { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 46px; width: 100%; box-sizing: border-box; padding: 9px 16px; border: 1px solid #075b78; border-bottom: 4px solid #063e56; border-radius: 11px; background: linear-gradient(180deg,#1686a8 0%,#08617f 100%); color: #ffffff; font-size: 15px; font-weight: 900; letter-spacing: .01em; text-decoration: none; box-shadow: 0 3px 8px rgba(5,55,75,.2); -webkit-tap-highlight-color: transparent; }
-          .mobile-panel-return a span { font-size: 20px; line-height: 1; }
-          .mobile-panel-return a:active { background: #064c68; transform: translateY(1px); box-shadow: 0 1px 3px rgba(5,55,75,.2); }
+          .mobile-panel-return a { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 46px; width: 100%; box-sizing: border-box; padding: 9px 16px; border: 1px solid #d7c58e; border-bottom: 3px solid #b59a55; border-radius: 11px; background: linear-gradient(180deg,#fbf7e9 0%,#f0e7c9 100%); color: #632538; font-size: 15px; font-weight: 850; letter-spacing: .01em; text-decoration: none; box-shadow: 0 2px 6px rgba(74,48,22,.10); -webkit-tap-highlight-color: transparent; }
+          .mobile-panel-return a span { font-size: 25px; line-height: 1; font-weight: 900; }
+          .mobile-panel-return a:active { background: #e9ddb5; transform: translateY(1px); box-shadow: 0 1px 3px rgba(74,48,22,.12); }
           :global(.app-shell:not(.mobile-navigation-home) .sidebar) { display:none !important; }
           :global(.app-shell:not(.mobile-navigation-home) .content-area) { display:block !important; width:100% !important; min-width:0 !important; padding:12px !important; }
           .app-shell.mobile-navigation-home { display:block !important; width:100% !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; }
