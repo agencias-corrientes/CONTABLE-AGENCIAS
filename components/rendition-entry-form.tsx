@@ -1217,7 +1217,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let focusedPaddleMetadataWords: unknown[] = [];
       let focusedPaddleDebugText = "";
       let closureTextCandidates: string[] = [];
-      let paddleFailure = "";
       const closureReadExpected = dailyMode || receiptOnlyMode || batchMode;
       const ocrCandidates: Array<{ engine: string; text: string }> = [];
       const candidateErrors: string[] = [];
@@ -1254,8 +1253,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         if (text) ocrCandidates.push({ engine: "PaddleOCR", text });
         else candidateErrors.push("PaddleOCR: no encontró texto.");
       } catch (cause) {
-        paddleFailure = cause instanceof Error ? cause.message : String(cause);
-        candidateErrors.push("PaddleOCR: " + paddleFailure);
+        candidateErrors.push("PaddleOCR: " + (cause instanceof Error ? cause.message : String(cause)));
       }
 
       try {
@@ -1288,7 +1286,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       const usableCandidates = ocrCandidates.filter((candidate) =>
         ocrTextHasEnoughSignals(candidate.text, closureReadExpected)
       );
-      const allTexts = ocrCandidates.map((candidate) => candidate.text);
       closureTextCandidates = closureReadExpected ? usableCandidates.map((candidate) => candidate.text) : [];
       const initialCandidate = (usableCandidates.length ? usableCandidates : ocrCandidates)
         .slice()
