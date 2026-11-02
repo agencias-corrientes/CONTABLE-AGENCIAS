@@ -50,25 +50,39 @@ async function loadPaddleOcrSdk(): Promise<any> {
 
 async function getPaddleOcrEngine(): Promise<any> {
   if (!paddleOcrEnginePromise) {
-    paddleOcrEnginePromise = loadPaddleOcrSdk()
-      .then(({ PaddleOCR }) => PaddleOCR.create({
-        // Recuperar el preset PP-OCRv6 en español de la versión histórica
-        // que reconocía correctamente los renglones e importes de FIN DE JORNADA.
-        lang: "es",
-        ocrVersion: "PP-OCRv6",
-        // El CDN +esm no empaqueta el worker dentro del build de Next/Vercel.
-        // Se conserva el modo directo para no introducir un worker no probado.
-        worker: false,
-        ortOptions: {
-          backend: "wasm",
-          wasmPaths: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.3/dist/",
-          numThreads: 1,
-          simd: true,
-        },
-      }))
+    let timeoutId: number | undefined;
+    const initialization = loadPaddleOcrSdk().then(({ PaddleOCR }) => PaddleOCR.create({
+      // Recuperar el preset PP-OCRv6 en español de la versión histórica
+      // que reconocía correctamente los renglones e importes de FIN DE JORNADA.
+      lang: "es",
+      ocrVersion: "PP-OCRv6",
+      // El CDN +esm no empaqueta el worker dentro del build de Next/Vercel.
+      // Se conserva el modo directo para no introducir un worker no probado.
+      worker: false,
+      ortOptions: {
+        backend: "wasm",
+        wasmPaths: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.3/dist/",
+        numThreads: 1,
+        simd: true,
+      },
+    }));
+    const startupTimeout = new Promise((_, reject) => {
+      timeoutId = window.setTimeout(() => {
+        reject(new Error("El motor PaddleOCR no terminó de inicializarse en 25 segundos."));
+      }, 25000);
+    });
+    paddleOcrEnginePromise = Promise.race([initialization, startupTimeout])
       .catch((error) => {
         paddleOcrEnginePromise = null;
+        const browserWindow = window as any;
+        if (!browserWindow.__agenciasPaddleOcrSdk) {
+          browserWindow.__agenciasPaddleOcrSdkPromise = null;
+          document.querySelector('script[src="/paddleocr-loader.js"]')?.remove();
+        }
         throw error;
+      })
+      .finally(() => {
+        if (timeoutId !== undefined) window.clearTimeout(timeoutId);
       });
   }
   return paddleOcrEnginePromise;
