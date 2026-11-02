@@ -4,7 +4,7 @@ export default function PagosLoading() {
       <div className="rendition-loading-head">
         <span className="rendition-loading-mark" aria-hidden="true">AC</span>
         <div>
-          <p>AGENC​​IAS CORRIENTES</p>
+          <p>AGENCIAS CORRIENTES</p>
           <h1>Rendiciones</h1>
           <span>Preparando la información de la agencia…</span>
         </div>
