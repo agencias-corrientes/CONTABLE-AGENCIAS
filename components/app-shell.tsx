@@ -79,7 +79,7 @@ export function AppShell({
         </div>
       </aside>
       <main className="content-area">
-        {pathname !== "/inicio" && <div className="mobile-panel-return"><button type="button" onClick={() => router.push("/inicio?seleccion=" + (pathname.split("/")[1] ?? ""))} aria-label="Volver al panel general"><span aria-hidden="true">←</span><span>Volver al panel general</span></button></div>}
+        {pathname !== "/inicio" && <div className="mobile-panel-return"><button type="button" onClick={() => { const request = new Event("agencias:request-panel-return", { cancelable: true }); const shouldNavigate = window.dispatchEvent(request); if (shouldNavigate) router.push("/inicio?seleccion=" + (pathname.split("/")[1] ?? "")); }} aria-label="Volver al panel general"><span aria-hidden="true">←</span><span>Volver al panel general</span></button></div>}
         {children}
       </main>
       <style jsx>{`
