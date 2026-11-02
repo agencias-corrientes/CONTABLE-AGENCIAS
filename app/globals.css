@@ -1001,6 +1001,10 @@ input[type="reset"],
 .ticket-cancel-dialog-actions {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+.ticket-capture-dialog-heading h3[id$="-cancel-ticket-title"] {
+  font-size: 23px;
+  line-height: 1.25;
+}
 .ticket-capture-dialog button {
   width: 100%;
   min-height: 50px;
