@@ -1206,7 +1206,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         }
       }
 
-      setProgress("Iniciando lector avanzado de texto…");
+      setProgress("Conectando con el lector alternativo…");
       setProgressPercent(18);
       let recognizedText = "";
       let recoveredPeriodNumber = "";
@@ -1219,25 +1219,61 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let closureTextCandidates: string[] = [];
       let paddleFailure = "";
 
-      // Motor principal nuevo: PaddleOCR v6 en español, ejecutado localmente en el navegador.
-      // Tesseract queda únicamente como respaldo si el motor/modelo no puede iniciarse.
+      const closureReadExpected = dailyMode || receiptOnlyMode || batchMode;
+      let ocrSpacePartialText = "";
+
+      // Primer intento remoto con OCR.Space Engine 2. La clave permanece en el servidor;
+      // si el servicio no está disponible o la lectura es insuficiente, sigue el OCR local.
       try {
-        const paddle = await getPaddleOcrEngine();
-        setProgress("Reconociendo los renglones impresos del cupón…");
-        setProgressPercent(35);
-        const [paddleResult] = await paddle.predict(file, {
-          textDetBoxThresh: 0.4,
-          textDetUnclipRatio: 1.8,
-          textRecScoreThresh: 0.0,
-        });
-        paddleMetadataWords = paddleItemsToWordBoxes(paddleResult?.items ?? []);
-        recognizedText = paddleOcrItemsToText(paddleResult?.items ?? []);
+        setProgress("Leyendo el ticket con OCR alternativo…");
+        setProgressPercent(24);
+        const upload = new FormData();
+        upload.append("file", file);
+        const response = await fetch("/api/ocr-space", { method: "POST", body: upload });
+        const result = await response.json().catch(() => ({})) as {
+          text?: string;
+          words?: unknown[];
+          error?: string;
+        };
+        if (!response.ok) throw new Error(result.error || "El lector alternativo no pudo procesar la foto.");
+        const ocrSpaceText = String(result.text ?? "").trim();
+        if (ocrTextHasEnoughSignals(ocrSpaceText, closureReadExpected)) {
+          recognizedText = ocrSpaceText;
+          paddleMetadataWords = Array.isArray(result.words) ? result.words : [];
+          setProgress("Texto reconocido. Revisando los datos del cupón…");
+          setProgressPercent(35);
+        } else {
+          ocrSpacePartialText = ocrSpaceText;
+          throw new Error("OCR.Space no obtuvo texto suficiente para validar el ticket.");
+        }
       } catch (cause) {
-        paddleFailure = cause instanceof Error ? cause.message : String(cause);
-        recognizedText = "";
+        paddleFailure = "OCR.Space: " + (cause instanceof Error ? cause.message : String(cause));
       }
 
-      const closureReadExpected = dailyMode || receiptOnlyMode || batchMode;
+      // Motor local de respaldo: se ejecuta cuando OCR.Space falla o no reconoce
+      // suficientes señales. No cambia el parser ni los controles de importes.
+      if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
+        try {
+          const paddle = await getPaddleOcrEngine();
+          setProgress("Reconociendo los renglones impresos del cupón…");
+          setProgressPercent(35);
+          const [paddleResult] = await paddle.predict(file, {
+            textDetBoxThresh: 0.4,
+            textDetUnclipRatio: 1.8,
+            textRecScoreThresh: 0.0,
+          });
+          paddleMetadataWords = paddleItemsToWordBoxes(paddleResult?.items ?? []);
+          const paddleText = paddleOcrItemsToText(paddleResult?.items ?? []);
+          if (ocrTextHasEnoughSignals(paddleText, closureReadExpected) || paddleText.length >= ocrSpacePartialText.length) {
+            recognizedText = paddleText;
+          }
+        } catch (cause) {
+          const detail = cause instanceof Error ? cause.message : String(cause);
+          paddleFailure = [paddleFailure, "PaddleOCR: " + detail].filter(Boolean).join(" | ");
+          recognizedText = ocrSpacePartialText;
+        }
+      }
+
       if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
         const paddlePartialText = recognizedText;
         setProgress("Activando lector de respaldo…");
