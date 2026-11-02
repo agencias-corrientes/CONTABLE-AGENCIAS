@@ -127,14 +127,14 @@ function metricAtLine(lines: string[], index: number, end: number): TicketReceip
   // Los tickets suelen separar cantidad e importe: "89 $" / "389340,00".
   // Si hay un entero seguido de moneda y una cifra en la línea siguiente,
   // el primero es cantidad y el segundo es importe, no dos importes distintos.
-  const countAndCurrency = raw.match(/^\\s*([0-9][0-9.,]*)\\s*(?:\\$|ARS)\\s*$/i);
+  const countAndCurrency = raw.match(/^\s*([0-9][0-9.,]*)\s*(?:\$|ARS)\s*$/i);
   const following = index + 1 < end ? (lines[index + 1] ?? "").trim() : "";
   if (countAndCurrency && following) {
-    const amountToken = following.match(/^\\s*([0-9][0-9.,]*)\\s*$/)?.[1];
+    const amountToken = following.match(/^\s*([0-9][0-9.,]*)\s*$/)?.[1];
     const amount = amountToken ? moneyAllowZero(amountToken) : null;
     const countToken = countAndCurrency[1] ?? "";
     const count = moneyAllowZero(countToken);
-    if (amount !== null && count !== null && !/[.,]\\d{1,2}$/.test(countToken)) {
+    if (amount !== null && count !== null && !/[.,]\d{1,2}$/.test(countToken)) {
       return { count: Math.max(0, Math.trunc(count)), amount };
     }
   }
@@ -149,7 +149,7 @@ function metricInRange(lines: string[], start: number, end: number, matcher: Reg
     if (!metric) {
       for (let j = i + 1; j < Math.min(end, i + 3); j += 1) {
         const nextText = normalizeTicketText(lines[j] ?? "");
-        if (/^(QUINIELA|OTROS\\s+JU|MEDIOS\\s+DIGITALES|NEDIOS\\s+DIGITALES|TOTAL\\s+(?:O|0)\\.?\\s*JUEGOS|TOTAL\\s+GENERAL|PREMIOS?\\s+P[A-Z]{2,3})/.test(nextText)) break;
+        if (/^(QUINIELA|OTROS\s+JU|MEDIOS\s+DIGITALES|NEDIOS\s+DIGITALES|TOTAL\s+(?:O|0)\.?\s*JUEGOS|TOTAL\s+GENERAL|PREMIOS?\s+P[A-Z]{2,3})/.test(nextText)) break;
         metric = metricAtLine(lines, j, end) ?? metricFromLine(lines[j] ?? "");
         if (metric) break;
       }
