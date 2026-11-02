@@ -105,16 +105,19 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       if (batch.length < pageSize) return accumulated;
     }
   }
-  const renditions = await loadAllRenditions();
-  const { data: drawStatusRows } = await supabase
-    .from("agency_agent_draw_status")
-    .select("agent_id,draw_period,rendition_id,status,notes,reported_amount,updated_at")
-    .eq("organization_id", activeOrganization.id)
-    .eq("operational_date", today);
-  const drawStatusByKey = new Map((drawStatusRows ?? []).map((row: any) => [String(row.agent_id) + "|" + String(row.draw_period), row]));
-  const { data: dailyStatusRows } = await supabase.from("agency_agent_daily_status")
-    .select("agent_id,status,notes,reported_amount,updated_at").eq("organization_id", activeOrganization.id).eq("operational_date", today);
-  const dailyStatusByAgent = new Map((dailyStatusRows ?? []).map((row: any) => [String(row.agent_id), row]));
+  async function loadTodayDrawStatuses() {
+    const { data } = await supabase
+      .from("agency_agent_draw_status")
+      .select("agent_id,draw_period,rendition_id,status,notes,reported_amount,updated_at")
+      .eq("organization_id", activeOrganization.id)
+      .eq("operational_date", today);
+    return data ?? [];
+  }
+  async function loadTodayDailyStatuses() {
+    const { data } = await supabase.from("agency_agent_daily_status")
+      .select("agent_id,status,notes,reported_amount,updated_at").eq("organization_id", activeOrganization.id).eq("operational_date", today);
+    return data ?? [];
+  }
 
   async function loadHistoricalDailyStatuses() {
     const accumulated: any[] = [];
@@ -153,10 +156,17 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       if (batch.length < pageSize) return accumulated;
     }
   }
-  const [historicalDailyStatusRows, historicalDrawStatusRows] = await Promise.all([
+  // Consultas independientes en paralelo: evita esperar a que termine cada historial
+  // antes de iniciar la siguiente consulta. No se limita ni se modifica ningún registro.
+  const [renditions, drawStatusRows, dailyStatusRows, historicalDailyStatusRows, historicalDrawStatusRows] = await Promise.all([
+    loadAllRenditions(),
+    loadTodayDrawStatuses(),
+    loadTodayDailyStatuses(),
     loadHistoricalDailyStatuses(),
     loadHistoricalDrawStatuses(),
   ]);
+  const drawStatusByKey = new Map((drawStatusRows ?? []).map((row: any) => [String(row.agent_id) + "|" + String(row.draw_period), row]));
+  const dailyStatusByAgent = new Map((dailyStatusRows ?? []).map((row: any) => [String(row.agent_id), row]));
   const drawPeriods = getOfficialDrawPeriodsForDate(today);
   const allOfficialDrawPeriods = getAllOfficialDrawPeriods();
   const dailyClosurePeriod = { label: "Cierre diario", shortLabel: "Cierre diario", time: null, gameName: "Cierre diario", kind: "daily" as const };
