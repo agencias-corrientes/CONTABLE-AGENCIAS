@@ -535,7 +535,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
 
 export function mapTicketClosureAmounts(receipt: TicketClosureData, games: { id: string; name: string }[]): Record<string, string> {
   const entries: Array<{ amount: number | null; match: (name: string) => boolean }> = [
-    { amount: receipt.quiniela.valids.amount, match: (name) => name === "QUINIELA CORRENTINA" || name === "QUINIELA" },
+    { amount: receipt.quiniela.valids.amount, match: (name) => /^QUINIELA(?:\\s+(?:CORRIENTE|CORRIENTES|CORRENTINA))?$/.test(name) },
     { amount: receipt.quinielaAlToque.valids.amount, match: (name) => name.includes("AL TOQUE") },
     { amount: receipt.otherGames.find((item) => item.name === "Loto Plus")?.amount ?? null, match: (name) => name === "LOTO PLUS" },
     { amount: receipt.otherGames.find((item) => item.name === "Quini 6")?.amount ?? null, match: (name) => name.includes("QUINI 6") || name === "QUINI6" },
