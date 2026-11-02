@@ -79,14 +79,6 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   ]);
   const cutoffTime = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);
   const today = agencyBusinessDateForCutoff(cutoffTime);
-  const { data: todayPrizePaymentRows, error: todayPrizePaymentError } = await supabase
-    .from("agency_prize_payments")
-    .select("prize_amount,included_in_ticket_ocr")
-    .eq("organization_id", activeOrganization.id)
-    .eq("payment_date", today);
-  if (todayPrizePaymentError) throw new Error("No se pudieron cargar los premios pagados de hoy: " + todayPrizePaymentError.message);
-  const todayCashPrizeTotal = (todayPrizePaymentRows ?? []).reduce((sum: number, row: any) =>
-    sum + (row.included_in_ticket_ocr ? 0 : Number(row.prize_amount ?? 0)), 0);
 
   async function loadAllRenditions() {
     const accumulated: any[] = [];
@@ -156,15 +148,28 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       if (batch.length < pageSize) return accumulated;
     }
   }
-  // Consultas independientes en paralelo: evita esperar a que termine cada historial
-  // antes de iniciar la siguiente consulta. No se limita ni se modifica ningún registro.
-  const [renditions, drawStatusRows, dailyStatusRows, historicalDailyStatusRows, historicalDrawStatusRows] = await Promise.all([
+  async function loadTodayPrizePayments() {
+    const { data, error } = await supabase
+      .from("agency_prize_payments")
+      .select("prize_amount,included_in_ticket_ocr")
+      .eq("organization_id", activeOrganization.id)
+      .eq("payment_date", today);
+    if (error) throw new Error("No se pudieron cargar los premios pagados de hoy: " + error.message);
+    return data ?? [];
+  }
+
+  // Todas las lecturas independientes arrancan juntas; se eliminó una espera
+  // secuencial adicional sin limitar registros ni modificar cálculos.
+  const [renditions, drawStatusRows, dailyStatusRows, historicalDailyStatusRows, historicalDrawStatusRows, todayPrizePaymentRows] = await Promise.all([
     loadAllRenditions(),
     loadTodayDrawStatuses(),
     loadTodayDailyStatuses(),
     loadHistoricalDailyStatuses(),
     loadHistoricalDrawStatuses(),
+    loadTodayPrizePayments(),
   ]);
+  const todayCashPrizeTotal = todayPrizePaymentRows.reduce((sum: number, row: any) =>
+    sum + (row.included_in_ticket_ocr ? 0 : Number(row.prize_amount ?? 0)), 0);
   const drawStatusByKey = new Map((drawStatusRows ?? []).map((row: any) => [String(row.agent_id) + "|" + String(row.draw_period), row]));
   const dailyStatusByAgent = new Map((dailyStatusRows ?? []).map((row: any) => [String(row.agent_id), row]));
   const drawPeriods = getOfficialDrawPeriodsForDate(today);
