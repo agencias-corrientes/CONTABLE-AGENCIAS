@@ -1253,6 +1253,44 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         recognizedText = "";
       }
 
+      // Si Paddle no inicializa o no reconoce el cuerpo del FIN DE JORNADA,
+      // ejecutar Tesseract en Web Worker ANTES del control que puede cancelar
+      // la lectura. Así el timeout de Paddle nunca impide llegar al respaldo.
+      if (closureReadExpected && !ocrTextHasEnoughSignals(recognizedText, true)) {
+        const paddlePartialText = recognizedText;
+        try {
+          setProgress("Activando lector de respaldo en segundo plano…");
+          setProgressPercent(24);
+          const { createWorker } = await import("tesseract.js");
+          const fallbackWorker = await createWorker("spa+eng", 1, {
+            logger: (message) => {
+              if (message.status === "recognizing text" && typeof message.progress === "number") {
+                setProgressPercent(Math.min(94, 30 + Math.round(message.progress * 64)));
+                setProgress("Leyendo juegos e importes del cierre…");
+              } else if (message.status) {
+                setProgress("Preparando lectura del cupón…");
+              }
+            },
+          });
+          try {
+            const fallbackResult = await fallbackWorker.recognize(file, {}, { blocks: true });
+            focusedOcrWords = tesseractWordBoxes(fallbackResult.data);
+            const tesseractText = String(fallbackResult.data.text ?? "").trim();
+            if (
+              ocrTextHasEnoughSignals(tesseractText, true) ||
+              tesseractText.length > paddlePartialText.length
+            ) {
+              recognizedText = tesseractText;
+            }
+          } finally {
+            await fallbackWorker.terminate();
+          }
+        } catch (fallbackCause) {
+          const fallbackDetail = fallbackCause instanceof Error ? fallbackCause.message : String(fallbackCause);
+          paddleFailure = [paddleFailure, "Respaldo Tesseract: " + fallbackDetail].filter(Boolean).join(" · ");
+        }
+      }
+
       // Mostrar texto parcial aunque no supere el control de calidad: no ocultar
       // lo que sí logró detectar alguno de los motores.
       setOcrText(recognizedText);
