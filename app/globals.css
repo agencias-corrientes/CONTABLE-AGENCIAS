@@ -1280,3 +1280,50 @@ html, body { min-height:100%; }
 
 
 
+
+
+/* Accesos de perfil: botones claros, contrastados y cómodos al tacto. */
+.landing-role-grid { gap:16px; margin:26px 0 12px; }
+.landing-role-choice {
+  min-height:116px;
+  padding:20px 22px;
+  border:1px solid #d8c7a2;
+  border-left:6px solid #c5a34b;
+  border-radius:16px;
+  box-shadow:0 7px 20px rgba(42,25,30,.12);
+  gap:16px;
+}
+.landing-role-admin {
+  background:linear-gradient(145deg,#87394f 0%,#64283a 100%);
+  border-color:#64283a;
+  border-left-color:#e0c36e;
+  color:#fff;
+}
+.landing-role-employee {
+  background:#fffdf7;
+  border-color:#cfc3a8;
+  border-left-color:#7c3347;
+  color:#2a2020;
+}
+.landing-role-choice strong { font-size:19px; font-weight:850; letter-spacing:.01em; }
+.landing-role-choice small { font-size:14px; line-height:1.45; opacity:1; color:inherit; }
+.landing-role-enter {
+  font-size:13px;
+  font-weight:850;
+  padding:9px 12px;
+  border-radius:9px;
+  background:rgba(255,255,255,.14);
+}
+.landing-role-employee .landing-role-enter {
+  color:#64283a;
+  background:#f2e9d8;
+}
+.landing-role-choice:focus-visible {
+  outline:3px solid #d6b75e;
+  outline-offset:3px;
+}
+@media(max-width:640px) {
+  .landing-role-choice { min-height:104px; padding:17px; }
+  .landing-role-choice strong { font-size:18px; }
+  .landing-role-choice small { font-size:13px; }
+}
