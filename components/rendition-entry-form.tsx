@@ -1116,7 +1116,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
               </div>
               {cameraError && <p className="ticket-read-error" role="alert">{cameraError}</p>}
               {cameraStarting && <p className="ticket-read-notice" role="status">Solicitando acceso a la cámara…</p>}
-              <div className="ticket-capture-dialog-actions ticket-capture-choice-grid">
+              <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button primary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("environment")}>Usar cámara trasera</button>
                 <button type="button" className="button secondary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera("user")}>Usar cámara frontal</button>
                 <button type="button" className="button ghost" disabled={busy} onClick={() => {
