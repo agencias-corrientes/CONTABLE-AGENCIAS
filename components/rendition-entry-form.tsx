@@ -26,6 +26,38 @@ function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 }
 
+async function prepareTicketImageForCloudOcr(file: File): Promise<Blob> {
+  if (typeof createImageBitmap !== "function") {
+    throw new Error("Este navegador no permite preparar la imagen para OCR en la nube.");
+  }
+  const bitmap = await createImageBitmap(file);
+  try {
+    let scale = Math.min(1, 2600 / Math.max(bitmap.width, bitmap.height));
+    for (const quality of [0.9, 0.84, 0.78, 0.72]) {
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("No se pudo preparar la foto del cupón.");
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((value) => {
+          if (value) resolve(value);
+          else reject(new Error("No se pudo comprimir la foto del cupón."));
+        }, "image/jpeg", quality);
+      });
+      if (blob.size <= 3.4 * 1024 * 1024) return blob;
+      scale *= 0.88;
+    }
+    throw new Error("La foto sigue siendo demasiado pesada para enviarla al lector seguro.");
+  } finally {
+    bitmap.close();
+  }
+}
+
+
 let paddleOcrEnginePromise: Promise<any> | null = null;
 
 async function loadPaddleOcrSdk(): Promise<any> {
@@ -1209,7 +1241,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         }
       }
 
-      setProgress("Iniciando lector avanzado de texto…");
+      setProgress("Conectando lector inteligente de documentos…");
       setProgressPercent(18);
       let recognizedText = "";
       let recoveredPeriodNumber = "";
@@ -1221,29 +1253,111 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let focusedPaddleDebugText = "";
       let closureTextCandidates: string[] = [];
       let paddleFailure = "";
+      let cloudOcrUsed = false;
+      const closureReadExpected = dailyMode || receiptOnlyMode || batchMode;
 
-      // Motor principal nuevo: PaddleOCR v6 en español, ejecutado localmente en el navegador.
-      // Tesseract queda únicamente como respaldo si el motor/modelo no puede iniciarse.
+      // Google Cloud Vision Document Text Detection: una sola llamada devuelve
+      // texto completo y cajas de palabras. Las credenciales permanecen en el servidor.
       try {
-        const paddle = await getPaddleOcrEngine();
-        setProgress("Reconociendo los renglones impresos del cupón…");
-        setProgressPercent(35);
-        const [paddleResult] = await paddle.predict(file, {
-          textDetBoxThresh: 0.4,
-          textDetUnclipRatio: 1.8,
-          textRecScoreThresh: 0.0,
+        const uploadBlob = await prepareTicketImageForCloudOcr(file);
+        const formData = new FormData();
+        formData.append("image", uploadBlob, "ticket-cierre.jpg");
+        const cloudResponse = await fetch("/api/ticket-ocr", {
+          method: "POST",
+          body: formData,
+          cache: "no-store",
         });
-        paddleMetadataWords = paddleItemsToWordBoxes(paddleResult?.items ?? []);
-        recognizedText = paddleOcrItemsToText(paddleResult?.items ?? []);
+        if (cloudResponse.ok) {
+          const cloudResult = await cloudResponse.json();
+          const cloudText = String(cloudResult?.text ?? "").trim();
+          const cloudWords = Array.isArray(cloudResult?.words) ? cloudResult.words : [];
+          const positionedText = reconstructLinesFromOcrWords(cloudWords);
+          const candidates = [...new Set([cloudText, positionedText].filter((value) => value.trim().length > 0))];
+          let selectedText = cloudText;
+          if (closureReadExpected && candidates.length > 1) {
+            const ranked = candidates.map((value) => ({
+              value,
+              receipt: parseTicketClosure(value, true),
+            }));
+            const amountCoverage = (receipt: TicketClosureData | null) => {
+              if (!receipt) return -1;
+              const amounts = [
+                receipt.quiniela.valids.amount,
+                receipt.quiniela.cancelledSpecial.amount,
+                receipt.quiniela.prizesPaid.amount,
+                receipt.quinielaAlToque.valids.amount,
+                receipt.quinielaAlToque.prizesPaid.amount,
+                ...receipt.otherGames.map((game) => game.amount),
+                receipt.totalOtherGames.amount,
+                receipt.otherGamesPrizes.amount,
+                receipt.totalPrizes.amount,
+                receipt.generalTotal.amount,
+                receipt.digital.cobros.amount,
+                receipt.digital.devoluciones.amount,
+              ];
+              return amounts.filter((value) => value !== null).length;
+            };
+            const matchedTotals = ranked.find((item) => item.receipt?.consistency.salesTotalsMatch === true);
+            const bestCoverage = [...ranked].sort((a, b) => amountCoverage(b.receipt) - amountCoverage(a.receipt))[0];
+            selectedText = matchedTotals?.value ?? bestCoverage?.value ?? cloudText;
+          }
+          if (cloudText || positionedText) {
+            recognizedText = selectedText || cloudText || positionedText;
+            focusedOcrWords = cloudWords;
+            const positioned = readClosureMetadataFromOcrWords(cloudWords);
+            focusedClosureMetadata = {
+              agencyCode: positioned.agencyCode ?? undefined,
+              subagentCode: positioned.subagentCode ?? undefined,
+              machineCode: positioned.machineCode ?? undefined,
+              address: correctTicketAddressOcr(positioned.address) ?? undefined,
+              terminalId: positioned.terminalId ?? undefined,
+              printedAt: positioned.printedAt
+                ? {
+                    date: positioned.printedAt.match(/\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}/)?.[0] ?? null,
+                    time: positioned.printedAt.match(/\\d{1,2}:\\d{2}(?::\\d{2})?/)?.[0] ?? null,
+                    raw: positioned.printedAt,
+                  }
+                : undefined,
+              periodNumber: positioned.periodNumber ?? undefined,
+            };
+            focusedOcrDebugText = "GOOGLE CLOUD VISION DOCUMENT TEXT DETECTION:\\n" + recognizedText;
+            cloudOcrUsed = ocrTextHasEnoughSignals(recognizedText, closureReadExpected);
+          }
+          if (!cloudOcrUsed) {
+            paddleFailure = "Google Cloud Vision no devolvió texto suficiente.";
+          }
+        } else {
+          const cloudError = await cloudResponse.json().catch(() => null);
+          paddleFailure = String(cloudError?.error ?? "El servicio OCR externo no respondió correctamente.");
+        }
       } catch (cause) {
         paddleFailure = cause instanceof Error ? cause.message : String(cause);
-        recognizedText = "";
       }
 
-      const closureReadExpected = dailyMode || receiptOnlyMode || batchMode;
-      if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
+      // Respaldo local solo si el servicio externo no está configurado,
+      // falla la conexión o no obtiene señales suficientes del comprobante.
+      if (!cloudOcrUsed) {
+        try {
+          const paddle = await getPaddleOcrEngine();
+          setProgress("Usando lector local de respaldo…");
+          setProgressPercent(35);
+          const [paddleResult] = await paddle.predict(file, {
+            textDetBoxThresh: 0.4,
+            textDetUnclipRatio: 1.8,
+            textRecScoreThresh: 0.0,
+          });
+          paddleMetadataWords = paddleItemsToWordBoxes(paddleResult?.items ?? []);
+          recognizedText = paddleOcrItemsToText(paddleResult?.items ?? []);
+        } catch (cause) {
+          const localFailure = cause instanceof Error ? cause.message : String(cause);
+          paddleFailure = [paddleFailure, localFailure].filter(Boolean).join(" ");
+          recognizedText = "";
+        }
+      }
+
+      if (!cloudOcrUsed && !ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
         const paddlePartialText = recognizedText;
-        setProgress("Activando lector de respaldo…");
+        setProgress("Activando lector local de respaldo…");
         setProgressPercent(42);
         const { createWorker } = await import("tesseract.js");
         const worker = await createWorker("spa+eng", 1, {
@@ -1329,7 +1443,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       const parsedAmountMap = Object.fromEntries(
         Object.entries(parsed.amountMap).filter(([gameId]) => gamesForDetectedPeriod.some((game) => game.id === gameId))
       );
-      if (parsed.receiptData && (
+      if (!cloudOcrUsed && parsed.receiptData && (
         !parsed.receiptData.machineCode ||
         !parsed.receiptData.address ||
         !parsed.receiptData.terminalId ||
