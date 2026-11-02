@@ -987,50 +987,35 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   }, [amounts, busy, confirmationOpen, dailyStatusChoice, date, defaultPeriod, drawNumber, fileName, initialRendition, notes, period, periodManuallySelected, periods, photoPreviewUrl, qrPayload, reference, ticketNumbers, today]);
 
   async function makeEnhancedTicketImage(file: File): Promise<HTMLCanvasElement> {
-    // Primero aislar el papel del fondo y de la interfaz de la aplicación.
-    const paper = await makeReceiptPaperCanvas(file);
-    const scale = Math.max(1, Math.min(2.5, 1300 / Math.max(1, paper.width)));
+    const bitmap = await createImageBitmap(file);
+    const longestSide = Math.max(bitmap.width, bitmap.height);
+    const scale = Math.max(1, Math.min(2, 3000 / longestSide));
     const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(paper.width * scale));
-    canvas.height = Math.max(1, Math.round(paper.height * scale));
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
     const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) throw new Error("No se pudo preparar la imagen del comprobante.");
-    context.drawImage(paper, 0, 0, canvas.width, canvas.height);
+    if (!context) {
+      bitmap.close();
+      throw new Error("No se pudo preparar la imagen para mejorar la lectura.");
+    }
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
 
-    // Escala de grises y contraste moderado para papel térmico.
+    // Grises + contraste moderado: ayuda con papel térmico pálido sin umbralizar
+    // los números finos ni destruir los puntos y separadores del comprobante.
     const image = context.getImageData(0, 0, canvas.width, canvas.height);
     const pixels = image.data;
     for (let i = 0; i < pixels.length; i += 4) {
       const gray = 0.299 * pixels[i]! + 0.587 * pixels[i + 1]! + 0.114 * pixels[i + 2]!;
-      const contrasted = Math.max(0, Math.min(255, (gray - 132) * 1.3 + 132));
+      const contrasted = Math.max(0, Math.min(255, (gray - 128) * 1.55 + 128));
       pixels[i] = contrasted;
       pixels[i + 1] = contrasted;
       pixels[i + 2] = contrasted;
     }
     context.putImageData(image, 0, 0);
-
-    // Máscara de enfoque suave: recupera trazos térmicos finos y caracteres
-    // pálidos sin imponer una estructura fija a las líneas del ticket.
-    const blurred = document.createElement("canvas");
-    blurred.width = canvas.width;
-    blurred.height = canvas.height;
-    const blurContext = blurred.getContext("2d", { willReadFrequently: true });
-    if (blurContext) {
-      blurContext.filter = "blur(1px)";
-      blurContext.drawImage(canvas, 0, 0);
-      blurContext.filter = "none";
-      const original = context.getImageData(0, 0, canvas.width, canvas.height);
-      const soft = blurContext.getImageData(0, 0, canvas.width, canvas.height);
-      for (let i = 0; i < original.data.length; i += 4) {
-        const sharpened = Math.max(0, Math.min(255, original.data[i]! * 4 - soft.data[i]! * 3));
-        original.data[i] = sharpened;
-        original.data[i + 1] = sharpened;
-        original.data[i + 2] = sharpened;
-      }
-      context.putImageData(original, 0, 0);
-    }
     return canvas;
   }
+
   function processSelectedTicketFile(file: File) {
     const declaredType = String(file.type ?? "").toLowerCase();
     const isDefinitelyVideo =
@@ -1235,7 +1220,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         }
       }
 
-      setProgress("Iniciando lector avanzado de texto…");
+      const closureReadExpected = dailyMode || receiptOnlyMode || batchMode;
+      setProgress("Iniciando lector de texto…");
       setProgressPercent(18);
       let recognizedText = "";
       let recoveredPeriodNumber = "";
@@ -1248,25 +1234,74 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let closureTextCandidates: string[] = [];
       let paddleFailure = "";
 
-      // Motor principal nuevo: PaddleOCR v6 en español, ejecutado localmente en el navegador.
-      // Tesseract queda únicamente como respaldo si el motor/modelo no puede iniciarse.
-      try {
-        const paddle = await getPaddleOcrEngine();
-        setProgress("Reconociendo los renglones impresos del cupón…");
-        setProgressPercent(35);
-        const [paddleResult] = await paddle.predict(file, {
-          textDetBoxThresh: 0.4,
-          textDetUnclipRatio: 1.8,
-          textRecScoreThresh: 0.0,
+      if (closureReadExpected) {
+        // FIN DE JORNADA: ejecutar primero Tesseract en un Web Worker.
+        // PaddleOCR inicializaba el WASM en el hilo principal y en algunos Android
+        // bloqueaba la interfaz en 18% antes de que pudiera ejecutarse el timeout.
+        setProgress("Preparando lector de respaldo…");
+        setProgressPercent(24);
+        const { createWorker } = await import("tesseract.js");
+        const worker = await createWorker("spa+eng", 1, {
+          logger: (message) => {
+            if (message.status === "recognizing text" && typeof message.progress === "number") {
+              setProgressPercent(Math.min(94, 30 + Math.round(message.progress * 64)));
+              setProgress("Leyendo juegos e importes del cierre…");
+            } else if (message.status) {
+              setProgress("Preparando lectura del cupón…");
+            }
+          },
         });
-        paddleMetadataWords = paddleItemsToWordBoxes(paddleResult?.items ?? []);
-        recognizedText = paddleOcrItemsToText(paddleResult?.items ?? []);
-      } catch (cause) {
-        paddleFailure = cause instanceof Error ? cause.message : String(cause);
-        recognizedText = "";
+        try {
+          const result = await worker.recognize(file, {}, { blocks: true });
+          focusedOcrWords = tesseractWordBoxes(result.data);
+          recognizedText = String(result.data.text ?? "").trim();
+        } finally {
+          await worker.terminate();
+        }
+      } else {
+        // Para comprobantes que no son FIN DE JORNADA se conserva PaddleOCR.
+        try {
+          const paddle = await getPaddleOcrEngine();
+          setProgress("Reconociendo los renglones impresos del cupón…");
+          setProgressPercent(35);
+          const [paddleResult] = await paddle.predict(file, {
+            textDetBoxThresh: 0.4,
+            textDetUnclipRatio: 1.8,
+            textRecScoreThresh: 0.0,
+          });
+          paddleMetadataWords = paddleItemsToWordBoxes(paddleResult?.items ?? []);
+          recognizedText = paddleOcrItemsToText(paddleResult?.items ?? []);
+        } catch (cause) {
+          paddleFailure = cause instanceof Error ? cause.message : String(cause);
+          recognizedText = "";
+        }
+        if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
+          const paddlePartialText = recognizedText;
+          setProgress("Activando lector de respaldo…");
+          setProgressPercent(42);
+          const { createWorker } = await import("tesseract.js");
+          const worker = await createWorker("spa+eng", 1, {
+            logger: (message) => {
+              if (message.status === "recognizing text" && typeof message.progress === "number") {
+                const percent = Math.min(96, 42 + Math.round(message.progress * 52));
+                setProgressPercent(percent);
+                setProgress("Reconociendo ticket…");
+              }
+            },
+          });
+          try {
+            const result = await worker.recognize(file, {}, { blocks: true });
+            focusedOcrWords = tesseractWordBoxes(result.data);
+            const tesseractText = String(result.data.text ?? "").trim();
+            if (ocrTextHasEnoughSignals(tesseractText, closureReadExpected) || tesseractText.length >= paddlePartialText.length) {
+              recognizedText = tesseractText;
+            }
+          } finally {
+            await worker.terminate();
+          }
+        }
       }
 
-      const closureReadExpected = dailyMode || receiptOnlyMode || batchMode;
       if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
         const paddlePartialText = recognizedText;
         setProgress("Activando lector de respaldo…");
