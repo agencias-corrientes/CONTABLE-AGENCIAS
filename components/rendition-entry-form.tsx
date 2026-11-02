@@ -161,8 +161,21 @@ function ocrTextHasEnoughSignals(value: string, closure: boolean): boolean {
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const numericLines = lines.filter((line) => /\d{2,}/.test(line)).length;
   if (closure) {
-    return text.length >= 30 && lines.length >= 3 && numericLines >= 2 &&
+    const hasClosureStructure = text.length >= 30 && lines.length >= 3 && numericLines >= 2 &&
       /FIN|JORNADA|QUINIELA|TOTAL|VALID|AGENCIA|SUBAG|MAQ/i.test(text);
+    if (!hasClosureStructure) return false;
+
+    // No considerar completa una lectura que solo reconoció agencia, máquina,
+    // período y otros datos de cabecera. En esos casos se debe activar Tesseract
+    // aunque PaddleOCR haya devuelto suficiente texto para superar el control
+    // genérico: de lo contrario el formulario termina mostrando $0,00.
+    const amountPattern = /(?:\$\s*)?\b(?:\d{1,3}(?:[.,]\d{3})+|\d{4,9}|\d{1,3}\s+\d{3})\b/;
+    const salesLabels = /\b(?:VALIDOS?|TOTAL\s+GENERAL|TOTAL\s+(?:O|0)?\.?\s*JUEGOS)\b/i;
+    return lines.some((line, index) => {
+      if (!salesLabels.test(line)) return false;
+      return lines.slice(index, Math.min(lines.length, index + 4))
+        .some((candidate) => amountPattern.test(candidate));
+    });
   }
   return text.length >= 10 && numericLines >= 1;
 }
