@@ -394,6 +394,60 @@ export function AppShell({
           .app-shell.mobile-navigation-home .content-area { display:none !important; width:100% !important; min-width:0 !important; padding:12px !important; }
           .sidebar .nav-list .nav-item { transition:none !important; }
         }
+
+        /* PC: el panel lateral conserva fondo blanco y los mismos botones
+           en todas las secciones. No afecta el menú móvil. */
+        @media (min-width: 1001px) {
+          :global(.app-shell.mobile-navigation-home .sidebar),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar) {
+            background: #ffffff !important;
+            color: #241d20 !important;
+            border-right: 1px solid #e5dcc5 !important;
+            overflow-y: visible !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .sidebar-brand strong),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .sidebar-brand strong) {
+            color: #64283a !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .brand-subtitle),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .brand-subtitle),
+          :global(.app-shell.mobile-navigation-home .sidebar .user-line),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .user-line) {
+            color: #70666a !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus-visible),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:active),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:focus),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:focus-visible),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:active),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:focus-visible),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:active),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:hover),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:focus),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:focus-visible),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:active) {
+            background: linear-gradient(180deg, #93475b 0%, #7c3347 62%, #702a3e 100%) !important;
+            background-image: linear-gradient(180deg, #93475b 0%, #7c3347 62%, #702a3e 100%) !important;
+            color: #fff8eb !important;
+            border: 1px solid rgba(255,255,255,.18) !important;
+            border-bottom: 3px solid #54202f !important;
+            box-shadow: 0 3px 0 rgba(48,12,23,.22), 0 5px 10px rgba(35,8,16,.12) !important;
+            font-weight: 700 !important;
+            transform: none !important;
+            outline: none !important;
+            transition: none !important;
+          }
+        }
+
       `}</style>
     </div>
   );
