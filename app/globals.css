@@ -1309,3 +1309,134 @@ html, body { min-height:100%; }
  .rendition-mode-switch{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
  .rendition-mode-switch button{min-height:84px!important;padding:16px 8px!important;font-size:17px!important}
 }
+
+
+/* Ajuste visual puntual: los paneles de entrada y administración deben caber
+   en el ancho del dispositivo, sin recortar bordes ni contenido. */
+@media (max-width: 640px) {
+  .landing {
+    display: grid !important;
+    place-items: center !important;
+    width: 100% !important;
+    min-height: 100svh !important;
+    min-height: 100dvh !important;
+    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)) !important;
+  }
+  .landing-card.landing-role-card {
+    width: 100% !important;
+    max-width: 680px !important;
+    min-width: 0 !important;
+    margin: 0 auto !important;
+    padding: 16px 18px !important;
+    border-radius: 16px !important;
+    box-sizing: border-box !important;
+  }
+  .landing-role-card .brand-logo-top-left {
+    width: 60px !important;
+    height: 60px !important;
+    margin-bottom: 7px !important;
+  }
+  .landing-role-card .eyebrow {
+    margin-bottom: 5px !important;
+    font-size: 10px !important;
+  }
+  .landing-role-card h1 {
+    margin: 6px 0 7px !important;
+    font-size: clamp(25px, 7vw, 31px) !important;
+    line-height: 1.08 !important;
+  }
+  .landing-role-card .lead {
+    margin: 0 !important;
+    font-size: 14px !important;
+    line-height: 1.35 !important;
+  }
+  .landing-role-card .landing-role-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+    margin: 12px 0 8px !important;
+  }
+  .landing-role-card .landing-role-choice {
+    min-height: 68px !important;
+    padding: 10px 12px !important;
+    gap: 8px !important;
+    border-radius: 10px !important;
+  }
+  .landing-role-card .landing-role-copy { gap: 3px !important; }
+  .landing-role-card .landing-role-copy strong { font-size: 15px !important; }
+  .landing-role-card .landing-role-copy small { font-size: 11px !important; line-height: 1.25 !important; }
+  .landing-role-card .landing-role-enter { font-size: 11px !important; }
+  .landing-role-card .landing-actions {
+    margin: 10px 0 8px !important;
+    gap: 8px !important;
+  }
+  .landing-role-card .landing-actions .button {
+    min-height: 44px !important;
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+    line-height: 1.25 !important;
+  }
+  .landing-role-card > .small-text {
+    margin: 6px 0 !important;
+    font-size: 10px !important;
+    line-height: 1.3 !important;
+  }
+  .landing-role-card .feature-strip {
+    gap: 6px 10px !important;
+    padding-top: 5px !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+  }
+}
+
+/* Administración Central: el marco completo se adapta al ancho disponible.
+   El contenido extenso conserva desplazamiento vertical natural, sin quedar cortado. */
+.auth-page:has(.platform-admin-page) {
+  display: block !important;
+  width: 100% !important;
+  min-height: 100svh !important;
+  min-height: 100dvh !important;
+  padding: 16px !important;
+}
+.auth-page:has(.platform-admin-page) .platform-admin-page {
+  display: block !important;
+  width: min(1100px, 100%) !important;
+  max-width: 1100px !important;
+  min-width: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 0 auto !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+}
+@media (max-width: 700px) {
+  .auth-page:has(.platform-admin-page) {
+    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)) !important;
+  }
+  .auth-page:has(.platform-admin-page) .platform-admin-page {
+    width: 100% !important;
+    padding: 16px 14px !important;
+    border-radius: 16px !important;
+  }
+  .platform-admin-page .brand-logo-top-left {
+    width: 60px !important;
+    height: 60px !important;
+    flex-basis: 60px !important;
+    margin-bottom: 8px !important;
+  }
+  .platform-admin-page > .eyebrow { margin-bottom: 5px !important; font-size: 10px !important; }
+  .platform-admin-page > h1 { margin: 7px 0 9px !important; font-size: clamp(23px, 6.5vw, 29px) !important; line-height: 1.1 !important; }
+  .platform-admin-page > .muted { font-size: 12px !important; line-height: 1.4 !important; }
+  .platform-admin-page .platform-access-summary-grid { gap: 7px !important; margin: 12px 0 10px !important; }
+  .platform-admin-page .platform-summary-button { min-height: 44px !important; padding: 9px 10px !important; font-size: 12px !important; }
+  .platform-admin-page .platform-summary-button strong { font-size: 14px !important; }
+  .platform-admin-page .platform-access-navigation { gap: 9px !important; margin-bottom: 12px !important; }
+  .platform-admin-page .platform-access-navigation > .platform-summary-button { min-height: 44px !important; padding: 9px 12px !important; }
+  .platform-admin-page .platform-access-section { gap: 9px !important; margin-top: 18px !important; padding-top: 14px !important; }
+  .platform-admin-page .platform-access-section h2 { font-size: 17px !important; }
+  .platform-admin-page .platform-access-section > p { font-size: 12px !important; line-height: 1.4 !important; }
+}
+@media (max-height: 760px) and (min-width: 641px) {
+  .landing { padding-top: 14px !important; padding-bottom: 14px !important; }
+  .landing-card.landing-role-card { padding: 28px !important; }
+  .landing-role-card .brand-logo-top-left { width: 68px !important; height: 68px !important; }
+}
