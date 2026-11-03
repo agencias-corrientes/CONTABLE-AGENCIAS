@@ -1529,3 +1529,117 @@ html, body { min-height:100%; }
 @media (max-width: 1000px) {
   .desktop-agency-home { display: none !important; }
 }
+
+/* Corrección de escritorio solicitada: tarjetas compactas, sin scroll interno.
+   Esta regla solo aplica a PC; no modifica el comportamiento móvil. */
+@media (min-width: 1001px) {
+  .landing,
+  .auth-page.login-auth-page,
+  .auth-page:has(.platform-admin-page) {
+    height: 100vh;
+    min-height: 100vh;
+    padding: 12px 20px;
+    overflow: visible !important;
+    align-content: center;
+  }
+
+  .landing-card.landing-role-card {
+    width: min(740px, 100%);
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 28px 34px;
+    border-radius: 22px;
+  }
+  .landing-card.landing-role-card .brand-logo-top-left {
+    width: 76px;
+    height: 76px;
+    margin-bottom: 8px !important;
+  }
+  .landing-card.landing-role-card h1 {
+    font-size: 42px;
+    line-height: 1.04;
+    margin: 8px 0;
+  }
+  .landing-card.landing-role-card .lead {
+    font-size: 16px;
+    line-height: 1.38;
+  }
+  .landing-card.landing-role-card .landing-role-grid {
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .landing-card.landing-role-card .landing-role-choice {
+    min-height: 74px;
+    padding: 12px 15px;
+  }
+  .landing-card.landing-role-card .landing-actions {
+    gap: 10px;
+    margin: 14px 0;
+  }
+  .landing-card.landing-role-card .landing-actions .button {
+    min-height: 42px;
+    padding: 10px 14px;
+  }
+  .landing-card.landing-role-card .feature-strip {
+    gap: 12px;
+    padding-top: 4px;
+    font-size: 12px;
+  }
+
+  .login-auth-page .auth-card {
+    width: min(460px, 100%);
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 24px 28px;
+    border-radius: 20px;
+  }
+  .login-auth-page .login-agency-brand {
+    width: 68px;
+    height: 68px;
+    flex-basis: 68px;
+    margin-bottom: 8px;
+  }
+  .login-auth-page h1 {
+    font-size: 32px;
+    line-height: 1.08;
+    margin: 8px 0;
+  }
+  .login-auth-page .form-stack {
+    gap: 11px;
+    margin-top: 12px;
+  }
+  .login-auth-page .form-stack label {
+    gap: 5px;
+    font-size: 13px;
+  }
+
+  .auth-card.platform-admin-page {
+    width: min(1020px, calc(100vw - 48px));
+    max-width: 1020px;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 28px 32px;
+    border-radius: 22px;
+  }
+  .platform-admin-page .brand-logo-top-left {
+    width: 80px;
+    height: 80px;
+    max-width: 80px;
+    max-height: 80px;
+    margin-bottom: 8px !important;
+  }
+  .platform-admin-page > h1 {
+    font-size: 36px;
+    line-height: 1.08;
+    margin: 8px 0;
+  }
+  .platform-admin-page .platform-access-section {
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 16px;
+  }
+  .platform-admin-page .platform-management-card {
+    gap: 10px;
+    padding: 12px;
+  }
+}
