@@ -9,8 +9,9 @@ export default function PagosLoading() {
         <Image
           src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png"
           alt=""
-          width={820}
-          height={820}
+          width={64}
+          height={64}
+          style={{ width: 64, height: 64, maxWidth: "64px", maxHeight: "64px", objectFit: "contain" }}
           quality={100}
           priority
           sizes="(max-width: 1000px) 22vw, (min-width: 1400px) 680px, 58vw"
@@ -20,7 +21,8 @@ export default function PagosLoading() {
       <style jsx>{`
         .rendition-loading {
           width: 100%;
-          min-height: 55vh;
+          min-height: 180px;
+          max-height: 180px;
           padding: 0;
           display: flex;
           align-items: center;
@@ -30,7 +32,8 @@ export default function PagosLoading() {
         }
         .rendition-loading-brand {
           width: 100%;
-          min-height: 55vh;
+          min-height: 180px;
+          max-height: 180px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -42,10 +45,12 @@ export default function PagosLoading() {
         }
         .rendition-loading-brand-logo {
           display: block;
-          width: clamp(84px, 22vw, 112px) !important;
-          height: auto !important;
-          max-width: 22vw !important;
-          max-height: 16vh !important;
+          width: 64px !important;
+          height: 64px !important;
+          min-width: 64px !important;
+          min-height: 64px !important;
+          max-width: 64px !important;
+          max-height: 64px !important;
           object-fit: contain !important;
           object-position: center;
           filter: drop-shadow(0 8px 14px rgba(66,35,25,.09));
@@ -60,6 +65,7 @@ export default function PagosLoading() {
           }
           .rendition-loading-brand {
             min-height: calc(100vh - 56px);
+            max-height: none;
           }
           .rendition-loading-brand-logo {
             width: min(58vw, 680px);
