@@ -1942,3 +1942,93 @@ html, body { min-height:100%; }
   .login-role-selector .landing-role-choice small { font-size:12px!important; }
   .login-role-selector .landing-role-choice .landing-role-enter { font-size:11px!important; }
 }
+
+/* Ajuste final de tarjetas de perfil: mismo tono claro, solo icono y nombre. */
+.login-role-selector .landing-role-choice,
+.login-role-selector .landing-role-choice.landing-role-admin,
+.login-role-selector .landing-role-choice.landing-role-employee {
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  min-height:108px!important;
+  padding:22px 24px!important;
+  gap:18px!important;
+  background:#f3efe7!important;
+  background-image:none!important;
+  color:#39352f!important;
+  border:1px solid #e0d8ca!important;
+  border-left:1px solid #e0d8ca!important;
+  border-radius:12px!important;
+  box-shadow:0 3px 9px rgba(57,48,37,.06)!important;
+  text-decoration:none!important;
+  transform:none!important;
+  transition:background-color .14s ease,box-shadow .14s ease,border-color .14s ease!important;
+}
+.login-role-selector .landing-role-choice:hover,
+.login-role-selector .landing-role-choice:focus-visible,
+.login-role-selector .landing-role-choice:active {
+  background:#ebe5da!important;
+  color:#39352f!important;
+  border-color:#d4c9b6!important;
+  border-left-color:#d4c9b6!important;
+  box-shadow:inset 0 2px 5px rgba(57,48,37,.10),inset 0 1px 2px rgba(57,48,37,.06)!important;
+  transform:translateY(1px)!important;
+  outline:2px solid #e0d7c8!important;
+  outline-offset:2px!important;
+}
+.login-role-selector .landing-role-choice .landing-role-icon {
+  display:grid!important;
+  place-items:center!important;
+  flex:0 0 50px!important;
+  width:50px!important;
+  height:50px!important;
+  background:#e9e2d6!important;
+  color:#6c604f!important;
+  border:1px solid #ded5c6!important;
+  border-radius:10px!important;
+}
+.login-role-selector .landing-role-choice .landing-role-icon svg {
+  display:block!important;
+  width:26px!important;
+  height:26px!important;
+}
+.login-role-selector .landing-role-choice .landing-role-copy {
+  display:flex!important;
+  flex:1 1 auto!important;
+  flex-direction:column!important;
+  min-width:0!important;
+  gap:0!important;
+}
+.login-role-selector .landing-role-choice .landing-role-copy strong {
+  display:block!important;
+  color:#39352f!important;
+  font-size:23px!important;
+  font-weight:850!important;
+  line-height:1.15!important;
+  letter-spacing:0!important;
+}
+.login-role-selector .landing-role-choice small,
+.login-role-selector .landing-role-choice .landing-role-enter {
+  display:none!important;
+}
+@media(max-width:480px) {
+  .login-role-selector .landing-role-choice,
+  .login-role-selector .landing-role-choice.landing-role-admin,
+  .login-role-selector .landing-role-choice.landing-role-employee {
+    min-height:94px!important;
+    padding:17px 15px!important;
+    gap:14px!important;
+  }
+  .login-role-selector .landing-role-choice .landing-role-icon {
+    flex-basis:44px!important;
+    width:44px!important;
+    height:44px!important;
+  }
+  .login-role-selector .landing-role-choice .landing-role-icon svg {
+    width:23px!important;
+    height:23px!important;
+  }
+  .login-role-selector .landing-role-choice .landing-role-copy strong {
+    font-size:21px!important;
+  }
+}

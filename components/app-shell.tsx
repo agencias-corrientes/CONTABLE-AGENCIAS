@@ -808,6 +808,44 @@ export function AppShell({
         :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active .panel-nav-number) {
           color:#9c8966!important;
         }
+
+ 
+        /* Estado presionado uniforme para los seis accesos: hundido, sin bordó. */
+        :global(body .app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:active),
+        :global(body .app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:active),
+        :global(body .app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active),
+        :global(body .app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active),
+        :global(body .app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:hover),
+        :global(body .app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:hover),
+        :global(body .app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:focus-visible),
+        :global(body .app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:focus-visible),
+        :global(body .app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:nth-child(1):active),
+        :global(body .app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:nth-child(1).active),
+        :global(body .app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:nth-child(n+2):active),
+        :global(body .app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:nth-child(n+2).active),
+        :global(body .app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:nth-child(1):active),
+        :global(body .app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:nth-child(1).active),
+        :global(body .app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:nth-child(n+2):active),
+        :global(body .app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:nth-child(n+2).active) {
+          background:#eee9df!important;
+          background-image:none!important;
+          color:#403a32!important;
+          border-color:#d9cfbd!important;
+          border-bottom-color:#c8b895!important;
+          box-shadow:inset 0 2px 6px rgba(68,55,37,.13),inset 0 1px 2px rgba(68,55,37,.07)!important;
+          transform:translateY(1px)!important;
+          outline:none!important;
+          filter:none!important;
+        }
+        :global(body .app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:nth-child(1) .panel-nav-icon),
+        :global(body .app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:nth-child(n+2) .panel-nav-icon),
+        :global(body .app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:nth-child(1) .panel-nav-icon),
+        :global(body .app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:nth-child(n+2) .panel-nav-icon) {
+          background:#eee7da!important;
+          color:#685a47!important;
+          border-color:#e0d5c2!important;
+          box-shadow:none!important;
+        }
       `}</style>
     </div>
   );
