@@ -1309,3 +1309,63 @@ html, body { min-height:100%; }
  .rendition-mode-switch{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
  .rendition-mode-switch button{min-height:84px!important;padding:16px 8px!important;font-size:17px!important}
 }
+
+
+/* Ajuste leve de encuadre móvil: conserva el diseño de Producción y reduce
+   apenas los espacios para que los marcos completos entren en pantalla. */
+@media (max-width: 640px) {
+  .landing {
+    min-height: 100svh;
+    min-height: 100dvh;
+    padding: 14px;
+  }
+  .landing-card.landing-role-card {
+    width: 100%;
+    max-width: 860px;
+    padding: 21px 22px;
+    border-radius: 20px;
+  }
+  .landing-role-grid { gap: 12px; margin-top: 20px; }
+  .landing-role-choice {
+    min-height: 82px;
+    padding: 14px 15px;
+    gap: 10px;
+  }
+  .landing-role-copy { gap: 5px; }
+  .landing-role-copy strong { font-size: 16px; }
+  .landing-role-copy small { font-size: 12px; line-height: 1.35; }
+  .landing-central-actions { gap: 12px; margin-top: 24px; margin-bottom: 18px; }
+  .landing-central-actions > .button { min-height: 48px; }
+}
+
+/* Administración central: mismo diseño y disposición, con marco completo
+   dentro del ancho útil del teléfono y un pequeño ajuste de espaciado. */
+@media (max-width: 700px) {
+  .auth-page:has(.platform-admin-page) {
+    display: grid;
+    place-items: start center;
+    width: 100%;
+    min-height: 100svh;
+    min-height: 100dvh;
+    padding: 14px;
+    box-sizing: border-box;
+  }
+  .auth-page:has(.platform-admin-page) .platform-admin-page {
+    width: 100%;
+    max-width: 1100px;
+    min-width: 0;
+    margin: 0 auto;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+  .platform-admin-page .brand-logo-top-left {
+    max-width: 88px;
+    max-height: 88px;
+  }
+  .platform-admin-page > h1 { margin-top: 10px; margin-bottom: 10px; }
+  .platform-admin-page .platform-access-section {
+    margin-top: 26px;
+    padding-top: 18px;
+    gap: 10px;
+  }
+}
