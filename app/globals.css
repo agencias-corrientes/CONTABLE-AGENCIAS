@@ -1794,3 +1794,65 @@ html, body { min-height:100%; }
 @media(prefers-reduced-motion:reduce){
   .login-role-selector .landing-role-choice{transition:none}
 }
+
+
+/* Correccion solicitada: perfiles de login con contraste fuerte y jerarquia clara. */
+.login-role-selector .landing-role-choice{
+  display:flex!important;
+  align-items:center!important;
+  gap:14px!important;
+  min-width:0!important;
+  background:#fbf8f1!important;
+  border:1px solid #e4dac8!important;
+  border-left:4px solid #b79a45!important;
+  color:#30272a!important;
+  box-shadow:0 2px 8px rgba(48,31,34,.06)!important;
+}
+.login-role-selector .landing-role-choice:hover{
+  background:#fffdf8!important;
+  border-color:#c9b98f!important;
+  border-left-color:#7c3347!important;
+  transform:none!important;
+}
+.login-role-selector .landing-role-copy{
+  display:flex!important;
+  flex:1 1 auto!important;
+  flex-direction:column!important;
+  min-width:0!important;
+  gap:5px!important;
+}
+.login-role-selector .landing-role-choice strong{
+  display:block!important;
+  color:#542333!important;
+  font-size:18px!important;
+  line-height:1.25!important;
+  font-weight:800!important;
+}
+.login-role-selector .landing-role-choice small{
+  display:block!important;
+  color:#51484a!important;
+  opacity:1!important;
+  font-size:13px!important;
+  line-height:1.4!important;
+  font-weight:500!important;
+  white-space:normal!important;
+}
+.login-role-selector .landing-role-icon{
+  flex:0 0 44px!important;
+  width:44px!important;height:44px!important;
+  background:#eee6d7!important;
+  color:#713044!important;
+}
+.login-role-selector .landing-role-enter{
+  flex:0 0 auto!important;
+  color:#713044!important;
+  font-size:12px!important;
+  font-weight:800!important;
+}
+@media(max-width:480px){
+  .login-role-selector .landing-role-choice{gap:10px!important;padding:14px 11px!important}
+  .login-role-selector .landing-role-icon{flex-basis:38px!important;width:38px!important;height:38px!important}
+  .login-role-selector .landing-role-choice strong{font-size:16px!important}
+  .login-role-selector .landing-role-choice small{font-size:12px!important}
+  .login-role-selector .landing-role-enter{font-size:11px!important}
+}
