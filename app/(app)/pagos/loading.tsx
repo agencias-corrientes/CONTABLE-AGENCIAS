@@ -1,11 +1,23 @@
 "use client";
 
+import Image from "next/image";
+
 export default function PagosLoading() {
   return (
     <main className="rendition-loading" aria-live="polite" aria-busy="true">
-      {/* En escritorio no se vuelve a dibujar el logo durante la navegación.
-          El logo del panel general no tiene una segunda versión ampliada. */}
-      <div className="rendition-loading-desktop" aria-hidden="true" />
+      {/* Mantiene exactamente el logo del Panel general mientras carga Rendiciones. */}
+      <div className="desktop-agency-home" aria-hidden="true">
+        <Image
+          src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png"
+          alt=""
+          width={820}
+          height={820}
+          quality={100}
+          priority
+          sizes="(min-width: 1400px) 680px, 58vw"
+          className="desktop-agency-home-logo"
+        />
+      </div>
       <div className="rendition-loading-head">
         <span className="rendition-loading-mark" aria-hidden="true">AC</span>
         <div>
@@ -46,10 +58,7 @@ export default function PagosLoading() {
         .rendition-loading-list { margin-top:14px; }
         .rendition-loading-list b { width:48%; height:14px; margin-bottom:18px; }
         .rendition-loading-list span { width:100%; height:11px; margin:13px 0; }
-        .rendition-loading-desktop { display:none; }
         @keyframes loading-shimmer { to { background-position:-200% 0; } }
-        @keyframes rendition-loading-spin { to { transform:rotate(360deg); } }
-        /* En PC no se muestra una segunda imagen del logo durante la navegación. */
         @media (min-width: 1001px) {
           .rendition-loading {
             width:100%;
@@ -59,18 +68,12 @@ export default function PagosLoading() {
             justify-content:center;
             padding:0;
             overflow:hidden;
-          }
-          .rendition-loading-head,.rendition-loading-grid,.rendition-loading-list { display:none; }
-          .rendition-loading-desktop {
-            display:none !important;
-          }
-          .rendition-loading {
-            min-height:calc(100vh - 56px);
             background:transparent;
           }
+          .rendition-loading-head,.rendition-loading-grid,.rendition-loading-list { display:none; }
         }
         @media (prefers-reduced-motion: reduce) {
-          .rendition-loading-card i,.rendition-loading-card b,.rendition-loading-card span,.rendition-loading-list b,.rendition-loading-list span,.rendition-loading-spinner { animation:none; }
+          .rendition-loading-card i,.rendition-loading-card b,.rendition-loading-card span,.rendition-loading-list b,.rendition-loading-list span { animation:none; }
         }
       `}</style>
     </main>
