@@ -6,12 +6,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const nav = [
-  ["pagos", "Rendiciones", "↔"],
-  ["agencias", "Subagentes y ambulantes", "▣"],
-  ["buscar", "Buscar", "⌕"],
-  ["juegos", "Juegos y comisiones", "◎"],
-  ["loteria-correntina", "Lotería Correntina", "◉"],
-  ["configuracion", "Configuración", "⚙"],
+  ["pagos", "Rendiciones", "▤", "Control diario"],
+  ["agencias", "Subagentes y ambulantes", "♙", "Gestión de agentes"],
+  ["buscar", "Buscar", "⌕", "Consultas y registros"],
+  ["juegos", "Juegos y comisiones", "◎", "Gestión comercial"],
+  ["loteria-correntina", "Lotería", "◉", "Información y servicios"],
+  ["configuracion", "Configuración", "⚙", "Opciones de agencia"],
 ] as const;
 
 export function AppShell({
@@ -56,15 +56,21 @@ export function AppShell({
           </div>
         </div>
         <nav className="nav-list">
-          {visibleNav.map(([slug, label]) => {
+          {visibleNav.map(([slug, label, icon, description], index) => {
             const href = `/${slug}`;
             return (
               <Link
                 key={slug}
                 href={href}
+                aria-label={label}
                 className={pathname.startsWith(href) || (pathname === "/inicio" && selectedSection === slug) ? "nav-item active" : "nav-item"}
               >
-                {label}
+                <span className="nav-tile-head" aria-hidden="true">
+                  <span className="nav-tile-icon">{icon}</span>
+                  <span className="nav-tile-number">{String(index + 1).padStart(2, "0")}</span>
+                </span>
+                <span className="nav-tile-label">{label}</span>
+                <span className="nav-tile-description">{description}</span>
               </Link>
             );
           })}
@@ -555,6 +561,124 @@ export function AppShell({
           }
         }
 
+ 
+        /* Panel general móvil: seis accesos cuadrados, tipografía íntegra y jerarquía premium. */
+        @media (max-width: 1000px) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item) {
+            display: grid !important;
+            grid-template-rows: auto minmax(0, 1fr) auto !important;
+            justify-items: center !important;
+            align-content: stretch !important;
+            align-items: center !important;
+            gap: 4px !important;
+            padding: 10px 8px 9px !important;
+            min-width: 0 !important;
+            min-height: 0 !important;
+            overflow: hidden !important;
+            text-align: center !important;
+            overflow-wrap: normal !important;
+            word-break: normal !important;
+            hyphens: none !important;
+            white-space: normal !important;
+            text-wrap: balance;
+            font-size: 16px !important;
+            line-height: 1.12 !important;
+            font-weight: 850 !important;
+            border: 1px solid #632538 !important;
+            border-bottom: 4px solid #4a1b2a !important;
+            border-radius: 12px !important;
+            background: linear-gradient(155deg, #8b4055 0%, #762638 72%, #64283a 100%) !important;
+            color: #fffaf0 !important;
+            box-shadow: 0 3px 0 rgba(50,15,25,.17), 0 7px 13px rgba(50,15,25,.09) !important;
+            transform: none !important;
+            transition: none !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .nav-tile-head) {
+            display: flex !important;
+            width: 100% !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            min-width: 0 !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .nav-tile-icon) {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 31px !important;
+            height: 31px !important;
+            flex: 0 0 31px !important;
+            border: 1px solid rgba(255,255,255,.34) !important;
+            border-radius: 9px !important;
+            background: rgba(255,255,255,.13) !important;
+            color: #ffe6a4 !important;
+            font-size: 19px !important;
+            font-weight: 800 !important;
+            line-height: 1 !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .nav-tile-number) {
+            color: rgba(255,250,240,.62) !important;
+            font-size: 10px !important;
+            font-weight: 800 !important;
+            letter-spacing: .1em !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .nav-tile-label) {
+            display: block !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            align-self: center !important;
+            color: inherit !important;
+            font-size: clamp(14px, 4.05vw, 17px) !important;
+            font-weight: 900 !important;
+            line-height: 1.12 !important;
+            text-align: center !important;
+            overflow: visible !important;
+            overflow-wrap: normal !important;
+            word-break: normal !important;
+            hyphens: none !important;
+            white-space: normal !important;
+            text-wrap: balance;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .nav-tile-description) {
+            display: block !important;
+            width: 100% !important;
+            color: rgba(255,250,240,.78) !important;
+            font-size: 10px !important;
+            font-weight: 550 !important;
+            line-height: 1.15 !important;
+            text-align: center !important;
+            overflow-wrap: normal !important;
+            word-break: normal !important;
+            white-space: normal !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:focus),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:active) {
+            background: linear-gradient(155deg, #fff0b7 0%, #ffe58a 100%) !important;
+            color: #4b1d2b !important;
+            border-color: #b08a35 !important;
+            border-bottom-color: #7c3347 !important;
+            box-shadow: 0 3px 0 rgba(50,15,25,.13), 0 6px 12px rgba(50,15,25,.07) !important;
+            transform: none !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active .nav-tile-icon) {
+            background: rgba(124,51,71,.09) !important;
+            border-color: rgba(124,51,71,.24) !important;
+            color: #762638 !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active .nav-tile-number),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active .nav-tile-description) {
+            color: rgba(75,29,43,.68) !important;
+          }
+        }
+        @media (max-width: 390px) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .nav-tile-label) {
+            font-size: 14px !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .nav-tile-description) {
+            font-size: 9px !important;
+          }
+        }
       `}</style>
     </div>
   );
