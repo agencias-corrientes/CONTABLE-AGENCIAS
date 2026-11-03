@@ -1,8 +1,26 @@
 "use client";
 
+import Image from "next/image";
+
 export default function PagosLoading() {
   return (
     <main className="rendition-loading" aria-live="polite" aria-busy="true">
+      <div className="rendition-loading-desktop">
+        <Image
+          src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png"
+          alt="Agencias Corrientes — Quiniela Oficial"
+          width={640}
+          height={640}
+          quality={100}
+          priority
+          sizes="(min-width: 1400px) 360px, 30vw"
+        />
+        <h1>Preparando la información de la agencia</h1>
+        <div className="rendition-loading-desktop-status">
+          <span className="rendition-loading-spinner" aria-hidden="true" />
+          <strong>Cargando</strong>
+        </div>
+      </div>
       <div className="rendition-loading-head">
         <span className="rendition-loading-mark" aria-hidden="true">AC</span>
         <div>
@@ -43,8 +61,21 @@ export default function PagosLoading() {
         .rendition-loading-list { margin-top:14px; }
         .rendition-loading-list b { width:48%; height:14px; margin-bottom:18px; }
         .rendition-loading-list span { width:100%; height:11px; margin:13px 0; }
+        .rendition-loading-desktop { display:none; }
         @keyframes loading-shimmer { to { background-position:-200% 0; } }
-        @media (prefers-reduced-motion: reduce) { .rendition-loading-card i,.rendition-loading-card b,.rendition-loading-card span,.rendition-loading-list b,.rendition-loading-list span { animation:none; } }
+        @keyframes rendition-loading-spin { to { transform:rotate(360deg); } }
+        @media (min-width: 1001px) {
+          .rendition-loading { min-height:calc(100vh - 56px); display:grid; place-items:center; padding:24px; }
+          .rendition-loading-head,.rendition-loading-grid,.rendition-loading-list { display:none; }
+          .rendition-loading-desktop { width:100%; min-height:calc(100vh - 110px); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; text-align:center; }
+          .rendition-loading-desktop img { display:block; width:min(30vw,360px); height:auto; max-height:38vh; object-fit:contain; }
+          .rendition-loading-desktop h1 { max-width:760px; margin:0; color:#632538; font-size:clamp(28px,2.6vw,40px); line-height:1.18; font-weight:850; }
+          .rendition-loading-desktop-status { display:flex; align-items:center; justify-content:center; gap:12px; color:#6b6265; font-size:20px; }
+          .rendition-loading-spinner { width:22px; height:22px; border:3px solid #eadfe1; border-top-color:#7c3347; border-radius:50%; animation:rendition-loading-spin .85s linear infinite; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .rendition-loading-card i,.rendition-loading-card b,.rendition-loading-card span,.rendition-loading-list b,.rendition-loading-list span,.rendition-loading-spinner { animation:none; }
+        }
       `}</style>
     </main>
   );
