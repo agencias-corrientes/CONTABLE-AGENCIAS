@@ -605,6 +605,19 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
       {params.resultado === "premio-pagado" && <p className="message success-message" role="status">Premio registrado y salida de Caja contabilizada. El cupón quedó marcado como pagado y no puede volver a descontarse.</p>}
       {params.resultado === "premio-corregido" && <p className="message success-message" role="status">Pago de premio corregido. El importe y la fecha del movimiento asociado de Caja se actualizaron juntos.</p>}
       {params.resultado === "premio-eliminado" && <p className="message success-message" role="status">Pago de premio y movimiento asociado de Caja eliminados juntos; la corrección quedó auditada.</p>}
+      {params.error === "ticket-ya-rendido" && (
+        <div className="ticket-capture-dialog-backdrop" role="presentation">
+          <section className="ticket-capture-dialog ticket-cancel-confirmation" role="alertdialog" aria-modal="true" aria-labelledby="duplicate-ticket-title">
+            <div className="ticket-capture-dialog-heading">
+              <h3 id="duplicate-ticket-title">Este ticket ya fue rendido</h3>
+              <p>El cupón ya figura como cargado en una rendición anterior. No se guardó esta rendición ni se registraron nuevos cobros.</p>
+            </div>
+            <div className="ticket-capture-dialog-actions ticket-cancel-dialog-actions">
+              <a className="button primary" href="/pagos">Volver a rendiciones</a>
+            </div>
+          </section>
+        </div>
+      )}
       {!selectedAgentId ? (
         <>
           <div className="topbar rendition-page-topbar">
@@ -634,6 +647,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         "sin-permiso-ticket-ocr": "No tenés permiso para adjuntar el detalle OCR. Solicitá permiso para crear o editar rendiciones.",
         "ticket-ocr-no-validado": "Revisá la lectura del ticket oficial de FIN DE JORNADA y confirmá que el detalle es correcto.",
         "ticket-ocr-adjunto-fallido": "No se pudo adjuntar el OCR al cierre existente. No se modificaron importes ni Caja; volvé a seleccionar y revisar la foto del ticket.",
+        "ticket-verificacion-fallida": "No se pudo verificar el historial de cupones. No se guardó la rendición; volvé a intentar.",
         "sin-permiso-cobro": "No tenés permiso para registrar cobros.",
         "cobro-caja-no-disponible": "No se pudo acceder a la cuenta Caja activa de esta agencia. No se registró ningún cobro; revisá la cuenta Caja en Tesorería.",
         "cobro-supera-saldo": "El importe ingresado supera el saldo pendiente de esta rendición. No se registró el cobro.",
