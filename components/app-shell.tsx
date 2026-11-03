@@ -845,6 +845,49 @@ export function AppShell({
           border-color:#e0d5c2!important;
           box-shadow:none!important;
         }
+
+        /* Menú uniforme: sin bordó; selección hundida con efecto 3D sutil. */
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item) {
+          background:#f8f2e7!important;background-image:none!important;color:#4b4137!important;
+          border:1px solid #e3d8c5!important;border-bottom:3px solid #d1c09b!important;
+          box-shadow:0 3px 0 rgba(70,58,40,.10),0 4px 8px rgba(70,58,40,.06)!important;
+          transform:translateY(0)!important;filter:none!important;
+          transition:background-color .12s ease,box-shadow .12s ease,transform .12s ease!important;
+        }
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:hover),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:hover),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:focus-visible),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:focus-visible) {
+          background:#f3eddf!important;color:#40372e!important;outline:none!important;
+        }
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:active),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:active),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item.active),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item.active),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item.active:hover),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item.active:hover),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item.active:focus-visible),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item.active:focus-visible) {
+          background:#eee7d9!important;background-image:none!important;color:#40372e!important;
+          border-color:#d9cfbd!important;border-bottom-color:#c8b895!important;
+          box-shadow:inset 0 3px 7px rgba(68,55,37,.16),inset 0 1px 2px rgba(68,55,37,.08)!important;
+          transform:translateY(2px)!important;outline:none!important;filter:none!important;
+        }
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item .panel-nav-icon),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item .panel-nav-icon) {
+          background:#eee7da!important;color:#685a47!important;border-color:#e0d5c2!important;box-shadow:none!important;
+        }
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item .panel-nav-copy strong),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item .panel-nav-copy strong),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item.active .panel-nav-copy strong),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item.active .panel-nav-copy strong) {
+          color:#40372e!important;
+        }
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item .panel-nav-accent),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item .panel-nav-accent) {
+          background:#cbb990!important;
+        }
       `}</style>
     </div>
   );
