@@ -49,8 +49,7 @@ export default function PagosLoading() {
         .rendition-loading-desktop { display:none; }
         @keyframes loading-shimmer { to { background-position:-200% 0; } }
         @keyframes rendition-loading-spin { to { transform:rotate(360deg); } }
-        /* En PC, la transición de Rendiciones conserva exactamente el
-           mismo marco y tamaño del logo que el panel general de /inicio. */
+        /* En PC no se muestra una segunda imagen del logo durante la navegación. */
         @media (min-width: 1001px) {
           .rendition-loading {
             width:100%;
