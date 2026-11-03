@@ -1659,7 +1659,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           ". La rendición financiera se registrará en la jornada operativa " + formatDateDdMmYyyy(today) +
           "; la fecha impresa queda en el comprobante y no modifica la Caja de ese día. Los renglones editables están abajo en Juegos e importes."
         );
-        document.querySelector(".game-rendition-block")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Solo en móvil mantenemos el desplazamiento guiado que ya estaba
+        // probado. En escritorio no mover la ventana al terminar el OCR.
+        if (window.matchMedia("(max-width: 1000px)").matches) {
+          document.querySelector(".game-rendition-block")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
       } else if (detectedQr && recognizedCount) {
         setNotice("QR e importes detectados. Revisá fecha, período y valores antes de registrar.");
       } else if (detectedQr) {
