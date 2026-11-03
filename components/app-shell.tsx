@@ -61,7 +61,6 @@ export function AppShell({
           <div className="panel-general-summary-title">
             <span>AGENCIAS CORRIENTES</span>
             <strong>Panel general</strong>
-            <small>{organizationName}</small>
           </div>
         </section>
         <nav className="nav-list" aria-label="Menú principal">

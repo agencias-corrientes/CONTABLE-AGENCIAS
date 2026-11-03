@@ -2032,3 +2032,109 @@ html, body { min-height:100%; }
     font-size:21px!important;
   }
 }
+
+/* Corrección visual definitiva del acceso inicial: ambos perfiles iguales y claros. */
+.landing-role-grid .landing-role-choice,
+.landing-role-grid .landing-role-choice.landing-role-admin,
+.landing-role-grid .landing-role-choice.landing-role-employee {
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  min-height:112px!important;
+  padding:22px 24px!important;
+  gap:18px!important;
+  background:#f3efe7!important;
+  background-image:none!important;
+  color:#39352f!important;
+  border:1px solid #e0d8ca!important;
+  border-left:1px solid #e0d8ca!important;
+  border-radius:12px!important;
+  box-shadow:0 3px 9px rgba(57,48,37,.07)!important;
+  text-decoration:none!important;
+  transform:none!important;
+  transition:background-color .12s ease,box-shadow .12s ease,border-color .12s ease,transform .12s ease!important;
+}
+.landing-role-grid .landing-role-choice:hover,
+.landing-role-grid .landing-role-choice:focus-visible,
+.landing-role-grid .landing-role-choice:active {
+  background:#eae4d9!important;
+  background-image:none!important;
+  color:#39352f!important;
+  border-color:#d3c8b7!important;
+  border-left-color:#d3c8b7!important;
+  box-shadow:inset 0 3px 7px rgba(57,48,37,.13),inset 0 1px 2px rgba(57,48,37,.07)!important;
+  transform:translateY(2px)!important;
+  outline:2px solid #ded5c6!important;
+  outline-offset:1px!important;
+}
+.landing-role-grid .landing-role-choice .landing-role-icon {
+  display:grid!important;
+  place-items:center!important;
+  flex:0 0 50px!important;
+  width:50px!important;
+  height:50px!important;
+  border:1px solid #ded5c6!important;
+  border-radius:10px!important;
+  background:#e9e2d6!important;
+  color:#6c604f!important;
+}
+.landing-role-grid .landing-role-choice .landing-role-icon svg {width:26px!important;height:26px!important}
+.landing-role-grid .landing-role-choice .landing-role-copy {
+  display:flex!important;
+  flex:1 1 auto!important;
+  flex-direction:column!important;
+  min-width:0!important;
+  gap:0!important;
+}
+.landing-role-grid .landing-role-choice .landing-role-copy strong {
+  display:block!important;
+  color:#39352f!important;
+  font-size:24px!important;
+  font-weight:850!important;
+  line-height:1.15!important;
+  letter-spacing:0!important;
+}
+.landing-role-grid .landing-role-choice small,
+.landing-role-grid .landing-role-choice .landing-role-enter {display:none!important}
+@media(max-width:640px) {
+  .landing-role-grid {grid-template-columns:1fr!important;gap:12px!important}
+  .landing-role-grid .landing-role-choice {min-height:96px!important;padding:17px 16px!important;gap:14px!important}
+  .landing-role-grid .landing-role-choice .landing-role-icon {flex-basis:44px!important;width:44px!important;height:44px!important}
+  .landing-role-grid .landing-role-choice .landing-role-icon svg {width:23px!important;height:23px!important}
+  .landing-role-grid .landing-role-choice .landing-role-copy strong {font-size:22px!important}
+}
+
+/* Panel de agencia: cualquier acceso mantiene crema y muestra claramente el estado hundido. */
+body .app-shell .sidebar .nav-list .nav-item:active,
+body .app-shell .sidebar .nav-list .nav-item.active,
+body .app-shell .sidebar .nav-list .nav-item.active:hover,
+body .app-shell .sidebar .nav-list .nav-item.active:focus-visible {
+  background:#eee9df!important;
+  background-image:none!important;
+  color:#403a32!important;
+  border:1px solid #d9cfbd!important;
+  border-bottom:3px solid #c8b895!important;
+  box-shadow:inset 0 3px 7px rgba(68,55,37,.16),inset 0 1px 2px rgba(68,55,37,.08)!important;
+  transform:translateY(2px)!important;
+  outline:none!important;
+  filter:none!important;
+}
+body .app-shell .sidebar .nav-list .nav-item.active .panel-nav-icon,
+body .app-shell .sidebar .nav-list .nav-item:active .panel-nav-icon {
+  background:#e8e1d5!important;
+  color:#685a47!important;
+  border-color:#d7cbb8!important;
+  box-shadow:inset 0 1px 3px rgba(68,55,37,.10)!important;
+}
+body .app-shell .sidebar .nav-list .nav-item.active .panel-nav-copy strong,
+body .app-shell .sidebar .nav-list .nav-item:active .panel-nav-copy strong,
+body .app-shell .sidebar .nav-list .nav-item.active .panel-nav-copy small,
+body .app-shell .sidebar .nav-list .nav-item:active .panel-nav-copy small,
+body .app-shell .sidebar .nav-list .nav-item.active .panel-nav-number,
+body .app-shell .sidebar .nav-list .nav-item:active .panel-nav-number {
+  color:#403a32!important;
+}
+@media(prefers-reduced-motion:reduce) {
+  .landing-role-grid .landing-role-choice,
+  body .app-shell .sidebar .nav-list .nav-item {transition:none!important}
+}
