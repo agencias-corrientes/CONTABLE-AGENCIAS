@@ -13,7 +13,7 @@ export default function PagosLoading() {
           height={820}
           quality={100}
           priority
-          sizes="(max-width: 1000px) 32vw, (min-width: 1400px) 680px, 58vw"
+          sizes="(max-width: 1000px) 22vw, (min-width: 1400px) 680px, 58vw"
           className="rendition-loading-brand-logo"
         />
       </div>
@@ -42,10 +42,11 @@ export default function PagosLoading() {
         }
         .rendition-loading-brand-logo {
           display: block;
-          width: clamp(104px, 32vw, 148px);
-          height: auto;
-          max-height: 20vh;
-          object-fit: contain;
+          width: clamp(84px, 22vw, 112px) !important;
+          height: auto !important;
+          max-width: 22vw !important;
+          max-height: 16vh !important;
+          object-fit: contain !important;
           object-position: center;
           filter: drop-shadow(0 8px 14px rgba(66,35,25,.09));
           animation: none !important;
