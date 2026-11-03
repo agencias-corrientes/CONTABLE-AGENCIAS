@@ -888,11 +888,6 @@ export function AppShell({
         :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item .panel-nav-accent) {
           background:#cbb990!important;
         }
-      `}</style>
-    </div>
-  );
-}
-
         /* El menú conserva el mismo tono crema; solo se hunde mientras se presiona. */
         :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
         :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover),
@@ -920,3 +915,7 @@ export function AppShell({
           box-shadow: inset 0 2px 4px rgba(75,59,53,.14) !important;
           transform: translateY(2px) !important;
         }
+      `}</style>
+    </div>
+  );
+}
