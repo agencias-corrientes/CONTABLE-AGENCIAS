@@ -62,9 +62,16 @@ export function AppShell({
               <Link
                 key={slug}
                 href={href}
-                className={pathname.startsWith(href) || (pathname === "/inicio" && selectedSection === slug) ? "nav-item active" : "nav-item"}
+                className={[
+                  "nav-item",
+                  slug === "pagos" ? "featured" : "",
+                  pathname.startsWith(href) || (pathname === "/inicio" && selectedSection === slug) ? "active" : "",
+                ].filter(Boolean).join(" ")}
               >
-                {label}
+                <span className="nav-index" aria-hidden="true">{String(visibleNav.findIndex(([itemSlug]) => itemSlug === slug) + 1).padStart(2, "0")}</span>
+                <span className="nav-icon" aria-hidden="true">{nav.find(([itemSlug]) => itemSlug === slug)?.[2]}</span>
+                <span className="nav-label">{label}</span>
+                <span className="nav-accent" aria-hidden="true" />
               </Link>
             );
           })}
@@ -552,6 +559,156 @@ export function AppShell({
             transform: none !important;
             transition: none !important;
             animation: none !important;
+          }
+        }
+
+        /* Panel General móvil: reproducción del borrador aprobado, solo presentación. */
+        @media (max-width: 1000px) {
+          :global(.app-shell.mobile-navigation-home .sidebar) {
+            display: flex !important;
+            flex-direction: column !important;
+            background: #fbf8f1 !important;
+            color: #3f1825 !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list) {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
+            grid-auto-rows: unset !important;
+            gap: clamp(9px, 2.5vw, 14px) !important;
+            margin: 12px 0 14px !important;
+            padding: 0 !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus-visible),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:active) {
+            position: relative !important;
+            order: initial !important;
+            aspect-ratio: 1 / 1 !important;
+            min-width: 0 !important;
+            min-height: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            box-sizing: border-box !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: clamp(7px, 2vw, 12px) !important;
+            padding: 24px 9px 18px !important;
+            border: 1px solid #e5d9bd !important;
+            border-bottom: 4px solid #702a3e !important;
+            border-radius: 13px !important;
+            background: linear-gradient(180deg, #fffdf8 0%, #f5efdf 100%) !important;
+            color: #64283a !important;
+            box-shadow: 0 4px 10px rgba(58, 30, 28, .10), inset 0 1px 0 rgba(255,255,255,.9) !important;
+            text-align: center !important;
+            text-decoration: none !important;
+            transform: none !important;
+            transition: none !important;
+            overflow: hidden !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.featured),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.featured:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.featured:focus),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.featured:active) {
+            border: 1px solid #6d293e !important;
+            border-bottom: 4px solid #4a1b2a !important;
+            background: linear-gradient(155deg, #91475b 0%, #702a3e 100%) !important;
+            color: #fff8eb !important;
+            box-shadow: 0 5px 12px rgba(58, 20, 34, .2), inset 0 1px 0 rgba(255,255,255,.12) !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:not(.featured)),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:not(.featured):hover) {
+            border-color: #b79a45 !important;
+            border-bottom-color: #702a3e !important;
+            background: linear-gradient(180deg, #fff8df 0%, #f3e8c6 100%) !important;
+            color: #64283a !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-index) {
+            position: absolute !important;
+            top: 9px !important;
+            right: 11px !important;
+            color: #9b8350 !important;
+            font-size: 10px !important;
+            font-weight: 850 !important;
+            letter-spacing: .12em !important;
+            line-height: 1 !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.featured .nav-index) {
+            color: #f0dca4 !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-icon) {
+            display: inline-flex !important;
+            flex: 0 0 auto !important;
+            width: clamp(31px, 8vw, 39px) !important;
+            height: clamp(31px, 8vw, 39px) !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 !important;
+            border: 1px solid #e3d3ad !important;
+            border-radius: 10px !important;
+            background: #f2e8cf !important;
+            color: #702a3e !important;
+            font-size: clamp(18px, 5vw, 23px) !important;
+            line-height: 1 !important;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.75) !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.featured .nav-icon) {
+            border-color: rgba(255,255,255,.32) !important;
+            background: rgba(255,255,255,.13) !important;
+            color: #ffe7a4 !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-label) {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            color: inherit !important;
+            font-size: clamp(13px, 3.8vw, 17px) !important;
+            font-weight: 850 !important;
+            line-height: 1.18 !important;
+            letter-spacing: -.015em !important;
+            text-align: center !important;
+            white-space: normal !important;
+            word-break: normal !important;
+            overflow-wrap: normal !important;
+            hyphens: none !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-accent) {
+            position: absolute !important;
+            left: 50% !important;
+            bottom: 10px !important;
+            width: 30px !important;
+            height: 3px !important;
+            border-radius: 3px !important;
+            background: #7c3347 !important;
+            transform: translateX(-50%) !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.featured .nav-accent) {
+            background: #f2d47e !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:active) {
+            transform: none !important;
+            outline: none !important;
+          }
+        }
+        @media (max-width: 420px) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-label) {
+            font-size: clamp(12px, 3.7vw, 15px) !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item) {
+            padding-left: 7px !important;
+            padding-right: 7px !important;
           }
         }
 
