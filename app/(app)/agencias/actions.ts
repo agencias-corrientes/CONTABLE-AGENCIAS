@@ -92,6 +92,34 @@ function individualClosureReceipts(value: any): any[] {
   return [];
 }
 
+async function findDuplicateClosureReceiptKeys(
+  supabase: any,
+  organizationId: string,
+  keys: string[],
+): Promise<{ duplicate: boolean; failed: boolean }> {
+  const wanted = new Set(keys);
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from("agency_renditions")
+      .select("id,ticket_receipt_data")
+      .eq("organization_id", organizationId)
+      .eq("game_period", "Cierre diario")
+      .neq("status", "void")
+      .order("created_at", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    if (error) return { duplicate: false, failed: true };
+    const rows = data ?? [];
+    for (const row of rows) {
+      for (const receipt of individualClosureReceipts(row.ticket_receipt_data)) {
+        const key = closureReceiptDuplicateKey(receipt);
+        if (key && wanted.has(key)) return { duplicate: true, failed: false };
+      }
+    }
+    if (rows.length < pageSize) return { duplicate: false, failed: false };
+  }
+}
+
 async function storeRenditionTicketPhoto(supabase: any, organizationId: string, renditionId: string, formData: FormData): Promise<"saved" | "skipped" | "failed"> {
   const value = formData.get("ticket_photo");
   if (!(value instanceof File) || value.size === 0) return "skipped";
@@ -402,6 +430,17 @@ export async function createAgencyRendition(formData: FormData) {
   // Only ticket identity checks are conditional; saving the rendition must run for
   // both official ticket closures and manual entries.
   const confirmedOfficialClosure = isConfirmedOfficialClosureTicket(formData);
+  if (confirmedOfficialClosure && renditionPolicy === "daily" && renditionFrequency !== "weekly") {
+    const closureTickets = individualClosureReceipts(identityTicket ?? (() => {
+      try { return ticketReceiptRaw ? JSON.parse(ticketReceiptRaw) : null; } catch { return null; }
+    })());
+    const duplicateKeys = closureTickets.map((ticket: any) => closureReceiptDuplicateKey(ticket));
+    if (duplicateKeys.length > 0 && duplicateKeys.every((key: string | null): key is string => Boolean(key))) {
+      const duplicateCheck = await findDuplicateClosureReceiptKeys(supabase, organizationId, duplicateKeys);
+      if (duplicateCheck.failed) redirect("/pagos?error=ticket-verificacion-fallida&agent=" + encodeURIComponent(agentId));
+      if (duplicateCheck.duplicate) redirect("/pagos?error=ticket-ya-rendido&agent=" + encodeURIComponent(agentId));
+    }
+  }
   const reportedAmountRaw = String(formData.get("reported_amount") ?? "").trim();
   const [{ data: agentCommissionRows, error: agentCommissionError }, { data: defaultCommissionRows, error: defaultCommissionError }] = await Promise.all([
     supabase.from("agency_agent_game_commissions").select("game_type_id,commission_percent").eq("organization_id", organizationId).eq("agent_id", agentId).in("game_type_id", submittedGameIds),
@@ -450,7 +489,7 @@ export async function createAgencyRendition(formData: FormData) {
     if (printedDates.some((date: string | null) => !date || date > operationalDate)) redirect("/pagos?error=lote-fecha-invalida&agent=" + encodeURIComponent(agentId));
     const { data: previousClosures, error: previousClosuresError } = await supabase
       .from("agency_renditions").select("id,ticket_receipt_data")
-      .eq("organization_id", organizationId).eq("agent_id", agentId).eq("game_period", "Cierre diario")
+      .eq("organization_id", organizationId).eq("game_period", "Cierre diario")
       .neq("status", "void").limit(1000);
     if (previousClosuresError) redirect("/pagos?error=lote-verificacion-fallida&agent=" + encodeURIComponent(agentId));
     const previousKeys = new Set<string>();
