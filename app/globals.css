@@ -1299,3 +1299,13 @@ html, body { min-height:100%; }
  .rendition-mode-switch{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
  .rendition-mode-switch button{min-height:88px;padding:18px 10px;font-size:18px}
 }
+
+
+/* Selector de rendición: dos botones grandes, iguales y siempre en una sola fila. */
+.rendition-mode-toolbar{display:flex!important;flex-direction:column!important;align-items:stretch!important;width:100%!important;gap:12px!important}
+.rendition-mode-switch{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;flex:none!important;width:100%!important;gap:10px!important;flex-wrap:nowrap!important}
+.rendition-mode-switch button{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;min-width:0!important;min-height:88px!important;flex:none!important;padding:18px 10px!important;border-radius:12px!important;font-size:18px!important;font-weight:850!important;line-height:1.2!important}
+@media(max-width:760px){
+ .rendition-mode-switch{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+ .rendition-mode-switch button{min-height:84px!important;padding:16px 8px!important;font-size:17px!important}
+}
