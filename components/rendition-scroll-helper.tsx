@@ -7,6 +7,10 @@ export function RenditionScrollHelper() {
     const disclosures = Array.from(document.querySelectorAll<HTMLDetailsElement>("details.rendition-agent-accordion"));
     const scrollToCapture = (details: HTMLDetailsElement, behavior: ScrollBehavior) => {
       if (!details.open) return;
+      // En escritorio no forzar el desplazamiento: el operador debe poder
+      // recorrer el formulario completo hasta el botón de confirmación.
+      // Se conserva exactamente el comportamiento táctil existente en móvil.
+      if (window.matchMedia("(min-width: 1001px)").matches) return;
       const anchor = details.querySelector<HTMLElement>(".rendition-mode-switch") ?? details.querySelector<HTMLElement>(".rendition-entry-form");
       if (anchor) window.requestAnimationFrame(() => anchor.scrollIntoView({ behavior, block: "start" }));
     };
