@@ -21,7 +21,6 @@ export function AppShell({
   userRole,
   isPlatformAdmin,
   agencyCode,
-  registeredAgencyCount,
 }: {
   children: React.ReactNode;
   organizationName: string;
@@ -29,7 +28,6 @@ export function AppShell({
   userRole: string;
   isPlatformAdmin: boolean;
   agencyCode: string | null;
-  registeredAgencyCount: number | null;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -64,18 +62,6 @@ export function AppShell({
             <span>AGENCIAS CORRIENTES</span>
             <strong>Panel general</strong>
             <small>{organizationName}</small>
-          </div>
-          <div className="panel-general-summary-data">
-            <div className="panel-general-agency">
-              <span>Mi agencia</span>
-              <strong>{officialAgencyNumber ? officialAgencyNumber : "Sin asignar"}</strong>
-            </div>
-            {registeredAgencyCount !== null && (
-              <div className="panel-general-count">
-                <strong>{registeredAgencyCount}</strong>
-                <span>Agencias registradas</span>
-              </div>
-            )}
           </div>
         </section>
         <nav className="nav-list" aria-label="Menú principal">
@@ -587,16 +573,11 @@ export function AppShell({
 
 
         /* Panel General: jerarquía del borrador aprobado, aislada de las demás pantallas. */
-        .panel-general-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 2px 14px; padding: 12px 14px; border: 1px solid #e5d9b8; border-radius: 10px; background: #fffaf0; color: #542333; box-shadow: 0 3px 10px rgba(58,25,35,.06); }
+        .panel-general-summary { display: flex; align-items: center; justify-content: flex-start; gap: 12px; margin: 10px 2px 14px; padding: 12px 14px; border: 1px solid #e5d9b8; border-radius: 10px; background: #fffaf0; color: #542333; box-shadow: 0 3px 10px rgba(58,25,35,.06); }
         .panel-general-summary-title { display: grid; gap: 2px; min-width: 0; }
         .panel-general-summary-title > span { color: #9a7b39; font-size: 9px; font-weight: 900; letter-spacing: .15em; }
         .panel-general-summary-title > strong { color: #64283a; font-size: 17px; line-height: 1.1; font-weight: 900; }
         .panel-general-summary-title > small { color: #76666a; font-size: 10px; line-height: 1.2; }
-        .panel-general-summary-data { display: flex; align-items: stretch; gap: 8px; flex: 0 0 auto; }
-        .panel-general-agency, .panel-general-count { display: grid; align-content: center; justify-items: center; gap: 2px; min-width: 58px; padding: 5px 8px; border-left: 1px solid #e7dcc4; }
-        .panel-general-agency > span, .panel-general-count > span { color: #79696c; font-size: 9px; font-weight: 750; line-height: 1.1; text-align: center; }
-        .panel-general-agency > strong { color: #64283a; font-size: 19px; font-weight: 950; line-height: 1; letter-spacing: .04em; }
-        .panel-general-count > strong { color: #64283a; font-size: 21px; font-weight: 950; line-height: 1; }
         .panel-nav-number { position: absolute; top: 8px; right: 9px; color: #a88b4b; font-size: 10px; font-weight: 900; letter-spacing: .08em; }
         .panel-nav-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; color: #762f45; }
         .panel-nav-icon svg { display: block; width: 100%; height: 100%; }
@@ -610,8 +591,6 @@ export function AppShell({
           .panel-general-summary { flex: 0 0 auto; margin: 6px 0 10px; padding: 9px 10px; border-radius: 8px; }
           .panel-general-summary-title > strong { font-size: 16px; }
           .panel-general-summary-title > small { max-width: 135px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-          .panel-general-summary-data { gap: 3px; }
-          .panel-general-agency, .panel-general-count { min-width: 50px; padding: 4px 6px; }
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list) { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; grid-template-rows: repeat(3,minmax(0,1fr)) !important; grid-auto-flow: row !important; gap: 9px !important; flex: 1 0 auto !important; min-height: min(59vh,510px) !important; margin: 0 !important; padding: 0 !important; align-items: stretch !important; }
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover),
