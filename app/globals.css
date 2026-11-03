@@ -1416,3 +1416,59 @@ html, body { min-height:100%; }
     -webkit-overflow-scrolling: touch;
   }
 }
+
+
+/* Ajustes móviles de Subagentes y Ambulantes: menú de baja centrado
+   en el viewport y controles de alta más cómodos para tocar y completar. */
+@media (max-width: 640px) {
+  .agency-agent-actions[open] .agency-agent-actions-menu {
+    position: fixed;
+    left: 14px;
+    right: 14px;
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+    width: auto;
+    max-width: 440px;
+    max-height: min(72dvh, 520px);
+    margin: 0 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 18px;
+    box-sizing: border-box;
+    z-index: 1000;
+  }
+  .agency-agent-actions-menu > form { gap: 14px; }
+  .agency-agent-actions-menu > form label {
+    font-size: 15px;
+    line-height: 1.5;
+    padding: 4px 0;
+  }
+  .agency-agent-actions-menu > form label input {
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+  }
+  .agency-agent-actions-menu > form .button {
+    min-height: 48px;
+    padding: 12px 18px;
+    font-size: 15px;
+  }
+  .agency-create-panel { padding: 22px 18px; }
+  .agency-create-grid { gap: 13px; }
+  .agency-create-grid select,
+  .agency-create-grid input {
+    width: 100%;
+    min-width: 0;
+    min-height: 58px;
+    padding: 14px 16px;
+    font-size: 17px;
+    line-height: 1.35;
+    box-sizing: border-box;
+  }
+  .agency-create-grid > .button {
+    min-height: 56px;
+    font-size: 17px;
+  }
+}
