@@ -6,12 +6,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const nav = [
-  ["pagos", "Rendiciones", "↔"],
-  ["agencias", "Subagentes y ambulantes", "▣"],
-  ["buscar", "Buscar", "⌕"],
-  ["juegos", "Juegos y comisiones", "◎"],
-  ["loteria-correntina", "Lotería Correntina", "◉"],
-  ["configuracion", "Configuración", "⚙"],
+  ["pagos", "Rendiciones", "M4 6h16M4 12h16M4 18h16", "Control diario", "01"],
+  ["agencias", "Subagentes y ambulantes", "M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M17 11h6", "Gestión de agentes", "02"],
+  ["buscar", "Buscar", "M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16M21 21l-4.35-4.35", "Consultas y registros", "03"],
+  ["juegos", "Juegos y comisiones", "M4 19V5M4 19h16M7 15l4-4 3 2 5-7", "Gestión comercial", "04"],
+  ["loteria-correntina", "Lotería Correntina", "M4 7h16v12H4zM8 7V5h8v2M8 12h8M8 15h5", "Información y servicios", "05"],
+  ["configuracion", "Configuración", "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M19.4 15l1.1 1.1-2.2 2.2-1.1-1.1M4.6 9 3.5 7.9l2.2-2.2L6.8 6.8", "Opciones de agencia", "06"],
 ] as const;
 
 export function AppShell({
@@ -20,18 +20,22 @@ export function AppShell({
   userEmail,
   userRole,
   isPlatformAdmin,
+  agencyCode,
+  registeredAgencyCount,
 }: {
   children: React.ReactNode;
   organizationName: string;
   userEmail: string;
   userRole: string;
   isPlatformAdmin: boolean;
+  agencyCode: string | null;
+  registeredAgencyCount: number | null;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
   const selectedSection = searchParams.get("seleccion") ?? "";
-  const officialAgencyNumber = organizationName.match(/\b(\d{3})\b/)?.[1] ?? null;
+  const officialAgencyNumber = agencyCode;
 
   const isOwner = userRole === "owner";
   const visibleNav = nav.filter(([slug]) => isOwner || !["juegos", "equipo", "configuracion"].includes(slug));
@@ -55,16 +59,42 @@ export function AppShell({
             <span className="brand-subtitle">Subagentes · Ambulantes</span>
           </div>
         </div>
-        <nav className="nav-list">
-          {visibleNav.map(([slug, label]) => {
+        <section className="panel-general-summary" aria-label="Resumen de la agencia">
+          <div className="panel-general-summary-title">
+            <span>AGENCIAS CORRIENTES</span>
+            <strong>Panel general</strong>
+            <small>{organizationName}</small>
+          </div>
+          <div className="panel-general-summary-data">
+            <div className="panel-general-agency">
+              <span>Mi agencia</span>
+              <strong>{officialAgencyNumber ? officialAgencyNumber : "Sin asignar"}</strong>
+            </div>
+            {registeredAgencyCount !== null && (
+              <div className="panel-general-count">
+                <strong>{registeredAgencyCount}</strong>
+                <span>Agencias registradas</span>
+              </div>
+            )}
+          </div>
+        </section>
+        <nav className="nav-list" aria-label="Menú principal">
+          {visibleNav.map(([slug, label, iconPath, description, number]) => {
             const href = `/${slug}`;
+            const active = pathname.startsWith(href) || (pathname === "/inicio" && selectedSection === slug);
             return (
-              <Link
-                key={slug}
-                href={href}
-                className={pathname.startsWith(href) || (pathname === "/inicio" && selectedSection === slug) ? "nav-item active" : "nav-item"}
-              >
-                {label}
+              <Link key={slug} href={href} className={active ? "nav-item active" : "nav-item"}>
+                <span className="panel-nav-number">{number}</span>
+                <span className="panel-nav-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={iconPath} />
+                  </svg>
+                </span>
+                <span className="panel-nav-copy">
+                  <strong>{label}</strong>
+                  <small>{description}</small>
+                </span>
+                <span className="panel-nav-accent" aria-hidden="true" />
               </Link>
             );
           })}
@@ -555,6 +585,77 @@ export function AppShell({
           }
         }
 
+
+        /* Panel General: jerarquía del borrador aprobado, aislada de las demás pantallas. */
+        .panel-general-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 2px 14px; padding: 12px 14px; border: 1px solid #e5d9b8; border-radius: 10px; background: #fffaf0; color: #542333; box-shadow: 0 3px 10px rgba(58,25,35,.06); }
+        .panel-general-summary-title { display: grid; gap: 2px; min-width: 0; }
+        .panel-general-summary-title > span { color: #9a7b39; font-size: 9px; font-weight: 900; letter-spacing: .15em; }
+        .panel-general-summary-title > strong { color: #64283a; font-size: 17px; line-height: 1.1; font-weight: 900; }
+        .panel-general-summary-title > small { color: #76666a; font-size: 10px; line-height: 1.2; }
+        .panel-general-summary-data { display: flex; align-items: stretch; gap: 8px; flex: 0 0 auto; }
+        .panel-general-agency, .panel-general-count { display: grid; align-content: center; justify-items: center; gap: 2px; min-width: 58px; padding: 5px 8px; border-left: 1px solid #e7dcc4; }
+        .panel-general-agency > span, .panel-general-count > span { color: #79696c; font-size: 9px; font-weight: 750; line-height: 1.1; text-align: center; }
+        .panel-general-agency > strong { color: #64283a; font-size: 19px; font-weight: 950; line-height: 1; letter-spacing: .04em; }
+        .panel-general-count > strong { color: #64283a; font-size: 21px; font-weight: 950; line-height: 1; }
+        .panel-nav-number { position: absolute; top: 8px; right: 9px; color: #a88b4b; font-size: 10px; font-weight: 900; letter-spacing: .08em; }
+        .panel-nav-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; color: #762f45; }
+        .panel-nav-icon svg { display: block; width: 100%; height: 100%; }
+        .panel-nav-copy { display: grid; justify-items: center; gap: 5px; min-width: 0; width: 100%; text-align: center; }
+        .panel-nav-copy strong { display: block; max-width: 100%; color: inherit; font-size: 15px; font-weight: 900; line-height: 1.15; overflow-wrap: normal; word-break: normal; }
+        .panel-nav-copy small { display: block; max-width: 100%; color: inherit; font-size: 10px; font-weight: 650; line-height: 1.25; opacity: .78; overflow-wrap: normal; word-break: normal; }
+        .panel-nav-accent { display: block; width: 28px; height: 3px; margin-top: 3px; border-radius: 2px; background: #7c3347; }
+        @media (max-width: 1000px) {
+          :global(.app-shell.mobile-navigation-home .sidebar) { display: flex !important; flex-direction: column !important; min-height: 100dvh !important; height: auto !important; padding: max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom)) !important; background: #fffdf8 !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .sidebar-brand) { flex: 0 0 auto !important; padding: 2px 4px 7px !important; }
+          .panel-general-summary { flex: 0 0 auto; margin: 6px 0 10px; padding: 9px 10px; border-radius: 8px; }
+          .panel-general-summary-title > strong { font-size: 16px; }
+          .panel-general-summary-title > small { max-width: 135px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .panel-general-summary-data { gap: 3px; }
+          .panel-general-agency, .panel-general-count { min-width: 50px; padding: 4px 6px; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list) { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; grid-template-rows: repeat(3,minmax(0,1fr)) !important; grid-auto-flow: row !important; gap: 9px !important; flex: 1 0 auto !important; min-height: min(59vh,510px) !important; margin: 0 !important; padding: 0 !important; align-items: stretch !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus-visible),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:active),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active) { position: relative !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 6px !important; width: 100% !important; min-width: 0 !important; min-height: 0 !important; height: 100% !important; aspect-ratio: 1 / 1 !important; box-sizing: border-box !important; padding: 18px 8px 12px !important; margin: 0 !important; border: 1px solid #e4d7b8 !important; border-bottom: 4px solid #7c3347 !important; border-radius: 8px !important; background: #f8f2e4 !important; color: #5a2938 !important; box-shadow: 0 3px 8px rgba(58,25,35,.08) !important; text-align: center !important; text-decoration: none !important; transform: none !important; transition: none !important; overflow: hidden !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:nth-child(1)),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:nth-child(1).active) { background: #7c3347 !important; color: #fff8eb !important; border-color: #632538 !important; border-bottom-color: #4a1b2a !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:nth-child(1) .panel-nav-icon),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:nth-child(1) .panel-nav-accent) { color: #f1d58a !important; background: #d4b45b !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:nth-child(n+2) .panel-nav-icon) { color: #762f45 !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:nth-child(n+2) .panel-nav-accent) { background: #7c3347 !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:not(:first-child)) { border-color: #b79a45 !important; border-bottom-color: #7c3347 !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-number) { color: #a88b4b !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:nth-child(1) .panel-nav-number) { color: #f2d990 !important; }
+          .panel-nav-icon { width: 31px; height: 31px; flex: 0 0 31px; }
+          .panel-nav-copy { gap: 4px; }
+          .panel-nav-copy strong { font-size: clamp(12px,3.5vw,15px); line-height: 1.13; }
+          .panel-nav-copy small { font-size: clamp(9px,2.7vw,10px); line-height: 1.2; }
+          .panel-nav-accent { flex: 0 0 3px; }
+          :global(.app-shell.mobile-navigation-home .sidebar .sidebar-footer) { flex: 0 0 auto !important; margin-top: 8px !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:active) { transform: none !important; }
+        }
+        @media (max-width: 390px) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list) { gap: 7px !important; }
+          .panel-nav-icon { width: 27px; height: 27px; flex-basis: 27px; }
+          .panel-nav-copy strong { font-size: 12px; }
+          .panel-nav-copy small { font-size: 9px; }
+        }
+        @media (min-width: 1001px) {
+          .panel-general-summary { max-width: 290px; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list) { gap: 7px !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item) { display: grid !important; grid-template-columns: 34px minmax(0,1fr) !important; grid-template-rows: auto auto !important; min-height: 64px !important; height: auto !important; aspect-ratio: auto !important; padding: 9px 30px 9px 10px !important; gap: 2px 8px !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-icon) { grid-column: 1; grid-row: 1 / 3; width: 30px; height: 30px; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-copy) { grid-column: 2; grid-row: 1 / 3; justify-items: start; text-align: left; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-copy strong) { font-size: 13px; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-copy small) { font-size: 10px; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-accent) { display: none; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:nth-child(1)) { background: #7c3347 !important; color: #fff8eb !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:nth-child(n+2)) { background: #f8f2e4 !important; color: #5a2938 !important; }
+        }
       `}</style>
     </div>
   );

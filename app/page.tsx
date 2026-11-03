@@ -51,12 +51,14 @@ export default async function HomePage() {
         <p className="lead">Gestión diaria de subagentes y ambulantes, con una agencia independiente para cada titular.</p>
         <div className="landing-role-grid">
           <Link className="landing-role-choice landing-role-admin" href="/login?perfil=administrador">
+            <span className="landing-role-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 9h.01M15 9h.01" /></svg></span>
             <span className="landing-role-copy"><strong>Agenciero</strong><small>Ingresar como titular de una agencia ya configurada</small></span>
-            <span className="landing-role-enter">Ingresar →</span>
+            <span className="landing-role-enter">Ingresar <span aria-hidden="true">→</span></span>
           </Link>
           <Link className="landing-role-choice landing-role-employee" href="/login?perfil=empleado">
+            <span className="landing-role-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="3.5" /><path d="M5 21v-2a7 7 0 0 1 14 0v2M18 4h3v4h-3" /></svg></span>
             <span className="landing-role-copy"><strong>Empleado</strong><small>Operaciones habilitadas por el titular</small></span>
-            <span className="landing-role-enter">Ingresar →</span>
+            <span className="landing-role-enter">Ingresar <span aria-hidden="true">→</span></span>
           </Link>
         </div>
         <div className="landing-actions">
