@@ -9,17 +9,12 @@ export default function PagosLoading() {
         <Image
           src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png"
           alt="Agencias Corrientes — Quiniela Oficial"
-          width={640}
-          height={640}
+          width={820}
+          height={820}
           quality={100}
           priority
-          sizes="(min-width: 1400px) 360px, 30vw"
+          sizes="(min-width: 1400px) 680px, 58vw"
         />
-        <h1>Preparando la información de la agencia</h1>
-        <div className="rendition-loading-desktop-status">
-          <span className="rendition-loading-spinner" aria-hidden="true" />
-          <strong>Cargando</strong>
-        </div>
       </div>
       <div className="rendition-loading-head">
         <span className="rendition-loading-mark" aria-hidden="true">AC</span>
@@ -64,14 +59,41 @@ export default function PagosLoading() {
         .rendition-loading-desktop { display:none; }
         @keyframes loading-shimmer { to { background-position:-200% 0; } }
         @keyframes rendition-loading-spin { to { transform:rotate(360deg); } }
+        /* En PC, la transición de Rendiciones conserva exactamente el
+           mismo marco y tamaño del logo que el panel general de /inicio. */
         @media (min-width: 1001px) {
-          .rendition-loading { min-height:calc(100vh - 56px); display:grid; place-items:center; padding:24px; }
+          .rendition-loading {
+            width:100%;
+            min-height:calc(100vh - 56px);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:0;
+            overflow:hidden;
+          }
           .rendition-loading-head,.rendition-loading-grid,.rendition-loading-list { display:none; }
-          .rendition-loading-desktop { width:100%; min-height:calc(100vh - 110px); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; text-align:center; }
-          .rendition-loading-desktop img { display:block; width:min(30vw,360px); height:auto; max-height:38vh; object-fit:contain; }
-          .rendition-loading-desktop h1 { max-width:760px; margin:0; color:#632538; font-size:clamp(28px,2.6vw,40px); line-height:1.18; font-weight:850; }
-          .rendition-loading-desktop-status { display:flex; align-items:center; justify-content:center; gap:12px; color:#6b6265; font-size:20px; }
-          .rendition-loading-spinner { width:22px; height:22px; border:3px solid #eadfe1; border-top-color:#7c3347; border-radius:50%; animation:rendition-loading-spin .85s linear infinite; }
+          .rendition-loading-desktop {
+            width:100%;
+            min-height:calc(100vh - 56px);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            gap:0;
+            overflow:hidden;
+            border:1px solid rgba(228,216,185,.75);
+            border-radius:18px;
+            background:radial-gradient(circle at 50% 46%, rgba(255,255,255,.98) 0%, rgba(255,253,247,.97) 48%, rgba(245,239,216,.98) 100%);
+          }
+          .rendition-loading-desktop img {
+            display:block;
+            width:min(58vw,680px);
+            height:auto;
+            max-height:82vh;
+            object-fit:contain;
+            filter:drop-shadow(0 16px 28px rgba(66,35,25,.10));
+          }
+          .rendition-loading-desktop h1,
+          .rendition-loading-desktop-status { display:none; }
         }
         @media (prefers-reduced-motion: reduce) {
           .rendition-loading-card i,.rendition-loading-card b,.rendition-loading-card span,.rendition-loading-list b,.rendition-loading-list span,.rendition-loading-spinner { animation:none; }
