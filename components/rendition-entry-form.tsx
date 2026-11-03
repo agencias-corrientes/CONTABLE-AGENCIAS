@@ -821,6 +821,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<"environment" | "user">("environment");
   const [cameraStreamVersion, setCameraStreamVersion] = useState(0);
+  const [cameraTorchSupported, setCameraTorchSupported] = useState(false);
+  const [cameraTorchEnabled, setCameraTorchEnabled] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
@@ -1050,6 +1052,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         },
       });
       cameraStreamRef.current = stream;
+      const videoTrack = stream.getVideoTracks()[0];
+      const capabilities = videoTrack && typeof videoTrack.getCapabilities === "function"
+        ? videoTrack.getCapabilities() as MediaTrackCapabilities & { torch?: boolean }
+        : {};
+      setCameraTorchSupported(facing === "environment" && Boolean(capabilities.torch));
+      setCameraTorchEnabled(false);
       setCameraFacing(facing);
       setCameraStreamVersion((version) => version + 1);
       setCameraOpen(true);
@@ -1078,9 +1086,34 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     if (stream) stream.getTracks().forEach((track) => track.stop());
     cameraStreamRef.current = null;
     if (cameraVideoRef.current) cameraVideoRef.current.srcObject = null;
+    setCameraTorchEnabled(false);
+    setCameraTorchSupported(false);
     setCameraOpen(false);
     setCameraReady(false);
     setCameraError("");
+  }
+
+  async function toggleCameraTorch() {
+    const track = cameraStreamRef.current?.getVideoTracks()[0];
+    if (!track || cameraFacing !== "environment") return;
+    const capabilities = typeof track.getCapabilities === "function"
+      ? track.getCapabilities() as MediaTrackCapabilities & { torch?: boolean }
+      : {};
+    if (!capabilities.torch) {
+      setCameraTorchSupported(false);
+      setCameraError("Este celular o navegador no permite controlar la linterna desde la cámara.");
+      return;
+    }
+    const nextEnabled = !cameraTorchEnabled;
+    try {
+      await track.applyConstraints({
+        advanced: [{ torch: nextEnabled } as unknown as MediaTrackConstraintSet],
+      } as MediaTrackConstraints);
+      setCameraTorchEnabled(nextEnabled);
+      setCameraError("");
+    } catch {
+      setCameraError("No se pudo cambiar la linterna. El dispositivo puede no permitir esta función en este momento.");
+    }
   }
 
   async function captureTicketCameraPhoto() {
@@ -1160,6 +1193,20 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                 aria-label="Vista en vivo de la cámara para capturar el ticket"
               />
               {cameraError && <p className="ticket-read-error" role="alert">{cameraError}</p>}
+              {cameraFacing === "environment" && (
+                <div className="ticket-capture-dialog-actions">
+                  <button
+                    type="button"
+                    className="button secondary ticket-camera-torch-toggle"
+                    disabled={!cameraTorchSupported || cameraStarting || busy}
+                    aria-pressed={cameraTorchEnabled}
+                    onClick={() => void toggleCameraTorch()}
+                    title={cameraTorchSupported ? "Encender o apagar la linterna" : "Linterna no disponible en este dispositivo o navegador"}
+                  >
+                    {cameraTorchEnabled ? "Linterna encendida" : cameraTorchSupported ? "Encender linterna" : "Linterna no disponible"}
+                  </button>
+                </div>
+              )}
               <div className="ticket-capture-dialog-actions">
                 <button type="button" className="button secondary" disabled={cameraStarting || busy} onClick={() => void startTicketCamera(cameraFacing === "environment" ? "user" : "environment")}>
                   Cambiar a cámara {cameraFacing === "environment" ? "frontal" : "trasera"}
