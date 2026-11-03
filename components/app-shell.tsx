@@ -448,6 +448,113 @@ export function AppShell({
           }
         }
 
+
+        /* Mismo marco y geometría del panel general en todas las secciones de PC. */
+        @media (min-width: 1001px) {
+          :global(.app-shell.mobile-navigation-home .sidebar),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar) {
+            box-sizing: border-box !important;
+            height: 100vh !important;
+            min-height: 0 !important;
+            padding: 12px 10px !important;
+            overflow-y: visible !important;
+            background: #ffffff !important;
+            color: #241d20 !important;
+            border-right: 1px solid #e5dcc5 !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .sidebar-brand),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .sidebar-brand) {
+            padding: 4px 6px 10px !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list) {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 7px !important;
+            margin: 8px 0 !important;
+            padding: 0 !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover:not(.active)),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus:not(.active)),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus-visible:not(.active)),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:active:not(.active)),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:hover:not(.active)),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:focus:not(.active)),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:focus-visible:not(.active)),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:active:not(.active)) {
+            display: flex !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            min-height: 46px !important;
+            height: auto !important;
+            box-sizing: border-box !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 8px 10px !important;
+            margin: 0 !important;
+            border: 2px solid #632538 !important;
+            border-bottom: 5px solid #4a1b2a !important;
+            border-radius: 8px !important;
+            background: #7c3347 !important;
+            background-image: none !important;
+            color: #ffffff !important;
+            font-size: 16px !important;
+            font-weight: 900 !important;
+            line-height: 1.15 !important;
+            text-align: center !important;
+            text-decoration: none !important;
+            box-shadow: 0 3px 0 rgba(50,15,25,.2) !important;
+            transform: none !important;
+            transition: none !important;
+            animation: none !important;
+            outline: none !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:focus),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:focus-visible),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:active),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:hover),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:focus),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:focus-visible),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:active) {
+            background: #ffe58a !important;
+            background-image: none !important;
+            color: #3f1825 !important;
+            border-color: #8f6d26 !important;
+            border-bottom-color: #632538 !important;
+            box-shadow: 0 3px 0 rgba(50,15,25,.15) !important;
+            font-weight: 950 !important;
+            transform: none !important;
+            transition: none !important;
+            animation: none !important;
+            outline: none !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .sidebar-footer),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .sidebar-footer) {
+            flex: 0 0 auto !important;
+          }
+          :global(.desktop-agency-home) {
+            height: calc(100vh - 32px) !important;
+            min-height: 0 !important;
+            max-height: calc(100vh - 32px) !important;
+            box-sizing: border-box !important;
+          }
+          :global(.desktop-agency-home .desktop-agency-home-logo) {
+            width: min(58vw, 680px) !important;
+            max-width: 100% !important;
+            max-height: 82vh !important;
+            height: auto !important;
+            flex: 0 0 auto !important;
+            transform: none !important;
+            transition: none !important;
+            animation: none !important;
+          }
+        }
+
       `}</style>
     </div>
   );
