@@ -5,17 +5,9 @@ import Image from "next/image";
 export default function PagosLoading() {
   return (
     <main className="rendition-loading" aria-live="polite" aria-busy="true">
-      <div className="rendition-loading-desktop">
-        <Image
-          src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png"
-          alt="Agencias Corrientes — Quiniela Oficial"
-          width={820}
-          height={820}
-          quality={100}
-          priority
-          sizes="(min-width: 1400px) 680px, 58vw"
-        />
-      </div>
+      {/* En escritorio no se vuelve a dibujar el logo durante la navegación.
+          El logo del panel general no tiene una segunda versión ampliada. */}
+      <div className="rendition-loading-desktop" aria-hidden="true" />
       <div className="rendition-loading-head">
         <span className="rendition-loading-mark" aria-hidden="true">AC</span>
         <div>
@@ -73,27 +65,12 @@ export default function PagosLoading() {
           }
           .rendition-loading-head,.rendition-loading-grid,.rendition-loading-list { display:none; }
           .rendition-loading-desktop {
-            width:100%;
+            display:none !important;
+          }
+          .rendition-loading {
             min-height:calc(100vh - 56px);
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            gap:0;
-            overflow:hidden;
-            border:1px solid rgba(228,216,185,.75);
-            border-radius:18px;
-            background:radial-gradient(circle at 50% 46%, rgba(255,255,255,.98) 0%, rgba(255,253,247,.97) 48%, rgba(245,239,216,.98) 100%);
+            background:transparent;
           }
-          .rendition-loading-desktop img {
-            display:block;
-            width:min(58vw,680px);
-            height:auto;
-            max-height:82vh;
-            object-fit:contain;
-            filter:drop-shadow(0 16px 28px rgba(66,35,25,.10));
-          }
-          .rendition-loading-desktop h1,
-          .rendition-loading-desktop-status { display:none; }
         }
         @media (prefers-reduced-motion: reduce) {
           .rendition-loading-card i,.rendition-loading-card b,.rendition-loading-card span,.rendition-loading-list b,.rendition-loading-list span,.rendition-loading-spinner { animation:none; }
