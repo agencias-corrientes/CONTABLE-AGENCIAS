@@ -1369,3 +1369,50 @@ html, body { min-height:100%; }
     gap: 10px;
   }
 }
+
+
+/* Encuadre móvil definitivo: el marco completo queda dentro de la pantalla.
+   Si el contenido supera el alto disponible, se desplaza dentro del panel,
+   sin quedar cortado detrás de la barra inferior del teléfono. */
+@media (max-width: 640px) {
+  .landing {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100svh;
+    height: 100dvh;
+    min-height: 0 !important;
+    overflow: hidden;
+    padding: 10px 12px !important;
+    box-sizing: border-box;
+  }
+  .landing-card.landing-role-card {
+    width: 100%;
+    max-width: 860px;
+    max-height: calc(100svh - 20px);
+    max-height: calc(100dvh - 20px);
+    min-height: 0;
+    margin: 0 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+}
+@media (max-width: 700px) {
+  .auth-page:has(.platform-admin-page) {
+    height: 100svh;
+    height: 100dvh;
+    min-height: 0 !important;
+    overflow: hidden;
+  }
+  .auth-page:has(.platform-admin-page) .platform-admin-page {
+    max-height: calc(100svh - 28px);
+    max-height: calc(100dvh - 28px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
