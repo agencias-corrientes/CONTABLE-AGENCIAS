@@ -5,8 +5,7 @@ import Image from "next/image";
 export default function PagosLoading() {
   return (
     <main className="rendition-loading" aria-live="polite" aria-busy="true">
-      {/* Mantiene exactamente el logo del Panel general mientras carga Rendiciones. */}
-      <div className="desktop-agency-home" aria-hidden="true">
+      <div className="rendition-loading-brand" aria-hidden="true">
         <Image
           src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png"
           alt=""
@@ -14,66 +13,62 @@ export default function PagosLoading() {
           height={820}
           quality={100}
           priority
-          sizes="(min-width: 1400px) 680px, 58vw"
-          className="desktop-agency-home-logo"
+          sizes="(max-width: 1000px) 74vw, (min-width: 1400px) 680px, 58vw"
+          className="rendition-loading-brand-logo"
         />
       </div>
-      <div className="rendition-loading-head">
-        <span className="rendition-loading-mark" aria-hidden="true">AC</span>
-        <div>
-          <p>AGENCIAS CORRIENTES</p>
-          <h1>Rendiciones</h1>
-          <span>Preparando la información de la agencia…</span>
-        </div>
-      </div>
-      <div className="rendition-loading-grid">
-        {Array.from({ length: 4 }, (_, index) => (
-          <div className="rendition-loading-card" key={index}>
-            <i />
-            <b />
-            <span />
-          </div>
-        ))}
-      </div>
-      <div className="rendition-loading-list">
-        <b />
-        <span />
-        <span />
-        <span />
-      </div>
       <style jsx>{`
-        .rendition-loading { min-height: 55vh; padding: 18px 4px; color: #632538; }
-        .rendition-loading-head { display:flex; align-items:center; gap:13px; margin-bottom:22px; }
-        .rendition-loading-mark { display:grid; place-items:center; flex:0 0 48px; height:48px; border-radius:12px; background:#7c3347; color:#ffe58a; font-weight:950; }
-        .rendition-loading-head p { margin:0 0 3px; font-size:10px; font-weight:900; letter-spacing:.12em; }
-        .rendition-loading-head h1 { margin:0; font-size:24px; }
-        .rendition-loading-head span { display:block; margin-top:4px; color:#6b6265; font-size:13px; }
-        .rendition-loading-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-        .rendition-loading-card,.rendition-loading-list { border:1px solid #eadfe1; border-radius:12px; background:#fff; padding:14px; }
-        .rendition-loading-card { min-height:90px; }
-        .rendition-loading-card i,.rendition-loading-card b,.rendition-loading-card span,.rendition-loading-list b,.rendition-loading-list span { display:block; border-radius:8px; background:linear-gradient(90deg,#eee8e9 20%,#faf7f7 45%,#eee8e9 70%); background-size:200% 100%; animation:loading-shimmer 1.25s ease-in-out infinite; }
-        .rendition-loading-card i { width:42%; height:9px; margin-bottom:14px; }
-        .rendition-loading-card b { width:65%; height:20px; margin-bottom:9px; }
-        .rendition-loading-card span { width:82%; height:8px; }
-        .rendition-loading-list { margin-top:14px; }
-        .rendition-loading-list b { width:48%; height:14px; margin-bottom:18px; }
-        .rendition-loading-list span { width:100%; height:11px; margin:13px 0; }
-        @keyframes loading-shimmer { to { background-position:-200% 0; } }
+        .rendition-loading {
+          width: 100%;
+          min-height: 55vh;
+          padding: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          background: transparent;
+        }
+        .rendition-loading-brand {
+          width: 100%;
+          min-height: 55vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          border: 1px solid rgba(228,216,185,.75);
+          border-radius: 18px;
+          background:
+            radial-gradient(circle at 50% 46%, rgba(255,255,255,.98) 0%, rgba(255,253,247,.97) 48%, rgba(245,239,216,.98) 100%);
+        }
+        .rendition-loading-brand-logo {
+          display: block;
+          width: min(74vw, 380px);
+          height: auto;
+          max-height: 48vh;
+          object-fit: contain;
+          filter: drop-shadow(0 16px 28px rgba(66,35,25,.10));
+          animation: none !important;
+          transition: none !important;
+          transform: none !important;
+        }
         @media (min-width: 1001px) {
           .rendition-loading {
-            width:100%;
-            min-height:calc(100vh - 56px);
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:0;
-            overflow:hidden;
-            background:transparent;
+            min-height: calc(100vh - 56px);
+            padding: 0;
           }
-          .rendition-loading-head,.rendition-loading-grid,.rendition-loading-list { display:none; }
+          .rendition-loading-brand {
+            min-height: calc(100vh - 56px);
+          }
+          .rendition-loading-brand-logo {
+            width: min(58vw, 680px);
+            max-height: 82vh;
+          }
         }
         @media (prefers-reduced-motion: reduce) {
-          .rendition-loading-card i,.rendition-loading-card b,.rendition-loading-card span,.rendition-loading-list b,.rendition-loading-list span { animation:none; }
+          .rendition-loading-brand-logo {
+            animation: none !important;
+            transition: none !important;
+          }
         }
       `}</style>
     </main>
