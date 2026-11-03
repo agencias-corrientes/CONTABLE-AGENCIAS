@@ -300,14 +300,14 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
   if (!isEndOfDay && !assumeEndOfDay) return null;
 
   const qIndex = findIndex(lines, /^QUINIELA(?:\s+CORRIENTES?)?$/);
-  const qToqueIndex = findIndex(lines, /AL\s+TOQUE/);
-  const otherIndex = findIndex(lines, /OTROS\s+JUE\w{2,3}/);
+  const qToqueIndex = findIndex(lines, /A[L1I]\s*TOQUE/);
+  const otherIndex = findIndex(lines, /OTROS\s*JUE\w{2,3}/);
   const digitalIndex = findIndex(lines, /[MN]EDIOS\s+DIGITALES/);
   const otherEnd = digitalIndex >= 0 ? digitalIndex : lines.length;
   const qEnd = qToqueIndex >= 0 ? qToqueIndex : (otherIndex >= 0 ? otherIndex : lines.length);
   const qToqueEnd = otherIndex >= 0 ? otherIndex : lines.length;
 
-  const qValid = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /\bVALIDOS?\b/);
+  const qValid = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /\bVALID[O0]S?\b/);
   const qCancelled = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /ANULADOS?\s*(?:ESP|ESPECIALES?)/);
   const qPrizes = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /PREMIOS?\s+P[A-Z]{2,3}/);
   // Si el ticket no contiene la sección «Quiniela al Toque», no reutilizar
@@ -351,7 +351,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
   const totalOtherGames = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, totalOtherMatcher);
   const otherGamesPrizes = metricInRange(lines, totalOtherIndex >= 0 ? totalOtherIndex + 1 : (otherIndex >= 0 ? otherIndex : 0), otherEnd, /PREMIOS?\s+P[A-Z]{2,3}/);
   const totalPrizes = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /PREMIOS?\s+P[A-Z]{2,3}/, true);
-  const generalTotal = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /TOTAL\s+GENERAL/);
+  const generalTotal = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /TOTAL\s*GENERAL/);
   const cobros = digitalIndex >= 0 ? metricInRange(lines, digitalIndex, lines.length, /^COBROS?\b/) : emptyMetric();
   const devoluciones = digitalIndex >= 0 ? metricInRange(lines, digitalIndex, lines.length, /^DEVOLUCIONES?\b/) : emptyMetric();
 
@@ -513,8 +513,12 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
   const downloadLine = lines.find((line) => /DESCARGA?\s+CONFIRMADA/i.test(normalizeTicketText(line))) ?? null;
 
   const salesAmounts = [qValid.amount, toqueValid.amount, ...otherGames.map((game) => game.amount)];
-  const salesTotalsMatch = salesAmounts.every((value) => value !== null) && generalTotal.amount !== null
-    ? cents(salesAmounts.reduce<number>((sum, value) => sum + (value ?? 0), 0)) === cents(generalTotal.amount)
+  // En una foto térmica algunos renglones secundarios pueden quedar ilegibles.
+  // Validar la suma de todos los importes efectivamente reconocidos contra TOTAL
+  // GENERAL; si coincide, las líneas no reconocidas no se cargan ni se inventan.
+  const knownSalesAmounts = salesAmounts.filter((value): value is number => value !== null);
+  const salesTotalsMatch = knownSalesAmounts.length > 0 && generalTotal.amount !== null
+    ? cents(knownSalesAmounts.reduce<number>((sum, value) => sum + value, 0)) === cents(generalTotal.amount)
     : null;
   const prizeAmounts = [qPrizes.amount, toquePrizes.amount, otherGamesPrizes.amount];
   const prizeTotalsMatch = prizeAmounts.every((value) => value !== null) && totalPrizes.amount !== null
