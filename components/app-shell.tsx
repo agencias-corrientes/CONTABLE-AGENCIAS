@@ -80,7 +80,20 @@ export function AppShell({
       </aside>
       <main className="content-area">
         {pathname !== "/inicio" && <div className="mobile-panel-return"><button type="button" onClick={() => { const request = new Event("agencias:request-panel-return", { cancelable: true }); const shouldNavigate = window.dispatchEvent(request); if (shouldNavigate) router.push("/inicio?seleccion=" + (pathname.split("/")[1] ?? "")); }} aria-label="Volver al panel general"><span aria-hidden="true">←</span><span>Volver al panel general</span></button></div>}
-        {children}
+        {pathname === "/inicio" ? (
+          <div className="desktop-agency-home" aria-label="Agencias Corrientes">
+            <Image
+              src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png"
+              alt="Agencias Corrientes — Quiniela Oficial"
+              width={820}
+              height={820}
+              quality={100}
+              priority
+              sizes="(min-width: 1400px) 680px, 58vw"
+              className="desktop-agency-home-logo"
+            />
+          </div>
+        ) : children}
       </main>
       <style jsx>{`
         .sidebar { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
