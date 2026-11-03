@@ -1716,3 +1716,81 @@ html, body { min-height:100%; }
   .landing-role-choice small { font-size: 11px; }
   .landing-role-enter { padding: 7px 8px; font-size: 10px; }
 }
+
+
+/* Login: selector de perfiles sobrio, legible y consistente con la identidad de marca */
+.login-role-selector{display:grid;gap:14px;margin-top:22px}
+.login-role-selector .landing-role-choice{
+  min-height:104px;
+  padding:18px 20px;
+  gap:16px;
+  border:1px solid #e5dccb;
+  border-left:4px solid #7c3347;
+  border-radius:12px;
+  background:#fffdf8;
+  color:#30272a;
+  box-shadow:0 4px 14px rgba(48,31,34,.07);
+  text-decoration:none;
+  transition:border-color .15s ease,box-shadow .15s ease,background-color .15s ease;
+}
+.login-role-selector .landing-role-choice:hover{
+  transform:none;
+  border-color:#b79a45;
+  background:#fffefa;
+  box-shadow:0 7px 18px rgba(48,31,34,.10);
+}
+.login-role-selector .landing-role-admin,
+.login-role-selector .landing-role-employee{
+  background:#fffdf8;
+  border-color:#e5dccb;
+  border-left:4px solid #7c3347;
+  color:#30272a;
+}
+.login-role-selector .landing-role-icon{
+  display:grid;
+  place-items:center;
+  width:48px;
+  height:48px;
+  border-radius:10px;
+  flex:0 0 48px;
+  background:#f3ead7;
+  color:#713044;
+  font-size:0;
+}
+.login-role-selector .landing-role-icon svg{width:25px;height:25px;display:block}
+.login-role-selector .landing-role-copy{gap:6px}
+.login-role-selector .landing-role-choice strong{
+  color:#64283a;
+  font-size:18px;
+  line-height:1.25;
+  font-weight:800;
+  letter-spacing:0;
+}
+.login-role-selector .landing-role-choice small{
+  color:#51484a;
+  opacity:1;
+  font-size:14px;
+  line-height:1.45;
+  font-weight:500;
+}
+.login-role-selector .landing-role-enter{
+  color:#64283a;
+  font-size:13px;
+  font-weight:750;
+  white-space:nowrap;
+}
+.login-role-selector .landing-role-enter span{font-size:17px;margin-left:3px}
+.login-role-selector .muted{color:#655b5e;line-height:1.5}
+.login-role-selector .small-text{font-size:13px}
+@media(max-width:640px){
+  .login-role-selector{gap:12px;margin-top:18px}
+  .login-role-selector .landing-role-choice{min-height:96px;padding:15px 14px;gap:12px}
+  .login-role-selector .landing-role-icon{width:42px;height:42px;flex-basis:42px}
+  .login-role-selector .landing-role-icon svg{width:22px;height:22px}
+  .login-role-selector .landing-role-choice strong{font-size:17px}
+  .login-role-selector .landing-role-choice small{font-size:13px;line-height:1.4}
+  .login-role-selector .landing-role-enter{font-size:12px}
+}
+@media(prefers-reduced-motion:reduce){
+  .login-role-selector .landing-role-choice{transition:none}
+}
