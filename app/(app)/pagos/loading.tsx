@@ -9,51 +9,45 @@ export default function PagosLoading() {
         <Image
           src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png"
           alt=""
-          width={64}
-          height={64}
-          style={{ width: 64, height: 64, maxWidth: "64px", maxHeight: "64px", objectFit: "contain" }}
+          width={180}
+          height={180}
           quality={100}
           priority
-          sizes="(max-width: 1000px) 22vw, (min-width: 1400px) 680px, 58vw"
+          sizes="(max-width: 1000px) 38vw, 58vw"
           className="rendition-loading-brand-logo"
         />
       </div>
       <style jsx>{`
         .rendition-loading {
           width: 100%;
-          min-height: 180px;
-          max-height: 180px;
-          padding: 0;
+          min-height: calc(100dvh - 56px);
           display: flex;
           align-items: center;
           justify-content: center;
+          padding: 0;
           overflow: hidden;
           background: transparent;
         }
         .rendition-loading-brand {
           width: 100%;
-          min-height: 180px;
-          max-height: 180px;
+          min-height: inherit;
           display: flex;
           align-items: center;
           justify-content: center;
-          overflow: hidden;
-          border: 1px solid rgba(228,216,185,.75);
-          border-radius: 18px;
-          background:
-            radial-gradient(circle at 50% 46%, rgba(255,255,255,.98) 0%, rgba(255,253,247,.97) 48%, rgba(245,239,216,.98) 100%);
+          overflow: visible;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
         }
         .rendition-loading-brand-logo {
           display: block;
-          width: 64px !important;
-          height: 64px !important;
-          min-width: 64px !important;
-          min-height: 64px !important;
-          max-width: 64px !important;
-          max-height: 64px !important;
-          object-fit: contain !important;
+          width: clamp(120px, 38vw, 180px);
+          height: auto;
+          max-width: 42vw;
+          max-height: 42vw;
+          object-fit: contain;
           object-position: center;
-          filter: drop-shadow(0 8px 14px rgba(66,35,25,.09));
+          filter: drop-shadow(0 5px 12px rgba(66,35,25,.10));
           animation: none !important;
           transition: none !important;
           transform: none !important;
@@ -61,16 +55,11 @@ export default function PagosLoading() {
         @media (min-width: 1001px) {
           .rendition-loading {
             min-height: calc(100vh - 56px);
-            padding: 0;
-          }
-          .rendition-loading-brand {
-            min-height: calc(100vh - 56px);
-            max-height: none;
           }
           .rendition-loading-brand-logo {
             width: min(58vw, 680px);
+            max-width: 58vw;
             max-height: 82vh;
-            filter: drop-shadow(0 16px 28px rgba(66,35,25,.10));
           }
         }
         @media (prefers-reduced-motion: reduce) {
