@@ -20,12 +20,14 @@ export function AppShell({
   userEmail,
   userRole,
   isPlatformAdmin,
+  agencyCount,
 }: {
   children: React.ReactNode;
   organizationName: string;
   userEmail: string;
   userRole: string;
   isPlatformAdmin: boolean;
+  agencyCount: number | null;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -48,6 +50,46 @@ export function AppShell({
   return (
     <div className={pathname === "/inicio" ? "app-shell mobile-navigation-home" : "app-shell"}>
       <aside className="sidebar">
+        <section className="panel-general-home" aria-label="Panel general de Agencias Corrientes">
+          <header className="panel-general-header">
+            <div className="panel-general-heading">
+              <h1>Panel general</h1>
+              <p>AGENCIAS CORRIENTES</p>
+            </div>
+            <div className="panel-general-count" aria-label={`Número de agencias: ${agencyCount ?? "no disponible"}`}>
+              <div className="panel-general-count-copy"><span>N° Agencias</span><strong>{agencyCount ?? "—"}</strong></div>
+              <span className="panel-general-count-divider" aria-hidden="true" />
+              <span className="panel-general-grid-icon" aria-hidden="true"><i /><i /><i /><i /></span>
+            </div>
+          </header>
+          <nav className="panel-general-grid" aria-label="Secciones principales">
+            {[
+              { slug: "pagos", title: "Rendiciones", subtitle: "Control diario", icon: "receipt" },
+              { slug: "agencias", title: "Subagentes y ambulantes", subtitle: "Gestión de agentes", icon: "users" },
+              { slug: "buscar", title: "Buscar", subtitle: "Consultas y registros", icon: "search" },
+              { slug: "juegos", title: "Juegos y comisiones", subtitle: "Gestión comercial", icon: "gamepad" },
+              { slug: "loteria-correntina", title: "Lotería", subtitle: "Información y servicios", icon: "ticket" },
+              { slug: "configuracion", title: "Configuración", subtitle: "Opciones de agencia", icon: "settings" },
+            ].filter((item) => isOwner || !["juegos", "configuracion"].includes(item.slug)).map((item, index) => (
+              <Link key={item.slug} href={`/${item.slug}`} className={index === 0 ? "panel-general-card featured" : "panel-general-card"}>
+                <span className="panel-general-number">{String(index + 1).padStart(2, "0")}</span>
+                <span className="panel-general-card-icon" aria-hidden="true">
+                  {item.icon === "receipt" && <svg viewBox="0 0 96 96"><path d="M25 16h46v65H25zM38 16v-6h20v6M36 36h24M36 49h24M36 62h24" /></svg>}
+                  {item.icon === "users" && <svg viewBox="0 0 96 96"><circle cx="35" cy="28" r="12" /><circle cx="66" cy="24" r="12" /><path d="M10 76c0-18 10-29 26-29s26 11 26 29H10zM54 48c19-8 34 5 34 27H62" /></svg>}
+                  {item.icon === "search" && <svg viewBox="0 0 96 96"><circle cx="40" cy="39" r="25" /><path d="m58 58 25 25" /></svg>}
+                  {item.icon === "gamepad" && <svg viewBox="0 0 96 96"><path d="M23 28h50c9 0 14 6 17 17l5 25c2 12-9 17-18 8L63 65H33L19 78C9 87 0 82 2 70l5-25c2-11 7-17 16-17z" /><path d="M28 42v18M19 51h18M66 43h1M77 52h1M66 61h1" /></svg>}
+                  {item.icon === "ticket" && <svg viewBox="0 0 96 96"><path d="M12 29 72 10l13 22a12 12 0 0 0 7 22L79 82 19 92 5 69a12 12 0 0 0 7-40z" /><path d="m30 25 17 54M58 16l3 7M64 34l3 7M70 52l3 7M76 70l2 5" /><path d="m48 39 4 8 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1z" /></svg>}
+                  {item.icon === "settings" && <svg viewBox="0 0 96 96"><path d="m40 8 16 0 3 12 9 4 10-7 11 11-7 10 4 9 12 3v16l-12 3-4 9 7 10-11 11-10-7-9 4-3 12H40l-3-12-9-4-10 7L7 88l7-10-4-9-12-3V50l12-3 4-9-7-10 11-11 10 7 9-4z" /><circle cx="48" cy="56" r="17" /></svg>}
+                </span>
+                <span className="panel-general-card-title">{item.title}</span>
+                <span className="panel-general-card-subtitle">{item.subtitle}</span>
+                <span className="panel-general-card-accent" />
+              </Link>
+            ))}
+          </nav>
+          <div className="panel-general-footer" aria-hidden="true"><span /></div>
+        </section>
+
         <div className="sidebar-brand">
           <div className="brand-logo-wrap sidebar-logo"><Image src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png" alt="Agencias Corrientes — Quiniela Oficial" width={48} height={48} priority /></div>
           <div className="brand-copy">
@@ -96,6 +138,51 @@ export function AppShell({
         ) : children}
       </main>
       <style jsx>{`
+
+        .panel-general-home { display:none; }
+        @media (max-width: 1000px) {
+          :global(.app-shell.mobile-navigation-home .sidebar) { padding: 12px 12px max(12px,env(safe-area-inset-bottom)) !important; background:#fff !important; border:0 !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar-brand),
+          :global(.app-shell.mobile-navigation-home .sidebar > .nav-list),
+          :global(.app-shell.mobile-navigation-home .sidebar > .sidebar-footer) { display:none !important; }
+          :global(.app-shell.mobile-navigation-home .panel-general-home) { display:flex; flex-direction:column; min-height:calc(100svh - 24px); min-height:calc(100dvh - 24px); box-sizing:border-box; padding:4px 4px 0; border-radius:28px; background:#fff; overflow:hidden; }
+          .panel-general-header { display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:112px; padding:12px 10px 14px 16px; border-radius:22px; background:#fff; box-shadow:0 4px 14px rgba(110,36,55,.10); }
+          .panel-general-heading { min-width:0; }
+          .panel-general-heading h1 { margin:0; color:#861337; font-size:clamp(27px,7vw,38px); line-height:1.02; font-weight:900; letter-spacing:-.045em; white-space:nowrap; }
+          .panel-general-heading p { margin:7px 0 0; color:#68575a; font-size:clamp(11px,3.1vw,17px); line-height:1.1; letter-spacing:.035em; white-space:nowrap; }
+          .panel-general-count { display:flex; align-items:center; justify-content:center; flex:0 0 auto; gap:10px; min-width:124px; min-height:68px; padding:8px 10px; border-radius:18px; background:#8a123b; color:#fff; box-shadow:0 3px 6px rgba(50,10,25,.16); }
+          .panel-general-count-copy { display:flex; flex-direction:column; align-items:center; gap:2px; }
+          .panel-general-count-copy span { font-size:clamp(10px,2.7vw,14px); font-weight:750; white-space:nowrap; }
+          .panel-general-count-copy strong { font-size:clamp(25px,6vw,36px); line-height:1; font-weight:900; }
+          .panel-general-count-divider { width:2px; height:48px; background:rgba(255,255,255,.9); }
+          .panel-general-grid-icon { display:grid; grid-template-columns:repeat(2,16px); grid-template-rows:repeat(2,16px); gap:6px; }
+          .panel-general-grid-icon i { display:block; border-radius:4px; background:#fff; }
+          .panel-general-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:repeat(3,minmax(0,1fr)); gap:10px; flex:1; min-height:0; margin:12px 0 10px; }
+          .panel-general-card { position:relative; display:flex; min-width:0; min-height:0; box-sizing:border-box; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:22px 9px 18px; border:1px solid #f0d8c9; border-radius:23px; background:linear-gradient(145deg,#fffaf0,#fff2e2); color:#83133a; text-decoration:none; box-shadow:0 3px 7px rgba(84,39,35,.16),inset 0 1px 0 #fff; -webkit-tap-highlight-color:transparent; }
+          .panel-general-card.featured { border-color:#97113e; background:linear-gradient(145deg,#99103e,#7d0e36); color:#fff; box-shadow:0 4px 9px rgba(74,13,34,.28); }
+          .panel-general-number { position:absolute; top:12px; right:14px; color:#a87562; font-size:clamp(22px,5vw,30px); line-height:1; font-weight:900; }
+          .panel-general-card.featured .panel-general-number { color:#fff; }
+          .panel-general-card-icon { display:flex; align-items:center; justify-content:center; width:clamp(54px,15vw,76px); height:clamp(54px,15vw,76px); margin-bottom:6px; color:#94113d; }
+          .panel-general-card.featured .panel-general-card-icon { color:#fff; }
+          .panel-general-card-icon svg { width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:8; stroke-linecap:round; stroke-linejoin:round; }
+          .panel-general-card-icon svg path:first-child, .panel-general-card-icon svg circle:not(:last-child) { fill:currentColor; stroke:currentColor; }
+          .panel-general-card-title { display:block; width:100%; color:inherit; text-align:center; font-size:clamp(15px,4.2vw,21px); line-height:1.12; font-weight:900; overflow-wrap:normal; word-break:normal; }
+          .panel-general-card-subtitle { display:block; width:100%; color:#5d4c4c; text-align:center; font-size:clamp(12px,3.3vw,17px); line-height:1.16; font-weight:500; }
+          .panel-general-card.featured .panel-general-card-subtitle { color:#fff; }
+          .panel-general-card-accent { position:absolute; left:18%; right:18%; bottom:12px; height:5px; border-radius:99px; background:#94113d; }
+          .panel-general-card.featured .panel-general-card-accent { background:#e7b6b8; }
+          .panel-general-footer { position:relative; flex:0 0 48px; margin:0 -16px; overflow:hidden; background:#861039; clip-path:polygon(0 34%,18% 17%,43% 40%,67% 75%,84% 82%,100% 30%,100% 100%,0 100%); }
+          .panel-general-footer span { position:absolute; inset:0 0 auto; height:11px; background:#e5b14d; clip-path:polygon(0 0,18% 0,43% 48%,67% 88%,84% 100%,100% 0,100% 22%,84% 100%,67% 88%,43% 48%,18% 0,0 35%); }
+        }
+        @media (max-width:380px) {
+          .panel-general-header { min-height:100px; padding-left:12px; }
+          .panel-general-count { min-width:112px; gap:7px; padding:7px; }
+          .panel-general-grid { gap:8px; }
+          .panel-general-card { padding-left:6px; padding-right:6px; }
+          .panel-general-card-title { font-size:clamp(14px,3.9vw,17px); }
+          .panel-general-card-subtitle { font-size:clamp(11px,3vw,14px); }
+        }
+
         .sidebar { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
         .sidebar-brand strong { font-size: 17px; font-weight: 800; letter-spacing: -.025em; }
         .sidebar-brand span { font-size: 11px; line-height: 1.45; letter-spacing: .015em; }
