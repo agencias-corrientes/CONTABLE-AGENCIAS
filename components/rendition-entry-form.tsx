@@ -6,7 +6,6 @@ import { attachAgencyRenditionTicketReceiptDataToExisting, createAgencyRendition
 import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod } from "@/lib/agency-draw-schedule";
 import { correctTicketAddressOcr, extractTicketPeriodNumber, mapTicketClosureAmounts, parseTicketClosure, type TicketClosureData } from "@/lib/agency-ticket-closure";
 import { TicketClosureReceipt } from "@/components/ticket-closure-receipt";
-import { money } from "@/lib/accounting";
 
 type Game = { id: string; name: string; category: string; enabled?: boolean; commissionPercent?: number | null };
 type InitialRendition = {
@@ -25,6 +24,15 @@ type InitialRendition = {
 
 function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+}
+
+function formatTicketMoney(value: number) {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 let paddleOcrEnginePromise: Promise<any> | null = null;
@@ -2004,7 +2012,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <div className="game-rendition-head">
           <div><h3>Juegos e importes</h3><p className="muted">{mode === "photo" ? "Los importes se leen automáticamente. Abrí el detalle para revisar o corregir los datos." : "La lista de carga manual está oculta para mantener la pantalla compacta."}</p></div>
           <div className="game-rendition-head-actions">
-            <span className="rendition-live-total">{money(total)}</span>
+            <span className="rendition-live-total">{formatTicketMoney(total)}</span>
             <button type="button" className="button ghost game-rendition-toggle" aria-expanded={gameListExpanded} onClick={() => setGameListExpanded((open) => !open)}>
               {gameListExpanded ? "Cerrar lista completa" : "Abrir la lista completa"}
             </button>
@@ -2116,7 +2124,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                   : receiptData
                   ? "Los datos detectados se conservaron. Abrí la lista completa para revisar juegos, sorteos, importes y totales antes de guardar."
                   : total > 0
-                    ? "Se detectaron importes por " + money(total) + ". Abrí la lista para verificar o corregir cada valor."
+                    ? "Se detectaron importes por " + formatTicketMoney(total) + ". Abrí la lista para verificar o corregir cada valor."
                     : "La lista completa se mantiene oculta para que la pantalla no sea tan larga. Tocá “Abrir la lista completa” para cargar o revisar los importes manualmente."}</p>
               </div>
             </div>
@@ -2128,9 +2136,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       <label className="ticket-input-block"><span>Observaciones</span><textarea name="notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Opcional." /></label>
       <div className="rendition-settlement-bar">
         <div className="rendition-settlement-values">
-          <div><span>Ventas brutas</span><strong>{money(total)}</strong></div>
-          <div><span>Comisión aplicada ({new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(effectiveCommissionPercent)}%)</span><strong className="commission-deduction">− {money(commissionTotal)}</strong></div>
-          <div className="rendition-net-value"><span>Efectivo neto a rendir</span><strong>{money(netToRemit)}</strong></div>
+          <div><span>Ventas brutas</span><strong>{formatTicketMoney(total)}</strong></div>
+          <div><span>Comisión aplicada ({new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(effectiveCommissionPercent)}%)</span><strong className="commission-deduction">− {formatTicketMoney(commissionTotal)}</strong></div>
+          <div className="rendition-net-value"><span>Efectivo neto a rendir</span><strong>{formatTicketMoney(netToRemit)}</strong></div>
         </div>
         {hasUnconfiguredCommission && <p className="rendition-commission-warning">Hay juegos con ventas sin porcentaje configurado; para esos juegos se calcula 0%. Revisá la comisión del operador antes de confirmar.</p>}
         <button className="button primary" type={initialRendition ? "submit" : "button"}
