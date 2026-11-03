@@ -46,6 +46,7 @@ export function money(value: number | string | null | undefined, currency = "ARS
   return new Intl.NumberFormat("es-AR", {
     style: "currency",
     currency,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(Number(value ?? 0));
 }

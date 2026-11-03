@@ -1288,3 +1288,14 @@ html, body { min-height:100%; }
   .rendition-mode-switch button{min-height:76px;padding:14px 8px;font-size:16px}
   .ticket-cancel-confirmation .ticket-capture-dialog-heading h3{font-size:25px}
 }
+
+
+/* Foto o archivo y Carga manual ocupan toda la fila, con el mismo tamaño. */
+.rendition-mode-toolbar{display:grid;grid-template-columns:minmax(0,1fr);width:100%;gap:12px}
+.rendition-mode-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;min-width:0;gap:12px}
+.rendition-mode-switch button{display:flex;align-items:center;justify-content:center;width:100%;min-width:0;min-height:94px;flex:none;padding:22px 16px;font-size:19px;line-height:1.2;font-weight:850;border-radius:13px}
+@media(max-width:760px){
+ .rendition-mode-toolbar{grid-template-columns:minmax(0,1fr);gap:10px}
+ .rendition-mode-switch{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .rendition-mode-switch button{min-height:88px;padding:18px 10px;font-size:18px}
+}

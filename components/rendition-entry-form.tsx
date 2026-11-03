@@ -6,6 +6,7 @@ import { attachAgencyRenditionTicketReceiptDataToExisting, createAgencyRendition
 import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod } from "@/lib/agency-draw-schedule";
 import { correctTicketAddressOcr, extractTicketPeriodNumber, mapTicketClosureAmounts, parseTicketClosure, type TicketClosureData } from "@/lib/agency-ticket-closure";
 import { TicketClosureReceipt } from "@/components/ticket-closure-receipt";
+import { money } from "@/lib/accounting";
 
 type Game = { id: string; name: string; category: string; enabled?: boolean; commissionPercent?: number | null };
 type InitialRendition = {
@@ -1221,66 +1222,79 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       const ocrCandidates: Array<{ engine: string; text: string }> = [];
       const candidateErrors: string[] = [];
 
-      // Ejecutar los tres motores como candidatos independientes. Ninguno se
-      // acepta por longitud o cantidad de rótulos: la selección se hace luego
-      // con los datos parseados y la consistencia aritmética del cierre.
-      try {
-        setProgress("Leyendo el cupón con OCR.Space…");
-        setProgressPercent(24);
-        const upload = new FormData();
-        upload.append("file", file);
-        const response = await fetch("/api/ocr-space", { method: "POST", body: upload });
-        const result = await response.json().catch(() => ({})) as { text?: string; error?: string };
-        if (!response.ok) throw new Error(result.error || "OCR.Space no pudo procesar la foto.");
-        const text = String(result.text ?? "").trim();
-        if (text) ocrCandidates.push({ engine: "OCR.Space", text });
-        else candidateErrors.push("OCR.Space: no encontró texto.");
-      } catch (cause) {
-        candidateErrors.push("OCR.Space: " + (cause instanceof Error ? cause.message : String(cause)));
-      }
+      // OCR.Space y PaddleOCR trabajan en paralelo para reducir la espera.
+      // Tesseract queda como verificación adicional cuando las lecturas rápidas
+      // no alcanzan a validar el total de ventas del cierre.
+      setProgress("Leyendo el cupón en paralelo…");
+      setProgressPercent(24);
+      const fastReads = await Promise.all([
+        (async () => {
+          try {
+            const upload = new FormData();
+            upload.append("file", file);
+            const response = await fetch("/api/ocr-space", { method: "POST", body: upload });
+            const result = await response.json().catch(() => ({})) as { text?: string; error?: string };
+            if (!response.ok) throw new Error(result.error || "OCR.Space no pudo procesar la foto.");
+            const text = String(result.text ?? "").trim();
+            if (text) ocrCandidates.push({ engine: "OCR.Space", text });
+            else candidateErrors.push("OCR.Space: no encontró texto.");
+          } catch (cause) {
+            candidateErrors.push("OCR.Space: " + (cause instanceof Error ? cause.message : String(cause)));
+          }
+        })(),
+        (async () => {
+          try {
+            const paddle = await getPaddleOcrEngine();
+            const [paddleResult] = await paddle.predict(file, {
+              textDetBoxThresh: 0.4,
+              textDetUnclipRatio: 1.8,
+              textRecScoreThresh: 0.0,
+            });
+            paddleMetadataWords = paddleItemsToWordBoxes(paddleResult?.items ?? []);
+            const text = paddleOcrItemsToText(paddleResult?.items ?? []).trim();
+            if (text) ocrCandidates.push({ engine: "PaddleOCR", text });
+            else candidateErrors.push("PaddleOCR: no encontró texto.");
+          } catch (cause) {
+            candidateErrors.push("PaddleOCR: " + (cause instanceof Error ? cause.message : String(cause)));
+          }
+        })(),
+      ]);
+      void fastReads;
+      setProgressPercent(52);
+      const fastCandidateHasVerifiedSales = closureReadExpected && ocrCandidates.some((candidate) => {
+        const receipt = parseTicketClosure(candidate.text, true);
+        return receipt?.consistency.salesTotalsMatch === true;
+      });
 
-      try {
-        setProgress("Reconociendo el cupón con PaddleOCR…");
-        setProgressPercent(38);
-        const paddle = await getPaddleOcrEngine();
-        const [paddleResult] = await paddle.predict(file, {
-          textDetBoxThresh: 0.4,
-          textDetUnclipRatio: 1.8,
-          textRecScoreThresh: 0.0,
-        });
-        paddleMetadataWords = paddleItemsToWordBoxes(paddleResult?.items ?? []);
-        const text = paddleOcrItemsToText(paddleResult?.items ?? []).trim();
-        if (text) ocrCandidates.push({ engine: "PaddleOCR", text });
-        else candidateErrors.push("PaddleOCR: no encontró texto.");
-      } catch (cause) {
-        candidateErrors.push("PaddleOCR: " + (cause instanceof Error ? cause.message : String(cause)));
-      }
-
-      try {
-        setProgress("Contrastando con Tesseract…");
-        setProgressPercent(58);
-        const { createWorker } = await import("tesseract.js");
-        const worker = await createWorker("spa+eng", 1, {
-          logger: (message) => {
-            if (message.status === "recognizing text" && typeof message.progress === "number") {
-              const percent = Math.min(96, 58 + Math.round(message.progress * 38));
-              setProgressPercent(percent);
-              setProgress("Comparando lectura del comprobante…");
-            }
-          },
-        });
+      if (!fastCandidateHasVerifiedSales) {
         try {
-          const result = await worker.recognize(file, {}, { blocks: true });
-          focusedOcrWords = tesseractWordBoxes(result.data);
-          const text = String(result.data.text ?? "").trim();
-          focusedOcrDebugText = text;
-          if (text) ocrCandidates.push({ engine: "Tesseract", text });
-          else candidateErrors.push("Tesseract: no encontró texto.");
-        } finally {
-          await worker.terminate();
+          setProgress("Verificando importes con Tesseract…");
+          setProgressPercent(58);
+          const { createWorker } = await import("tesseract.js");
+          const worker = await createWorker("spa+eng", 1, {
+            logger: (message) => {
+              if (message.status === "recognizing text" && typeof message.progress === "number") {
+                const percent = Math.min(96, 58 + Math.round(message.progress * 38));
+                setProgressPercent(percent);
+                setProgress("Comparando lectura del comprobante…");
+              }
+            },
+          });
+          try {
+            const result = await worker.recognize(file, {}, { blocks: true });
+            focusedOcrWords = tesseractWordBoxes(result.data);
+            const text = String(result.data.text ?? "").trim();
+            focusedOcrDebugText = text;
+            if (text) ocrCandidates.push({ engine: "Tesseract", text });
+            else candidateErrors.push("Tesseract: no encontró texto.");
+          } finally {
+            await worker.terminate();
+          }
+        } catch (cause) {
+          candidateErrors.push("Tesseract: " + (cause instanceof Error ? cause.message : String(cause)));
         }
-      } catch (cause) {
-        candidateErrors.push("Tesseract: " + (cause instanceof Error ? cause.message : String(cause)));
+      } else {
+        setProgress("Lectura rápida validada; revisando datos del ticket…");
       }
 
       const usableCandidates = ocrCandidates.filter((candidate) =>
@@ -1990,7 +2004,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         <div className="game-rendition-head">
           <div><h3>Juegos e importes</h3><p className="muted">{mode === "photo" ? "Los importes se leen automáticamente. Abrí el detalle para revisar o corregir los datos." : "La lista de carga manual está oculta para mantener la pantalla compacta."}</p></div>
           <div className="game-rendition-head-actions">
-            <span className="rendition-live-total">{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(total)}</span>
+            <span className="rendition-live-total">{money(total)}</span>
             <button type="button" className="button ghost game-rendition-toggle" aria-expanded={gameListExpanded} onClick={() => setGameListExpanded((open) => !open)}>
               {gameListExpanded ? "Cerrar lista completa" : "Abrir la lista completa"}
             </button>
@@ -2102,7 +2116,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                   : receiptData
                   ? "Los datos detectados se conservaron. Abrí la lista completa para revisar juegos, sorteos, importes y totales antes de guardar."
                   : total > 0
-                    ? "Se detectaron importes por " + new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(total) + ". Abrí la lista para verificar o corregir cada valor."
+                    ? "Se detectaron importes por " + money(total) + ". Abrí la lista para verificar o corregir cada valor."
                     : "La lista completa se mantiene oculta para que la pantalla no sea tan larga. Tocá “Abrir la lista completa” para cargar o revisar los importes manualmente."}</p>
               </div>
             </div>
@@ -2114,9 +2128,9 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       <label className="ticket-input-block"><span>Observaciones</span><textarea name="notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Opcional." /></label>
       <div className="rendition-settlement-bar">
         <div className="rendition-settlement-values">
-          <div><span>Ventas brutas</span><strong>{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(total)}</strong></div>
-          <div><span>Comisión aplicada ({new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(effectiveCommissionPercent)}%)</span><strong className="commission-deduction">− {new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(commissionTotal)}</strong></div>
-          <div className="rendition-net-value"><span>Efectivo neto a rendir</span><strong>{new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(netToRemit)}</strong></div>
+          <div><span>Ventas brutas</span><strong>{money(total)}</strong></div>
+          <div><span>Comisión aplicada ({new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(effectiveCommissionPercent)}%)</span><strong className="commission-deduction">− {money(commissionTotal)}</strong></div>
+          <div className="rendition-net-value"><span>Efectivo neto a rendir</span><strong>{money(netToRemit)}</strong></div>
         </div>
         {hasUnconfiguredCommission && <p className="rendition-commission-warning">Hay juegos con ventas sin porcentaje configurado; para esos juegos se calcula 0%. Revisá la comisión del operador antes de confirmar.</p>}
         <button className="button primary" type={initialRendition ? "submit" : "button"}
