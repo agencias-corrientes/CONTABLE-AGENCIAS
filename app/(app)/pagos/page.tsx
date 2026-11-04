@@ -241,6 +241,13 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
     const paid = (Array.isArray(row.agency_rendition_payments) ? row.agency_rendition_payments : []).reduce((subtotal: number, payment: any) => subtotal + Number(payment.amount ?? 0), 0);
     return sum + Math.max(0, due - paid);
   }, 0);
+  const previousDebtRows = rows.map((row: any) => {
+    const payments = Array.isArray(row.agency_rendition_payments) ? row.agency_rendition_payments : [];
+    const paid = payments.reduce((subtotal: number, payment: any) => subtotal + Number(payment.amount ?? 0), 0);
+    const due = Number(row.net_due ?? row.amount_due ?? 0);
+    return { row, pending: Math.max(0, due - paid) };
+  }).filter(({ row, pending }) => !isCurrentOperationalDay(row) && pending > 0.005);
+  const previousDebtTotal = previousDebtRows.reduce((sum, item) => sum + item.pending, 0);
   const ticketGameOrder = new Map([
     "Quiniela Correntina", "Quiniela Al Toque", "Loto Plus", "Quini 6",
     "Pozo Quiniela", "Brinco", "Loto 5 Plus", "Lotería Online",
@@ -589,6 +596,11 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
         <div className="stat-card"><span>Comisiones rendidas</span><strong>{money(todayComisiones, activeOrganization.currency_code)}</strong><small>comisiones reconocidas en las rendiciones del día</small></div>
         <div className="stat-card"><span>Premios pagados</span><strong>{money(todayPrizeTotal, activeOrganization.currency_code)}</strong><small>OCR: {money(todayOcrPrizeTotal, activeOrganization.currency_code)} · Caja fuera de OCR: {money(todayCashPrizeTotal, activeOrganization.currency_code)}</small></div>
         <div className="stat-card"><span>Pendiente hoy</span><strong>{money(todayPendiente, activeOrganization.currency_code)}</strong><small>efectivo neto pendiente después de comisión</small></div>
+        <Link href="/deudas-anteriores" className="stat-card previous-debts-stat-link" aria-label={"Ver deudas anteriores por " + money(previousDebtTotal, activeOrganization.currency_code)}>
+          <span>Deudas anteriores</span>
+          <strong>{money(previousDebtTotal, activeOrganization.currency_code)}</strong>
+          <small>{previousDebtRows.length} rendiciones con saldo pendiente · ver y cancelar →</small>
+        </Link>
       </div>
       {params.ticket === "guardado" && (
         <div className="ticket-save-success">

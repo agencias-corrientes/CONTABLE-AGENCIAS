@@ -13,7 +13,6 @@ const nav = [
   ["juegos", "Juegos y comisiones", "M4 19V5M4 19h16M7 15l4-4 3 2 5-7", "Gestión comercial", "04"],
   ["loteria-correntina", "Lotería Correntina", "M4 7h16v12H4zM8 7V5h8v2M8 12h8M8 15h5", "Información y servicios", "05"],
   ["configuracion", "Configuración", "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M19.4 15l1.1 1.1-2.2 2.2-1.1-1.1M4.6 9 3.5 7.9l2.2-2.2L6.8 6.8", "Opciones de agencia", "06"],
-  ["deudas-anteriores", "Deudas anteriores", "M12 3v18M17 7.5c0-1.4-1.9-2.5-5-2.5s-5 1.1-5 2.5 1.9 2.5 5 2.5 5 1.1 5 2.5-1.9 2.5-5 2.5-5 1.1-5 2.5 1.9 2.5 5 2.5 5-1.1 5-2.5", "Saldos pendientes de otros días", "07"],
 ] as const;
 
 export function AppShell({
@@ -46,7 +45,6 @@ export function AppShell({
     ["#E8DFF2", "#62457C"],
     ["#DDEBD7", "#42643A"],
     ["#E6E5E1", "#454545"],
-    ["#F4D8D5", "#812C36"],
   ] as const;
 
   const [accountDialog, setAccountDialog] = useState<"logout" | null>(null);
@@ -109,8 +107,8 @@ export function AppShell({
             return (
               <Link key={slug} href={href} prefetch={true} className={active ? "nav-item active panel-general-item" : "nav-item panel-general-item"}
                 style={{
-                  "--panel-card-bg": slug === "deudas-anteriores" ? "#F4D8D5" : panelPalette[index][0],
-                  "--panel-card-fg": slug === "deudas-anteriores" ? "#812C36" : panelPalette[index][1],
+                  "--panel-card-bg": panelPalette[index][0],
+                  "--panel-card-fg": panelPalette[index][1],
                 } as React.CSSProperties}
                 onClick={guardTicketNavigation}>
                 <span className="panel-nav-number">{number}</span>
@@ -356,7 +354,6 @@ export function AppShell({
           .sidebar .nav-list .nav-item:nth-child(2) { order: 4; }
           .sidebar .nav-list .nav-item:nth-child(4) { order: 5; }
           .sidebar .nav-list .nav-item:nth-child(6) { order: 6; }
-          .sidebar .nav-list .nav-item:nth-child(7) { order: 7; grid-column: 1 / -1; }
           .sidebar .nav-list .nav-item {
             min-width: 0;
             min-height: 58px;
@@ -389,7 +386,7 @@ export function AppShell({
           display: grid !important;
           grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           grid-auto-rows: minmax(0, 1fr) !important;
-          grid-template-rows: repeat(4, minmax(0, 1fr)) !important;
+          grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
           align-items: stretch !important;
           gap: 12px !important;
           margin: 16px 0 !important;
@@ -718,7 +715,7 @@ export function AppShell({
           .panel-general-summary { flex: 0 0 auto; margin: 6px 0 10px; padding: 9px 10px; border-radius: 8px; }
           .panel-general-summary-title > strong { font-size: 16px; }
           .panel-general-summary-title > small { max-width: 135px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-          :global(.app-shell.mobile-navigation-home .sidebar .nav-list) { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; grid-template-rows: repeat(4,minmax(0,1fr)) !important; grid-auto-flow: row !important; gap: 9px !important; flex: 1 0 auto !important; min-height: min(59vh,510px) !important; margin: 0 !important; padding: 0 !important; align-items: stretch !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list) { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; grid-template-rows: repeat(3,minmax(0,1fr)) !important; grid-auto-flow: row !important; gap: 9px !important; flex: 1 0 auto !important; min-height: min(59vh,510px) !important; margin: 0 !important; padding: 0 !important; align-items: stretch !important; }
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover),
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus),

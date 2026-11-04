@@ -1940,3 +1940,29 @@ input[type="time"]{font-variant-numeric:tabular-nums}
   .previous-debt-pay { grid-template-columns: 1fr; }
   .previous-debt-pay .button { width: 100%; }
 }
+
+/* Acceso de deudas anteriores integrado visualmente en los totales de Rendiciones. */
+.previous-debts-stat-link {
+  display: block;
+  color: #812c36 !important;
+  text-decoration: none !important;
+  border-color: #d8aeb0 !important;
+  background: #fff1ef !important;
+  cursor: pointer;
+  transition: box-shadow .15s ease, transform .15s ease, background-color .15s ease;
+}
+.previous-debts-stat-link span { color: #812c36 !important; }
+.previous-debts-stat-link strong { color: #812c36 !important; }
+.previous-debts-stat-link small { color: #7a4a4d !important; font-weight: 700; }
+.previous-debts-stat-link:hover,
+.previous-debts-stat-link:focus-visible {
+  background: #ffe7e4 !important;
+  border-color: #b76f75 !important;
+  box-shadow: 0 3px 10px rgba(129,44,54,.12) !important;
+  transform: translateY(-1px);
+  outline: 2px solid rgba(129,44,54,.15);
+  outline-offset: 2px;
+}
+@media (max-width: 700px) {
+  .previous-debts-stat-link { min-height: 90px; }
+}
