@@ -812,6 +812,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
     if (!busy) return;
     const timer = window.setInterval(() => {
       setProgressPercent((current) => {
+        if (current >= 100) return current;
         if (current >= 97) return 97;
         return Math.min(97, current + Math.max(0.15, (97 - current) * 0.025));
       });
@@ -1955,10 +1956,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
                 <span>{busy ? "LEYENDO TICKET" : progressPercent >= 100 ? "TICKET LEÍDO" : fileName ? "LECTURA PENDIENTE" : "FOTO O ARCHIVO"}</span>
                 <strong>{busy ? progress || "Procesando imagen…" : progressPercent >= 100 ? "Lectura completada" : fileName || "Esperando foto del ticket"}</strong>
               </div>
-              <b>{progressPercent}%</b>
+              <b>{Math.round(progressPercent)}%</b>
             </div>
-            <div className="ticket-progress-track" role="progressbar" aria-label="Progreso de lectura del ticket" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPercent}>
-              <span style={{ width: progressPercent + "%" }} />
+            <div className="ticket-progress-track" role="progressbar" aria-label="Progreso de lectura del ticket" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progressPercent)}>
+              <span style={{ width: Math.round(progressPercent) + "%" }} />
             </div>
             <small>{busy ? "No cierres esta pantalla; al terminar, los datos aparecen abajo en Juegos e importes." : progressPercent >= 100 ? "Los datos reconocidos están abajo en Juegos e importes y se pueden editar antes de confirmar." : "Seleccioná una foto para iniciar la lectura."}</small>
           </div>
