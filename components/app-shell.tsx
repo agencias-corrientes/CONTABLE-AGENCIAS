@@ -74,7 +74,7 @@ export function AppShell({
             const href = `/${slug}`;
             const active = pathname.startsWith(href) || (pathname === "/inicio" && selectedSection === slug);
             return (
-              <Link key={slug} href={href} prefetch={true} className={active ? "nav-item active" : "nav-item"} onClick={guardTicketNavigation}>
+              <Link key={slug} href={href} prefetch={true} className={active ? "nav-item active panel-general-item" : "nav-item panel-general-item"} onClick={guardTicketNavigation}>
                 <span className="panel-nav-number">{number}</span>
                 <span className="panel-nav-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -952,6 +952,90 @@ export function AppShell({
           top:8px!important;
           right:9px!important;
         }
+
+        /* Panel General: tarjetas amarillas pastel visibles y con número identificatorio. */
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:hover),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:focus),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:focus-visible) {
+          background: #fff0b8 !important;
+          background-image: none !important;
+          color: #493d27 !important;
+          border: 1px solid #dfc16d !important;
+          border-bottom: 5px solid #c9a64f !important;
+          box-shadow: 0 3px 0 rgba(87,68,25,.12), 0 6px 12px rgba(87,68,25,.08) !important;
+          transform: none !important;
+          filter: none !important;
+          outline: none !important;
+        }
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:hover),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:focus),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:focus-visible) {
+          background: #ffe79a !important;
+          color: #40351f !important;
+          border-color: #d4b45f !important;
+          border-bottom-color: #b8913c !important;
+          box-shadow: inset 0 2px 5px rgba(87,68,25,.10), 0 2px 6px rgba(87,68,25,.07) !important;
+          transform: none !important;
+        }
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:active),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:active) {
+          background: #ffdf7b !important;
+          border-color: #caa34e !important;
+          border-bottom-width: 3px !important;
+          box-shadow: inset 0 3px 7px rgba(87,68,25,.16) !important;
+          transform: translateY(1px) !important;
+        }
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-number) {
+          position: absolute !important;
+          top: 8px !important;
+          right: 9px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          min-width: 32px !important;
+          min-height: 23px !important;
+          padding: 3px 6px !important;
+          border: 1px solid #d7b75f !important;
+          border-radius: 6px !important;
+          background: #fff8dd !important;
+          color: #725820 !important;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.9) !important;
+          font-size: 10px !important;
+          font-weight: 950 !important;
+          line-height: 1 !important;
+          letter-spacing: .06em !important;
+        }
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-icon) {
+          border: 1px solid #e3cd8c !important;
+          border-radius: 10px !important;
+          background: #fff8dc !important;
+          color: #806329 !important;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.9) !important;
+        }
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong) {
+          color: #493d27 !important;
+        }
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy small) {
+          color: #766847 !important;
+        }
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-accent) {
+          background: #c9a64f !important;
+        }
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active .panel-nav-number),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:active .panel-nav-number) {
+          background: #fff2c5 !important;
+          border-color: #cda84e !important;
+          color: #674d1b !important;
+        }
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active .panel-nav-icon),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:active .panel-nav-icon) {
+          background: #fff2c5 !important;
+          border-color: #d3b45e !important;
+          color: #674d1b !important;
+        }
+
       `}</style>
     </div>
   );
