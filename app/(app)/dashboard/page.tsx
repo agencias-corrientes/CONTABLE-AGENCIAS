@@ -39,7 +39,6 @@ export default async function DashboardPage() {
         <Link href="/equipo">Personal y permisos</Link>
         <Link href="/agencias">Subagentes y ambulantes</Link>
         <Link href="/juegos">Juegos y comisiones</Link>
-        <Link href="/loteria-correntina">Extractos oficiales</Link>
         <Link href="/configuracion">Configuración general</Link>
       </div>
     </section>}
