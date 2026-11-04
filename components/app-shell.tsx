@@ -47,13 +47,13 @@ export function AppShell({
     ["#E6E5E1", "#454545"],
   ] as const;
 
-  const [accountDialog, setAccountDialog] = useState<"logout" | "exit" | "exit-blocked" | null>(null);
+  const [accountDialog, setAccountDialog] = useState<"logout" | null>(null);
   const [accountDialogBusy, setAccountDialogBusy] = useState(false);
   const [accountDialogError, setAccountDialogError] = useState("");
 
-  function openAccountDialog(mode: "logout" | "exit") {
+  function openLogoutDialog() {
     setAccountDialogError("");
-    setAccountDialog(mode);
+    setAccountDialog("logout");
   }
 
   async function completeLogout() {
@@ -71,27 +71,6 @@ export function AppShell({
       router.refresh();
     } catch {
       setAccountDialogError("No se pudo cerrar la sesión. Volvé a intentarlo.");
-    } finally {
-      setAccountDialogBusy(false);
-    }
-  }
-
-  async function completeApplicationExit() {
-    setAccountDialogBusy(true);
-    setAccountDialogError("");
-    try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        setAccountDialogError("No se pudo cerrar la sesión. No se cerró la aplicación.");
-        return;
-      }
-      window.close();
-      if (!window.closed) {
-        setAccountDialog("exit-blocked");
-      }
-    } catch {
-      setAccountDialogError("No se pudo completar la salida. Volvé a intentarlo.");
     } finally {
       setAccountDialogBusy(false);
     }
@@ -150,8 +129,7 @@ export function AppShell({
             <span className="user-line" title={userEmail}>{userEmail}</span>
           </div>
           {isPlatformAdmin && <Link href="/plataforma/accesos" className="button ghost full central-return-button" onClick={guardTicketNavigation}>↩ Volver a control de agencia</Link>}
-          <button className="button ghost full" onClick={() => openAccountDialog("logout")}>Cerrar sesión</button>
-          <button className="button ghost full app-exit-button" onClick={() => openAccountDialog("exit")}>Salir de la aplicación</button>
+          <button className="button ghost full" onClick={openLogoutDialog}>Cerrar sesión</button>
         </div>
       </aside>
       <main className="content-area">
@@ -176,36 +154,26 @@ export function AppShell({
           <section className="app-shell-dialog" role="alertdialog" aria-modal="true" aria-labelledby="app-shell-dialog-title" aria-describedby="app-shell-dialog-description">
             <p className="eyebrow">AGENCIAS CORRIENTES</p>
             <h2 id="app-shell-dialog-title">
-              {accountDialog === "logout" ? "¿Querés cerrar sesión?" : accountDialog === "exit" ? "¿Querés salir de la aplicación?" : "La aplicación no se pudo cerrar automáticamente"}
+              ¿Querés cerrar sesión?
             </h2>
             <p id="app-shell-dialog-description">
-              {accountDialog === "logout"
-                ? "Vas a salir de tu cuenta y volver a la pantalla de acceso."
-                : accountDialog === "exit"
-                  ? "Se cerrará tu sesión y se intentará cerrar por completo la ventana de la aplicación."
-                  : "Tu sesión ya se cerró, pero el navegador no permitió cerrar esta ventana desde la aplicación. Cerrá la pestaña o la app desde los controles de tu dispositivo."}
+              Vas a salir de tu cuenta y volver a la pantalla de acceso.
             </p>
             {accountDialogError && <p className="app-shell-dialog-error" role="alert">{accountDialogError}</p>}
             <div className="app-shell-dialog-actions">
-              {accountDialog === "exit-blocked" ? (
-                <button type="button" className="app-shell-dialog-confirm" onClick={() => { setAccountDialog(null); router.push("/"); router.refresh(); }}>
-                  Ir a la pantalla de acceso
+              <>
+                <button type="button" className="app-shell-dialog-cancel" onClick={() => setAccountDialog(null)} disabled={accountDialogBusy}>
+                  No, volver
                 </button>
-              ) : (
-                <>
-                  <button type="button" className="app-shell-dialog-cancel" onClick={() => setAccountDialog(null)} disabled={accountDialogBusy}>
-                    No, volver
-                  </button>
-                  <button
-                    type="button"
-                    className="app-shell-dialog-confirm"
-                    onClick={accountDialog === "logout" ? completeLogout : completeApplicationExit}
-                    disabled={accountDialogBusy}
-                  >
-                    {accountDialogBusy ? "Procesando..." : accountDialog === "logout" ? "Sí, cerrar sesión" : "Sí, salir"}
-                  </button>
-                </>
-              )}
+                <button
+                  type="button"
+                  className="app-shell-dialog-confirm"
+                  onClick={completeLogout}
+                  disabled={accountDialogBusy}
+                >
+                  {accountDialogBusy ? "Procesando..." : "Sí, cerrar sesión"}
+                </button>
+              </>
             </div>
           </section>
         </div>
@@ -224,8 +192,6 @@ export function AppShell({
         .app-shell-dialog-confirm { background:#343a40; color:#fff; }
         .app-shell-dialog-cancel:hover:not(:disabled) { background:#f1eee7; }
         .app-shell-dialog-confirm:hover:not(:disabled) { background:#20252a; }
-        .sidebar .app-exit-button { margin-top:6px; border-color:rgba(124,51,71,.35); color:#7c3347; font-weight:800; }
-        .sidebar .app-exit-button:hover,.sidebar .app-exit-button:focus-visible { background:#fff5f1; border-color:#7c3347; }
         @media(max-width:520px) {
           .app-shell-dialog { padding:20px 17px; }
           .app-shell-dialog h2 { font-size:21px; }
