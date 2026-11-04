@@ -1037,53 +1037,66 @@ export function AppShell({
         }
 
 
-        /* Panel General: mostaza suave, manteniendo los marcos identificatorios. */
+        /* Panel General: mostaza en el fondo de cada botón; sombra neutra. */
         :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item),
         :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:hover),
         :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:focus),
-        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:focus-visible) {
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:focus-visible),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item:hover),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item:focus),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item:focus-visible) {
           background: #ead99f !important;
+          background-color: #ead99f !important;
           background-image: none !important;
           color: #493d27 !important;
           border-color: #d0b96f !important;
-          border-bottom-color: #b99b4d !important;
-          box-shadow: 0 3px 0 rgba(87,68,25,.11), 0 6px 12px rgba(87,68,25,.07) !important;
+          border-bottom-color: #d0b96f !important;
+          box-shadow: 0 2px 6px rgba(40,35,25,.10) !important;
           transform: none !important;
           filter: none !important;
           outline: none !important;
         }
         :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active),
         :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:hover),
-        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:focus-visible) {
-          background: #e2cd88 !important;
-          border-color: #c6aa61 !important;
-          border-bottom-color: #a98a3e !important;
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:focus-visible),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item.active),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item.active:hover),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item.active:focus-visible) {
+          background: #ead99f !important;
+          background-color: #ead99f !important;
+          border-color: #d0b96f !important;
+          border-bottom-color: #d0b96f !important;
+          box-shadow: 0 2px 6px rgba(40,35,25,.10) !important;
         }
         :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:active),
-        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:active) {
-          background: #d9c176 !important;
-          border-color: #b99b4d !important;
-          border-bottom-width: 3px !important;
-          box-shadow: inset 0 3px 7px rgba(87,68,25,.15) !important;
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:active),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item:active),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item.active:active) {
+          background: #e2cd88 !important;
+          background-color: #e2cd88 !important;
+          border-color: #c6aa61 !important;
+          border-bottom-color: #c6aa61 !important;
+          box-shadow: inset 0 2px 5px rgba(40,35,25,.10) !important;
           transform: translateY(1px) !important;
         }
-        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-number) {
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-number) {
           background: #f7edca !important;
           border-color: #cdb66e !important;
           color: #705a2c !important;
         }
-        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-icon) {
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-icon) {
           background: #f5e9bd !important;
           border-color: #d4bf7e !important;
           color: #79602c !important;
         }
-        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong) {
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong) {
           color: #493d27 !important;
         }
-        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy small) {
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy small) {
           color: #766847 !important;
         }
-        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-accent) {
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-accent) {
           background: #b99b4d !important;
         }
 
