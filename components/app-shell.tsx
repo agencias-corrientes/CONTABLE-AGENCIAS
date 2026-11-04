@@ -67,7 +67,7 @@ export function AppShell({
         <div className="sidebar-brand">
           <div className="brand-logo-wrap sidebar-logo"><Image src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png" alt="Agencias Corrientes — Quiniela Oficial" width={48} height={48} priority /></div>
           <div className="brand-copy">
-            <div className="brand-title-row"><strong>Agencias</strong>{officialAgencyNumber && <span className="official-agency-number" aria-label={"Agencia oficial " + officialAgencyNumber}>{officialAgencyNumber}</span>}</div>
+            <div className="brand-title-row"><strong>Agencias Corrientes</strong>{officialAgencyNumber && <span className="official-agency-number" aria-label={"Agencia oficial " + officialAgencyNumber}>{officialAgencyNumber}</span>}</div>
             <span className="brand-subtitle">Subagentes · Ambulantes</span>
           </div>
         </div>
@@ -191,7 +191,7 @@ export function AppShell({
         }
         .brand-copy { min-width: 0; flex: 1; align-self: stretch; display: flex; flex-direction: column; justify-content: center; gap: 1px; }
         .brand-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; height: 48px; min-width: 0; }
-        .sidebar .brand-title-row strong { display: block; font-size: 18px; line-height: 1.1; }
+        .sidebar .brand-title-row strong { display: block; flex: 1 1 auto; min-width: 0; font-size: 16px; line-height: 1.08; letter-spacing: -.02em; }
         .sidebar .brand-subtitle { display: block; color: #eadcc2; font-size: 12px; line-height: 1.2; letter-spacing: .005em; white-space: nowrap; }
         .official-agency-number { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 52px; width: 52px; height: 44px; padding: 0; border: 1px solid #eadbb4; border-radius: 8px; background: #f4edcf; color: #30250b; font-size: 20px !important; font-weight: 950; line-height: 1; letter-spacing: .01em; box-shadow: 0 3px 0 rgba(30,10,16,.19); }
         @media (max-width: 1000px) {
@@ -203,7 +203,7 @@ export function AppShell({
         @media (max-width: 420px) {
           .sidebar .nav-list .nav-item { font-size: 15px; min-height: 68px; padding: 10px 8px; line-height: 1.25; }
           .sidebar .brand-title-row { gap: 6px; }
-          .sidebar .brand-title-row strong { font-size: 17px; }
+          .sidebar .brand-title-row strong { font-size: 15.5px; }
           .sidebar .brand-subtitle { font-size: 11px; }
           .official-agency-number { flex-basis: 52px; width: 52px; height: 44px; font-size: 20px !important; }
         }

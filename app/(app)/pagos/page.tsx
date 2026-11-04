@@ -738,7 +738,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             </div>
             {historicalDays.length ? (
               <div className="rendition-archive-days">
-                {historicalDays.map(({ day, rows: dayRows, dailyStatuses: dayStatuses, drawStatuses: dayDrawStatuses }, dayIndex) => {
+                {historicalDays.map(({ day, rows: dayRows, dailyStatuses: dayStatuses, drawStatuses: dayDrawStatuses }) => {
                   const activeDayRows = dayRows.filter((row) => row.status !== "void");
                   const total = activeDayRows.reduce((sum, row) => sum + Number(row.amount_due ?? 0), 0);
                   const received = activeDayRows.reduce((sum, row) => sum + rowTotals(row).received, 0);
@@ -752,7 +752,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
                     ...dayDrawStatuses.map((status) => String(status.agent_id)),
                   ]));
                   return (
-                    <details className="rendition-archive-day" key={day} open={dayIndex === 0}>
+                    <details className="rendition-archive-day" key={day}>
                       <summary>
                         <span><strong>{formatAgencyDate(day)}</strong><small>{dayRows.length} rendiciones · {dayStatuses.length + dayDrawStatuses.length} estados guardados</small></span>
                         <span className="rendition-archive-summary-totals">
