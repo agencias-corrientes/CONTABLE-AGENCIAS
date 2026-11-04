@@ -11,6 +11,12 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#ffffff",
+    related_applications: [
+      {
+        platform: "webapp",
+        url: "https://contable-agencias.vercel.app/manifest.webmanifest",
+      },
+    ],
     icons: [
       {
         src: "/icon-192x192.png",
