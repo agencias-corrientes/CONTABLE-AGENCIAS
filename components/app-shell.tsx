@@ -915,6 +915,37 @@ export function AppShell({
           box-shadow: inset 0 2px 4px rgba(75,59,53,.14) !important;
           transform: translateY(2px) !important;
         }
+
+        /* Encabezado institucional: solo logo, nombre, número de agencia y subtítulo.
+           Los accesos adicionales de cabecera no deben aparecer sobre el número 000. */
+        :global(html body .app-shell aside.sidebar .sidebar-brand > :not(.sidebar-logo):not(.brand-copy)),
+        :global(html body .app-shell aside.sidebar .brand-copy > :not(.brand-title-row):not(.brand-subtitle)),
+        :global(html body .app-shell aside.sidebar .brand-title-row > :not(strong):not(.official-agency-number)),
+        :global(html body .app-shell aside.sidebar .panel-general-summary > :not(.panel-general-summary-title)),
+        :global(html body .app-shell aside.sidebar .sidebar-brand a),
+        :global(html body .app-shell aside.sidebar .sidebar-brand button),
+        :global(html body .app-shell aside.sidebar .sidebar-brand [role="link"]),
+        :global(html body .app-shell aside.sidebar .sidebar-brand [role="button"]),
+        :global(html body .app-shell aside.sidebar .panel-general-summary a),
+        :global(html body .app-shell aside.sidebar .panel-general-summary button),
+        :global(html body .app-shell aside.sidebar > a:not(.nav-item)),
+        :global(html body .app-shell aside.sidebar > button),
+        :global(html body .app-shell aside.sidebar > [role="link"]),
+        :global(html body .app-shell aside.sidebar > [role="button"]) {
+          display:none!important;
+          visibility:hidden!important;
+          pointer-events:none!important;
+        }
+        /* El número 05 pertenece al acceso normal del menú y debe quedar dentro de su tarjeta,
+           nunca flotando arriba de la cabecera. */
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.nav-item) {
+          position:relative!important;
+        }
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.nav-item > .panel-nav-number) {
+          position:absolute!important;
+          top:8px!important;
+          right:9px!important;
+        }
       `}</style>
     </div>
   );
