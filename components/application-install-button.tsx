@@ -7,6 +7,13 @@ type InstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
+type NavigatorWithPwa = Navigator & {
+  standalone?: boolean;
+  getInstalledRelatedApps?: () => Promise<Array<{ id?: string; platform: string; url?: string }>>;
+};
+
+const INSTALLED_MARKER = "agencias-corrientes:pwa-installed:v1";
+
 export function ApplicationInstallButton() {
   const [mounted, setMounted] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -18,36 +25,76 @@ export function ApplicationInstallButton() {
   const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
+    let active = true;
+    const pwaNavigator = navigator as NavigatorWithPwa;
     const standalone = window.matchMedia("(display-mode: standalone)").matches
-      || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+      || window.matchMedia("(display-mode: fullscreen)").matches
+      || pwaNavigator.standalone === true;
     const userAgent = navigator.userAgent;
     const ios = /iPad|iPhone|iPod/.test(userAgent)
       || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    setIsInstalled(standalone);
+
+    const markInstalled = () => {
+      try {
+        window.localStorage.setItem(INSTALLED_MARKER, "1");
+      } catch {
+        // La detección por modo independiente y por el navegador sigue funcionando.
+      }
+      if (active) {
+        setIsInstalled(true);
+        setInstallPrompt(null);
+        setHelpOpen(false);
+      }
+    };
+
+    let alreadyInstalled = standalone;
+    try {
+      alreadyInstalled = alreadyInstalled || window.localStorage.getItem(INSTALLED_MARKER) === "1";
+    } catch {
+      // El almacenamiento puede estar bloqueado; se consultará la API del navegador.
+    }
+
+    if (standalone) markInstalled();
+    setIsInstalled(alreadyInstalled);
     setIsIOS(ios);
     setIsAndroid(/Android/i.test(userAgent));
     setIsMacSafari(/Macintosh/i.test(userAgent) && /Safari/i.test(userAgent) && !/Chrome|Chromium|Edg/i.test(userAgent));
-    setMounted(true);
 
     const onBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
-      setInstallPrompt(event as InstallPromptEvent);
+      if (!alreadyInstalled && active) setInstallPrompt(event as InstallPromptEvent);
     };
-    const onAppInstalled = () => {
-      setIsInstalled(true);
-      setInstallPrompt(null);
-      setHelpOpen(false);
-    };
+    const onAppInstalled = () => markInstalled();
 
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
     window.addEventListener("appinstalled", onAppInstalled);
+
+    // Chrome en Android puede informar desde el navegador si esta PWA ya está instalada.
+    if (!alreadyInstalled && pwaNavigator.getInstalledRelatedApps) {
+      pwaNavigator.getInstalledRelatedApps()
+        .then((apps) => {
+          if (!active) return;
+          const installedWebApp = apps.some((app) =>
+            app.platform === "webapp"
+            && (!app.url || app.url.includes("/manifest.webmanifest"))
+          );
+          if (installedWebApp) markInstalled();
+        })
+        .catch(() => {
+          // Si el navegador no ofrece esta API, se conserva la detección local.
+        });
+    }
+
+    setMounted(true);
     return () => {
+      active = false;
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
       window.removeEventListener("appinstalled", onAppInstalled);
     };
   }, []);
 
   async function handleInstall() {
+    if (isInstalled) return;
     if (!installPrompt) {
       setHelpOpen(true);
       return;
@@ -58,7 +105,14 @@ export function ApplicationInstallButton() {
       setInstallPrompt(null);
       await promptEvent.prompt();
       const choice = await promptEvent.userChoice;
-      if (choice.outcome === "accepted") setIsInstalled(true);
+      if (choice.outcome === "accepted") {
+        try {
+          window.localStorage.setItem(INSTALLED_MARKER, "1");
+        } catch {
+          // El evento appinstalled también actualizará el estado.
+        }
+        setIsInstalled(true);
+      }
     } finally {
       setInstalling(false);
     }
