@@ -1,16 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function ApplicationExitButton() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [closeBlocked, setCloseBlocked] = useState(false);
+  const [isInstalledApp, setIsInstalledApp] = useState(false);
+
+  useEffect(() => {
+    const standalone = window.matchMedia("(display-mode: standalone)").matches
+      || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+    setIsInstalledApp(standalone);
+  }, []);
 
   function exitApplication() {
     setConfirmOpen(false);
     window.close();
     if (!window.closed) setCloseBlocked(true);
   }
+
+  if (!isInstalledApp) return null;
 
   return (
     <div className="landing-app-exit">

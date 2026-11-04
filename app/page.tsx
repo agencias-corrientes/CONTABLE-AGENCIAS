@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { LandingSplash } from "@/components/landing-splash";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ApplicationExitButton } from "@/components/application-exit-button";
+import { ApplicationInstallButton } from "@/components/application-install-button";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -58,6 +59,7 @@ export default async function HomePage() {
             <span className="landing-role-copy"><strong>Empleado</strong><span className="landing-role-action">Ingresar</span></span>
           </Link>
         </div>
+        <ApplicationInstallButton />
         <ApplicationExitButton />
         <div className="login-create-account"><Link href="/registro">Crear cuenta de titular</Link></div>
       </section>
