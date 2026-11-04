@@ -6,7 +6,7 @@ import { createAgencyAgent } from "../actions";
 const errorMessages: Record<string, string> = {
   "sin-permiso-alta": "No tenés permiso para dar de alta subagentes o ambulantes.",
   "tipo-invalido": "El tipo de agente seleccionado no es válido.",
-  "codigo-invalido": "Ingresá el código con el formato 251-010-01.",
+  "codigo-invalido": "Ingresá el código con el formato 000-000-00.",
   "nombre-obligatorio": "Ingresá el nombre del subagente o ambulante.",
   "agencia-no-configurada": "Antes de cargar agentes, configurá el número oficial de 3 dígitos en Configuración → Datos de la agencia.",
   "agencia-ajena": "El código debe comenzar con el número oficial de esta agencia. No se creó el registro.",
@@ -99,7 +99,7 @@ export default async function AgenciasAltaPage({
               </label>
               <button className="button primary agency-create-submit" type="submit">Agregar subagente o ambulante</button>
             </form>
-            <p className="agency-create-code-help">El código se completa automáticamente con guiones. Formato: 251-010-01.</p>
+            <p className="agency-create-code-help">El código se completa automáticamente con guiones. Formato: 000-000-00.</p>
           </>
         )}
       </section>
