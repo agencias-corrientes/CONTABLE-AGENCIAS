@@ -2366,3 +2366,93 @@ body .app-shell .sidebar .nav-list .nav-item:active .panel-nav-number {
     outline:none!important;
   }
 }
+
+
+/* Panel general: amarillo pastel sutil, recuadros identificatorios y hover estable. */
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item,
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item:hover,
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item:focus,
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item:focus-visible {
+  background:#fff4cf!important;
+  background-image:none!important;
+  color:#4c4030!important;
+  border:1px solid #e5d29a!important;
+  border-bottom:4px solid #cfb66c!important;
+  box-shadow:0 3px 0 rgba(83,66,29,.10),0 5px 11px rgba(83,66,29,.07)!important;
+  transform:none!important;
+  filter:none!important;
+  transition:none!important;
+}
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item.active,
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item.active:hover,
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item.active:focus,
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item.active:focus-visible {
+  background:#fbe9ae!important;
+  background-image:none!important;
+  color:#443923!important;
+  border-color:#d8c17d!important;
+  border-bottom-color:#b99a50!important;
+  box-shadow:inset 0 2px 5px rgba(83,66,29,.10),0 2px 5px rgba(83,66,29,.06)!important;
+  transform:none!important;
+}
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item:active,
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item.active:active {
+  background:#f8e3a0!important;
+  border-color:#d5bd78!important;
+  border-bottom-width:3px!important;
+  box-shadow:inset 0 3px 7px rgba(83,66,29,.15)!important;
+  transform:translateY(1px)!important;
+  outline:none!important;
+}
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item:focus-visible {
+  outline:2px solid #d9c27e!important;
+  outline-offset:2px!important;
+}
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item .panel-nav-number {
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-width:29px!important;
+  min-height:21px!important;
+  padding:3px 5px!important;
+  border:1px solid #e4cf91!important;
+  border-radius:6px!important;
+  background:#fff9e8!important;
+  color:#80662b!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85)!important;
+  font-size:10px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  letter-spacing:.06em!important;
+}
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item .panel-nav-icon {
+  border:1px solid #e7d6a7!important;
+  border-radius:9px!important;
+  background:#fff9e7!important;
+  color:#80662b!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8)!important;
+}
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item .panel-nav-copy strong {
+  color:#4c4030!important;
+}
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item .panel-nav-copy small {
+  color:#796d55!important;
+}
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item .panel-nav-accent {
+  background:#d4b96e!important;
+}
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item.active .panel-nav-number,
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item:active .panel-nav-number {
+  background:#fff4ce!important;
+  border-color:#d8c17d!important;
+  color:#735922!important;
+}
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item.active .panel-nav-icon,
+html body .app-shell aside.sidebar nav.nav-list > a.nav-item:active .panel-nav-icon {
+  background:#fff5d8!important;
+  border-color:#ddc783!important;
+  color:#735922!important;
+}
+@media(prefers-reduced-motion:reduce) {
+  html body .app-shell aside.sidebar nav.nav-list > a.nav-item {transition:none!important}
+}
