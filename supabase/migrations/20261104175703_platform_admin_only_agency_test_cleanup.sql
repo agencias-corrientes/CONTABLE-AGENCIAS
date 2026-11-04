@@ -52,3 +52,8 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.cleanup_agency_test_data(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.cleanup_agency_test_data(uuid) TO authenticated;
+
+-- Private helpers are only callable by the SECURITY DEFINER public wrappers.
+-- Explicitly revoke inherited default EXECUTE grants as defense in depth.
+REVOKE ALL ON FUNCTION private.preview_agency_launch_cleanup(uuid) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION private.clear_agency_launch_test_data(uuid) FROM PUBLIC, anon, authenticated;
