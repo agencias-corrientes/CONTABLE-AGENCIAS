@@ -1062,6 +1062,9 @@ export function AppShell({
           background-color: var(--panel-card-bg) !important;
           background-image: none !important;
           color: var(--panel-card-fg) !important;
+          border: 1px solid #292929 !important;
+          border-bottom-width: 1px !important;
+          border-radius: 14px !important;
           box-shadow: 0 2px 6px rgba(40,35,25,.10) !important;
           transform: none !important;
           filter: none !important;
