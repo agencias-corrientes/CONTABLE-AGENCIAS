@@ -1100,6 +1100,51 @@ export function AppShell({
           background: #b99b4d !important;
         }
 
+
+        /* Paleta intuitiva del Panel General: cambia solo los colores de las seis tarjetas. */
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1)) { --panel-bg:#E9B83F; --panel-fg:#382B16; }
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2)) { --panel-bg:#D8E9E4; --panel-fg:#245C4D; }
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3)) { --panel-bg:#DCE8F5; --panel-fg:#28527A; }
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4)) { --panel-bg:#E8DFF2; --panel-fg:#62457C; }
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5)) { --panel-bg:#DDEBD7; --panel-fg:#42643A; }
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6)) { --panel-bg:#E6E5E1; --panel-fg:#454545; }
+
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:hover),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:focus),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:focus-visible),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:hover),
+        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:focus-visible),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item:hover),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item:focus),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item:focus-visible),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item.active),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item.active:hover),
+        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item.active:focus-visible) {
+          background:var(--panel-bg)!important;
+          background-color:var(--panel-bg)!important;
+          background-image:none!important;
+          color:var(--panel-fg)!important;
+        }
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong),
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy small),
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-number) {
+          color:var(--panel-fg)!important;
+        }
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-icon),
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-number) {
+          background:rgba(255,255,255,.58)!important;
+          border-color:rgba(65,55,40,.18)!important;
+        }
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:active),
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item.active:active) {
+          background:var(--panel-bg)!important;
+          background-color:var(--panel-bg)!important;
+          color:var(--panel-fg)!important;
+        }
+
       `}</style>
     </div>
   );
