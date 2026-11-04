@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-/** Breve presentación de marca al llegar a la pantalla de selección de acceso. */
+/** Splash blanco con el logo, visible al iniciar tanto en web como en la aplicación instalada. */
 export function LandingSplash() {
   const [phase, setPhase] = useState<"show" | "fade" | "hidden">("show");
 
@@ -30,8 +30,7 @@ export function LandingSplash() {
         alignItems: "center",
         justifyContent: "center",
         padding: "24px",
-        background:
-          "linear-gradient(180deg, #fff9e8 0%, #f4edcf 79%, #70243a 79%, #70243a 100%)",
+        background: "#ffffff",
         opacity: phase === "fade" ? 0 : 1,
         transition: "opacity 850ms ease-in-out",
         pointerEvents: phase === "fade" ? "none" : "auto",
