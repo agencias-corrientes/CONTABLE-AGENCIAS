@@ -47,6 +47,12 @@ export function AppShell({
 
   const displayRole = isOwner || userRole === "admin" ? "Administrador" : "Empleado";
 
+  // Pide al formulario activo que confirme antes de salir de una rendición con ticket cargado.
+  function guardTicketNavigation(event: React.MouseEvent<HTMLAnchorElement>) {
+    const request = new Event("agencias:request-panel-return", { cancelable: true });
+    if (!window.dispatchEvent(request)) event.preventDefault();
+  }
+
   return (
     <div className={pathname === "/inicio" ? "app-shell mobile-navigation-home" : "app-shell"}>
       <aside className="sidebar">
@@ -68,7 +74,7 @@ export function AppShell({
             const href = `/${slug}`;
             const active = pathname.startsWith(href) || (pathname === "/inicio" && selectedSection === slug);
             return (
-              <Link key={slug} href={href} prefetch={true} className={active ? "nav-item active" : "nav-item"}>
+              <Link key={slug} href={href} prefetch={true} className={active ? "nav-item active" : "nav-item"} onClick={guardTicketNavigation}>
                 <span className="panel-nav-number">{number}</span>
                 <span className="panel-nav-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -89,7 +95,7 @@ export function AppShell({
             <span className="user-role-pill">{displayRole}</span>
             <span className="user-line" title={userEmail}>{userEmail}</span>
           </div>
-          {isPlatformAdmin && <Link href="/plataforma/accesos" className="button ghost full central-return-button">↩ Volver a control de agencia</Link>}
+          {isPlatformAdmin && <Link href="/plataforma/accesos" className="button ghost full central-return-button" onClick={guardTicketNavigation}>↩ Volver a control de agencia</Link>}
           <button className="button ghost full" onClick={signOut}>Cerrar sesión</button>
         </div>
       </aside>
