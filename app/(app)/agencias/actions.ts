@@ -278,7 +278,7 @@ export async function createAgencyAgent(formData: FormData) {
   }
   revalidatePath("/agencias");
   revalidatePath("/agencias/alta");
-  redirect("/agencias/alta?resultado=creado&codigo=" + encodeURIComponent(code));
+  redirect("/agencias/alta?resultado=creado&codigo=" + encodeURIComponent(code) + "&tipo=" + encodeURIComponent(kindLabel));
 }
 
 export async function updateAgencyAgentProfile(formData: FormData) {
