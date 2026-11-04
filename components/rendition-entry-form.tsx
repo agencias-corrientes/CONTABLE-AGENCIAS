@@ -61,13 +61,11 @@ async function getPaddleOcrEngine(): Promise<any> {
   if (!paddleOcrEnginePromise) {
     paddleOcrEnginePromise = loadPaddleOcrSdk()
       .then(({ PaddleOCR }) => PaddleOCR.create({
-        // PP-OCRv6 Tiny usa los modelos oficiales compactos (det + rec),
-        // con cobertura de escritura latina, incluido español. Reduce la
-        // descarga inicial frente al preset Small sin cambiar el parser.
-        textDetectionModelName: "PP-OCRv6_tiny_det",
-        textRecognitionModelName: "PP-OCRv6_tiny_rec",
-        // El CDN +esm no empaqueta el worker dentro del build de Next/Vercel.
-        // Se conserva el modo directo para no introducir un worker no probado.
+        lang: "es",
+        ocrVersion: "PP-OCRv6",
+        // Se conserva el motor completo de la versión OCR aprobada.
+        // El ahorro de tiempo se obtiene reutilizando su primera lectura y
+        // evitando pasadas adicionales cuando los campos ya están presentes.
         worker: false,
         ortOptions: {
           backend: "wasm",
@@ -1281,7 +1279,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         }
       }
 
-      setProgress("Preparando lecturas independientes del cupón…");
+      setProgress("Iniciando lector avanzado de texto…");
       setProgressPercent(18);
       let recognizedText = "";
       let recoveredPeriodNumber = "";
@@ -1289,102 +1287,64 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let focusedOcrDebugText = "";
       let focusedOcrWords: unknown = null;
       let paddleMetadataWords: unknown[] = [];
-      let focusedPaddleMetadataWords: unknown[] = [];
-      let focusedPaddleDebugText = "";
       let closureTextCandidates: string[] = [];
+      let paddleFailure = "";
       const closureReadExpected = dailyMode || receiptOnlyMode || batchMode;
-      const ocrCandidates: Array<{ engine: string; text: string }> = [];
-      const candidateErrors: string[] = [];
 
-      // OCR.Space y PaddleOCR trabajan en paralelo para reducir la espera.
-      // Tesseract queda como verificación adicional cuando las lecturas rápidas
-      // no alcanzan a validar el total de ventas del cierre.
-      setProgress("Leyendo el cupón en paralelo…");
-      setProgressPercent(24);
-      const fastReads = await Promise.all([
-        (async () => {
-          try {
-            const upload = new FormData();
-            upload.append("file", file);
-            const response = await fetch("/api/ocr-space", { method: "POST", body: upload });
-            const result = await response.json().catch(() => ({})) as { text?: string; error?: string };
-            if (!response.ok) throw new Error(result.error || "OCR.Space no pudo procesar la foto.");
-            const text = String(result.text ?? "").trim();
-            if (text) ocrCandidates.push({ engine: "OCR.Space", text });
-            else candidateErrors.push("OCR.Space: no encontró texto.");
-          } catch (cause) {
-            candidateErrors.push("OCR.Space: " + (cause instanceof Error ? cause.message : String(cause)));
-          }
-        })(),
-        (async () => {
-          try {
-            const paddle = await getPaddleOcrEngine();
-            const [paddleResult] = await paddle.predict(file, {
-              textDetBoxThresh: 0.4,
-              textDetUnclipRatio: 1.8,
-              textRecScoreThresh: 0.0,
-            });
-            paddleMetadataWords = paddleItemsToWordBoxes(paddleResult?.items ?? []);
-            const text = paddleOcrItemsToText(paddleResult?.items ?? []).trim();
-            if (text) ocrCandidates.push({ engine: "PaddleOCR", text });
-            else candidateErrors.push("PaddleOCR: no encontró texto.");
-          } catch (cause) {
-            candidateErrors.push("PaddleOCR: " + (cause instanceof Error ? cause.message : String(cause)));
-          }
-        })(),
-      ]);
-      void fastReads;
-      setProgressPercent(52);
-      const fastCandidateHasVerifiedSales = closureReadExpected && ocrCandidates.some((candidate) => {
-        const receipt = parseTicketClosure(candidate.text, true);
-        return receipt?.consistency.salesTotalsMatch === true;
-      });
+      // Mantener el flujo validado: PaddleOCR completo es la primera lectura.
+      // Sus cajas se reutilizan luego para identificar los campos del cupón.
+      try {
+        const paddle = await getPaddleOcrEngine();
+        setProgress("Reconociendo los renglones impresos del cupón…");
+        setProgressPercent(35);
+        const [paddleResult] = await paddle.predict(file, {
+          textDetBoxThresh: 0.4,
+          textDetUnclipRatio: 1.8,
+          textRecScoreThresh: 0.0,
+        });
+        paddleMetadataWords = paddleItemsToWordBoxes(paddleResult?.items ?? []);
+        recognizedText = paddleOcrItemsToText(paddleResult?.items ?? []);
+      } catch (cause) {
+        paddleFailure = cause instanceof Error ? cause.message : String(cause);
+        recognizedText = "";
+      }
 
-      if (!fastCandidateHasVerifiedSales) {
+      // Tesseract vuelve a ser el respaldo cuando la primera lectura no obtiene
+      // suficiente texto. Se conservan también sus cajas para no repetirlo luego.
+      if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
+        const paddlePartialText = recognizedText;
+        setProgress("Activando lector de respaldo…");
+        setProgressPercent(42);
+        const { createWorker } = await import("tesseract.js");
+        const worker = await createWorker("spa+eng", 1, {
+          logger: (message) => {
+            if (message.status === "recognizing text" && typeof message.progress === "number") {
+              const percent = Math.min(96, 42 + Math.round(message.progress * 52));
+              setProgressPercent(percent);
+              setProgress("Reconociendo ticket…");
+            }
+          },
+        });
         try {
-          setProgress("Verificando importes con Tesseract…");
-          setProgressPercent(58);
-          const { createWorker } = await import("tesseract.js");
-          const worker = await createWorker("spa+eng", 1, {
-            logger: (message) => {
-              if (message.status === "recognizing text" && typeof message.progress === "number") {
-                const percent = Math.min(96, 58 + Math.round(message.progress * 38));
-                setProgressPercent(percent);
-                setProgress("Comparando lectura del comprobante…");
-              }
-            },
-          });
-          try {
-            const result = await worker.recognize(file, {}, { blocks: true });
-            focusedOcrWords = tesseractWordBoxes(result.data);
-            const text = String(result.data.text ?? "").trim();
-            focusedOcrDebugText = text;
-            if (text) ocrCandidates.push({ engine: "Tesseract", text });
-            else candidateErrors.push("Tesseract: no encontró texto.");
-          } finally {
-            await worker.terminate();
+          const result = await worker.recognize(file, {}, { blocks: true });
+          focusedOcrWords = tesseractWordBoxes(result.data);
+          const tesseractText = String(result.data.text ?? "").trim();
+          focusedOcrDebugText = tesseractText;
+          if (ocrTextHasEnoughSignals(tesseractText, closureReadExpected) || tesseractText.length >= paddlePartialText.length) {
+            recognizedText = tesseractText;
           }
-        } catch (cause) {
-          candidateErrors.push("Tesseract: " + (cause instanceof Error ? cause.message : String(cause)));
+        } finally {
+          await worker.terminate();
         }
-      } else {
-        setProgress("Lectura rápida validada; revisando datos del ticket…");
       }
 
-      const usableCandidates = ocrCandidates.filter((candidate) =>
-        ocrTextHasEnoughSignals(candidate.text, closureReadExpected)
-      );
-      closureTextCandidates = closureReadExpected ? usableCandidates.map((candidate) => candidate.text) : [];
-      const initialCandidate = (usableCandidates.length ? usableCandidates : ocrCandidates)
-        .slice()
-        .sort((a, b) => b.text.length - a.text.length)[0];
-      recognizedText = initialCandidate?.text ?? "";
       setOcrText(recognizedText);
-
-      if (!usableCandidates.length) {
-        const detail = candidateErrors.length ? " " + candidateErrors.join(" | ").slice(0, 260) : "";
-        throw new Error("Ningún motor obtuvo una lectura suficiente. No se cargaron datos automáticos." + detail);
+      if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
+        const detail = paddleFailure ? " Error de PaddleOCR: " + paddleFailure.slice(0, 220) : "";
+        throw new Error("La lectura automática no obtuvo texto suficiente. No se cargaron datos inventados." + detail);
       }
+      if (closureReadExpected) closureTextCandidates = [recognizedText];
+
       const activeGames = games.filter((game) => game.enabled !== false);
       let parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber, dailyMode || receiptOnlyMode || batchMode);
       // Elegir la pasada OCR por la información real que logra extraer del cierre,
@@ -1489,110 +1449,77 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         Object.entries(parsed.amountMap).filter(([gameId]) => gamesForDetectedPeriod.some((game) => game.id === gameId))
       );
       if (parsed.receiptData) {
-        // Reutilizar primero las cajas que ya entregó PaddleOCR en la lectura principal.
-        // Así evitamos una segunda lectura completa cuando esos datos ya están presentes.
+        // Primera prioridad: reutilizar las cajas de PaddleOCR de la lectura principal.
+        // Así no se vuelve a procesar la foto si los identificadores ya están presentes.
         const initialPaddleMetadata = readClosureMetadataFromOcrWords(paddleMetadataWords);
         const initialPrintedRaw = initialPaddleMetadata.printedAt;
         const initialPrintedDate = initialPrintedRaw?.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0] ?? null;
         const initialPrintedTime = initialPrintedRaw?.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0] ?? null;
         focusedClosureMetadata = {
-          agencyCode: initialPaddleMetadata.agencyCode ?? undefined,
-          subagentCode: initialPaddleMetadata.subagentCode ?? undefined,
-          machineCode: initialPaddleMetadata.machineCode ?? undefined,
-          address: correctTicketAddressOcr(initialPaddleMetadata.address) ?? undefined,
-          terminalId: initialPaddleMetadata.terminalId ?? undefined,
+          agencyCode: initialPaddleMetadata.agencyCode ?? parsed.receiptData.agencyCode ?? undefined,
+          subagentCode: initialPaddleMetadata.subagentCode ?? parsed.receiptData.subagentCode ?? undefined,
+          machineCode: initialPaddleMetadata.machineCode ?? parsed.receiptData.machineCode ?? undefined,
+          address: correctTicketAddressOcr(initialPaddleMetadata.address ?? parsed.receiptData.address) ?? undefined,
+          terminalId: initialPaddleMetadata.terminalId ?? parsed.receiptData.terminalId ?? undefined,
           printedAt: initialPrintedRaw
             ? { date: initialPrintedDate, time: initialPrintedTime, raw: initialPrintedRaw }
-            : undefined,
-          periodNumber: initialPaddleMetadata.periodNumber ?? undefined,
+            : parsed.receiptData.printedAt.raw ? parsed.receiptData.printedAt : undefined,
+          periodNumber: initialPaddleMetadata.periodNumber ?? parsed.receiptData.periodNumber ?? undefined,
         };
       }
-      if (parsed.receiptData && (
+      const metadataStillMissing = parsed.receiptData && (
+        !(focusedClosureMetadata.agencyCode ?? parsed.receiptData.agencyCode) ||
+        !(focusedClosureMetadata.subagentCode ?? parsed.receiptData.subagentCode) ||
         !(focusedClosureMetadata.machineCode ?? parsed.receiptData.machineCode) ||
         !(focusedClosureMetadata.address ?? parsed.receiptData.address) ||
         !(focusedClosureMetadata.terminalId ?? parsed.receiptData.terminalId) ||
-        !(focusedClosureMetadata.printedAt?.raw ?? parsed.receiptData.printedAt.raw)
-      )) {
-        // La lectura principal conserva los importes. Si falta identificación,
-        // hacer una pasada independiente con Tesseract y usar las cajas de cada
-        // palabra para ubicar MAQ, Dirección y Máquina real sin alterar ventas.
+        !(focusedClosureMetadata.printedAt?.raw ?? parsed.receiptData.printedAt.raw) ||
+        !(focusedClosureMetadata.periodNumber ?? parsed.receiptData.periodNumber)
+      );
+      if (metadataStillMissing && parsed.receiptData) {
+        // Si Tesseract ya intervino como respaldo, reutilizar sus palabras.
+        // Solo se inicia una pasada mejorada cuando todavía no hay cajas disponibles.
         try {
-          {
+          let metadataWords = Array.isArray(focusedOcrWords) ? focusedOcrWords : [];
+          if (!metadataWords.length) {
             setProgress("Revisando los datos identificatorios del ticket…");
             setProgressPercent(88);
             const { createWorker } = await import("tesseract.js");
             const metadataWorker = await createWorker("spa+eng", 1);
             try {
               const enhancedImage = await makeEnhancedTicketImage(file);
-              try {
-                const paddle = await getPaddleOcrEngine();
-                const [focusedPaddleResult] = await paddle.predict(enhancedImage, {
-                  textDetBoxThresh: 0.4,
-                  textDetUnclipRatio: 1.8,
-                  textRecScoreThresh: 0.0,
-                });
-                focusedPaddleMetadataWords = paddleItemsToWordBoxes(focusedPaddleResult?.items ?? []);
-                focusedPaddleDebugText = paddleOcrItemsToText(focusedPaddleResult?.items ?? []);
-              } catch {
-                focusedPaddleMetadataWords = [];
-                focusedPaddleDebugText = "";
-              }
               await metadataWorker.setParameters({ tessedit_pageseg_mode: "6" } as any);
               const metadataResult = await metadataWorker.recognize(enhancedImage, {}, { blocks: true });
-              focusedOcrWords = tesseractWordBoxes(metadataResult.data);
+              metadataWords = tesseractWordBoxes(metadataResult.data);
+              focusedOcrWords = metadataWords;
               focusedOcrDebugText = String(metadataResult.data.text ?? "").trim();
             } finally {
               await metadataWorker.terminate();
             }
           }
-          const tesseractText = focusedOcrDebugText;
-          const tesseractLines = tesseractText ? parseTicketClosure(tesseractText, true) : null;
-          const focusedPaddleLines = focusedPaddleDebugText
-            ? parseTicketClosure(focusedPaddleDebugText, true)
-            : null;
-          const tesseractWords = Array.isArray(focusedOcrWords) ? focusedOcrWords : [];
-          const tesseractPositioned = readClosureMetadataFromOcrWords(tesseractWords);
-          const focusedPaddlePositioned = readClosureMetadataFromOcrWords(focusedPaddleMetadataWords);
-          const paddlePositioned = readClosureMetadataFromOcrWords(paddleMetadataWords);
-          const fallbackText = focusedPaddleDebugText || tesseractText || reconstructLinesFromOcrWords(tesseractWords);
-          const textReceipt = fallbackText ? parseTicketClosure(fallbackText, true) : null;
-          const printedRaw = focusedPaddlePositioned.printedAt
+          const tesseractPositioned = readClosureMetadataFromOcrWords(metadataWords);
+          const tesseractText = focusedOcrDebugText || reconstructLinesFromOcrWords(metadataWords);
+          const textReceipt = tesseractText ? parseTicketClosure(tesseractText, true) : null;
+          const printedRaw = initialPaddleMetadata.printedAt
             ?? tesseractPositioned.printedAt
-            ?? paddlePositioned.printedAt
-            ?? focusedPaddleLines?.printedAt.raw
-            ?? tesseractLines?.printedAt.raw
+            ?? parsed.receiptData.printedAt.raw
             ?? textReceipt?.printedAt.raw
             ?? null;
           const printedDate = printedRaw?.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0] ?? null;
           const printedTime = printedRaw?.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0] ?? null;
           focusedClosureMetadata = {
-            agencyCode: focusedPaddlePositioned.agencyCode ?? tesseractPositioned.agencyCode ?? paddlePositioned.agencyCode ?? textReceipt?.agencyCode ?? undefined,
-            subagentCode: focusedPaddlePositioned.subagentCode ?? tesseractPositioned.subagentCode ?? paddlePositioned.subagentCode ?? textReceipt?.subagentCode ?? undefined,
-            machineCode: focusedPaddlePositioned.machineCode ?? tesseractPositioned.machineCode ?? paddlePositioned.machineCode ?? textReceipt?.machineCode ?? undefined,
-            address: correctTicketAddressOcr(focusedPaddlePositioned.address ?? tesseractPositioned.address ?? paddlePositioned.address ?? textReceipt?.address) ?? undefined,
-            terminalId: focusedPaddlePositioned.terminalId ?? tesseractPositioned.terminalId ?? paddlePositioned.terminalId ?? textReceipt?.terminalId ?? undefined,
+            agencyCode: initialPaddleMetadata.agencyCode ?? parsed.receiptData.agencyCode ?? tesseractPositioned.agencyCode ?? textReceipt?.agencyCode ?? undefined,
+            subagentCode: initialPaddleMetadata.subagentCode ?? parsed.receiptData.subagentCode ?? tesseractPositioned.subagentCode ?? textReceipt?.subagentCode ?? undefined,
+            machineCode: initialPaddleMetadata.machineCode ?? parsed.receiptData.machineCode ?? tesseractPositioned.machineCode ?? textReceipt?.machineCode ?? undefined,
+            address: correctTicketAddressOcr(initialPaddleMetadata.address ?? parsed.receiptData.address ?? tesseractPositioned.address ?? textReceipt?.address) ?? undefined,
+            terminalId: initialPaddleMetadata.terminalId ?? parsed.receiptData.terminalId ?? tesseractPositioned.terminalId ?? textReceipt?.terminalId ?? undefined,
             printedAt: printedRaw
               ? { date: printedDate, time: printedTime, raw: printedRaw }
-              : textReceipt?.printedAt ?? undefined,
-            periodNumber: focusedPaddlePositioned.periodNumber ?? tesseractPositioned.periodNumber ?? paddlePositioned.periodNumber ?? textReceipt?.periodNumber ?? undefined,
+              : parsed.receiptData.printedAt ?? undefined,
+            periodNumber: initialPaddleMetadata.periodNumber ?? parsed.receiptData.periodNumber ?? tesseractPositioned.periodNumber ?? textReceipt?.periodNumber ?? undefined,
           };
-          const focusedDebugParts = [
-            focusedPaddleDebugText ? "PADDLE OCR (RECORTE):\n" + focusedPaddleDebugText : "",
-            tesseractText ? "TESSERACT OCR (RECORTE):\n" + tesseractText : "",
-          ].filter(Boolean);
-          if (focusedDebugParts.length) focusedOcrDebugText = focusedDebugParts.join("\n\n");
-          else if (fallbackText) focusedOcrDebugText = fallbackText;
         } catch {
-          // Si Tesseract falla, conservar los datos que Paddle pudo leer del recorte.
-          const paddleFallback = readClosureMetadataFromOcrWords(focusedPaddleMetadataWords);
-          focusedClosureMetadata = {
-            machineCode: paddleFallback.machineCode ?? undefined,
-            address: correctTicketAddressOcr(paddleFallback.address) ?? undefined,
-            terminalId: paddleFallback.terminalId ?? undefined,
-            agencyCode: paddleFallback.agencyCode ?? undefined,
-            subagentCode: paddleFallback.subagentCode ?? undefined,
-          };
-          focusedOcrDebugText = focusedPaddleDebugText;
+          // Si falla el respaldo, se conservan todos los datos de la primera lectura.
         }
       }
 
