@@ -1640,6 +1640,46 @@ input[type="time"]{font-variant-numeric:tabular-nums}
   .team-account-action-card .team-auth-delete-form>.button { width:100%; }
 }
 
+/* Mobile pass: larger agent actions, prominent rendition save and dedicated agent registration screen. */
+.agency-page-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin:0 0 18px}
+.agency-page-action{display:flex;align-items:center;justify-content:center;min-height:58px;padding:14px 20px;border-radius:12px;font-size:16px;font-weight:900;line-height:1.2;text-align:center;text-decoration:none;white-space:normal}
+.agency-create-screen{width:min(100%,820px);min-height:calc(100dvh - 110px);margin:0 auto;display:flex;flex-direction:column;justify-content:center;gap:16px;padding:8px 0 24px}
+.agency-create-screen-heading{display:grid;gap:5px}
+.agency-create-screen-heading h1{margin:0;font-size:clamp(24px,4vw,32px);line-height:1.15}
+.agency-create-screen-heading p{margin:0}
+.agency-create-screen-card,.agency-create-success-card{width:100%;padding:22px;background:#fffdf6;border:1px solid #ded3b4;border-top:5px solid #b79a45;border-radius:15px;box-shadow:0 8px 24px rgba(62,43,25,.07)}
+.agency-create-screen-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.agency-create-screen-form label{display:grid;gap:7px;min-width:0;color:#4b4137;font-size:13px;font-weight:800}
+.agency-create-screen-form input,.agency-create-screen-form select{width:100%;min-width:0;min-height:52px;padding:12px 13px;border:1px solid #cfc4ad;border-radius:10px;background:#fff;color:#28231e;font-size:16px;box-sizing:border-box}
+.agency-create-name-field,.agency-create-submit{grid-column:1/-1}
+.agency-create-submit{width:100%;min-height:60px;padding:15px 18px;font-size:17px;font-weight:900;border-radius:11px}
+.agency-create-code-help{margin:12px 0 0;color:#70666a;font-size:12px;line-height:1.45}
+.agency-create-restricted{display:grid;gap:8px}
+.agency-create-restricted h2,.agency-create-restricted p{margin:0}
+.agency-create-success-screen{align-items:center}
+.agency-create-success-card{max-width:640px;display:grid;justify-items:center;gap:12px;text-align:center;border-top-color:#39845f;padding:30px 24px}
+.agency-create-success-card h1{margin:0;font-size:clamp(26px,5vw,34px);line-height:1.15}
+.agency-create-success-card p{margin:0;line-height:1.5}
+.agency-create-success-mark{display:grid;place-items:center;width:58px;height:58px;border-radius:50%;background:#e5f3e9;color:#24754e;font-size:32px;font-weight:900}
+.agency-create-success-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-top:8px}
+.agency-create-next-button{display:flex;align-items:center;justify-content:center;min-height:60px;padding:13px 15px;font-size:16px;font-weight:900;line-height:1.2;text-align:center;white-space:normal}
 
-
-
+@media(max-width:760px){
+  .agency-page-actions{display:grid;grid-template-columns:1fr;width:100%;gap:10px;margin:12px 0 16px}
+  .agency-page-action{width:100%;min-height:64px;padding:15px 16px;font-size:18px;box-sizing:border-box}
+  .agency-agent-button-list .agency-agent-code-button{min-height:64px;padding:14px 12px;font-size:18px;border-radius:11px}
+  .agency-agent-button-list .agency-agent-actions>summary{min-height:64px}
+  .rendition-agent-selector .agency-agent-code-button{min-height:66px;padding:14px 14px 14px 17px;font-size:17px;border-radius:11px}
+  .rendition-settlement-bar>.rendition-save-primary{display:flex;width:100%;min-height:70px;align-items:center;justify-content:center;padding:16px 15px;border-radius:12px;font-size:19px;font-weight:950;line-height:1.2;text-align:center;white-space:normal;box-sizing:border-box}
+  .agency-create-screen{min-height:calc(100svh - 100px);justify-content:flex-start;gap:12px;padding:8px 0 28px}
+  .agency-create-screen-heading h1{font-size:25px}
+  .agency-create-screen-card{padding:16px 14px;border-radius:13px}
+  .agency-create-screen-form{grid-template-columns:1fr;gap:13px}
+  .agency-create-screen-form label{font-size:14px}
+  .agency-create-screen-form input,.agency-create-screen-form select{min-height:54px;font-size:16px}
+  .agency-create-name-field,.agency-create-submit{grid-column:auto}
+  .agency-create-submit{min-height:64px;font-size:18px}
+  .agency-create-success-card{padding:25px 16px}
+  .agency-create-success-actions{grid-template-columns:1fr}
+  .agency-create-next-button{width:100%;min-height:64px;font-size:17px;box-sizing:border-box}
+}
