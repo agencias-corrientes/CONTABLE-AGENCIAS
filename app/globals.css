@@ -2406,9 +2406,10 @@ html body .app-shell aside.sidebar nav.nav-list > a.nav-item.active:active {
     box-sizing:border-box!important;
   }
 
-  /* En el panel general quitamos el pequeño logo junto al número; el logo central permanece. */
+  /* El logo oficial junto al nombre de la agencia se conserva en el panel general. */
   html body .app-shell.mobile-navigation-home aside.sidebar .sidebar-logo {
-    display:none!important;
+    display:flex!important;
+    visibility:visible!important;
   }
 
   html body .app-shell aside.sidebar .sidebar-brand {
@@ -2553,4 +2554,13 @@ html body .app-shell aside.sidebar nav.nav-list > a.nav-item.active:active {
     white-space:normal!important;
     border-radius:8px!important;
   }
+}
+
+
+/* Quitar únicamente el acceso adicional a Lotería Correntina ubicado en la cabecera lateral.
+   Se conserva el enlace principal del menú, dentro de nav.nav-list. */
+html body .app-shell aside.sidebar .sidebar-brand a[href="/loteria-correntina"],
+html body .app-shell aside.sidebar .panel-general-summary a[href="/loteria-correntina"],
+html body .app-shell aside.sidebar > a[href="/loteria-correntina"] {
+  display:none!important;
 }
