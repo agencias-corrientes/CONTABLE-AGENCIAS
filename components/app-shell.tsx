@@ -80,8 +80,20 @@ export function AppShell({
           <button className="button ghost full" onClick={signOut}>Cerrar sesión</button>
         </div>
       </aside>
-      <main className="content-area">{children}</main>
+      <main className="content-area">
+        <div className="global-panel-return-wrap">
+          <Link href="/dashboard" className="global-panel-return">
+            <span aria-hidden="true">←</span>
+            <span>Volver al panel general</span>
+          </Link>
+        </div>
+        {children}
+      </main>
       <style jsx>{`
+        .global-panel-return-wrap { display: flex; justify-content: flex-start; width: 100%; margin: 0 0 12px; }
+        .global-panel-return { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; box-sizing: border-box; padding: 9px 15px; border: 1px solid #20252a; border-radius: 12px; background: #343a40; color: #ffffff; font-size: 14px; font-weight: 750; line-height: 1.2; text-decoration: none; box-shadow: 0 2px 0 rgba(0,0,0,.14); }
+        .global-panel-return:hover, .global-panel-return:focus-visible { background: #252a2f; color: #ffffff; outline: 2px solid rgba(52,58,64,.2); outline-offset: 2px; }
+        .global-panel-return:active { transform: translateY(1px); }
         .sidebar { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
         .sidebar-brand strong { font-size: 17px; font-weight: 800; letter-spacing: -.025em; }
         .sidebar-brand span { font-size: 11px; line-height: 1.45; letter-spacing: .015em; }
