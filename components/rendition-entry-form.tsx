@@ -1448,13 +1448,15 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       const parsedAmountMap = Object.fromEntries(
         Object.entries(parsed.amountMap).filter(([gameId]) => gamesForDetectedPeriod.some((game) => game.id === gameId))
       );
+      // Primera prioridad: reutilizar las cajas de PaddleOCR de la lectura principal.
+      // Así no se vuelve a procesar la foto si los identificadores ya están presentes.
+      const initialPaddleMetadata = parsed.receiptData
+        ? readClosureMetadataFromOcrWords(paddleMetadataWords)
+        : { agencyCode:null, subagentCode:null, machineCode:null, address:null, terminalId:null, printedAt:null, periodNumber:null };
+      const initialPrintedRaw = initialPaddleMetadata.printedAt;
+      const initialPrintedDate = initialPrintedRaw?.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0] ?? null;
+      const initialPrintedTime = initialPrintedRaw?.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0] ?? null;
       if (parsed.receiptData) {
-        // Primera prioridad: reutilizar las cajas de PaddleOCR de la lectura principal.
-        // Así no se vuelve a procesar la foto si los identificadores ya están presentes.
-        const initialPaddleMetadata = readClosureMetadataFromOcrWords(paddleMetadataWords);
-        const initialPrintedRaw = initialPaddleMetadata.printedAt;
-        const initialPrintedDate = initialPrintedRaw?.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0] ?? null;
-        const initialPrintedTime = initialPrintedRaw?.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0] ?? null;
         focusedClosureMetadata = {
           agencyCode: initialPaddleMetadata.agencyCode ?? parsed.receiptData.agencyCode ?? undefined,
           subagentCode: initialPaddleMetadata.subagentCode ?? parsed.receiptData.subagentCode ?? undefined,
