@@ -915,6 +915,23 @@ export function AppShell({
           box-shadow: inset 0 2px 4px rgba(75,59,53,.14) !important;
           transform: translateY(2px) !important;
         }
+
+        /* PC: al pasar el mouse, todos los accesos mantienen el crema de Rendiciones. */
+        @media (min-width: 1001px) {
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:hover),
+          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:hover),
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item.active:hover),
+          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item.active:hover) {
+            background: #f8f2e7 !important;
+            background-image: none !important;
+            color: #4b3b35 !important;
+            border-color: #e5dccb !important;
+            border-bottom-color: #cbbd9f !important;
+            box-shadow: 0 3px 0 rgba(75,59,53,.12) !important;
+            outline: none !important;
+            filter: none !important;
+          }
+        }
       `}</style>
     </div>
   );
