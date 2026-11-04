@@ -24,6 +24,21 @@ async function getOwnerContext() {
   return { supabase, organizationId: member.organization_id, userId: String(userId) };
 }
 
+async function getCentralAgencyCleanupContext() {
+  const context = await getOwnerContext();
+  const { data: isPlatformAdmin, error: platformAdminError } = await (context.supabase as any).rpc("is_platform_admin");
+  if (platformAdminError || isPlatformAdmin !== true) redirect("/equipo?error=limpieza-permiso");
+
+  const { data: agency, error: agencyError } = await context.supabase
+    .from("organizations")
+    .select("agency_code")
+    .eq("id", context.organizationId)
+    .maybeSingle();
+  if (agencyError || agency?.agency_code !== "000") redirect("/equipo?error=limpieza-permiso");
+
+  return context;
+}
+
 function checked(formData: FormData, name: string) {
   return formData.get(name) === "on";
 }
@@ -548,7 +563,7 @@ async function removeAgencyTicketPhotos(supabase: any, organizationId: string): 
 }
 
 export async function cleanupAgencyTestData(formData: FormData) {
-  const { supabase, organizationId } = await getOwnerContext();
+  const { supabase, organizationId } = await getCentralAgencyCleanupContext();
   const confirmation = String(formData.get("confirmation") ?? "").trim().toUpperCase();
   if (formData.get("confirm_cleanup") !== "yes" || confirmation !== "LIMPIAR DATOS DE PRUEBA") {
     redirect("/equipo?error=limpieza-no-confirmada");

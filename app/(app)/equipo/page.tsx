@@ -30,11 +30,16 @@ export default async function TeamPermissionsPage({
     </div>;
   }
 
+  const { data: isPlatformAdmin, error: centralAdminError } = await (supabase as any).rpc("is_platform_admin");
+  const canManageTestCleanup = centralAdminError == null && isPlatformAdmin === true && organization.agency_code === "000";
+
   const [{ data: employees, error: employeeError }, { data: backupSettings }, { data: backupRows, error: backupRowsError }, { data: cleanupPreview, error: cleanupPreviewError }, { data: operationalSettings }] = await Promise.all([
     supabase.rpc("list_organization_members_for_owner", { p_organization_id: organization.id }),
     supabase.from("organization_backup_settings").select("recipient_email,enabled,include_ticket_photo,updated_at").eq("organization_id", organization.id).maybeSingle(),
     supabase.from("agency_rendition_backup_outbox").select("id,rendition_id,recipient_email,subject,text_body,status,attempt_count,last_attempt_at,sent_at,last_error,created_at").eq("organization_id", organization.id).order("created_at", { ascending: false }).limit(20),
-    supabase.rpc("preview_agency_launch_cleanup", { p_organization_id: organization.id }),
+    canManageTestCleanup
+      ? supabase.rpc("preview_agency_launch_cleanup", { p_organization_id: organization.id })
+      : Promise.resolve({ data: null, error: null }),
     supabase.from("agency_operational_settings").select("rendition_cutoff_time,backup_send_time,updated_at").eq("organization_id", organization.id).maybeSingle(),
   ]);
   const cutoff = String(operationalSettings?.rendition_cutoff_time ?? "00:00").slice(0, 5);
@@ -242,6 +247,7 @@ export default async function TeamPermissionsPage({
         </div>
       </section>
 
+      {canManageTestCleanup && (
       <section className="panel team-cleanup-panel">
         <div className="panel-head">
           <div><h2>Preparar la puesta en marcha oficial</h2><p className="muted">La limpieza alcanza a todos los registros operativos actuales, sin distinguir entre datos de prueba y datos reales. Usala únicamente antes de comenzar la operación oficial.</p></div>
@@ -263,8 +269,9 @@ export default async function TeamPermissionsPage({
           <button className="button danger" type="submit" disabled={Boolean(cleanupPreviewError)}>Limpiar los datos de prueba</button>
           {cleanupPreviewError && <small className="muted">El botón queda deshabilitado hasta recuperar el inventario; no se borrarán datos sin mostrar primero qué se limpiaría.</small>}
         </form>
-        <p className="muted team-cleanup-footnote">La acción solo la puede ejecutar el titular y vuelve a comprobarlo en Supabase. Esta limpieza no elimina la cuenta de acceso del titular ni las cuentas de autenticación de empleados: a los empleados se les quita la membresía de esta agencia; si son cuentas ficticias, deben eliminarse después en Supabase → Authentication → Users.</p>
+        <p className="muted team-cleanup-footnote">Solo Administración Central, desde la agencia oficial 000, puede revisar y ejecutar esta limpieza. El permiso también se comprueba en el servidor y en Supabase. Esta acción no elimina la cuenta de acceso del titular ni las cuentas de autenticación de empleados de otras agencias.</p>
       </section>
+      )}
 
       <section className="panel">
         <div className="panel-head"><div><h2>Medidas de seguridad aplicadas</h2><p className="muted">Las restricciones también se verifican en la base de datos, no solo en el menú.</p></div></div>
