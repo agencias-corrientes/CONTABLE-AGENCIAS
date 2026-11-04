@@ -108,7 +108,10 @@ export function AppShell({
             const active = pathname.startsWith(href) || (pathname === "/inicio" && selectedSection === slug);
             return (
               <Link key={slug} href={href} prefetch={true} className={active ? "nav-item active panel-general-item" : "nav-item panel-general-item"}
-                style={{ "--panel-card-bg": panelPalette[index][0], "--panel-card-fg": panelPalette[index][1] } as React.CSSProperties}
+                style={{
+                  "--panel-card-bg": slug === "deudas-anteriores" ? "#F4D8D5" : panelPalette[index][0],
+                  "--panel-card-fg": slug === "deudas-anteriores" ? "#812C36" : panelPalette[index][1],
+                } as React.CSSProperties}
                 onClick={guardTicketNavigation}>
                 <span className="panel-nav-number">{number}</span>
                 <span className="panel-nav-icon" aria-hidden="true">

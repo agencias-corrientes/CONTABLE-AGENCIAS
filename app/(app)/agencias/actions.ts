@@ -632,11 +632,14 @@ export async function createAgencyRendition(formData: FormData) {
 }
 
 export async function receiveAgencyRendition(formData: FormData) {
+  const returnToPreviousDebts = String(formData.get("return_to") ?? "") === "deudas-anteriores";
   const { supabase, organizationId, permissions } = await getOrg();
-  if (!permissions.can_register_payments) redirect("/pagos?error=sin-permiso-cobro");
   const renditionId = String(formData.get("rendition_id") ?? "");
   const agentId = String(formData.get("agent_id") ?? "");
-  const returnToPreviousDebts = String(formData.get("return_to") ?? "") === "deudas-anteriores";
+  const failureRedirect = (code: string) => redirect(returnToPreviousDebts
+    ? "/deudas-anteriores?error=" + encodeURIComponent(code)
+    : "/pagos?error=" + encodeURIComponent(code) + "&agent=" + encodeURIComponent(agentId));
+  if (!permissions.can_register_payments) failureRedirect("sin-permiso-cobro");
   const { data: cashAccount, error: cashLookupError } = await supabase
     .from("cash_accounts")
     .select("id")
@@ -646,7 +649,7 @@ export async function receiveAgencyRendition(formData: FormData) {
     .maybeSingle();
   if (cashLookupError) {
     console.error("[receiveAgencyRendition] Caja lookup failed", { code: cashLookupError.code, message: cashLookupError.message, organizationId });
-    redirect("/pagos?error=cobro-caja-no-disponible&agent=" + encodeURIComponent(agentId));
+    failureRedirect("cobro-caja-no-disponible");
   }
 
   let cajaId = cashAccount?.id ?? null;
@@ -660,11 +663,11 @@ export async function receiveAgencyRendition(formData: FormData) {
       .maybeSingle();
     if (fallbackError) {
       console.error("[receiveAgencyRendition] fallback Caja lookup failed", { code: fallbackError.code, message: fallbackError.message, organizationId });
-      redirect("/pagos?error=cobro-caja-no-disponible&agent=" + encodeURIComponent(agentId));
+      failureRedirect("cobro-caja-no-disponible");
     }
     cajaId = fallbackCash?.id ?? null;
   }
-  if (!cajaId) throw new Error("No hay una cuenta Caja configurada.");
+  if (!cajaId) failureRedirect("cobro-caja-no-disponible");
 
   const { error } = await supabase.rpc("receive_agency_rendition", {
     p_organization_id: organizationId,
@@ -686,11 +689,11 @@ export async function receiveAgencyRendition(formData: FormData) {
       agentId,
     });
     const message = String(error.message ?? "").toLowerCase();
-    if (message.includes("permiso")) redirect("/pagos?error=sin-permiso-cobro");
-    if (message.includes("supera") || message.includes("saldo pendiente")) redirect("/pagos?error=cobro-supera-saldo&agent=" + encodeURIComponent(agentId));
-    if (message.includes("caja") || message.includes("cuenta")) redirect("/pagos?error=cobro-caja-no-disponible&agent=" + encodeURIComponent(agentId));
-    if (message.includes("rendición vigente") || message.includes("rendicion vigente") || message.includes("rendición") || message.includes("rendicion")) redirect("/pagos?error=cobro-rendicion-no-disponible&agent=" + encodeURIComponent(agentId));
-    redirect("/pagos?error=cobro-fallido&agent=" + encodeURIComponent(agentId));
+    if (message.includes("permiso")) failureRedirect("sin-permiso-cobro");
+    if (message.includes("supera") || message.includes("saldo pendiente")) failureRedirect("cobro-supera-saldo");
+    if (message.includes("caja") || message.includes("cuenta")) failureRedirect("cobro-caja-no-disponible");
+    if (message.includes("rendición vigente") || message.includes("rendicion vigente") || message.includes("rendición") || message.includes("rendicion")) failureRedirect("cobro-rendicion-no-disponible");
+    failureRedirect("cobro-fallido");
   }
   revalidatePath("/agencias");
   revalidatePath(`/agencias/${agentId}`);

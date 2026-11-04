@@ -20,10 +20,10 @@ type PendingDebt = {
 export default async function PreviousDebtsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ resultado?: string }>;
+  searchParams?: Promise<{ resultado?: string; error?: string }>;
 }) {
   const params = searchParams ? await searchParams : {};
-  const { supabase, organization, member } = await getCurrentContext();
+  const { supabase, organization, member, userId } = await getCurrentContext();
   if (!organization || !member) return null;
 
   const [{ data: operationalSettings }, { data: agents }, { data: permissions }] = await Promise.all([
@@ -31,7 +31,7 @@ export default async function PreviousDebtsPage({
     supabase.from("agency_agents").select("id,kind,code,full_name,is_active").eq("organization_id", organization.id),
     member.role === "owner"
       ? Promise.resolve({ data: { can_register_payments: true } })
-      : supabase.from("organization_member_permissions").select("can_register_payments").eq("organization_id", organization.id).eq("user_id", member.user_id ?? "").maybeSingle(),
+      : supabase.from("organization_member_permissions").select("can_register_payments").eq("organization_id", organization.id).eq("user_id", userId).maybeSingle(),
   ]);
 
   const canRegisterPayments = member.role === "owner" || Boolean(permissions?.can_register_payments);
@@ -82,6 +82,10 @@ export default async function PreviousDebtsPage({
   const totalPending = debts.reduce((sum, row) => sum + row.pending, 0);
   const totalPaid = debts.reduce((sum, row) => sum + row.received, 0);
   const resultMessage = params.resultado === "cobro-registrado" ? "El pago quedó registrado en Caja y se descontó de la deuda original." : "";
+  const errorMessage = params.error === "sin-permiso-cobro" ? "No tenés permiso para registrar pagos de deudas."
+    : params.error === "cobro-caja-no-disponible" ? "No se encontró una cuenta Caja activa para registrar el pago."
+    : params.error === "cobro-supera-saldo" ? "El importe ingresado supera el saldo pendiente."
+    : params.error ? "No se pudo registrar el pago. Revisá el saldo y volvé a intentarlo." : "";
 
   return (
     <div className="page">
@@ -95,6 +99,7 @@ export default async function PreviousDebtsPage({
       </div>
 
       {resultMessage && <p className="previous-debts-feedback" role="status">{resultMessage}</p>}
+      {errorMessage && <p className="error-message" role="alert">{errorMessage}</p>}
 
       <div className="previous-debts-summary">
         <div className="previous-debts-stat"><span>Saldo pendiente anterior</span><strong>{money(totalPending, organization.currency_code)}</strong></div>
