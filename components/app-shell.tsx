@@ -89,7 +89,7 @@ export function AppShell({
             <span className="user-role-pill">{displayRole}</span>
             <span className="user-line" title={userEmail}>{userEmail}</span>
           </div>
-          {isPlatformAdmin && <Link href="/plataforma/accesos" className="button ghost full central-return-button">↩ Volver a control de agencia</Link>}
+          {isPlatformAdmin && <Link href="/plataforma/accesos" className="button ghost full central-return-button">↩ Volver a administrador central</Link>}
           <button className="button ghost full" onClick={signOut}>Cerrar sesión</button>
         </div>
       </aside>
