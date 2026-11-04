@@ -2824,3 +2824,51 @@ html body .app-shell.mobile-navigation-home .desktop-agency-home-logo {
     padding: 17px !important;
   }
 }
+
+
+/* Ajuste solicitado: los seis accesos del Panel General llevan mostaza visible.
+   Alcance exclusivo del menú de agencia; el login y el resto de la app no cambian. */
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:hover,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:focus,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:focus-visible,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child:hover,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:hover {
+  background: #dfba55 !important;
+  background-image: none !important;
+  color: #382d20 !important;
+  border: 1px solid #c49a36 !important;
+  border-bottom: 4px solid #a77d22 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 5px 13px rgba(105,76,20,.14) !important;
+  transform: none !important;
+  filter: none !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:hover,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child:hover {
+  background: #e8c86d !important;
+  border-color: #c49a36 !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-copy strong {
+  color: #382d20 !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy small,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-copy small {
+  color: #574525 !important;
+  opacity: 1 !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-icon,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-icon {
+  background: #f8e9bd !important;
+  border-color: #cda84f !important;
+  color: #59431b !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-number,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-number {
+  background: #f8e9bd !important;
+  border-color: #cda84f !important;
+  color: #59431b !important;
+}
