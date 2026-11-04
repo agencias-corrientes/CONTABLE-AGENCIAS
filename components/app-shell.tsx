@@ -1142,6 +1142,68 @@ export function AppShell({
             font-size: 15px !important;
           }
         }
+
+        /* Regla final única: los seis accesos, incluido Rendiciones, son cuadrados compactos. */
+        @media (max-width: 640px) {
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list) {
+            display:grid!important;
+            grid-template-columns:repeat(2,minmax(0,clamp(108px,35vw,128px)))!important;
+            grid-auto-rows:clamp(108px,35vw,128px)!important;
+            grid-template-rows:repeat(3,clamp(108px,35vw,128px))!important;
+            justify-content:center!important;align-items:stretch!important;
+            gap:9px!important;margin:12px 0 16px!important;padding:0!important;
+          }
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item),
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child),
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:hover),
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:focus),
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:focus-visible),
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:active),
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active),
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:hover),
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:focus-visible) {
+            position:relative!important;display:flex!important;width:100%!important;height:100%!important;
+            min-width:0!important;min-height:0!important;aspect-ratio:1/1!important;box-sizing:border-box!important;
+            flex-direction:column!important;align-items:center!important;justify-content:center!important;
+            gap:0!important;margin:0!important;padding:8px!important;overflow:hidden!important;
+            border:2px solid #171717!important;border-bottom:2px solid #171717!important;border-radius:9px!important;
+            background:#d8b447!important;background-image:none!important;color:#493d27!important;
+            box-shadow:0 2px 5px rgba(40,35,25,.12)!important;transform:none!important;filter:none!important;outline:none!important;
+          }
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-icon) {
+            position:absolute!important;top:7px!important;left:7px!important;right:auto!important;bottom:auto!important;
+            display:inline-flex!important;width:27px!important;height:27px!important;min-width:27px!important;min-height:27px!important;
+            flex:0 0 27px!important;align-items:center!important;justify-content:center!important;margin:0!important;
+            border:1px solid #a9852e!important;border-radius:7px!important;background:#f5e9bd!important;color:#493d27!important;
+          }
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-icon svg) {
+            width:17px!important;height:17px!important;
+          }
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-number) {
+            top:7px!important;right:7px!important;min-width:23px!important;min-height:18px!important;padding:2px 4px!important;
+            border:1px solid #a9852e!important;background:#f5e9bd!important;color:#493d27!important;font-size:9px!important;
+          }
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy) {
+            display:flex!important;width:100%!important;min-width:0!important;margin:17px 0 0!important;padding:0!important;
+            align-items:center!important;justify-content:center!important;text-align:center!important;
+          }
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong) {
+            display:block!important;width:100%!important;margin:0!important;color:#3f321d!important;
+            font-size:clamp(12px,3.8vw,15px)!important;font-weight:900!important;line-height:1.12!important;
+            letter-spacing:-.01em!important;text-align:center!important;white-space:normal!important;
+            overflow-wrap:normal!important;word-break:normal!important;hyphens:none!important;text-overflow:clip!important;
+          }
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy small),
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-accent) {
+            display:none!important;
+          }
+        }
+        @media (max-width: 380px) {
+          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list) {
+            grid-template-columns:repeat(2,minmax(0,108px))!important;
+            grid-auto-rows:108px!important;grid-template-rows:repeat(3,108px)!important;
+          }
+        }
       `}</style>
     </div>
   );
