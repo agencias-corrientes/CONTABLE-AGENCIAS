@@ -636,6 +636,7 @@ export async function receiveAgencyRendition(formData: FormData) {
   if (!permissions.can_register_payments) redirect("/pagos?error=sin-permiso-cobro");
   const renditionId = String(formData.get("rendition_id") ?? "");
   const agentId = String(formData.get("agent_id") ?? "");
+  const returnToPreviousDebts = String(formData.get("return_to") ?? "") === "deudas-anteriores";
   const { data: cashAccount, error: cashLookupError } = await supabase
     .from("cash_accounts")
     .select("id")
@@ -695,6 +696,8 @@ export async function receiveAgencyRendition(formData: FormData) {
   revalidatePath(`/agencias/${agentId}`);
   revalidatePath("/movimientos");
   revalidatePath("/dashboard");
+  revalidatePath("/deudas-anteriores");
+  if (returnToPreviousDebts) redirect("/deudas-anteriores?resultado=cobro-registrado");
   redirect("/pagos?agent=" + encodeURIComponent(agentId) + "&resultado=cobro-registrado");
 }
 

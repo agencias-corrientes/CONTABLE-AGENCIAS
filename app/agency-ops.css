@@ -1869,3 +1869,74 @@ input[type="time"]{font-variant-numeric:tabular-nums}
   }
 }
 
+
+
+/* Deudas de jornadas anteriores: se cobran contra la rendición original sin mezclarse con el día actual. */
+.previous-debts-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0 18px;
+}
+.previous-debts-stat {
+  padding: 16px;
+  border: 1px solid #e4d4c9;
+  border-radius: 12px;
+  background: #fff8f0;
+}
+.previous-debts-stat span {
+  display: block;
+  color: #75645b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.previous-debts-stat strong {
+  display: block;
+  margin-top: 6px;
+  color: #812c36;
+  font-size: 22px;
+  font-weight: 950;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.previous-debts-list { display: grid; gap: 12px; margin-top: 14px; }
+.previous-debt-card {
+  overflow: hidden;
+  border: 1px solid #dec9c2;
+  border-radius: 12px;
+  background: #fffdf9;
+}
+.previous-debt-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #eadbd4;
+  background: #f7e7e4;
+}
+.previous-debt-agent { min-width: 0; display: grid; gap: 3px; }
+.previous-debt-agent strong { color: #472a2b; font-size: 14px; }
+.previous-debt-agent small { color: #755b57; font-size: 11px; }
+.previous-debt-amount { color: #812c36; font-size: 18px; font-weight: 950; white-space: nowrap; }
+.previous-debt-details { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 12px 16px; color: #695b54; font-size: 12px; }
+.previous-debt-details strong { color: #342c28; }
+.previous-debt-pay { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(180px, 1.4fr) auto; align-items: end; gap: 10px; padding: 12px 16px 16px; border-top: 1px solid #eee4dc; }
+.previous-debt-pay label { display: grid; gap: 5px; color: #675b55; font-size: 11px; font-weight: 750; }
+.previous-debt-pay input { min-width: 0; min-height: 42px; padding: 9px 10px; border: 1px solid #d7c9bf; border-radius: 8px; background: white; color: #312b28; font: inherit; font-size: 13px; }
+.previous-debt-pay .button { min-height: 42px; white-space: nowrap; background: #812c36; border-color: #812c36; color: white; }
+.previous-debt-notice { margin: 0 16px 14px; padding: 10px 12px; border: 1px solid #d9e5d7; border-radius: 8px; background: #f0f7ef; color: #365b39; font-size: 12px; line-height: 1.45; }
+.previous-debts-empty { padding: 22px; border: 1px dashed #d8c7b5; border-radius: 12px; background: #fffdf7; color: #695d50; font-size: 13px; line-height: 1.5; }
+.previous-debts-feedback { margin: 12px 0; padding: 11px 13px; border: 1px solid #d0dfce; border-radius: 9px; background: #eff7ed; color: #315a37; font-size: 13px; font-weight: 750; }
+@media (max-width: 700px) {
+  .previous-debts-summary { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .previous-debts-stat:first-child { grid-column: 1 / -1; }
+  .previous-debts-stat { padding: 12px; }
+  .previous-debts-stat strong { font-size: 20px; }
+  .previous-debt-card-head { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .previous-debt-amount { font-size: 20px; }
+  .previous-debt-pay { grid-template-columns: 1fr; }
+  .previous-debt-pay .button { width: 100%; }
+}

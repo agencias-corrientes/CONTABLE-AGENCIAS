@@ -13,6 +13,7 @@ const nav = [
   ["juegos", "Juegos y comisiones", "M4 19V5M4 19h16M7 15l4-4 3 2 5-7", "Gestión comercial", "04"],
   ["loteria-correntina", "Lotería Correntina", "M4 7h16v12H4zM8 7V5h8v2M8 12h8M8 15h5", "Información y servicios", "05"],
   ["configuracion", "Configuración", "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M19.4 15l1.1 1.1-2.2 2.2-1.1-1.1M4.6 9 3.5 7.9l2.2-2.2L6.8 6.8", "Opciones de agencia", "06"],
+  ["deudas-anteriores", "Deudas anteriores", "M12 3v18M17 7.5c0-1.4-1.9-2.5-5-2.5s-5 1.1-5 2.5 1.9 2.5 5 2.5 5 1.1 5 2.5-1.9 2.5-5 2.5-5 1.1-5 2.5 1.9 2.5 5 2.5 5-1.1 5-2.5", "Saldos pendientes de otros días", "07"],
 ] as const;
 
 export function AppShell({
@@ -45,6 +46,7 @@ export function AppShell({
     ["#E8DFF2", "#62457C"],
     ["#DDEBD7", "#42643A"],
     ["#E6E5E1", "#454545"],
+    ["#F4D8D5", "#812C36"],
   ] as const;
 
   const [accountDialog, setAccountDialog] = useState<"logout" | null>(null);
@@ -351,6 +353,7 @@ export function AppShell({
           .sidebar .nav-list .nav-item:nth-child(2) { order: 4; }
           .sidebar .nav-list .nav-item:nth-child(4) { order: 5; }
           .sidebar .nav-list .nav-item:nth-child(6) { order: 6; }
+          .sidebar .nav-list .nav-item:nth-child(7) { order: 7; grid-column: 1 / -1; }
           .sidebar .nav-list .nav-item {
             min-width: 0;
             min-height: 58px;
@@ -1155,6 +1158,42 @@ export function AppShell({
         }
         :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item[style][style][style] .panel-nav-accent) {
           background: var(--panel-card-fg) !important;
+        }
+
+
+        /* El menú del panel general conserva exactamente su formato al navegar por las secciones en PC. */
+        @media (min-width: 1001px) {
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list) {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) !important;
+            grid-auto-rows: minmax(46px, auto) !important;
+            grid-template-rows: none !important;
+            align-items: stretch !important;
+            gap: 7px !important;
+            margin: 8px 0 !important;
+          }
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:focus-visible),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:active) {
+            min-height: 46px !important;
+            height: auto !important;
+            padding: 8px 10px !important;
+            font-size: 16px !important;
+            line-height: 1.15 !important;
+            box-sizing: border-box !important;
+            transform: none !important;
+            transition: none !important;
+          }
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:hover),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:focus),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:focus-visible),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:active) {
+            transform: none !important;
+            transition: none !important;
+          }
         }
 
       `}</style>
