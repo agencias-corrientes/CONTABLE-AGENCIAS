@@ -2230,7 +2230,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           <div className="rendition-net-value"><span>Efectivo neto a rendir</span><strong>{formatTicketMoney(netToRemit)}</strong></div>
         </div>
         {hasUnconfiguredCommission && <p className="rendition-commission-warning">Hay juegos con ventas sin porcentaje configurado; para esos juegos se calcula 0%. Revisá la comisión del operador antes de confirmar.</p>}
-        <button className="button primary" type={initialRendition ? "submit" : "button"}
+        <button className="button primary rendition-save-primary" type={initialRendition ? "submit" : "button"}
           onClick={initialRendition ? undefined : () => {
             setConfirmationError("");
             if (batchMode) {
