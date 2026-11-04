@@ -185,8 +185,11 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const voidRows = allRows.filter((row) => row.status === "void");
   const isCurrentOperationalDay = (row: any) => agencyBusinessDateForCutoff(cutoffTime, String(row.created_at ?? "")) === today;
   const todayRows = rows.filter(isCurrentOperationalDay);
-  // Las anulaciones también quedan visibles en el historial: no se borra el rastro del día.
-  const historicalRows = allRows.filter((row) => !isCurrentOperationalDay(row));
+  // El historial muestra todas las jornadas, incluida la actual; las rendiciones de hoy
+  // también siguen disponibles en el panel operativo, pero no quedan ocultas del archivo.
+  const historicalRows = allRows;
+  const archiveDailyStatusRows = [...(historicalDailyStatusRows ?? []), ...(dailyStatusRows ?? [])];
+  const archiveDrawStatusRows = [...(historicalDrawStatusRows ?? []), ...(drawStatusRows ?? [])];
   const historicalByDay = new Map<string, any[]>();
   for (const row of historicalRows) {
     const day = agencyBusinessDateForCutoff(cutoffTime, String(row.created_at ?? ""));
@@ -194,14 +197,14 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   }
   const historicalDailyStatusesByDay = new Map<string, any[]>();
   const historicalDailyStatusByAgentAndDay = new Map<string, any>();
-  for (const status of historicalDailyStatusRows ?? []) {
+  for (const status of archiveDailyStatusRows) {
     const day = String(status.operational_date);
     historicalDailyStatusesByDay.set(day, [...(historicalDailyStatusesByDay.get(day) ?? []), status]);
     historicalDailyStatusByAgentAndDay.set(day + "|" + String(status.agent_id), status);
   }
   const historicalDrawStatusesByDay = new Map<string, any[]>();
   const historicalDrawStatusesByAgentAndDay = new Map<string, any[]>();
-  for (const status of historicalDrawStatusRows ?? []) {
+  for (const status of archiveDrawStatusRows) {
     const day = String(status.operational_date);
     const key = day + "|" + String(status.agent_id);
     historicalDrawStatusesByDay.set(day, [...(historicalDrawStatusesByDay.get(day) ?? []), status]);
@@ -732,9 +735,9 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
             <div className="panel-head">
               <div>
                 <h2>Historial diario de rendiciones</h2>
-                <p className="muted">Listado por jornada de rendiciones, juegos, tickets, cobros, observaciones y estados guardados. El reinicio del día no borra el historial anterior.</p>
+                <p className="muted">Listado por jornada de todas las rendiciones, juegos, tickets, cobros, observaciones y estados guardados, incluido el día actual.</p>
               </div>
-              <span className="muted">{historicalRows.length} registros históricos · {(historicalDailyStatusRows ?? []).length + (historicalDrawStatusRows ?? []).length} estados guardados</span>
+              <span className="muted">{historicalRows.length} registros · {archiveDailyStatusRows.length + archiveDrawStatusRows.length} estados guardados</span>
             </div>
             {historicalDays.length ? (
               <div className="rendition-archive-days">
