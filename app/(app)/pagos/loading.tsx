@@ -41,7 +41,8 @@ export default function PagosLoading() {
         }
         .rendition-loading-brand {
           width: 100%;
-          min-height: inherit;
+          min-height: 0;
+          flex: 0 0 auto;
           display: flex;
           align-items: center;
           justify-content: center;
