@@ -177,17 +177,33 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const drawNow = new Date();
   const dailyCloseAllowed = true;
 
-  const agentRows = agents ?? [];
+  const isUndefinedPlaceholder = (value: unknown) => ["undefined", "null", "nan"].includes(String(value ?? "").trim().toLocaleLowerCase("es-AR"));
+  // Excluir agentes de prueba o referencias rotas para que no aparezcan como una rendición "undefined".
+  const agentRows = (agents ?? []).filter((agent) =>
+    !isUndefinedPlaceholder(agent.id) &&
+    !isUndefinedPlaceholder(agent.full_name) &&
+    !isUndefinedPlaceholder(agent.code)
+  );
+  const validAgentIds = new Set(agentRows.map((agent) => String(agent.id)));
   const activeAgents = agentRows.filter((agent) => agent.is_active);
   const archivedAgents = agentRows.filter((agent) => !agent.is_active);
   const allRows = (renditions ?? []) as any[];
-  const rows = allRows.filter((row) => row.status !== "void");
-  const voidRows = allRows.filter((row) => row.status === "void");
+  // Ocultar únicamente registros huérfanos o con marcadores literales "undefined";
+  // no se borra nada de la base y se conservan las rendiciones válidas del operador.
+  const displayableRenditions = allRows.filter((row) =>
+    !isUndefinedPlaceholder(row.agent_id) &&
+    validAgentIds.has(String(row.agent_id)) &&
+    !isUndefinedPlaceholder(row.rendition_date) &&
+    !isUndefinedPlaceholder(row.game_period) &&
+    !isUndefinedPlaceholder(row.draw_number)
+  );
+  const rows = displayableRenditions.filter((row) => row.status !== "void");
+  const voidRows = displayableRenditions.filter((row) => row.status === "void");
   const isCurrentOperationalDay = (row: any) => agencyBusinessDateForCutoff(cutoffTime, String(row.created_at ?? "")) === today;
   const todayRows = rows.filter(isCurrentOperationalDay);
   // El historial muestra todas las jornadas, incluida la actual; las rendiciones de hoy
   // también siguen disponibles en el panel operativo, pero no quedan ocultas del archivo.
-  const historicalRows = allRows;
+  const historicalRows = displayableRenditions;
   const archiveDailyStatusRows = [...(historicalDailyStatusRows ?? []), ...(dailyStatusRows ?? [])];
   const archiveDrawStatusRows = [...(historicalDrawStatusRows ?? []), ...(drawStatusRows ?? [])];
   const historicalByDay = new Map<string, any[]>();
