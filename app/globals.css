@@ -2559,8 +2559,8 @@ html body .app-shell aside.sidebar nav.nav-list > a.nav-item.active:active {
 
 /* Quitar únicamente el acceso adicional a Lotería Correntina ubicado en la cabecera lateral.
    Se conserva el enlace principal del menú, dentro de nav.nav-list. */
-html body .app-shell aside.sidebar .sidebar-brand a[href="/loteria-correntina"],
-html body .app-shell aside.sidebar .panel-general-summary a[href="/loteria-correntina"],
-html body .app-shell aside.sidebar > a[href="/loteria-correntina"] {
+/* Eliminar el enlace/atajo duplicado de Lotería dentro del lateral,
+   sin afectar el acceso normal del menú principal. */
+html body .app-shell aside.sidebar a[href="/loteria-correntina"]:not(.nav-item) {
   display:none!important;
 }
