@@ -808,6 +808,16 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [progress, setProgress] = useState("");
   const [progressPercent, setProgressPercent] = useState(0);
   const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!busy) return;
+    const timer = window.setInterval(() => {
+      setProgressPercent((current) => {
+        if (current >= 97) return 97;
+        return Math.min(97, current + Math.max(0.15, (97 - current) * 0.025));
+      });
+    }, 500);
+    return () => window.clearInterval(timer);
+  }, [busy]);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [confirmationError, setConfirmationError] = useState("");
@@ -1477,11 +1487,30 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       const parsedAmountMap = Object.fromEntries(
         Object.entries(parsed.amountMap).filter(([gameId]) => gamesForDetectedPeriod.some((game) => game.id === gameId))
       );
+      if (parsed.receiptData) {
+        // Reutilizar primero las cajas que ya entregó PaddleOCR en la lectura principal.
+        // Así evitamos una segunda lectura completa cuando esos datos ya están presentes.
+        const initialPaddleMetadata = readClosureMetadataFromOcrWords(paddleMetadataWords);
+        const initialPrintedRaw = initialPaddleMetadata.printedAt;
+        const initialPrintedDate = initialPrintedRaw?.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0] ?? null;
+        const initialPrintedTime = initialPrintedRaw?.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0] ?? null;
+        focusedClosureMetadata = {
+          agencyCode: initialPaddleMetadata.agencyCode ?? undefined,
+          subagentCode: initialPaddleMetadata.subagentCode ?? undefined,
+          machineCode: initialPaddleMetadata.machineCode ?? undefined,
+          address: correctTicketAddressOcr(initialPaddleMetadata.address) ?? undefined,
+          terminalId: initialPaddleMetadata.terminalId ?? undefined,
+          printedAt: initialPrintedRaw
+            ? { date: initialPrintedDate, time: initialPrintedTime, raw: initialPrintedRaw }
+            : undefined,
+          periodNumber: initialPaddleMetadata.periodNumber ?? undefined,
+        };
+      }
       if (parsed.receiptData && (
-        !parsed.receiptData.machineCode ||
-        !parsed.receiptData.address ||
-        !parsed.receiptData.terminalId ||
-        !parsed.receiptData.printedAt.raw
+        !(focusedClosureMetadata.machineCode ?? parsed.receiptData.machineCode) ||
+        !(focusedClosureMetadata.address ?? parsed.receiptData.address) ||
+        !(focusedClosureMetadata.terminalId ?? parsed.receiptData.terminalId) ||
+        !(focusedClosureMetadata.printedAt?.raw ?? parsed.receiptData.printedAt.raw)
       )) {
         // La lectura principal conserva los importes. Si falta identificación,
         // hacer una pasada independiente con Tesseract y usar las cajas de cada
