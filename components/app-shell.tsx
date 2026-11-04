@@ -1100,6 +1100,48 @@ export function AppShell({
           background: #b99b4d !important;
         }
 
+
+        /* Panel General: títulos más grandes, sin descripciones ni cortes dentro de palabras. */
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy) {
+          gap: 0 !important;
+          min-width: 0 !important;
+        }
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy small) {
+          display: none !important;
+        }
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong) {
+          display: block !important;
+          color: #3f321d !important;
+          font-size: 17px !important;
+          font-weight: 850 !important;
+          line-height: 1.18 !important;
+          letter-spacing: -.015em !important;
+          white-space: normal !important;
+          overflow-wrap: normal !important;
+          word-break: normal !important;
+          hyphens: none !important;
+          text-overflow: clip !important;
+        }
+        @media (max-width: 640px) {
+          :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item) {
+            min-height: 72px !important;
+            padding: 12px 10px !important;
+            gap: 7px !important;
+          }
+          :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong) {
+            font-size: 16px !important;
+            line-height: 1.2 !important;
+          }
+        }
+        @media (max-width: 380px) {
+          :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item) {
+            padding: 10px 7px !important;
+            gap: 5px !important;
+          }
+          :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong) {
+            font-size: 15px !important;
+          }
+        }
       `}</style>
     </div>
   );
