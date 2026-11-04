@@ -2561,6 +2561,8 @@ html body .app-shell aside.sidebar nav.nav-list > a.nav-item.active:active {
    Se conserva el enlace principal del menú, dentro de nav.nav-list. */
 /* Eliminar el enlace/atajo duplicado de Lotería dentro del lateral,
    sin afectar el acceso normal del menú principal. */
-html body .app-shell aside.sidebar a[href="/loteria-correntina"]:not(.nav-item) {
+html body a[href^="/loteria-correntina"] {
   display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
 }
