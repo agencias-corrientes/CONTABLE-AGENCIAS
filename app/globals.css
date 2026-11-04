@@ -305,9 +305,12 @@ html,body{background:var(--bg);color:var(--text)}
 .ticket-progress-heading strong{font-size:14px;line-height:1.25;overflow-wrap:anywhere}
 .ticket-progress-heading>b{font-size:30px;line-height:1;font-variant-numeric:tabular-nums;color:var(--primary);white-space:nowrap}
 .ticket-progress-panel.is-complete .ticket-progress-heading>b{color:#1d7a52}
-.ticket-progress-track{width:100%;height:12px;overflow:hidden;border-radius:999px;background:#e7dec8;border:1px solid rgba(42,32,32,.08)}
+.ticket-progress-track{position:relative;width:100%;height:12px;overflow:hidden;border-radius:999px;background:#e7dec8;border:1px solid rgba(42,32,32,.08)}
 .ticket-progress-track>span{display:block;height:100%;border-radius:999px;background:var(--primary);transition:width .25s ease}
 .ticket-progress-panel.is-reading .ticket-progress-track>span{background:#b58a21}
+.ticket-progress-panel.is-reading .ticket-progress-track::after{content:"";position:absolute;inset:0 auto 0 -28%;width:28%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.58),transparent);animation:ticket-progress-glide 1.15s ease-in-out infinite;pointer-events:none}
+@keyframes ticket-progress-glide{from{transform:translateX(0)}to{transform:translateX(460%)}}
+@media(prefers-reduced-motion:reduce){.ticket-progress-panel.is-reading .ticket-progress-track::after{animation:none;left:70%}}
 .ticket-progress-panel.is-complete .ticket-progress-track>span{background:#2c8a5e}
 .ticket-progress-panel small{display:block;color:var(--muted);font-size:11px;line-height:1.35}
 @media(max-width:760px){.rendition-mode-toolbar{grid-template-columns:1fr}.rendition-mode-switch button{min-height:54px}.ticket-progress-panel{min-height:82px}}
