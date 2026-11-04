@@ -2913,3 +2913,42 @@ html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel
     line-height: 1.16 !important;
   }
 }
+
+
+/* Ajuste fino Panel General: recuperar dimensiones originales de las tarjetas,
+   reforzar el contorno y dar mayor jerarquía a los títulos. */
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child {
+  min-height: unset !important;
+  height: auto !important;
+  border: 2px solid #171717 !important;
+  box-shadow: 0 3px 8px rgba(0,0,0,.12) !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy > strong,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-copy > strong {
+  font-size: 24px !important;
+  line-height: 1.08 !important;
+  font-weight: 900 !important;
+}
+@media (max-width: 1000px) {
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list {
+    grid-auto-rows: initial !important;
+  }
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item,
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child {
+    min-height: unset !important;
+    height: auto !important;
+  }
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy > strong,
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-copy > strong {
+    font-size: 21px !important;
+    line-height: 1.1 !important;
+  }
+}
+@media (max-width: 420px) {
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy > strong,
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-copy > strong {
+    font-size: 19px !important;
+    line-height: 1.12 !important;
+  }
+}
