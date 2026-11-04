@@ -22,7 +22,7 @@ export default async function HomePage() {
         .maybeSingle();
 
       return (
-        <main className="landing landing-login">
+        <main className="landing">
           <section className="landing-card landing-role-card">
             <div className="brand-logo-wrap brand-logo-top-left"><Image src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png" alt="Agencias Corrientes — Quiniela Oficial" width={100} height={100} priority /></div>
             <p className="eyebrow">ACCESO EXCLUSIVO · ADMINISTRADOR MAESTRO</p>
@@ -42,7 +42,7 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="landing">
+    <main className="landing landing-login">
       <LandingSplash />
       <section className="landing-card landing-role-card">
         <div className="brand-logo-wrap login-entry-logo"><Image src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png" alt="Agencias Corrientes — Quiniela Oficial" width={84} height={84} priority /></div>
