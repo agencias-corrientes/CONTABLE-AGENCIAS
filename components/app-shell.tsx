@@ -1046,13 +1046,13 @@ export function AppShell({
         :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item:hover),
         :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item:focus),
         :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item:focus-visible) {
-          background: #ead99f !important;
-          background-color: #ead99f !important;
+          background: #d8b447 !important;
+          background-color: #d8b447 !important;
           background-image: none !important;
           color: #493d27 !important;
-          border-color: #d0b96f !important;
-          border-bottom-color: #d0b96f !important;
-          box-shadow: 0 2px 6px rgba(40,35,25,.10) !important;
+          border-color: #a9852e !important;
+          border-bottom-color: #a9852e !important;
+          box-shadow: 0 2px 6px rgba(40,35,25,.12) !important;
           transform: none !important;
           filter: none !important;
           outline: none !important;
@@ -1063,20 +1063,20 @@ export function AppShell({
         :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item.active),
         :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item.active:hover),
         :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item.active:focus-visible) {
-          background: #ead99f !important;
-          background-color: #ead99f !important;
-          border-color: #d0b96f !important;
-          border-bottom-color: #d0b96f !important;
+          background: #d8b447 !important;
+          background-color: #d8b447 !important;
+          border-color: #a9852e !important;
+          border-bottom-color: #a9852e !important;
           box-shadow: 0 2px 6px rgba(40,35,25,.10) !important;
         }
         :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:active),
         :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:active),
         :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item:active),
         :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item.active:active) {
-          background: #e2cd88 !important;
-          background-color: #e2cd88 !important;
-          border-color: #c6aa61 !important;
-          border-bottom-color: #c6aa61 !important;
+          background: #cda43a !important;
+          background-color: #cda43a !important;
+          border-color: #a9852e !important;
+          border-bottom-color: #a9852e !important;
           box-shadow: inset 0 2px 5px rgba(40,35,25,.10) !important;
           transform: translateY(1px) !important;
         }
