@@ -5,6 +5,7 @@ import Image from "next/image";
 export default function PagosLoading() {
   return (
     <main className="rendition-loading" aria-live="polite" aria-busy="true">
+      <p className="rendition-loading-label">Cargando</p>
       <div className="rendition-loading-brand" aria-hidden="true">
         <Image
           src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png"
@@ -22,11 +23,21 @@ export default function PagosLoading() {
           width: 100%;
           min-height: calc(100dvh - 56px);
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
+          gap: 18px;
           padding: 0;
           overflow: hidden;
           background: transparent;
+        }
+        .rendition-loading-label {
+          margin: 0;
+          color: #5b5042;
+          font-size: 16px;
+          font-weight: 750;
+          letter-spacing: .04em;
+          line-height: 1;
         }
         .rendition-loading-brand {
           width: 100%;
