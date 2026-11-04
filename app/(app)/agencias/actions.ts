@@ -674,7 +674,7 @@ export async function receiveAgencyRendition(formData: FormData) {
     p_rendition_id: renditionId,
     p_payment_date: String(formData.get("payment_date") ?? ""),
     p_amount: Number(formData.get("amount") ?? 0),
-    p_cash_account_id: cajaId,
+    p_cash_account_id: cajaId as string,
     p_reference: String(formData.get("reference") ?? "").trim() || undefined,
     p_notes: String(formData.get("notes") ?? "").trim() || undefined,
   });
