@@ -218,12 +218,12 @@ export async function createAgencyAgent(formData: FormData) {
   const fullName = String(formData.get("full_name") ?? "").trim();
   const kindLabel = kindValue === "ambulant" ? "ambulante" : "subagente";
 
-  if (!permissions.can_create_agents) redirect("/agencias?error=sin-permiso-alta");
-  if (!["subagent", "ambulant"].includes(kindValue)) redirect("/agencias?error=tipo-invalido");
+  if (!permissions.can_create_agents) redirect("/agencias/alta?error=sin-permiso-alta");
+  if (!["subagent", "ambulant"].includes(kindValue)) redirect("/agencias/alta?error=tipo-invalido");
   if (!/^\d{3}-\d{3}-\d{2}$/.test(code)) {
-    redirect("/agencias?error=codigo-invalido&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
+    redirect("/agencias/alta?error=codigo-invalido&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
   }
-  if (!fullName) redirect("/agencias?error=nombre-obligatorio&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
+  if (!fullName) redirect("/agencias/alta?error=nombre-obligatorio&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
   const kind = kindValue as "subagent" | "ambulant";
 
   const { data: owningAgency, error: owningAgencyError } = await supabase
@@ -231,13 +231,13 @@ export async function createAgencyAgent(formData: FormData) {
     .select("agency_code,name")
     .eq("id", organizationId)
     .maybeSingle();
-  if (owningAgencyError || !owningAgency) redirect("/agencias?error=agencia-no-configurada");
+  if (owningAgencyError || !owningAgency) redirect("/agencias/alta?error=agencia-no-configurada");
   const registeredAgencyCode = String(owningAgency.agency_code ?? "").trim()
     || String(owningAgency.name ?? "").match(/agencia[^0-9]*([0-9]{3})/i)?.[1]
     || (/^\d{3}$/.test(String(owningAgency.name ?? "").trim()) ? String(owningAgency.name).trim() : "");
-  if (!registeredAgencyCode) redirect("/agencias?error=agencia-no-configurada");
+  if (!registeredAgencyCode) redirect("/agencias/alta?error=agencia-no-configurada");
   if (code.split("-")[0] !== registeredAgencyCode) {
-    redirect("/agencias?error=agencia-ajena&codigo=" + encodeURIComponent(code));
+    redirect("/agencias/alta?error=agencia-ajena&codigo=" + encodeURIComponent(code));
   }
 
   // Friendly pre-check; the unique database index is the concurrency-safe final guard.
@@ -249,9 +249,9 @@ export async function createAgencyAgent(formData: FormData) {
     .eq("code", code)
     .limit(1)
     .maybeSingle();
-  if (duplicateError) redirect("/agencias?error=alta-fallida");
+  if (duplicateError) redirect("/agencias/alta?error=alta-fallida");
   if (duplicate) {
-    redirect("/agencias?error=duplicado&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
+    redirect("/agencias/alta?error=duplicado&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
   }
 
   const { error } = await supabase.rpc("create_agency_agent", {
@@ -268,16 +268,17 @@ export async function createAgencyAgent(formData: FormData) {
   if (error) {
     const normalized = error.message.toLowerCase();
     if (normalized.includes("agency_agents_global_code_uq")) {
-      redirect("/agencias?error=duplicado-global&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
+      redirect("/agencias/alta?error=duplicado-global&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
     }
     if (error.code === "23505" || normalized.includes("ya está cargado") || normalized.includes("duplicate key")) {
-      redirect("/agencias?error=duplicado&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
+      redirect("/agencias/alta?error=duplicado&tipo=" + kindLabel + "&codigo=" + encodeURIComponent(code));
     }
-    if (normalized.includes("permiso")) redirect("/agencias?error=sin-permiso-alta");
-    redirect("/agencias?error=alta-fallida");
+    if (normalized.includes("permiso")) redirect("/agencias/alta?error=sin-permiso-alta");
+    redirect("/agencias/alta?error=alta-fallida");
   }
   revalidatePath("/agencias");
-  redirect("/agencias?resultado=creado&codigo=" + encodeURIComponent(code));
+  revalidatePath("/agencias/alta");
+  redirect("/agencias/alta?resultado=creado&codigo=" + encodeURIComponent(code));
 }
 
 export async function updateAgencyAgentProfile(formData: FormData) {
