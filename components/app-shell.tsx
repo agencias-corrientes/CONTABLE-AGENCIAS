@@ -110,7 +110,7 @@ export function AppShell({
         </div>
       </aside>
       <main className="content-area">
-        {pathname !== "/inicio" && <div className="mobile-panel-return"><button type="button" onClick={() => { const request = new Event("agencias:request-panel-return", { cancelable: true }); const shouldNavigate = window.dispatchEvent(request); if (shouldNavigate) router.push("/inicio?seleccion=" + (pathname.split("/")[1] ?? "")); }} aria-label="Volver al panel general"><span aria-hidden="true">←</span><span>Volver al panel general</span></button></div>}
+        {pathname !== "/inicio" && <div className="mobile-panel-return"><button type="button" onClick={() => { const request = new Event("agencias:request-panel-return", { cancelable: true }); const shouldNavigate = window.dispatchEvent(request); if (shouldNavigate) router.push("/inicio"); }} aria-label="Volver al panel general"><span aria-hidden="true">←</span><span>Volver al panel general</span></button></div>}
         {pathname === "/inicio" ? (
           <div className="desktop-agency-home" aria-label="Agencias Corrientes">
             <Image
@@ -445,12 +445,13 @@ export function AppShell({
         }
 
 
-        .mobile-panel-return { display: none; }
+        .mobile-panel-return { display: block; position: sticky; top: 0; z-index: 30; margin: 0 0 12px; padding: 0; background: transparent; }
         @media (max-width: 1000px) {
           .mobile-panel-return { display: block; position: sticky; top: 0; z-index: 30; margin: -12px -12px 12px; padding: 9px 12px; background: rgba(255,255,255,.97); border-bottom: 1px solid #e1e5e8; }
-          .mobile-panel-return button { appearance: none; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; width: 100%; box-sizing: border-box; padding: 9px 16px; border: 1px solid #cbd5dc; border-bottom: 3px solid #aebdc7; border-radius: 10px; background: #edf1f4; color: #394b57; font: inherit; font-size: 15px; font-weight: 800; letter-spacing: .01em; cursor: pointer; box-shadow: 0 1px 3px rgba(35,50,60,.07); -webkit-tap-highlight-color: transparent; }
-          .mobile-panel-return button span:first-child { font-size: 25px; line-height: 1; font-weight: 900; }
-          .mobile-panel-return button:active { background: #e2e8ec; transform: translateY(1px); box-shadow: 0 1px 2px rgba(35,50,60,.08); }
+          .mobile-panel-return button { appearance: none; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 46px; width: auto; max-width: 100%; box-sizing: border-box; padding: 9px 16px; border: 1px solid #20252a; border-radius: 12px; background: #343a40; color: #ffffff; font: inherit; font-size: 14px; font-weight: 800; letter-spacing: .01em; cursor: pointer; box-shadow: 0 2px 0 rgba(0,0,0,.14); -webkit-tap-highlight-color: transparent; }
+          .mobile-panel-return button span:first-child { font-size: 22px; line-height: 1; font-weight: 900; }
+          .mobile-panel-return button:hover,.mobile-panel-return button:focus-visible { background: #252a2f; color: #fff; outline: 2px solid rgba(52,58,64,.2); outline-offset: 2px; }
+          .mobile-panel-return button:active { background: #252a2f; transform: translateY(1px); }
           :global(.app-shell:not(.mobile-navigation-home) .sidebar) { display:none !important; }
           :global(.app-shell:not(.mobile-navigation-home) .content-area) { display:block !important; width:100% !important; min-width:0 !important; padding:12px !important; }
           .app-shell.mobile-navigation-home { display:block !important; width:100% !important; min-height:100vh !important; min-height:100svh !important; min-height:100dvh !important; }
