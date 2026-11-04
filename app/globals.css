@@ -2952,3 +2952,85 @@ html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel
     line-height: 1.12 !important;
   }
 }
+
+
+/* Panel General: aplicar el mismo marco y distribución a los seis accesos.
+   Compactar la grilla móvil para que las tres filas entren mejor en pantalla. */
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:hover,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:focus-visible,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active {
+  border: 2px solid #171717 !important;
+  border-bottom: 2px solid #171717 !important;
+  box-shadow: 0 2px 5px rgba(0,0,0,.12) !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 5px !important;
+  text-align: center !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-copy {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy > strong,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-copy > strong {
+  width: 100% !important;
+  text-align: center !important;
+  font-size: 24px !important;
+  line-height: 1.04 !important;
+  font-weight: 900 !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+@media (max-width: 1000px) {
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list {
+    grid-auto-rows: 116px !important;
+    gap: 9px !important;
+    margin-top: 10px !important;
+    margin-bottom: 12px !important;
+  }
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item,
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child {
+    height: 116px !important;
+    min-height: 116px !important;
+    padding: 9px 8px 12px !important;
+    gap: 5px !important;
+  }
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-icon,
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-icon {
+    width: 30px !important;
+    height: 30px !important;
+    flex: 0 0 30px !important;
+  }
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-icon svg,
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-icon svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy > strong,
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-copy > strong {
+    font-size: 21px !important;
+    line-height: 1.03 !important;
+  }
+}
+@media (max-width: 420px) {
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list {
+    grid-auto-rows: 112px !important;
+  }
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item,
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child {
+    height: 112px !important;
+    min-height: 112px !important;
+    padding: 8px 7px 11px !important;
+  }
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy > strong,
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-copy > strong {
+    font-size: 19px !important;
+    line-height: 1.02 !important;
+  }
+}
