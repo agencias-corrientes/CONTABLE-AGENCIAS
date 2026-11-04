@@ -76,24 +76,12 @@ export default async function AgenciasPage({
       <DailyBoundaryRefresh businessDate={today} cutoffTime={cutoffTime} drawTimes={periods.map((period) => period.time).filter((time): time is string => Boolean(time))} renderedAt={new Date().toISOString()} />
       <div className="topbar">
         <div><p className="eyebrow">ADMINISTRACIÓN DE AGENTES</p><h1>Subagentes y ambulantes</h1><p className="muted">Por defecto, cada operador hace una sola rendición diaria al cierre. El titular puede cambiar esta modalidad si necesita rendir por sorteo.</p><p className="muted small-text"><a href={OFFICIAL_QUINIELA_SCHEDULE_URL} target="_blank" rel="noreferrer">Cronograma oficial de Lotería Correntina</a> · <a href={OFFICIAL_EXTRACTS_SCHEDULE_URL} target="_blank" rel="noreferrer">Resultados y sorteos publicados</a></p></div>
-        <Link href="/pagos" className="button primary">Ir a Rendiciones</Link>
       </div>
       {params.resultado === "archivado" && <p className="message success-message">El agente {params.codigo || ""} tenía rendiciones. Se desactivó para conservar su historial.</p>}
       {params.resultado === "eliminado" && <p className="message success-message">El agente {params.codigo || ""} se eliminó porque no tenía rendiciones asociadas.</p>}
-      {params.resultado === "creado" && <p className="message success-message">Se cargó correctamente el agente {params.codigo || ""}.</p>}
-      {params.error === "duplicado" && <p className="message error-message">Este {params.tipo === "ambulante" ? "ambulante" : "subagente"} {params.codigo || ""} ya está cargado en esta agencia. No se creó otro registro.</p>}
-      {params.error === "duplicado-global" && <p className="message error-message">Ese código ya pertenece a un subagente o ambulante de otra agencia. No se aceptó para evitar cruzar cuentas y movimientos entre titulares.</p>}
-      {params.error === "agencia-ajena" && <p className="message error-message" role="alert">El código debe comenzar con el número oficial de esta agencia. No se creó el subagente o ambulante porque pertenece a otro número de agencia.</p>}
-      {params.error && !["duplicado", "duplicado-global"].includes(params.error) && <p className="message error-message">{({
-        "sin-permiso-alta": "No tenés permiso para dar de alta subagentes o ambulantes.",
+      {params.error && <p className="message error-message">{({
         "sin-permiso-baja": "Solo el administrador o un empleado autorizado puede eliminar agentes.",
-        "tipo-invalido": "El tipo de agente seleccionado no es válido.",
-        "codigo-invalido": "Ingresá el código con el formato 251-010-01.",
-        "nombre-obligatorio": "Ingresá el nombre del subagente o ambulante.",
-        "alta-fallida": "No se pudo guardar el alta. Revisá el código y volvé a intentar.",
-        "baja-fallida": "No se pudo completar la baja. No se modificó el historial.",
-        "agente-no-encontrado": "No encontramos ese subagente o ambulante.",
-        "agencia-no-configurada": "Antes de cargar agentes, configurá el número oficial de 3 dígitos en Configuración → Datos de la agencia."
+        "baja-fallida": "No se pudo completar la baja. No se modificó el historial."
       } as Record<string,string>)[params.error] ?? "No se pudo completar la operación. Revisá tus permisos o los datos e intentá nuevamente."}</p>}
 
       <div className="agency-page-actions">
