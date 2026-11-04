@@ -3,11 +3,26 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-/** Splash blanco con el logo, visible al iniciar tanto en web como en la aplicación instalada. */
+/**
+ * En la web muestra el splash propio.
+ * En la aplicación PWA instalada se omite: Android ya muestra el splash nativo
+ * generado desde el manifest y los iconos de la aplicación.
+ */
 export function LandingSplash() {
-  const [phase, setPhase] = useState<"show" | "fade" | "hidden">("show");
+  const [phase, setPhase] = useState<"checking" | "show" | "fade" | "hidden">("checking");
 
   useEffect(() => {
+    const isInstalledApp =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.matchMedia("(display-mode: fullscreen)").matches ||
+      (navigator as Navigator & { standalone?: boolean }).standalone === true;
+
+    if (isInstalledApp) {
+      setPhase("hidden");
+      return;
+    }
+
+    setPhase("show");
     const fadeTimer = window.setTimeout(() => setPhase("fade"), 1150);
     const removeTimer = window.setTimeout(() => setPhase("hidden"), 2050);
 
@@ -17,7 +32,7 @@ export function LandingSplash() {
     };
   }, []);
 
-  if (phase === "hidden") return null;
+  if (phase === "checking" || phase === "hidden") return null;
 
   return (
     <div
