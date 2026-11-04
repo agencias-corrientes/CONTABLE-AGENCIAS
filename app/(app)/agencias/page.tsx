@@ -3,8 +3,7 @@ import { getCurrentContext } from "@/lib/accounting";
 import { DailyBoundaryRefresh } from "@/components/daily-boundary-refresh";
 import { agencyBusinessDateForCutoff } from "@/lib/agency-datetime";
 import { getOfficialDrawPeriodsForDate, OFFICIAL_QUINIELA_SCHEDULE_URL, OFFICIAL_EXTRACTS_SCHEDULE_URL } from "@/lib/agency-draw-schedule";
-import { AgencyCodeInput } from "@/components/agency-code-input";
-import { createAgencyAgent, deleteAgencyAgent } from "./actions";
+import { deleteAgencyAgent } from "./actions";
 
 function AgentCard({ agent, canDelete }: { agent: any; canDelete: boolean }) {
   const subagent = agent.kind === "subagent";
@@ -97,21 +96,10 @@ export default async function AgenciasPage({
         "agencia-no-configurada": "Antes de cargar agentes, configurá el número oficial de 3 dígitos en Configuración → Datos de la agencia."
       } as Record<string,string>)[params.error] ?? "No se pudo completar la operación. Revisá tus permisos o los datos e intentá nuevamente."}</p>}
 
-      {canCreateAgents ? <section className="agency-create-panel">
-        <div className="panel-head"><div><h2>Agregar subagente o ambulante</h2><p className="muted">Los guiones aparecen solos al escribir los dígitos del código.</p></div></div>
-        <form action={createAgencyAgent} className="agency-create-grid">
-          <select name="kind" defaultValue="subagent" aria-label="Tipo de agencia">
-            <option value="subagent">Subagente</option>
-            <option value="ambulant">Ambulante</option>
-          </select>
-          <AgencyCodeInput name="code" />
-          <input name="full_name" placeholder="Nombre y apellido" required />
-          <input name="dni" placeholder="DNI" />
-          <input name="phone" placeholder="Teléfono" />
-          <input name="whatsapp" placeholder="WhatsApp" />
-          <button className="button primary" type="submit">Agregar</button>
-        </form>
-      </section> : <section className="agency-create-panel"><div className="panel-head"><div><h2>Alta de agentes restringida</h2><p className="muted">El titular debe habilitarte el permiso de alta de subagentes/ambulantes.</p></div></div></section>}
+      <div className="agency-page-actions">
+        {canCreateAgents && <Link href="/agencias/alta" className="button primary agency-page-action agency-add-agent-action">Agregar subagente o ambulante</Link>}
+        <Link href="/pagos" className="button primary agency-page-action agency-go-renditions-action">Ir a Rendiciones</Link>
+      </div>
 
       <section className="agency-section agency-section-subagents">
         <div className="agency-section-head"><div><span>01</span><div><h2>Subagentes</h2><p>Botones compactos · un clic para rendir</p></div></div><strong>{subagents.length}</strong></div>
