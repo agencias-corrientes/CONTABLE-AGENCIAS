@@ -10,7 +10,6 @@ const nav = [
   ["agencias", "Subagentes y ambulantes", "M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M17 11h6", "Gestión de agentes", "02"],
   ["buscar", "Buscar", "M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16M21 21l-4.35-4.35", "Consultas y registros", "03"],
   ["juegos", "Juegos y comisiones", "M4 19V5M4 19h16M7 15l4-4 3 2 5-7", "Gestión comercial", "04"],
-  ["loteria-correntina", "Lotería Correntina", "M4 7h16v12H4zM8 7V5h8v2M8 12h8M8 15h5", "Información y servicios", "05"],
   ["configuracion", "Configuración", "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M19.4 15l1.1 1.1-2.2 2.2-1.1-1.1M4.6 9 3.5 7.9l2.2-2.2L6.8 6.8", "Opciones de agencia", "06"],
 ] as const;
 
