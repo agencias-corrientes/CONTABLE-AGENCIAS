@@ -206,7 +206,7 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   const historicalRows = displayableRenditions;
   const isValidOperationalDate = (value: unknown) => {
     const raw = String(value ?? "").trim();
-    const match = raw.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!match) return false;
     const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
     const parsed = new Date(Date.UTC(year, month - 1, day));
