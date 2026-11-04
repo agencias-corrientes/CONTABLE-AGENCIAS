@@ -5,6 +5,7 @@ import Image from "next/image";
 export default function PagosLoading() {
   return (
     <main className="rendition-loading" aria-live="polite" aria-busy="true">
+      <p className="rendition-loading-label">Cargando<span className="rendition-loading-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></p>
       <div className="rendition-loading-brand" aria-hidden="true">
         <Image
           src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png"
@@ -22,15 +23,41 @@ export default function PagosLoading() {
           width: 100%;
           min-height: calc(100dvh - 56px);
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
+          gap: 18px;
           padding: 0;
           overflow: hidden;
           background: transparent;
         }
+        .rendition-loading-label {
+          display: flex;
+          align-items: baseline;
+          justify-content: center;
+          gap: 2px;
+          margin: 0;
+          color: #5b5042;
+          font-size: 16px;
+          font-weight: 750;
+          letter-spacing: .04em;
+          line-height: 1;
+        }
+        .rendition-loading-dots { display: inline-flex; gap: 2px; }
+        .rendition-loading-dots span {
+          display: inline-block;
+          animation: rendition-loading-dot 1.15s ease-in-out infinite;
+        }
+        .rendition-loading-dots span:nth-child(2) { animation-delay: .18s; }
+        .rendition-loading-dots span:nth-child(3) { animation-delay: .36s; }
+        @keyframes rendition-loading-dot {
+          0%, 65%, 100% { opacity: .25; transform: translateY(0); }
+          32% { opacity: 1; transform: translateY(-2px); }
+        }
         .rendition-loading-brand {
           width: 100%;
-          min-height: inherit;
+          min-height: 0;
+          flex: 0 0 auto;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -63,6 +90,7 @@ export default function PagosLoading() {
           }
         }
         @media (prefers-reduced-motion: reduce) {
+          .rendition-loading-dots span { animation: none !important; opacity: 1 !important; transform: none !important; }
           .rendition-loading-brand-logo {
             animation: none !important;
             transition: none !important;

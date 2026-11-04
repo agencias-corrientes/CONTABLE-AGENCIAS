@@ -68,7 +68,7 @@ export function AppShell({
             const href = `/${slug}`;
             const active = pathname.startsWith(href) || (pathname === "/inicio" && selectedSection === slug);
             return (
-              <Link key={slug} href={href} className={active ? "nav-item active" : "nav-item"}>
+              <Link key={slug} href={href} prefetch={true} className={active ? "nav-item active" : "nav-item"}>
                 <span className="panel-nav-number">{number}</span>
                 <span className="panel-nav-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
