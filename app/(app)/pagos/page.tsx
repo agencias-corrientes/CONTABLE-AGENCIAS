@@ -204,8 +204,22 @@ export default async function PagosPage({ searchParams }: { searchParams?: Promi
   // El historial muestra todas las jornadas, incluida la actual; las rendiciones de hoy
   // también siguen disponibles en el panel operativo, pero no quedan ocultas del archivo.
   const historicalRows = displayableRenditions;
-  const archiveDailyStatusRows = [...(historicalDailyStatusRows ?? []), ...(dailyStatusRows ?? [])];
-  const archiveDrawStatusRows = [...(historicalDrawStatusRows ?? []), ...(drawStatusRows ?? [])];
+  const isValidOperationalDate = (value: unknown) => {
+    const raw = String(value ?? "").trim();
+    const match = raw.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+    if (!match) return false;
+    const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
+  };
+  // El archivo solo presenta estados asociados a agentes reales y fechas operativas válidas.
+  // Los registros huérfanos permanecen en la base; este filtro no elimina datos.
+  const isDisplayableStatus = (status: any) =>
+    !isUndefinedPlaceholder(status.agent_id) &&
+    validAgentIds.has(String(status.agent_id)) &&
+    isValidOperationalDate(status.operational_date);
+  const archiveDailyStatusRows = [...(historicalDailyStatusRows ?? []), ...(dailyStatusRows ?? [])].filter(isDisplayableStatus);
+  const archiveDrawStatusRows = [...(historicalDrawStatusRows ?? []), ...(drawStatusRows ?? [])].filter(isDisplayableStatus);
   const historicalByDay = new Map<string, any[]>();
   for (const row of historicalRows) {
     const day = agencyBusinessDateForCutoff(cutoffTime, String(row.created_at ?? ""));
