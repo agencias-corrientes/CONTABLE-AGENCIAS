@@ -831,38 +831,40 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   const [dailyStatusChoice, setDailyStatusChoice] = useState<"complete" | "incomplete">(dailyMode && !dailyCloseAllowed ? "incomplete" : "complete");
   const [pendingAmount, setPendingAmount] = useState("");
   const ticketDraftIsLoaded = Boolean(fileName || photoPreviewUrl);
+  const ticketDraftIsLoadedRef = useRef(ticketDraftIsLoaded);
+  ticketDraftIsLoadedRef.current = ticketDraftIsLoaded;
   const ticketBackGuardUrlRef = useRef<string | null>(null);
   const ticketBackGuardStateRef = useRef<unknown>(null);
 
   useEffect(() => {
     if (!ticketDraftIsLoaded) return;
+
     const guardedUrl = window.location.href;
-    const originalHistoryState = window.history.state;
-    ticketBackGuardUrlRef.current = guardedUrl;
-    ticketBackGuardStateRef.current = originalHistoryState;
-    const originalStateObject = originalHistoryState && typeof originalHistoryState === "object"
-      ? originalHistoryState as Record<string, unknown>
+    const currentState = window.history.state;
+    const currentStateObject = currentState && typeof currentState === "object"
+      ? currentState as Record<string, unknown>
       : {};
-    window.history.pushState(
-      { ...originalStateObject, __agenciasTicketBackGuard: true },
-      "",
-      guardedUrl
-    );
+    const guardState = {
+      ...currentStateObject,
+      __agenciasTicketBackGuard: true,
+    };
+
+    ticketBackGuardUrlRef.current = guardedUrl;
+    window.history.pushState(guardState, "", guardedUrl);
+    // Guarda el estado ya normalizado por Next para restaurar exactamente esta entrada.
+    ticketBackGuardStateRef.current = window.history.state;
 
     const handleBrowserBack = (event: PopStateEvent) => {
-      const urlToRestore = ticketBackGuardUrlRef.current;
-      if (!urlToRestore) return;
-      // Evita que el router cambie de página antes de mostrar la confirmación.
+      if (!ticketDraftIsLoadedRef.current) return;
+
+      const urlToRestore = ticketBackGuardUrlRef.current ?? window.location.href;
+      const savedGuardState = ticketBackGuardStateRef.current;
+      if (!savedGuardState) return;
+
+      // Bloquea la navegación del navegador/Next y vuelve a colocar el punto de guardia.
+      event.preventDefault();
       event.stopImmediatePropagation();
-      const savedState = ticketBackGuardStateRef.current;
-      const savedStateObject = savedState && typeof savedState === "object"
-        ? savedState as Record<string, unknown>
-        : {};
-      window.history.pushState(
-        { ...savedStateObject, __agenciasTicketBackGuard: true },
-        "",
-        urlToRestore
-      );
+      window.history.pushState(savedGuardState, "", urlToRestore);
       setCancelTicketPromptOpen(true);
     };
 
@@ -876,21 +878,27 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
 
   useEffect(() => {
     if (!ticketDraftIsLoaded) return;
+
     const handleInAppBack = (event: MouseEvent) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
+
       const backLink = target.closest<HTMLAnchorElement>(".rendition-selected-header a.back-link");
       if (!backLink || backLink.getAttribute("href") !== "/pagos") return;
+
       event.preventDefault();
       event.stopImmediatePropagation();
       setCancelTicketPromptOpen(true);
     };
+
     document.addEventListener("click", handleInAppBack, true);
+
     const handlePanelReturnRequest = (event: Event) => {
-      if (!ticketDraftIsLoaded) return;
+      if (!ticketDraftIsLoadedRef.current) return;
       event.preventDefault();
       setCancelTicketPromptOpen(true);
     };
+
     window.addEventListener("agencias:request-panel-return", handlePanelReturnRequest);
     return () => {
       document.removeEventListener("click", handleInAppBack, true);
