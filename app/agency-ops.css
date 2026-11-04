@@ -658,34 +658,49 @@
   .rendition-agents-panel .rendition-agent-accordion:not([open])>.rendition-agent-summary{min-width:0;min-height:33px!important;padding:7px 8px!important}
 }
 
-/* FIX historial: cada registro tiene cinco campos; el código queda visible junto a su fecha. */
+/* Historial diario: identificación del operador siempre visible arriba a la derecha. */
 .rendition-history-list .rendition-record>summary{
-  grid-template-columns:minmax(90px,auto) minmax(95px,auto) minmax(130px,1fr) minmax(120px,auto) auto;
+  grid-template-columns:minmax(0,1fr) auto;
+  grid-template-rows:auto auto auto;
   align-items:center;
+  gap:7px 12px;
 }
+.rendition-history-list .rendition-record>summary>.rendition-record-date{grid-column:1;grid-row:1}
+.rendition-history-list .rendition-record>summary>.rendition-record-agent-code{grid-column:2;grid-row:1;justify-self:end}
+.rendition-history-list .rendition-record>summary>.rendition-record-period{grid-column:1/-1;grid-row:2}
+.rendition-history-list .rendition-record>summary>.rendition-record-amount{grid-column:1;grid-row:3;text-align:left}
+.rendition-history-list .rendition-record>summary>.badge{grid-column:2;grid-row:3;justify-self:end;align-self:center;max-width:145px}
 .rendition-history-list .rendition-record-agent-code{
   display:inline-flex;
+  flex-direction:column;
   align-items:center;
   justify-content:center;
-  width:max-content;
+  gap:2px;
+  min-width:90px;
   max-width:100%;
-  padding:5px 7px;
-  border:1px solid #d9c993;
-  border-radius:5px;
-  background:#f1e4ac;
+  padding:5px 9px;
+  border:1px solid #caa94c;
+  border-radius:6px;
+  background:#ffefb1;
   color:#64283a;
-  font-size:11px;
+  font-size:13px;
   font-weight:900;
-  line-height:1.15;
+  line-height:1.1;
   white-space:nowrap;
 }
+.rendition-history-list .rendition-record-agent-code small{
+  color:#64283a;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.04em;
+}
+.rendition-history-list .rendition-record-agent-code strong{
+  font-size:16px;
+  font-weight:950;
+  font-variant-numeric:tabular-nums;
+}
 @media(max-width:700px){
-  .rendition-history-list .rendition-record>summary{grid-template-columns:minmax(0,1fr) auto;gap:7px}
-  .rendition-history-list .rendition-record>summary>.rendition-record-date{grid-column:1;grid-row:1}
-  .rendition-history-list .rendition-record>summary>.rendition-record-agent-code{grid-column:2;grid-row:1;justify-self:end}
-  .rendition-history-list .rendition-record>summary>.rendition-record-period{grid-column:1/-1;grid-row:2}
-  .rendition-history-list .rendition-record>summary>.rendition-record-amount{grid-column:1;grid-row:3;text-align:left}
-  .rendition-history-list .rendition-record>summary>.badge{grid-column:2;grid-row:3;justify-self:end;align-self:center;max-width:145px}
+  .rendition-history-list .rendition-record>summary{gap:7px}
 }
 
 
