@@ -1101,48 +1101,179 @@ export function AppShell({
         }
 
 
-        /* Paleta intuitiva del Panel General: cambia solo los colores de las seis tarjetas. */
-        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1)) { --panel-bg:#E9B83F; --panel-fg:#382B16; }
-        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2)) { --panel-bg:#D8E9E4; --panel-fg:#245C4D; }
-        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3)) { --panel-bg:#DCE8F5; --panel-fg:#28527A; }
-        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4)) { --panel-bg:#E8DFF2; --panel-fg:#62457C; }
-        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5)) { --panel-bg:#DDEBD7; --panel-fg:#42643A; }
-        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6)) { --panel-bg:#E6E5E1; --panel-fg:#454545; }
-
-        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item),
-        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:hover),
-        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:focus),
-        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:focus-visible),
-        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active),
-        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:hover),
-        :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:focus-visible),
-        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item),
-        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item:hover),
-        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item:focus),
-        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item:focus-visible),
-        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item.active),
-        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item.active:hover),
-        :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.panel-general-item.active:focus-visible) {
-          background:var(--panel-bg)!important;
-          background-color:var(--panel-bg)!important;
+        /* Paleta aplicada directamente a cada tarjeta real del Panel General. */
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1)),
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1)):hover,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1)):focus,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1)):focus-visible,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1)).active,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1)).active:hover,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1)).active:focus-visible,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1)):active,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1)).active:active {
+          background:#E9B83F!important;
+          background-color:#E9B83F!important;
           background-image:none!important;
-          color:var(--panel-fg)!important;
+          color:#382B16!important;
         }
-        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong),
-        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy small),
-        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-number) {
-          color:var(--panel-fg)!important;
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1) .panel-nav-copy strong),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1) .panel-nav-copy small),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1) .panel-nav-number),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1) .panel-nav-icon) {
+          color:#382B16!important;
         }
-        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-icon),
-        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-number) {
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1) .panel-nav-icon),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1) .panel-nav-number) {
           background:rgba(255,255,255,.58)!important;
           border-color:rgba(65,55,40,.18)!important;
         }
-        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:active),
-        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item.active:active) {
-          background:var(--panel-bg)!important;
-          background-color:var(--panel-bg)!important;
-          color:var(--panel-fg)!important;
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(1) .panel-nav-accent) {
+          background:#382B16!important;
+        }
+
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2)),
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2)):hover,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2)):focus,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2)):focus-visible,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2)).active,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2)).active:hover,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2)).active:focus-visible,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2)):active,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2)).active:active {
+          background:#D8E9E4!important;
+          background-color:#D8E9E4!important;
+          background-image:none!important;
+          color:#245C4D!important;
+        }
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2) .panel-nav-copy strong),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2) .panel-nav-copy small),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2) .panel-nav-number),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2) .panel-nav-icon) {
+          color:#245C4D!important;
+        }
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2) .panel-nav-icon),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2) .panel-nav-number) {
+          background:rgba(255,255,255,.58)!important;
+          border-color:rgba(65,55,40,.18)!important;
+        }
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(2) .panel-nav-accent) {
+          background:#245C4D!important;
+        }
+
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3)),
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3)):hover,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3)):focus,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3)):focus-visible,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3)).active,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3)).active:hover,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3)).active:focus-visible,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3)):active,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3)).active:active {
+          background:#DCE8F5!important;
+          background-color:#DCE8F5!important;
+          background-image:none!important;
+          color:#28527A!important;
+        }
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3) .panel-nav-copy strong),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3) .panel-nav-copy small),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3) .panel-nav-number),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3) .panel-nav-icon) {
+          color:#28527A!important;
+        }
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3) .panel-nav-icon),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3) .panel-nav-number) {
+          background:rgba(255,255,255,.58)!important;
+          border-color:rgba(65,55,40,.18)!important;
+        }
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(3) .panel-nav-accent) {
+          background:#28527A!important;
+        }
+
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4)),
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4)):hover,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4)):focus,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4)):focus-visible,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4)).active,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4)).active:hover,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4)).active:focus-visible,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4)):active,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4)).active:active {
+          background:#E8DFF2!important;
+          background-color:#E8DFF2!important;
+          background-image:none!important;
+          color:#62457C!important;
+        }
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4) .panel-nav-copy strong),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4) .panel-nav-copy small),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4) .panel-nav-number),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4) .panel-nav-icon) {
+          color:#62457C!important;
+        }
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4) .panel-nav-icon),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4) .panel-nav-number) {
+          background:rgba(255,255,255,.58)!important;
+          border-color:rgba(65,55,40,.18)!important;
+        }
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(4) .panel-nav-accent) {
+          background:#62457C!important;
+        }
+
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5)),
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5)):hover,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5)):focus,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5)):focus-visible,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5)).active,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5)).active:hover,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5)).active:focus-visible,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5)):active,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5)).active:active {
+          background:#DDEBD7!important;
+          background-color:#DDEBD7!important;
+          background-image:none!important;
+          color:#42643A!important;
+        }
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5) .panel-nav-copy strong),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5) .panel-nav-copy small),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5) .panel-nav-number),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5) .panel-nav-icon) {
+          color:#42643A!important;
+        }
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5) .panel-nav-icon),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5) .panel-nav-number) {
+          background:rgba(255,255,255,.58)!important;
+          border-color:rgba(65,55,40,.18)!important;
+        }
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(5) .panel-nav-accent) {
+          background:#42643A!important;
+        }
+
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6)),
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6)):hover,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6)):focus,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6)):focus-visible,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6)).active,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6)).active:hover,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6)).active:focus-visible,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6)):active,
+        :global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6)).active:active {
+          background:#E6E5E1!important;
+          background-color:#E6E5E1!important;
+          background-image:none!important;
+          color:#454545!important;
+        }
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6) .panel-nav-copy strong),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6) .panel-nav-copy small),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6) .panel-nav-number),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6) .panel-nav-icon) {
+          color:#454545!important;
+        }
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6) .panel-nav-icon),
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6) .panel-nav-number) {
+          background:rgba(255,255,255,.58)!important;
+          border-color:rgba(65,55,40,.18)!important;
+        }
+:global(html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:nth-child(6) .panel-nav-accent) {
+          background:#454545!important;
         }
 
       `}</style>
