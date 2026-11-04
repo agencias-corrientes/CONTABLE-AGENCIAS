@@ -2,7 +2,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { LandingSplash } from "@/components/landing-splash";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ApplicationExitButton } from "@/components/application-exit-button";
 import { ApplicationInstallButton } from "@/components/application-install-button";
@@ -45,7 +44,6 @@ export default async function HomePage() {
 
   return (
     <main className="landing landing-login">
-      <LandingSplash />
       <section className="landing-card landing-role-card">
         <div className="brand-logo-wrap login-entry-logo"><Image src="/Esfera_brillante_de_Agencias_Corrientes-removebg-preview.png" alt="Agencias Corrientes — Quiniela Oficial" width={84} height={84} priority /></div>
         <h1>Control de Agencias</h1>
