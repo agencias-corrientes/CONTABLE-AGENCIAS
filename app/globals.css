@@ -2366,3 +2366,461 @@ body .app-shell .sidebar .nav-list .nav-item:active .panel-nav-number {
     outline:none!important;
   }
 }
+
+
+/* Rediseño visual profesional: login y Panel General. Solo CSS; sin cambios funcionales. */
+:root {
+  --bg: #f3efe5 !important;
+  --surface: #fffdf8 !important;
+  --surface2: #eee5d4 !important;
+  --text: #292329 !important;
+  --muted: #756b6c !important;
+  --line: #ded4c7 !important;
+  --primary: #713044 !important;
+  --primary2: #572234 !important;
+  --burgundy: #713044 !important;
+  --mustard: #c9a64f !important;
+}
+
+/* Login: composición institucional, limpia y con jerarquía tipográfica. */
+.auth-page.login-auth-page {
+  min-height: 100svh !important;
+  padding: clamp(18px,4vw,56px) !important;
+  background:
+    radial-gradient(ellipse at 12% 10%, rgba(201,166,79,.18), transparent 34%),
+    linear-gradient(135deg,#f7f3ea 0%,#eee6d8 100%) !important;
+}
+.login-auth-page .auth-card {
+  width: min(760px,100%) !important;
+  max-width: 760px !important;
+  padding: clamp(28px,5vw,58px) !important;
+  border: 1px solid #e4d9c8 !important;
+  border-top: 7px solid #713044 !important;
+  border-radius: 18px !important;
+  background: rgba(255,253,248,.98) !important;
+  box-shadow: 0 24px 70px rgba(54,35,31,.13) !important;
+}
+.login-auth-page .back-link {
+  margin-bottom: 26px !important;
+  color: #786d68 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+.login-auth-page .login-agency-brand {
+  width: 82px !important;
+  height: 82px !important;
+  margin: 0 0 20px !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+}
+.login-auth-page .login-agency-brand img {
+  width: 82px !important;
+  height: 82px !important;
+  object-fit: contain !important;
+  border-radius: 0 !important;
+}
+.login-auth-page .eyebrow {
+  margin: 0 0 10px !important;
+  color: #9b7934 !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: .19em !important;
+}
+.login-auth-page h1 {
+  margin: 0 0 12px !important;
+  color: #34232b !important;
+  font-size: clamp(32px,5vw,46px) !important;
+  font-weight: 850 !important;
+  line-height: 1.04 !important;
+  letter-spacing: -.045em !important;
+}
+.login-auth-page > .auth-card > p.muted {
+  max-width: 560px !important;
+  margin: 0 0 28px !important;
+  color: #756b6c !important;
+  font-size: 15px !important;
+  line-height: 1.65 !important;
+}
+.login-auth-page .login-role-selector {
+  display: grid !important;
+  grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  gap: 14px !important;
+  margin-top: 28px !important;
+}
+.login-auth-page .login-role-selector > p:first-child {
+  grid-column: 1 / -1 !important;
+  margin: 0 0 3px !important;
+  color: #64585a !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+.login-auth-page .landing-role-choice {
+  position: relative !important;
+  display: flex !important;
+  min-width: 0 !important;
+  min-height: 154px !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 20px !important;
+  padding: 22px !important;
+  border: 1px solid #dfd3c4 !important;
+  border-radius: 13px !important;
+  background: #f7f2e9 !important;
+  color: #382832 !important;
+  box-shadow: 0 5px 14px rgba(56,35,40,.05) !important;
+  transition: transform .16s ease, box-shadow .16s ease, background .16s ease !important;
+}
+.login-auth-page .landing-role-admin {
+  border-color: #713044 !important;
+  background: #713044 !important;
+  color: #fffaf1 !important;
+}
+.login-auth-page .landing-role-choice:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 12px 24px rgba(56,35,40,.12) !important;
+}
+.login-auth-page .landing-role-copy {
+  display: grid !important;
+  gap: 9px !important;
+}
+.login-auth-page .landing-role-copy strong {
+  color: inherit !important;
+  font-size: 22px !important;
+  font-weight: 850 !important;
+  letter-spacing: -.025em !important;
+}
+.login-auth-page .landing-role-copy small {
+  max-width: 250px !important;
+  color: inherit !important;
+  opacity: .78 !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+}
+.login-auth-page .landing-role-enter {
+  color: inherit !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  letter-spacing: .025em !important;
+}
+.login-auth-page .landing-role-admin .landing-role-enter {
+  color: #f0d58c !important;
+}
+.login-auth-page .login-role-selector .small-text {
+  grid-column: 1 / -1 !important;
+  margin: 10px 0 0 !important;
+  font-size: 12px !important;
+}
+.login-auth-page .form-stack:not(.login-role-selector) {
+  gap: 18px !important;
+}
+.login-auth-page .form-stack label {
+  color: #4c3c41 !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+.login-auth-page .form-stack input,
+.login-auth-page .login-password-field {
+  min-height: 54px !important;
+  border: 1px solid #d8cbbb !important;
+  border-radius: 9px !important;
+  background: #fff !important;
+  color: #292329 !important;
+  box-shadow: none !important;
+}
+.login-auth-page .login-password-field input {
+  min-height: 50px !important;
+  border: 0 !important;
+  background: transparent !important;
+  font-size: 16px !important;
+}
+.login-auth-page .login-password-toggle {
+  border: 0 !important;
+  background: transparent !important;
+  color: #713044 !important;
+}
+.login-auth-page .button.primary.full {
+  min-height: 54px !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: #713044 !important;
+  color: #fff !important;
+  font-size: 14px !important;
+  font-weight: 850 !important;
+}
+.login-auth-page .button.primary.full:hover {
+  background: #572234 !important;
+}
+.login-auth-page .login-selected-profile {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+/* Panel General: encabezado sobrio y seis tarjetas con jerarquía de navegación. */
+html body .app-shell.mobile-navigation-home {
+  background: #f3efe5 !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar {
+  min-height: 100svh !important;
+  padding: 24px 22px 18px !important;
+  background: #fffdf8 !important;
+  color: #30252a !important;
+  border-right: 1px solid #e2d8ca !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar .sidebar-brand {
+  align-items: center !important;
+  padding: 4px 4px 20px !important;
+  border-bottom: 1px solid #e8dfd2 !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar .sidebar-logo {
+  width: 54px !important;
+  height: 54px !important;
+  flex: 0 0 54px !important;
+  background: transparent !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar .sidebar-logo img {
+  width: 54px !important;
+  height: 54px !important;
+  object-fit: contain !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar .brand-title-row {
+  min-height: 0 !important;
+  height: auto !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar .brand-title-row strong {
+  color: #392630 !important;
+  font-size: 21px !important;
+  font-weight: 900 !important;
+  letter-spacing: -.04em !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar .brand-subtitle {
+  margin-top: 5px !important;
+  color: #817476 !important;
+  font-size: 11px !important;
+  letter-spacing: .025em !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar .official-agency-number {
+  min-width: 52px !important;
+  height: 38px !important;
+  border: 1px solid #d9c28b !important;
+  border-radius: 7px !important;
+  background: #f4e8c8 !important;
+  color: #60491d !important;
+  font-size: 17px !important;
+  box-shadow: none !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar .panel-general-summary {
+  margin: 22px 0 10px !important;
+  padding: 0 4px !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar .panel-general-summary-title {
+  display: grid !important;
+  gap: 7px !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar .panel-general-summary-title span {
+  color: #9a7a39 !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  letter-spacing: .17em !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar .panel-general-summary-title strong {
+  color: #33242b !important;
+  font-size: 27px !important;
+  font-weight: 900 !important;
+  line-height: 1.08 !important;
+  letter-spacing: -.045em !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list {
+  display: grid !important;
+  grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  grid-auto-rows: minmax(142px,auto) !important;
+  gap: 13px !important;
+  margin: 15px 0 20px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list::before {
+  display: none !important;
+  content: none !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:hover,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:focus-visible {
+  position: relative !important;
+  display: flex !important;
+  min-width: 0 !important;
+  min-height: 142px !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  padding: 17px !important;
+  border: 1px solid #e3d8c7 !important;
+  border-bottom: 3px solid #c9a64f !important;
+  border-radius: 12px !important;
+  background: #fffaf0 !important;
+  color: #403238 !important;
+  box-shadow: 0 4px 12px rgba(58,39,35,.06) !important;
+  transform: none !important;
+  filter: none !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child:hover {
+  border-color: #713044 !important;
+  border-bottom-color: #c9a64f !important;
+  background: #713044 !important;
+  color: #fffaf3 !important;
+  box-shadow: 0 8px 20px rgba(73,31,47,.18) !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-number {
+  position: absolute !important;
+  top: 12px !important;
+  right: 13px !important;
+  display: inline-flex !important;
+  min-width: 29px !important;
+  min-height: 22px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid #ddcfad !important;
+  border-radius: 5px !important;
+  background: #f4ead4 !important;
+  color: #826a37 !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-number {
+  border-color: rgba(255,255,255,.3) !important;
+  background: rgba(255,255,255,.12) !important;
+  color: #f5d88c !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-icon {
+  display: inline-flex !important;
+  width: 38px !important;
+  height: 38px !important;
+  flex: 0 0 38px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid #e3d5ba !important;
+  border-radius: 10px !important;
+  background: #f2e8d6 !important;
+  color: #713044 !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-icon svg {
+  width: 21px !important;
+  height: 21px !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-icon {
+  border-color: rgba(255,255,255,.24) !important;
+  background: rgba(255,255,255,.12) !important;
+  color: #f1d58c !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy {
+  display: grid !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong {
+  color: #403238 !important;
+  font-size: 15px !important;
+  font-weight: 850 !important;
+  line-height: 1.2 !important;
+  letter-spacing: -.015em !important;
+  overflow-wrap: anywhere !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy small {
+  color: #807374 !important;
+  font-size: 10px !important;
+  line-height: 1.35 !important;
+  font-weight: 600 !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-copy strong,
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item:first-child .panel-nav-copy small {
+  color: #fffaf3 !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item.active:not(:first-child) {
+  background: #f4ead4 !important;
+  border-color: #c9a64f !important;
+  border-bottom-color: #a8863e !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar .sidebar-footer {
+  padding-top: 14px !important;
+  border-top: 1px solid #e8dfd2 !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar .user-role-pill {
+  background: #efe5d8 !important;
+  color: #713044 !important;
+}
+html body .app-shell.mobile-navigation-home aside.sidebar .sidebar-footer .button {
+  min-height: 42px !important;
+  border: 1px solid #d9cdbd !important;
+  border-radius: 8px !important;
+  background: #f4efe6 !important;
+  color: #57454a !important;
+}
+html body .app-shell.mobile-navigation-home .content-area {
+  background: #f3efe5 !important;
+}
+html body .app-shell.mobile-navigation-home .desktop-agency-home-logo {
+  max-width: min(58vw,620px) !important;
+  max-height: 70vh !important;
+  object-fit: contain !important;
+}
+
+/* Responsive: mantener las seis tarjetas visibles sin recortes ni textos partidos. */
+@media (max-width: 1000px) {
+  html body .app-shell.mobile-navigation-home aside.sidebar {
+    min-height: 100svh !important;
+    padding: 18px 16px max(18px,env(safe-area-inset-bottom)) !important;
+  }
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    grid-auto-rows: minmax(132px,auto) !important;
+    gap: 11px !important;
+  }
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item {
+    min-height: 132px !important;
+    padding: 14px !important;
+  }
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong {
+    font-size: 14px !important;
+  }
+}
+@media (max-width: 420px) {
+  html body .app-shell.mobile-navigation-home aside.sidebar {
+    padding: 15px 12px max(16px,env(safe-area-inset-bottom)) !important;
+  }
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list {
+    grid-auto-rows: minmax(120px,auto) !important;
+    gap: 9px !important;
+  }
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item {
+    min-height: 120px !important;
+    padding: 12px !important;
+  }
+  html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong {
+    font-size: 13px !important;
+  }
+}
+@media (max-width: 640px) {
+  .login-auth-page .auth-card {
+    min-height: 0 !important;
+    padding: 25px 19px !important;
+  }
+  .login-auth-page .login-role-selector {
+    grid-template-columns: 1fr !important;
+  }
+  .login-auth-page .landing-role-choice {
+    min-height: 118px !important;
+    padding: 17px !important;
+  }
+}
