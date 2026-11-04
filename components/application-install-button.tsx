@@ -62,7 +62,18 @@ export function ApplicationInstallButton() {
 
     const onBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
-      if (!alreadyInstalled && active) setInstallPrompt(event as InstallPromptEvent);
+      // Si el navegador vuelve a ofrecer el evento, la app fue desinstalada:
+      // quitamos la marca anterior y permitimos instalarla otra vez.
+      try {
+        window.localStorage.removeItem(INSTALLED_MARKER);
+      } catch {
+        // El evento sigue siendo una señal válida de que puede instalarse.
+      }
+      alreadyInstalled = false;
+      if (active) {
+        setIsInstalled(false);
+        setInstallPrompt(event as InstallPromptEvent);
+      }
     };
     const onAppInstalled = () => markInstalled();
 
