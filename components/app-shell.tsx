@@ -389,7 +389,7 @@ export function AppShell({
           display: grid !important;
           grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           grid-auto-rows: minmax(0, 1fr) !important;
-          grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
+          grid-template-rows: repeat(4, minmax(0, 1fr)) !important;
           align-items: stretch !important;
           gap: 12px !important;
           margin: 16px 0 !important;
@@ -718,7 +718,7 @@ export function AppShell({
           .panel-general-summary { flex: 0 0 auto; margin: 6px 0 10px; padding: 9px 10px; border-radius: 8px; }
           .panel-general-summary-title > strong { font-size: 16px; }
           .panel-general-summary-title > small { max-width: 135px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-          :global(.app-shell.mobile-navigation-home .sidebar .nav-list) { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; grid-template-rows: repeat(3,minmax(0,1fr)) !important; grid-auto-flow: row !important; gap: 9px !important; flex: 1 0 auto !important; min-height: min(59vh,510px) !important; margin: 0 !important; padding: 0 !important; align-items: stretch !important; }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list) { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; grid-template-rows: repeat(4,minmax(0,1fr)) !important; grid-auto-flow: row !important; gap: 9px !important; flex: 1 0 auto !important; min-height: min(59vh,510px) !important; margin: 0 !important; padding: 0 !important; align-items: stretch !important; }
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover),
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus),

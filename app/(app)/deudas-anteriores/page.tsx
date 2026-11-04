@@ -104,7 +104,7 @@ export default async function PreviousDebtsPage({
       <div className="previous-debts-summary">
         <div className="previous-debts-stat"><span>Saldo pendiente anterior</span><strong>{money(totalPending, organization.currency_code)}</strong></div>
         <div className="previous-debts-stat"><span>Rendiciones con deuda</span><strong>{debts.length}</strong></div>
-        <div className="previous-debts-stat"><span>Pagos ya recibidos</span><strong>{money(totalPaid, organization.currency_code)}</strong></div>
+        <div className="previous-debts-stat"><span>Pagos aplicados a saldos activos</span><strong>{money(totalPaid, organization.currency_code)}</strong></div>
       </div>
 
       <section className="panel">
