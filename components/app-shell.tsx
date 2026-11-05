@@ -1161,13 +1161,16 @@ export function AppShell({
         }
 
 
-        /* El menú del panel general conserva la misma tarjeta, tipografía y geometría
-           tanto en Inicio como dentro de Rendiciones y del resto de las funciones. */
+        /* PC: repetir en todas las secciones la misma geometría visual del panel inicial. */
         @media (min-width: 1001px) {
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar) {
+            background: #ffffff !important;
+            color: #241d20 !important;
+          }
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list) {
             display: grid !important;
             grid-template-columns: minmax(0, 1fr) !important;
-            grid-auto-rows: minmax(64px, auto) !important;
+            grid-auto-rows: minmax(46px, auto) !important;
             grid-template-rows: none !important;
             align-items: stretch !important;
             gap: 7px !important;
@@ -1184,50 +1187,78 @@ export function AppShell({
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:focus),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:focus-visible),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:active) {
-            display: grid !important;
-            grid-template-columns: 34px minmax(0, 1fr) !important;
-            grid-template-rows: auto auto !important;
-            min-height: 64px !important;
+            display: flex !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            min-height: 46px !important;
             height: auto !important;
-            aspect-ratio: auto !important;
             box-sizing: border-box !important;
             align-items: center !important;
-            justify-content: stretch !important;
-            padding: 9px 30px 9px 10px !important;
+            justify-content: center !important;
+            padding: 8px 10px !important;
             margin: 0 !important;
-            gap: 2px 8px !important;
-            font-size: 13px !important;
+            border: 2px solid #e5dccb !important;
+            border-bottom: 5px solid #cbbd9f !important;
+            border-radius: 8px !important;
+            background: #f8f2e7 !important;
+            background-image: none !important;
+            color: #4b3b35 !important;
+            font-size: 16px !important;
+            font-weight: 900 !important;
             line-height: 1.15 !important;
+            text-align: center !important;
+            text-decoration: none !important;
+            box-shadow: 0 3px 0 rgba(50,15,25,.2) !important;
             transform: none !important;
             transition: none !important;
             animation: none !important;
             outline: none !important;
+            filter: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+          }
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:hover),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:focus),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:focus-visible),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:active) {
+            background: #eee7d9 !important;
+            background-image: none !important;
+            color: #4b3b35 !important;
+            border-color: #d8cdb8 !important;
+            border-bottom-color: #cbbd9f !important;
+            box-shadow: 0 3px 0 rgba(50,15,25,.15) !important;
+            font-weight: 950 !important;
+            transform: none !important;
+            outline: none !important;
+          }
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:not(.active):hover),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:not(.active):focus),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:not(.active):focus-visible),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:not(.active):active) {
+            background: #f8f2e7 !important;
+            color: #4b3b35 !important;
+            transform: none !important;
           }
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-icon) {
-            grid-column: 1 !important;
-            grid-row: 1 / 3 !important;
             width: 30px !important;
             height: 30px !important;
             flex: 0 0 30px !important;
           }
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-copy) {
-            grid-column: 2 !important;
-            grid-row: 1 / 3 !important;
-            justify-items: start !important;
-            align-self: center !important;
+            display: flex !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            flex-direction: column !important;
             gap: 2px !important;
             text-align: left !important;
           }
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-copy strong) {
-            font-size: 13px !important;
-            line-height: 1.15 !important;
+            font-size: 14px !important;
+            line-height: 1.25 !important;
           }
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-copy small) {
-            font-size: 10px !important;
-            line-height: 1.2 !important;
-          }
-          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-accent) {
-            display: none !important;
+            font-size: 11px !important;
+            line-height: 1.25 !important;
           }
         }
 
