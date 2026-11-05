@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { attachAgencyRenditionTicketReceiptDataToExisting, createAgencyRendition, updateAgencyRendition } from "@/app/(app)/agencias/actions";
 import { getGamesForDrawPeriod, OfficialDrawPeriod, resolveRecognizedDrawPeriod } from "@/lib/agency-draw-schedule";
-import { correctTicketAddressOcr, extractTicketPeriodNumber, mapTicketClosureAmounts, parseTicketClosure, type TicketClosureData } from "@/lib/agency-ticket-closure";
+import { extractTicketPeriodNumber, mapTicketClosureAmounts, parseTicketClosure, type TicketClosureData } from "@/lib/agency-ticket-closure";
 import { TicketClosureReceipt } from "@/components/ticket-closure-receipt";
 
 type Game = { id: string; name: string; category: string; enabled?: boolean; commissionPercent?: number | null };
@@ -36,28 +36,6 @@ function formatTicketMoney(value: number) {
 }
 
 let paddleOcrEnginePromise: Promise<any> | null = null;
-let tesseractOcrWorkerPromise: Promise<any> | null = null;
-let tesseractOcrProgressHandler: (progress: number) => void = () => undefined;
-
-async function getTesseractOcrWorker(onProgress: (progress: number) => void): Promise<any> {
-  tesseractOcrProgressHandler = onProgress;
-  if (!tesseractOcrWorkerPromise) {
-    tesseractOcrWorkerPromise = import("tesseract.js")
-      .then(({ createWorker }) => createWorker("spa+eng", 1, {
-        logger: (message) => {
-          if (message.status === "recognizing text" && typeof message.progress === "number") {
-            tesseractOcrProgressHandler(message.progress);
-          }
-        },
-      }))
-      .catch((error) => {
-        tesseractOcrWorkerPromise = null;
-        throw error;
-      });
-  }
-  return tesseractOcrWorkerPromise;
-}
-
 async function loadPaddleOcrSdk(): Promise<any> {
   const browserWindow = window as any;
   if (browserWindow.__agenciasPaddleOcrSdk) return browserWindow.__agenciasPaddleOcrSdk;
@@ -141,43 +119,6 @@ function paddleOcrItemsToText(rawItems: unknown): string {
     .map((row)=>row.entries.sort((a,b)=>a.left-b.left).map((entry)=>entry.text).join(" "))
     .filter(Boolean)
     .join("\n");
-}
-
-function tesseractWordBoxes(data: unknown): unknown[] {
-  const page = data as any;
-  if (Array.isArray(page?.words) && page.words.length) return page.words;
-  // Desde Tesseract.js v6 los bloques y palabras no se devuelven por defecto.
-  // Al solicitar blocks:true, las palabras quedan anidadas en
-  // blocks -> paragraphs -> lines -> words.
-  const blocks = Array.isArray(page?.blocks) ? page.blocks : [];
-  return blocks.flatMap((block:any) =>
-    (Array.isArray(block?.paragraphs) ? block.paragraphs : []).flatMap((paragraph:any) =>
-      (Array.isArray(paragraph?.lines) ? paragraph.lines : []).flatMap((line:any) =>
-        Array.isArray(line?.words) ? line.words : []
-      )
-    )
-  );
-}
-
-function paddleItemsToWordBoxes(rawItems: unknown): unknown[] {
-  if (!Array.isArray(rawItems)) return [];
-  return rawItems.map((item:any) => {
-    const points = Array.isArray(item?.poly) ? item.poly.map((point:any) => {
-      if (Array.isArray(point) && point.length >= 2) return {x:Number(point[0]),y:Number(point[1])};
-      if (point && typeof point === "object") return {x:Number(point.x),y:Number(point.y)};
-      return null;
-    }).filter((point:any) => point && Number.isFinite(point.x) && Number.isFinite(point.y)) : [];
-    if (!String(item?.text ?? "").trim() || !points.length) return null;
-    return {
-      text:String(item.text),
-      bbox:{
-        x0:Math.min(...points.map((point:any)=>point.x)),
-        y0:Math.min(...points.map((point:any)=>point.y)),
-        x1:Math.max(...points.map((point:any)=>point.x)),
-        y1:Math.max(...points.map((point:any)=>point.y)),
-      },
-    };
-  }).filter(Boolean);
 }
 
 function ocrTextHasEnoughSignals(value: string, closure: boolean): boolean {
@@ -288,11 +229,11 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
       .filter(token=>token.length>=min&&token.length<=max&&/^\d+$/.test(token));
     return tokens[0]??null;
   };
-  const agencyLabel=/(?:^|\b)(?:AGENCIA|AG)\b\s*[:.]?\s*/i;
+  const agencyLabel=/(?:AGENCIA|AG)\s*[:.]?\s*/i;
   const subagentLabel=/(?:SUBAG(?:ENTE)?|SIBAG|SILAG|SIEAG|S[UI1]B?A?G)\s*[:.]?\s*/i;
   // Aceptar el encabezado completo incluso cuando el OCR lo devuelve unido.
-  const machineLabel=/(?:SUBAGMAQ|MAQU[I1L]NA|MA[QO0])\s*[:.]?\s*/i;
-  const terminalLabel=/(?:MAQU[I1L]NA|MA[QO0])\s*REAL\s*[:.]?\s*/i;
+  const machineLabel=/(?:SUBAGMAQ|MAQU[I1L]NA|MAQ)\s*[:.]?\s*/i;
+  const terminalLabel=/(?:MAQU[I1L]NA|MAQ)\s*REAL\s*[:.]?\s*/i;
   const periodLabel=/(?:PER[I1]ODO)\s*(?:NRO|NO|N[º°.]?)?\s*[:.]?\s*/i;
   const addressLabel=/(?:DOMICILIO|DIRECCION|DIREC)\s*[:.]?\s*/i;
   const first=(values:Array<string|null>)=>values.find(value=>value!==null)??null;
@@ -307,46 +248,23 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
     return next?codeTokens(next.text,7)[0]??null:null;
   };
 
-  // La cabecera puede venir en una sola línea: AG:0447 SUBAG:014 MAQ:01.
-  // Se leen por etiqueta y no por una estructura fija de renglones.
-  const normalizedDigits=(raw:string)=>raw.toUpperCase().replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1").replace(/\D/g,"");
-  const codeAfterFlexible=(text:string,label:RegExp,length:number,allowLeadingZero=false):string|null=>{
-    const match=label.exec(text);
-    if(!match||match.index===undefined)return null;
-    const suffix=text.slice(match.index+match[0].length);
-    const raw=(suffix.match(/[0-9OQIL|!]+/)??[])[0];
-    if(!raw)return null;
-    const digits=normalizedDigits(raw);
-    if(digits.length===length)return digits;
-    if(allowLeadingZero&&digits.length===length+1&&digits.startsWith("0"))return digits.slice(-length);
-    return null;
-  };
-  const agency=first(rows.map(row=>codeAfterFlexible(row.text,agencyLabel,3,true)??digitsAfter(row.text,agencyLabel,3)));
-  const subagent=first(rows.map(row=>codeAfterFlexible(row.text,subagentLabel,3)??digitsAfter(row.text,subagentLabel,3)));
+  const agency=first(rows.map(row=>digitsAfter(row.text,agencyLabel,3)));
+  const subagent=first(rows.map(row=>digitsAfter(row.text,subagentLabel,3)));
   const machine=first(rows.flatMap((row,index)=>{
-    if(/MAQU[I1L]NA\s*REAL|MA[QO0]\s*REAL/i.test(row.text))return [];
-    const machineMatch=machineLabel.exec(row.text);
-    if(machineMatch&&machineMatch.index!==undefined){
-      const suffix=row.text.slice(machineMatch.index+machineMatch[0].length);
-      const raw=(suffix.match(/[0-9OQIL|!]+/)??[])[0]??"";
-      const normalized=raw.toUpperCase().replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1").replace(/\D/g,"");
-      if(normalized.length===2)return [normalized];
-      // Algunos OCR duplican el último carácter de un código de dos cifras
-      // (por ejemplo 01 -> 011). Solo se descarta ese duplicado idéntico.
-      if(normalized.length===3&&normalized[1]===normalized[2])return [normalized.slice(0,2)];
-    }
+    if(/MAQU[I1L]NA\s*REAL|MAQ\s*REAL/i.test(row.text))return [];
+    const direct=digitsAfter(row.text,machineLabel,2);
+    if(direct)return [direct];
     if(!machineLabel.test(row.text))return [];
     const next=nextRow(index);
     if(!next)return [];
     // En la fila inferior pueden aparecer AG, SUBAG y MAQ juntos.
     // El último código de dos cifras corresponde a la columna MAQ.
-    if(!/^[0-9OQIL|! .:_-]{1,12}$/.test(next.text))return [];
     const candidates=codeTokens(next.text,2);
     const nextCode=candidates.at(-1)??null;
     return nextCode?[nextCode]:[];
   }));
 
-  let terminal=first(rows.flatMap((row,index)=>{
+  const terminal=first(rows.flatMap((row,index)=>{
     const direct=tokenAfter(row.text,terminalLabel,4,7);
     if(direct)return [direct];
     if(!terminalLabel.test(row.text))return [];
@@ -362,29 +280,11 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
   }));
   const period=first(rows.map((_,index)=>readPeriod(index)));
 
-  // Dirección: puede no tener rótulo; se busca por posición relativa a la cabecera.
-  const headerIndex=rows.findIndex(row=>
-    (/(?:AGENCIA|AG)\s*[:.]?\s*[0-9OQIL|!]+.*(?:SUBAG|SIBAG|SILAG|SIEAG)/i.test(row.text)
-      || /(?:SUBAG|SIBAG|SILAG|SIEAG).*?(?:MAQ|MA0|MAO|MAQU)/i.test(row.text))
-  );
-  const terminalRowIndex=rows.findIndex(row=>terminalLabel.test(row.text));
-  const addressRangeEnd=headerIndex>=0
-    ? (terminalRowIndex>headerIndex?terminalRowIndex:Math.min(rows.length,headerIndex+4))
-    : -1;
-  const isAddressRow=(value:string)=>{
-    const letters=value.replace(/[^A-Z]/g,"").length;
-    const digits=(value.match(/\d/g)??[]).length;
-    return letters>=3&&digits>=1&&!/(?:IMPRES[O0]|PER[I1]ODO|AB[I1L]ERTO|CERRADO|MAQU[I1L]NA\s*REAL|MA[QO0]\s*REAL|SORTEOS|QUINIELA|VALIDOS|PREMIOS|TOTALES)/i.test(value);
-  };
-  const addressPositionIndex=headerIndex>=0
-    ? rows.findIndex((row,index)=>index>headerIndex&&index<addressRangeEnd&&isAddressRow(row.text))
-    : -1;
-  const addressByPosition=addressPositionIndex>=0?rows[addressPositionIndex]?.text.trim()??null:null;
-  const address=addressByPosition??first(rows.flatMap((row,index)=>{
+  const address=first(rows.flatMap((row,index)=>{
     const label=addressLabel.exec(row.text);
     if(label&&label.index!==undefined){
       let value=row.text.slice(label.index+label[0].length);
-      value=value.replace(/(?:MAQU[I1L]NA\s*REAL|MA[QO0]\s*REAL|IMPRES[O0]\s*EL|AB[I1L]ERTO\s*EL|CERRADO\s*EL).*$/i,"").trim();
+      value=value.replace(/(?:MAQU[I1L]NA\s*REAL|MAQ\s*REAL|IMPRES[O0]\s*EL|AB[I1L]ERTO\s*EL|CERRADO\s*EL).*$/i,"").trim();
       if(/[A-Z]/i.test(value))return [value];
       const next=nextRow(index);
       if(next){
@@ -401,15 +301,6 @@ function readClosureMetadataFromOcrWords(rawWords: unknown) {
       ? [row.text] : [];
   }));
 
-  // Si "Máquina real" quedó mal reconocida, tomar solo el código numérico
-  // del renglón inmediatamente posterior a la dirección ya identificada.
-  if(!terminal&&addressPositionIndex>=0){
-    const nextText=rows[addressPositionIndex+1]?.text??"";
-    const candidates=(nextText.match(/[0-9OQIL|!]+/g)??[])
-      .map(token=>token.toUpperCase().replace(/[OQ]/g,"0").replace(/[IL|!]/g,"1"))
-      .filter(token=>token.length>=4&&token.length<=7&&/^\d+$/.test(token));
-    terminal=candidates[candidates.length-1]??null;
-  }
   const printed=first(rows.flatMap((row,index)=>{
     if(!/IMPRES[O0]/i.test(row.text))return [];
     const text=row.text+" "+(nextRow(index)?.text??"");
@@ -597,7 +488,7 @@ function parseTicketText(text: string, games: Game[], recoveredPeriodNumber = ""
       const nextLineAmount = amountsFromLine(lines[index + 1] ?? "").at(-1);
       const amount = sameLineAmount ?? nextLineAmount;
       if (amount) {
-        amountMap[game.id] = amount.toFixed(2);
+        amountMap[game.id] = String(Math.round(amount));
         break;
       }
     }
@@ -608,7 +499,7 @@ function parseTicketText(text: string, games: Game[], recoveredPeriodNumber = ""
     .flatMap(amountsFromLine);
   const ticketTotal = totalLineAmounts.at(-1);
   if (matchedGames.length === 1 && ticketTotal && !amountMap[matchedGames[0]!.id]) {
-    amountMap[matchedGames[0]!.id] = ticketTotal.toFixed(2);
+    amountMap[matchedGames[0]!.id] = String(Math.round(ticketTotal));
   }
 
   const dateMatch = text.match(/\b(\d{2})[\/-](\d{2})[\/-](20\d{2}|\d{2})\b/);
@@ -1011,50 +902,35 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   }, [amounts, busy, confirmationOpen, dailyStatusChoice, date, defaultPeriod, drawNumber, fileName, initialRendition, notes, period, periodManuallySelected, periods, photoPreviewUrl, qrPayload, reference, ticketNumbers, today]);
 
   async function makeEnhancedTicketImage(file: File): Promise<HTMLCanvasElement> {
-    // Primero aislar el papel del fondo y de la interfaz de la aplicación.
-    const paper = await makeReceiptPaperCanvas(file);
-    const scale = Math.max(1, Math.min(2.5, 1300 / Math.max(1, paper.width)));
+    const bitmap = await createImageBitmap(file);
+    const longestSide = Math.max(bitmap.width, bitmap.height);
+    const scale = Math.max(1, Math.min(2, 3000 / longestSide));
     const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(paper.width * scale));
-    canvas.height = Math.max(1, Math.round(paper.height * scale));
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
     const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) throw new Error("No se pudo preparar la imagen del comprobante.");
-    context.drawImage(paper, 0, 0, canvas.width, canvas.height);
+    if (!context) {
+      bitmap.close();
+      throw new Error("No se pudo preparar la imagen para mejorar la lectura.");
+    }
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
 
-    // Escala de grises y contraste moderado para papel térmico.
+    // Grises + contraste moderado: ayuda con papel térmico pálido sin umbralizar
+    // los números finos ni destruir los puntos y separadores del comprobante.
     const image = context.getImageData(0, 0, canvas.width, canvas.height);
     const pixels = image.data;
     for (let i = 0; i < pixels.length; i += 4) {
       const gray = 0.299 * pixels[i]! + 0.587 * pixels[i + 1]! + 0.114 * pixels[i + 2]!;
-      const contrasted = Math.max(0, Math.min(255, (gray - 132) * 1.3 + 132));
+      const contrasted = Math.max(0, Math.min(255, (gray - 128) * 1.55 + 128));
       pixels[i] = contrasted;
       pixels[i + 1] = contrasted;
       pixels[i + 2] = contrasted;
     }
     context.putImageData(image, 0, 0);
-
-    // Máscara de enfoque suave: recupera trazos térmicos finos y caracteres
-    // pálidos sin imponer una estructura fija a las líneas del ticket.
-    const blurred = document.createElement("canvas");
-    blurred.width = canvas.width;
-    blurred.height = canvas.height;
-    const blurContext = blurred.getContext("2d", { willReadFrequently: true });
-    if (blurContext) {
-      blurContext.filter = "blur(1px)";
-      blurContext.drawImage(canvas, 0, 0);
-      blurContext.filter = "none";
-      const original = context.getImageData(0, 0, canvas.width, canvas.height);
-      const soft = blurContext.getImageData(0, 0, canvas.width, canvas.height);
-      for (let i = 0; i < original.data.length; i += 4) {
-        const sharpened = Math.max(0, Math.min(255, original.data[i]! * 4 - soft.data[i]! * 3));
-        original.data[i] = sharpened;
-        original.data[i + 1] = sharpened;
-        original.data[i + 2] = sharpened;
-      }
-      context.putImageData(original, 0, 0);
-    }
     return canvas;
   }
+
   function processSelectedTicketFile(file: File) {
     const declaredType = String(file.type ?? "").toLowerCase();
     const isDefinitelyVideo =
@@ -1311,13 +1187,11 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       let focusedClosureMetadata: FocusedClosureMetadata = {};
       let focusedOcrDebugText = "";
       let focusedOcrWords: unknown = null;
-      let paddleMetadataWords: unknown[] = [];
       let closureTextCandidates: string[] = [];
       let paddleFailure = "";
-      const closureReadExpected = dailyMode || receiptOnlyMode || batchMode;
 
-      // Mantener el flujo validado: PaddleOCR completo es la primera lectura.
-      // Sus cajas se reutilizan luego para identificar los campos del cupón.
+      // Motor principal nuevo: PaddleOCR v6 en español, ejecutado localmente en el navegador.
+      // Tesseract queda únicamente como respaldo si el motor/modelo no puede iniciarse.
       try {
         const paddle = await getPaddleOcrEngine();
         setProgress("Reconociendo los renglones impresos del cupón…");
@@ -1327,56 +1201,52 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           textDetUnclipRatio: 1.8,
           textRecScoreThresh: 0.0,
         });
-        paddleMetadataWords = paddleItemsToWordBoxes(paddleResult?.items ?? []);
         recognizedText = paddleOcrItemsToText(paddleResult?.items ?? []);
       } catch (cause) {
         paddleFailure = cause instanceof Error ? cause.message : String(cause);
         recognizedText = "";
       }
 
-      // Mostrar el cierre de la etapa OCR antes de comenzar el análisis estructural.
-      if (ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
-        await showOcrStage("Texto reconocido. Organizando juegos e importes…", 48);
-      }
-
-      // Tesseract vuelve a ser el respaldo cuando la primera lectura no obtiene
-      // suficiente texto. Se conservan también sus cajas para no repetirlo luego.
+      const closureReadExpected = dailyMode || receiptOnlyMode || batchMode;
       if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
         const paddlePartialText = recognizedText;
-        await showOcrStage("Activando lector de respaldo…", 42);
-        const worker = await getTesseractOcrWorker((progress) => {
-          const percent = Math.min(96, 42 + Math.round(progress * 52));
-          setProgressPercent((current) => Math.max(current, percent));
-          setProgress("Reconociendo ticket…");
+        setProgress("Activando lector de respaldo…");
+        setProgressPercent(42);
+        const { createWorker } = await import("tesseract.js");
+        const worker = await createWorker("spa+eng", 1, {
+          logger: (message) => {
+            if (message.status === "recognizing text" && typeof message.progress === "number") {
+              const percent = Math.min(96, 42 + Math.round(message.progress * 52));
+              setProgressPercent(percent);
+              setProgress("Reconociendo ticket…");
+            }
+          },
         });
         try {
-          const result = await worker.recognize(file, {}, { blocks: true });
-          focusedOcrWords = tesseractWordBoxes(result.data);
-          const tesseractText = String(result.data.text ?? "").trim();
-          focusedOcrDebugText = tesseractText;
+          const result = await worker.recognize(file);
+          focusedOcrWords = Array.isArray((result.data as any).words) ? (result.data as any).words : null;
+          const tesseractText = result.data.text ?? "";
           if (ocrTextHasEnoughSignals(tesseractText, closureReadExpected) || tesseractText.length >= paddlePartialText.length) {
             recognizedText = tesseractText;
           }
-        } catch (error) {
-          // Si el worker queda en un estado inválido, descartarlo para recrearlo
-          // en la siguiente lectura. No cambiar el texto ni el criterio de respaldo.
-          tesseractOcrWorkerPromise = null;
-          await worker.terminate().catch(() => undefined);
-          throw error;
+        } finally {
+          await worker.terminate();
         }
       }
 
+      // Mostrar texto parcial aunque no supere el control de calidad: no ocultar
+      // lo que sí logró detectar alguno de los motores.
       setOcrText(recognizedText);
       if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
         const detail = paddleFailure ? " Error de PaddleOCR: " + paddleFailure.slice(0, 220) : "";
         throw new Error("La lectura automática no obtuvo texto suficiente. No se cargaron datos inventados." + detail);
       }
-      if (closureReadExpected) closureTextCandidates = [recognizedText];
+      if (dailyMode || receiptOnlyMode || batchMode) {
+        closureTextCandidates = [recognizedText];
+      }
 
-      await showOcrStage("Analizando los juegos y sus importes…", 58);
       const activeGames = games.filter((game) => game.enabled !== false);
       let parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber, dailyMode || receiptOnlyMode || batchMode);
-      await showOcrStage("Verificando los importes y los totales…", 68);
       // Elegir la pasada OCR por la información real que logra extraer del cierre,
       // no solo por cantidad de renglones o rótulos reconocidos.
       if (closureTextCandidates.length && (dailyMode || receiptOnlyMode || batchMode)) {
@@ -1432,7 +1302,6 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           .sort((a, b) => b.score - a.score)[0];
         if (bestCandidate) {
           recognizedText = bestCandidate.receipt.rawText;
-          setOcrText(recognizedText);
           parsed = {
             ...parsed,
             amountMap: mapTicketClosureAmounts(bestCandidate.receipt, activeGames),
@@ -1478,85 +1347,57 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       const parsedAmountMap = Object.fromEntries(
         Object.entries(parsed.amountMap).filter(([gameId]) => gamesForDetectedPeriod.some((game) => game.id === gameId))
       );
-      // Primera prioridad: reutilizar las cajas de PaddleOCR de la lectura principal.
-      // Así no se vuelve a procesar la foto si los identificadores ya están presentes.
-      const initialPaddleMetadata = parsed.receiptData
-        ? readClosureMetadataFromOcrWords(paddleMetadataWords)
-        : { agencyCode:null, subagentCode:null, machineCode:null, address:null, terminalId:null, printedAt:null, periodNumber:null };
-      const initialPrintedRaw = initialPaddleMetadata.printedAt;
-      const initialPrintedDate = initialPrintedRaw?.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0] ?? null;
-      const initialPrintedTime = initialPrintedRaw?.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0] ?? null;
-      if (parsed.receiptData) {
-        focusedClosureMetadata = {
-          agencyCode: initialPaddleMetadata.agencyCode ?? parsed.receiptData.agencyCode ?? undefined,
-          subagentCode: initialPaddleMetadata.subagentCode ?? parsed.receiptData.subagentCode ?? undefined,
-          machineCode: initialPaddleMetadata.machineCode ?? parsed.receiptData.machineCode ?? undefined,
-          address: correctTicketAddressOcr(initialPaddleMetadata.address ?? parsed.receiptData.address) ?? undefined,
-          terminalId: initialPaddleMetadata.terminalId ?? parsed.receiptData.terminalId ?? undefined,
-          printedAt: initialPrintedRaw
-            ? { date: initialPrintedDate, time: initialPrintedTime, raw: initialPrintedRaw }
-            : parsed.receiptData.printedAt.raw ? parsed.receiptData.printedAt : undefined,
-          periodNumber: initialPaddleMetadata.periodNumber ?? parsed.receiptData.periodNumber ?? undefined,
-        };
-      }
-      await showOcrStage("Comprobando los datos identificatorios del cupón…", 76);
-      const metadataStillMissing = parsed.receiptData && (
-        !(focusedClosureMetadata.agencyCode ?? parsed.receiptData.agencyCode) ||
-        !(focusedClosureMetadata.subagentCode ?? parsed.receiptData.subagentCode) ||
-        !(focusedClosureMetadata.machineCode ?? parsed.receiptData.machineCode) ||
-        !(focusedClosureMetadata.address ?? parsed.receiptData.address) ||
-        !(focusedClosureMetadata.terminalId ?? parsed.receiptData.terminalId) ||
-        !(focusedClosureMetadata.printedAt?.raw ?? parsed.receiptData.printedAt.raw) ||
-        !(focusedClosureMetadata.periodNumber ?? parsed.receiptData.periodNumber)
-      );
-      if (metadataStillMissing && parsed.receiptData) {
-        // Si Tesseract ya intervino como respaldo, reutilizar sus palabras.
-        // Solo se inicia una pasada mejorada cuando todavía no hay cajas disponibles.
+      if (parsed.receiptData && (
+        !parsed.receiptData.machineCode ||
+        !parsed.receiptData.address ||
+        !parsed.receiptData.terminalId ||
+        !parsed.receiptData.printedAt.raw
+      )) {
+        // La lectura principal conserva los importes. Si falta identificación,
+        // hacer una pasada independiente con Tesseract y usar las cajas de cada
+        // palabra para ubicar MAQ, Dirección y Máquina real sin alterar ventas.
         try {
-          let metadataWords = Array.isArray(focusedOcrWords) ? focusedOcrWords : [];
-          if (!metadataWords.length) {
+          if (!Array.isArray(focusedOcrWords) || focusedOcrWords.length === 0) {
             setProgress("Revisando los datos identificatorios del ticket…");
             setProgressPercent(88);
             const { createWorker } = await import("tesseract.js");
             const metadataWorker = await createWorker("spa+eng", 1);
             try {
               const enhancedImage = await makeEnhancedTicketImage(file);
-              await metadataWorker.setParameters({ tessedit_pageseg_mode: "6" } as any);
-              const metadataResult = await metadataWorker.recognize(enhancedImage, {}, { blocks: true });
-              metadataWords = tesseractWordBoxes(metadataResult.data);
-              focusedOcrWords = metadataWords;
-              focusedOcrDebugText = String(metadataResult.data.text ?? "").trim();
+              const metadataResult = await metadataWorker.recognize(enhancedImage);
+              focusedOcrWords = Array.isArray((metadataResult.data as any).words) ? (metadataResult.data as any).words : [];
             } finally {
               await metadataWorker.terminate();
             }
           }
-          const tesseractPositioned = readClosureMetadataFromOcrWords(metadataWords);
-          const tesseractText = focusedOcrDebugText || reconstructLinesFromOcrWords(metadataWords);
-          const textReceipt = tesseractText ? parseTicketClosure(tesseractText, true) : null;
-          const printedRaw = initialPaddleMetadata.printedAt
-            ?? tesseractPositioned.printedAt
-            ?? parsed.receiptData.printedAt.raw
-            ?? textReceipt?.printedAt.raw
-            ?? null;
-          const printedDate = printedRaw?.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0] ?? null;
-          const printedTime = printedRaw?.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0] ?? null;
-          focusedClosureMetadata = {
-            agencyCode: initialPaddleMetadata.agencyCode ?? parsed.receiptData.agencyCode ?? tesseractPositioned.agencyCode ?? textReceipt?.agencyCode ?? undefined,
-            subagentCode: initialPaddleMetadata.subagentCode ?? parsed.receiptData.subagentCode ?? tesseractPositioned.subagentCode ?? textReceipt?.subagentCode ?? undefined,
-            machineCode: initialPaddleMetadata.machineCode ?? parsed.receiptData.machineCode ?? tesseractPositioned.machineCode ?? textReceipt?.machineCode ?? undefined,
-            address: correctTicketAddressOcr(initialPaddleMetadata.address ?? parsed.receiptData.address ?? tesseractPositioned.address ?? textReceipt?.address) ?? undefined,
-            terminalId: initialPaddleMetadata.terminalId ?? parsed.receiptData.terminalId ?? tesseractPositioned.terminalId ?? textReceipt?.terminalId ?? undefined,
-            printedAt: printedRaw
-              ? { date: printedDate, time: printedTime, raw: printedRaw }
-              : parsed.receiptData.printedAt ?? undefined,
-            periodNumber: initialPaddleMetadata.periodNumber ?? parsed.receiptData.periodNumber ?? tesseractPositioned.periodNumber ?? textReceipt?.periodNumber ?? undefined,
-          };
+          if (Array.isArray(focusedOcrWords) && focusedOcrWords.length > 0) {
+            focusedOcrDebugText = reconstructLinesFromOcrWords(focusedOcrWords);
+            const positioned = readClosureMetadataFromOcrWords(focusedOcrWords);
+            const textReceipt = focusedOcrDebugText
+              ? parseTicketClosure(focusedOcrDebugText, true)
+              : null;
+            const printedRaw = positioned.printedAt ?? textReceipt?.printedAt.raw ?? null;
+            const printedDate = printedRaw?.match(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/)?.[0] ?? null;
+            const printedTime = printedRaw?.match(/\d{1,2}:\d{2}(?::\d{2})?/)?.[0] ?? null;
+            focusedClosureMetadata = {
+              agencyCode: positioned.agencyCode ?? textReceipt?.agencyCode ?? undefined,
+              subagentCode: positioned.subagentCode ?? textReceipt?.subagentCode ?? undefined,
+              machineCode: positioned.machineCode ?? textReceipt?.machineCode ?? undefined,
+              address: positioned.address ?? textReceipt?.address ?? undefined,
+              terminalId: positioned.terminalId ?? textReceipt?.terminalId ?? undefined,
+              printedAt: printedRaw
+                ? { date: printedDate, time: printedTime, raw: printedRaw }
+                : textReceipt?.printedAt ?? undefined,
+              periodNumber: positioned.periodNumber ?? textReceipt?.periodNumber ?? undefined,
+            };
+          }
         } catch {
-          // Si falla el respaldo, se conservan todos los datos de la primera lectura.
+          // Un fallo de esta pasada complementaria no invalida la lectura principal.
+          focusedClosureMetadata = {};
+          focusedOcrDebugText = "";
         }
       }
 
-      await showOcrStage("Preparando los datos reconocidos para revisión…", 92);
       if (parsed.receiptData) {
         const commissionRates = Object.fromEntries(periodGames.map((game) => [
           normalize(game.name),
@@ -1653,7 +1494,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           for (const [gameId, rawAmount] of Object.entries(incoming)) {
             const add = parseMoney(String(rawAmount ?? "")) ?? 0;
             if (add <= 0) continue;
-            combined[gameId] = ((parseMoney(String(previous[gameId] ?? "")) ?? 0) + add).toFixed(2);
+            combined[gameId] = String(Math.round((parseMoney(String(previous[gameId] ?? "")) ?? 0) + add));
           }
           return combined;
         });
@@ -1670,7 +1511,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
             const scannedAmount = parseMoney(String(rawAmount));
             if (scannedAmount === null) continue;
             const priorAmount = parseMoney(previous[gameId] ?? "") ?? 0;
-            combined[gameId] = (priorAmount + scannedAmount).toFixed(2);
+            combined[gameId] = String(Math.round(priorAmount + scannedAmount));
           }
           return combined;
         });
@@ -1692,8 +1533,8 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         if (target) setAmounts((previous) => ({
           ...previous,
           [target.id]: dailyMode
-            ? ((parseMoney(previous[target.id] ?? "") ?? 0) + qr.amount!).toFixed(2)
-            : qr.amount!.toFixed(2),
+            ? String(Math.round((parseMoney(previous[target.id] ?? "") ?? 0) + qr.amount!))
+            : String(Math.round(qr.amount!)),
         }));
       }
 
@@ -1705,11 +1546,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           ". La rendición financiera se registrará en la jornada operativa " + formatDateDdMmYyyy(today) +
           "; la fecha impresa queda en el comprobante y no modifica la Caja de ese día. Los renglones editables están abajo en Juegos e importes."
         );
-        // Solo en móvil mantenemos el desplazamiento guiado que ya estaba
-        // probado. En escritorio no mover la ventana al terminar el OCR.
-        if (window.matchMedia("(max-width: 1000px)").matches) {
-          document.querySelector(".game-rendition-block")?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
+        document.querySelector(".game-rendition-block")?.scrollIntoView({ behavior: "smooth", block: "start" });
       } else if (detectedQr && recognizedCount) {
         setNotice("QR e importes detectados. Revisá fecha, período y valores antes de registrar.");
       } else if (detectedQr) {
