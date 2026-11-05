@@ -1295,7 +1295,7 @@ export function AppShell({
         }
 
 
-        /* Tarjetas compactas en PC: mantener todo el panel y el cierre de sesión a la vista. */
+        /* Tarjetas compactas en PC: iconos discretos arriba y textos con espacio interior. */
         @media (min-width: 1001px) {
           :global(.app-shell.mobile-navigation-home .sidebar),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar) {
@@ -1338,12 +1338,18 @@ export function AppShell({
           }
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item) {
+            position: relative !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            justify-content: flex-start !important;
             height: 100% !important;
             min-height: 0 !important;
             aspect-ratio: auto !important;
             box-sizing: border-box !important;
-            padding: 17px 6px 6px !important;
-            gap: 5px !important;
+            padding: 32px 10px 7px !important;
+            gap: 0 !important;
+            text-align: left !important;
           }
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-number),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-number) {
@@ -1356,19 +1362,57 @@ export function AppShell({
           }
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-icon),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-icon) {
-            flex: 0 0 28px !important;
-            width: 28px !important;
-            height: 28px !important;
+            position: absolute !important;
+            top: 8px !important;
+            left: 10px !important;
+            display: inline-flex !important;
+            flex: 0 0 21px !important;
+            width: 21px !important;
+            height: 21px !important;
+            border-radius: 6px !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-icon svg),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-icon svg) {
+            width: 14px !important;
+            height: 14px !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-copy),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-copy) {
+            display: flex !important;
+            flex: 1 1 auto !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            justify-content: flex-start !important;
+            gap: 4px !important;
+            padding: 0 1px !important;
+            text-align: left !important;
           }
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-copy strong),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-copy strong) {
-            font-size: 11px !important;
-            line-height: 1.15 !important;
+            width: 100% !important;
+            font-size: 10.5px !important;
+            line-height: 1.25 !important;
+            letter-spacing: .005em !important;
+            overflow-wrap: anywhere !important;
           }
           :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-copy small),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-copy small) {
+            display: block !important;
+            width: 100% !important;
             font-size: 9px !important;
-            line-height: 1.15 !important;
+            line-height: 1.25 !important;
+            letter-spacing: .005em !important;
+            white-space: normal !important;
+            overflow-wrap: anywhere !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-accent),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-accent) {
+            align-self: flex-start !important;
+            width: 18px !important;
+            height: 2px !important;
+            margin-top: 3px !important;
           }
           :global(.app-shell.mobile-navigation-home .sidebar .sidebar-footer),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .sidebar-footer) {
