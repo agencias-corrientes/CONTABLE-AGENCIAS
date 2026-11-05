@@ -2388,107 +2388,187 @@ body .app-shell .sidebar .nav-list .nav-item:active .panel-nav-number {
 @media(max-width:520px){.landing-app-exit-dialog{padding:20px 17px}.landing-app-exit-dialog h2{font-size:20px}}
 
 
-/* FIX FINAL: texto de las tarjetas sin desplazamiento al pasar el mouse o seleccionar. */
+
+
+/* Geometría fija del panel lateral en PC.
+   El mismo anclaje se conserva en reposo, hover, foco, selección y presión. */
 @media (min-width:1001px) {
-  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item,
-  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:is(:hover,:focus,:focus-visible,:active,.active) {
+  html body #agency-panel-navigation > a.panel-general-item,
+  html body #agency-panel-navigation > a.panel-general-item:hover,
+  html body #agency-panel-navigation > a.panel-general-item:focus,
+  html body #agency-panel-navigation > a.panel-general-item:focus-visible,
+  html body #agency-panel-navigation > a.panel-general-item:active,
+  html body #agency-panel-navigation > a.panel-general-item.active,
+  html body #agency-panel-navigation > a.panel-general-item.active:hover,
+  html body #agency-panel-navigation > a.panel-general-item.active:focus,
+  html body #agency-panel-navigation > a.panel-general-item.active:focus-visible,
+  html body #agency-panel-navigation > a.panel-general-item.active:active {
     position:relative!important;
-    display:flex!important;
-    flex-direction:column!important;
-    align-items:stretch!important;
-    justify-content:flex-start!important;
-    gap:0!important;
-    padding:32px 10px 7px!important;
+    display:block!important;
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    box-sizing:border-box!important;
+    padding:0!important;
+    margin:0!important;
+    text-align:left!important;
     transform:none!important;
     translate:none!important;
-    rotate:none!important;
-    scale:none!important;
     animation:none!important;
     transition:background-color .12s ease,border-color .12s ease,box-shadow .12s ease!important;
     will-change:auto!important;
   }
 
-  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy,
-  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:is(:hover,:focus,:focus-visible,:active,.active) .panel-nav-copy {
-    position:relative!important;
-    inset:auto!important;
-    top:auto!important;
+  html body #agency-panel-navigation > a.panel-general-item > .panel-nav-icon,
+  html body #agency-panel-navigation > a.panel-general-item:hover > .panel-nav-icon,
+  html body #agency-panel-navigation > a.panel-general-item:focus > .panel-nav-icon,
+  html body #agency-panel-navigation > a.panel-general-item:focus-visible > .panel-nav-icon,
+  html body #agency-panel-navigation > a.panel-general-item:active > .panel-nav-icon,
+  html body #agency-panel-navigation > a.panel-general-item.active > .panel-nav-icon,
+  html body #agency-panel-navigation > a.panel-general-item.active:hover > .panel-nav-icon,
+  html body #agency-panel-navigation > a.panel-general-item.active:focus-visible > .panel-nav-icon {
+    position:absolute!important;
+    top:8px!important;
     right:auto!important;
     bottom:auto!important;
-    left:auto!important;
-    display:flex!important;
-    flex:1 1 auto!important;
-    flex-direction:column!important;
-    align-items:flex-start!important;
-    justify-content:flex-start!important;
-    align-self:stretch!important;
-    width:100%!important;
-    min-width:0!important;
-    gap:4px!important;
+    left:10px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:21px!important;
+    height:21px!important;
+    min-width:21px!important;
+    min-height:21px!important;
+    padding:0!important;
     margin:0!important;
-    padding:0 1px!important;
+    transform:none!important;
+    translate:none!important;
+    animation:none!important;
+    transition:none!important;
+  }
+
+  html body #agency-panel-navigation > a.panel-general-item > .panel-nav-icon svg {
+    display:block!important;
+    width:14px!important;
+    height:14px!important;
+  }
+
+  html body #agency-panel-navigation > a.panel-general-item > .panel-nav-number,
+  html body #agency-panel-navigation > a.panel-general-item:hover > .panel-nav-number,
+  html body #agency-panel-navigation > a.panel-general-item:focus-visible > .panel-nav-number,
+  html body #agency-panel-navigation > a.panel-general-item:active > .panel-nav-number,
+  html body #agency-panel-navigation > a.panel-general-item.active > .panel-nav-number {
+    position:absolute!important;
+    top:6px!important;
+    right:7px!important;
+    bottom:auto!important;
+    left:auto!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    min-width:26px!important;
+    min-height:18px!important;
+    padding:2px 4px!important;
+    margin:0!important;
+    font-size:9px!important;
+    line-height:1!important;
+    transform:none!important;
+    translate:none!important;
+    animation:none!important;
+    transition:none!important;
+  }
+
+  html body #agency-panel-navigation > a.panel-general-item > .panel-nav-copy,
+  html body #agency-panel-navigation > a.panel-general-item:hover > .panel-nav-copy,
+  html body #agency-panel-navigation > a.panel-general-item:focus > .panel-nav-copy,
+  html body #agency-panel-navigation > a.panel-general-item:focus-visible > .panel-nav-copy,
+  html body #agency-panel-navigation > a.panel-general-item:active > .panel-nav-copy,
+  html body #agency-panel-navigation > a.panel-general-item.active > .panel-nav-copy,
+  html body #agency-panel-navigation > a.panel-general-item.active:hover > .panel-nav-copy,
+  html body #agency-panel-navigation > a.panel-general-item.active:focus-visible > .panel-nav-copy,
+  html body #agency-panel-navigation > a.panel-general-item.active:active > .panel-nav-copy {
+    position:absolute!important;
+    top:34px!important;
+    right:8px!important;
+    bottom:13px!important;
+    left:10px!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-auto-rows:max-content!important;
+    align-content:start!important;
+    justify-items:stretch!important;
+    align-items:start!important;
+    gap:4px!important;
+    width:auto!important;
+    min-width:0!important;
+    min-height:0!important;
+    margin:0!important;
+    padding:0!important;
     text-align:left!important;
     transform:none!important;
     translate:none!important;
-    rotate:none!important;
-    scale:none!important;
     animation:none!important;
     transition:none!important;
     will-change:auto!important;
   }
 
-  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong,
-  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:is(:hover,:focus,:focus-visible,:active,.active) .panel-nav-copy strong,
-  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy small,
-  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:is(:hover,:focus,:focus-visible,:active,.active) .panel-nav-copy small {
+  html body #agency-panel-navigation > a.panel-general-item > .panel-nav-copy strong,
+  html body #agency-panel-navigation > a.panel-general-item:hover > .panel-nav-copy strong,
+  html body #agency-panel-navigation > a.panel-general-item:focus-visible > .panel-nav-copy strong,
+  html body #agency-panel-navigation > a.panel-general-item:active > .panel-nav-copy strong,
+  html body #agency-panel-navigation > a.panel-general-item.active > .panel-nav-copy strong,
+  html body #agency-panel-navigation > a.panel-general-item > .panel-nav-copy small,
+  html body #agency-panel-navigation > a.panel-general-item:hover > .panel-nav-copy small,
+  html body #agency-panel-navigation > a.panel-general-item:focus-visible > .panel-nav-copy small,
+  html body #agency-panel-navigation > a.panel-general-item:active > .panel-nav-copy small,
+  html body #agency-panel-navigation > a.panel-general-item.active > .panel-nav-copy small {
     position:static!important;
-    inset:auto!important;
-    top:auto!important;
-    right:auto!important;
-    bottom:auto!important;
-    left:auto!important;
     display:block!important;
-    flex:none!important;
     width:100%!important;
     min-width:0!important;
     margin:0!important;
     padding:0!important;
-    transform:none!important;
-    translate:none!important;
-    rotate:none!important;
-    scale:none!important;
-    animation:none!important;
-    transition:none!important;
-    will-change:auto!important;
     white-space:normal!important;
     overflow-wrap:anywhere!important;
-  }
-
-  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong {
-    font-size:10.5px!important;
-    font-weight:800!important;
-    line-height:1.25!important;
-    letter-spacing:.005em!important;
-  }
-  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy small {
-    font-size:9px!important;
-    font-weight:650!important;
-    line-height:1.25!important;
-    letter-spacing:.005em!important;
-  }
-
-  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-icon,
-  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:is(:hover,:focus,:focus-visible,:active,.active) .panel-nav-icon,
-  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-number,
-  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:is(:hover,:focus,:focus-visible,:active,.active) .panel-nav-number,
-  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-accent,
-  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:is(:hover,:focus,:focus-visible,:active,.active) .panel-nav-accent {
     transform:none!important;
     translate:none!important;
-    rotate:none!important;
-    scale:none!important;
     animation:none!important;
     transition:none!important;
-    will-change:auto!important;
+  }
+
+  html body #agency-panel-navigation > a.panel-general-item > .panel-nav-copy strong {
+    font-size:10.5px!important;
+    font-weight:800!important;
+    line-height:1.2!important;
+    letter-spacing:.005em!important;
+    -webkit-line-clamp:2;
+  }
+
+  html body #agency-panel-navigation > a.panel-general-item > .panel-nav-copy small {
+    font-size:9px!important;
+    font-weight:650!important;
+    line-height:1.2!important;
+    letter-spacing:.005em!important;
+    opacity:1!important;
+  }
+
+  html body #agency-panel-navigation > a.panel-general-item > .panel-nav-accent,
+  html body #agency-panel-navigation > a.panel-general-item:hover > .panel-nav-accent,
+  html body #agency-panel-navigation > a.panel-general-item.active > .panel-nav-accent {
+    position:absolute!important;
+    top:auto!important;
+    right:auto!important;
+    bottom:6px!important;
+    left:10px!important;
+    display:block!important;
+    width:18px!important;
+    height:2px!important;
+    margin:0!important;
+    padding:0!important;
+    transform:none!important;
+    translate:none!important;
+    animation:none!important;
+    transition:none!important;
   }
 }
