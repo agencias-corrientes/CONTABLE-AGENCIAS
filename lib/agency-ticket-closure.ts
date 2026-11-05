@@ -31,54 +31,6 @@ export type TicketClosureData = {
 const normalizeTicketText = (value: string) =>
   value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
 
-const ARGENTINA_PROVINCE_NAMES = [
-  "BUENOS AIRES", "CATAMARCA", "CHACO", "CHUBUT", "CORDOBA", "CORRIENTES",
-  "ENTRE RIOS", "FORMOSA", "JUJUY", "LA PAMPA", "LA RIOJA", "MENDOZA",
-  "MISIONES", "NEUQUEN", "RIO NEGRO", "SALTA", "SAN JUAN", "SAN LUIS",
-  "SANTA CRUZ", "SANTA FE", "SANTIAGO DEL ESTERO", "TIERRA DEL FUEGO", "TUCUMAN",
-];
-
-function addressTokenDistance(left:string,right:string):number {
-  const previous=Array.from({length:right.length+1},(_,index)=>index);
-  for(let i=1;i<=left.length;i+=1){
-    const current=[i];
-    for(let j=1;j<=right.length;j+=1){
-      current[j]=Math.min(
-        (current[j-1]??0)+1,
-        (previous[j]??0)+1,
-        (previous[j-1]??0)+(left[i-1]===right[j-1]?0:1),
-      );
-    }
-    for(let j=0;j<previous.length;j+=1)previous[j]=current[j]??0;
-  }
-  return previous[right.length]??left.length;
-}
-
-// Corrección conservadora de confusiones OCR en nombres oficiales de provincias.
-// No aporta direcciones ni números: solo corrige una palabra si está a 1-2
-// caracteres de un nombre geográfico conocido.
-export function correctTicketAddressOcr(value:string|null|undefined):string|null {
-  if(!value?.trim())return null;
-  const knownTokens=[...new Set(ARGENTINA_PROVINCE_NAMES.flatMap((province)=>province.split(" ").filter((part)=>part.length>=5)))];
-  let corrected=value.trim().replace(/[A-ZÁÉÍÓÚÜÑa-záéíóúüñ\[]+/g,(raw)=>{
-    const token=raw.toUpperCase().replace(/\[/g,"L").normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-    if(token==="LA")return token;
-    if(token.length<5)return token==="LN"?"LN":raw;
-    let best:string|null=null,bestDistance=4;
-    for(const provinceToken of knownTokens){
-      const distance=addressTokenDistance(token,provinceToken);
-      if(distance<bestDistance){best=provinceToken;bestDistance=distance;}
-    }
-    const allowedDistance=token.length>=8?3:2;
-    return best&&bestDistance<=allowedDistance?best:raw;
-  });
-  const parts=corrected.split(/\s+/);
-  // Confusión frecuente de OCR entre LA y LN delante de un nombre geográfico.
-  if(parts[0]?.toUpperCase()==="LN"&&parts[1]&&knownTokens.includes(parts[1].toUpperCase()))parts[0]="LA";
-  return parts.join(" ");
-}
-
-
 function moneyAllowZero(value: string): number | null {
   let amount = value.replace(/[^0-9,.-]/g, "");
   if (!amount || !/\d/.test(amount)) return null;
@@ -95,7 +47,7 @@ function moneyAllowZero(value: string): number | null {
     amount = last.length === 3 ? chunks.join("") : chunks.slice(0, -1).join("") + "." + last;
   }
   const parsed = Number(amount);
-  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed * 100) / 100 : null;
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : null;
 }
 
 function metricFromLine(line: string): TicketReceiptMetric | null {
@@ -120,37 +72,16 @@ function metricFromLine(line: string): TicketReceiptMetric | null {
 const emptyMetric = (): TicketReceiptMetric => ({ count: null, amount: null });
 const cents = (value: number | null) => value === null ? null : Math.round(value * 100);
 
-function metricAtLine(lines: string[], index: number, end: number): TicketReceiptMetric | null {
-  const raw = lines[index] ?? "";
-  const direct = metricFromLine(raw);
-  if (!direct) return null;
-  // Los tickets suelen separar cantidad e importe: "89 $" / "389340,00".
-  // Si hay un entero seguido de moneda y una cifra en la línea siguiente,
-  // el primero es cantidad y el segundo es importe, no dos importes distintos.
-  const countAndCurrency = raw.match(/^\s*([0-9][0-9.,]*)\s*(?:\$|ARS)\s*$/i);
-  const following = index + 1 < end ? (lines[index + 1] ?? "").trim() : "";
-  if (countAndCurrency && following) {
-    const amountToken = following.match(/^\s*([0-9][0-9.,]*)\s*$/)?.[1];
-    const amount = amountToken ? moneyAllowZero(amountToken) : null;
-    const countToken = countAndCurrency[1] ?? "";
-    const count = moneyAllowZero(countToken);
-    if (amount !== null && count !== null && !/[.,]\d{1,2}$/.test(countToken)) {
-      return { count: Math.max(0, Math.trunc(count)), amount };
-    }
-  }
-  return direct;
-}
-
 function metricInRange(lines: string[], start: number, end: number, matcher: RegExp, takeLast = false): TicketReceiptMetric {
   const found: TicketReceiptMetric[] = [];
   for (let i = Math.max(0, start); i < Math.min(lines.length, end); i += 1) {
     if (!matcher.test(normalizeTicketText(lines[i] ?? ""))) continue;
-    let metric = metricAtLine(lines, i, end);
+    let metric = metricFromLine(lines[i] ?? "");
     if (!metric) {
       for (let j = i + 1; j < Math.min(end, i + 3); j += 1) {
         const nextText = normalizeTicketText(lines[j] ?? "");
         if (/^(QUINIELA|OTROS\s+JU|MEDIOS\s+DIGITALES|NEDIOS\s+DIGITALES|TOTAL\s+(?:O|0)\.?\s*JUEGOS|TOTAL\s+GENERAL|PREMIOS?\s+P[A-Z]{2,3})/.test(nextText)) break;
-        metric = metricAtLine(lines, j, end) ?? metricFromLine(lines[j] ?? "");
+        metric = metricFromLine(lines[j] ?? "");
         if (metric) break;
       }
     }
@@ -158,6 +89,7 @@ function metricInRange(lines: string[], start: number, end: number, matcher: Reg
   }
   return (takeLast ? found.at(-1) : found[0]) ?? emptyMetric();
 }
+
 function findIndex(lines: string[], matcher: RegExp, fallback = -1): number {
   const index = lines.findIndex((line) => matcher.test(normalizeTicketText(line)));
   return index >= 0 ? index : fallback;
@@ -300,14 +232,14 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
   if (!isEndOfDay && !assumeEndOfDay) return null;
 
   const qIndex = findIndex(lines, /^QUINIELA(?:\s+CORRIENTES?)?$/);
-  const qToqueIndex = findIndex(lines, /A[L1I]\s*TOQUE/);
-  const otherIndex = findIndex(lines, /OTROS\s*JUE\w{2,3}/);
+  const qToqueIndex = findIndex(lines, /AL\s+TOQUE/);
+  const otherIndex = findIndex(lines, /OTROS\s+JUE\w{2,3}/);
   const digitalIndex = findIndex(lines, /[MN]EDIOS\s+DIGITALES/);
   const otherEnd = digitalIndex >= 0 ? digitalIndex : lines.length;
   const qEnd = qToqueIndex >= 0 ? qToqueIndex : (otherIndex >= 0 ? otherIndex : lines.length);
   const qToqueEnd = otherIndex >= 0 ? otherIndex : lines.length;
 
-  const qValid = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /\bVALID[O0]S?\b/);
+  const qValid = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /\bVALIDOS?\b/);
   const qCancelled = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /ANULADOS?\s*(?:ESP|ESPECIALES?)/);
   const qPrizes = metricInRange(lines, qIndex >= 0 ? qIndex : 0, qEnd, /PREMIOS?\s+P[A-Z]{2,3}/);
   // Si el ticket no contiene la sección «Quiniela al Toque», no reutilizar
@@ -337,12 +269,12 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
   const otherGames = gameLabels.map(({ name, matcher }) => {
     // Never map an arbitrary numeric row by position: that produced false prices.
     const index = normalized.findIndex((line, i) => i >= otherRowsStart && i < otherRowsEnd && matcher.test(line));
-    let metric = index >= 0 ? metricAtLine(lines, index, otherRowsEnd) : null;
+    let metric = index >= 0 ? metricFromLine(lines[index] ?? "") : null;
     if (!metric && index >= 0) {
       for (let j = index + 1; j < Math.min(otherRowsEnd, index + 3); j += 1) {
         const nextText = normalizeTicketText(lines[j] ?? "");
         if (/^(?:L?OTO|QUINI|MUINI|HUI|POZO|020|BRINCO|BR\s+INTO|LOTERIA|ATERIA|QUINIELA|TELEK|TOTAL|PREMIOS?\s+P[A-Z]{2,3})/.test(nextText)) break;
-        metric = metricAtLine(lines, j, otherRowsEnd) ?? metricFromLine(lines[j] ?? "");
+        metric = metricFromLine(lines[j] ?? "");
         if (metric) break;
       }
     }
@@ -351,7 +283,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
   const totalOtherGames = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, totalOtherMatcher);
   const otherGamesPrizes = metricInRange(lines, totalOtherIndex >= 0 ? totalOtherIndex + 1 : (otherIndex >= 0 ? otherIndex : 0), otherEnd, /PREMIOS?\s+P[A-Z]{2,3}/);
   const totalPrizes = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /PREMIOS?\s+P[A-Z]{2,3}/, true);
-  const generalTotal = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /TOTAL\s*GENERAL/);
+  const generalTotal = metricInRange(lines, otherIndex >= 0 ? otherIndex : 0, otherEnd, /TOTAL\s+GENERAL/);
   const cobros = digitalIndex >= 0 ? metricInRange(lines, digitalIndex, lines.length, /^COBROS?\b/) : emptyMetric();
   const devoluciones = digitalIndex >= 0 ? metricInRange(lines, digitalIndex, lines.length, /^DEVOLUCIONES?\b/) : emptyMetric();
 
@@ -383,22 +315,21 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
   };
 
   const machineCode = (() => {
-    const label = /M\s*A\s*[QO0](?:U[I1L]N[A4]?)?/i;
+    const label = /M\s*A\s*Q(?:U[I1L]N[A4]?)?/i;
     for (let index = 0; index < normalizedLines.length; index += 1) {
       const line = normalizedLines[index] ?? "";
       const compact = compactLines[index] ?? "";
       // MAQUINA REAL es otro dato; no confundirlo con el código MAQ.
-      if (/MAQU[I1L]N[A4]?REAL|MA[QO0]REAL/i.test(compact)) continue;
+      if (/MAQU[I1L]N[A4]?REAL|MAQREAL/i.test(compact)) continue;
       const match = label.exec(line);
       if (!match || match.index === undefined) continue;
       const suffix = line.slice(match.index + match[0].length);
       const sameLine = readShortCode(suffix.replace(/^\s*[:#.,-]?\s*/, ""));
       if (sameLine && sameLine.length === 2) return sameLine;
-      if (sameLine && sameLine.length === 3 && sameLine[1] === sameLine[2]) return sameLine.slice(0, 2);
       for (let next = index + 1; next < Math.min(normalizedLines.length, index + 5); next += 1) {
         const candidate = normalizedLines[next] ?? "";
         const compactCandidate = compactLines[next] ?? "";
-        if (/^(?:DIRECCION|DOMICILIO|MAQU[I1L]N[A4]?REAL|MA[QO0]REAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL)/i.test(compactCandidate)) continue;
+        if (/^(?:DIRECCION|DOMICILIO|MAQU[I1L]N[A4]?REAL|MAQREAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL)/i.test(compactCandidate)) continue;
         if (/^(?:SORTEOS|QUINIELA|OTROSJUEGOS|MEDIOSDIGITALES|TOTALGENERAL|FINDEJORNADA)/i.test(compactCandidate)) break;
         if (!/^[0-9OQIL|! .:_-]{1,12}$/.test(candidate)) continue;
         const code = readShortCode(candidate);
@@ -408,7 +339,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
     return null;
   })();
 
-  const terminalPattern = /MAQU[I1L]N[A4]?REAL|MA[QO0]REAL/i;
+  const terminalPattern = /MAQU[I1L]N[A4]?REAL|MAQREAL/i;
   const terminalIndex = compactLines.findIndex((line) => terminalPattern.test(line));
   let terminalId: string | null = null;
   if (terminalIndex >= 0) {
@@ -444,7 +375,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
     if (labelMatch && labelMatch.index !== undefined) {
       const tail = afterCompactChars(normalizedLines[addressIndex] ?? "", labelMatch.index + labelMatch[0].length);
       const compactTail = tail.replace(/\s+/g, "");
-      const boundary = compactTail.search(/MAQU[I1L]N[A4]?REAL|MA[QO0]REAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL/i);
+      const boundary = compactTail.search(/MAQU[I1L]N[A4]?REAL|MAQREAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL/i);
       const inlineValue = (boundary >= 0 ? beforeCompactChars(tail, boundary) : tail).trim();
       if (inlineValue && /[A-Z]/i.test(inlineValue)) address = inlineValue;
     } else {
@@ -456,7 +387,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
         const candidate = (lines[next] ?? "").trim();
         const compactCandidate = compactLines[next] ?? "";
         if (!candidate) continue;
-        if (/^(?:DIRECCION|DOMICILIO|DIREC|MAQU[I1L]N[A4]?REAL|MA[QO0]REAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL)/i.test(compactCandidate)) continue;
+        if (/^(?:DIRECCION|DOMICILIO|DIREC|MAQU[I1L]N[A4]?REAL|MAQREAL|IMPRES[O0]EL|AB[I1L]ERTOEL|CERRAD[O0]EL)/i.test(compactCandidate)) continue;
         if (/^(?:SORTEOS|QUINIELA|OTROSJUEGOS|MEDIOSDIGITALES|TOTALGENERAL|FINDEJORNADA)/i.test(compactCandidate)) break;
         if (/^[0-9 .:/-]+$/.test(candidate)) continue;
         if (/[A-Z]/i.test(candidate)) {
@@ -464,30 +395,6 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
           break;
         }
       }
-    }
-  }
-  // Algunos cierres no imprimen la etiqueta DIRECCION/DOMICILIO.
-  // En ese caso, tomar el renglón de identificación ubicado entre AG/SUBAG/MAQ
-  // y MAQUINA REAL, sin asumir una dirección fija ni una cantidad de juegos.
-  if (!address) {
-    const identityHeaderIndex = normalizedLines.findIndex((line) =>
-      (/(?:AGENCIA|AG)\s*[:.]?\s*[0-9OQIL|!]+.*(?:SUBAG|SIBAG|SILAG|SIEAG)/i.test(line)
-        || /(?:SUBAG|SIBAG|SILAG|SIEAG).*?(?:MAQ|MA0|MAO|MAQU)/i.test(line))
-    );
-    const identityMachineIndex = normalizedLines.findIndex((line) =>
-      /MAQU[I1L]N[A4]?\s*REAL|MA[QO0]\s*REAL/i.test(line)
-    );
-    if (identityHeaderIndex >= 0) {
-      const end = identityMachineIndex > identityHeaderIndex
-        ? identityMachineIndex
-        : Math.min(lines.length, identityHeaderIndex + 4);
-      const candidate = lines.slice(identityHeaderIndex + 1, end).find((rawLine, offset) => {
-        const normalized = normalizedLines[identityHeaderIndex + 1 + offset] ?? "";
-        const letters = (normalized.match(/[A-Z]/g) ?? []).length;
-        return letters >= 4 &&
-          !/(?:IMPRES[O0]|PER[I1]ODO|AB[I1L]ERTO|CERRADO|MAQU[I1L]N[A4]?\s*REAL|SORTEOS|QUINIELA|VALIDOS|PREMIOS|TOTALES|TOTAL GENERAL)/i.test(normalized);
-      });
-      if (candidate) address = correctTicketAddressOcr(candidate.trim()) ?? null;
     }
   }
   const printedLine = lines.find((line) => /\bIMPRES[O0]\b/i.test(normalizeTicketText(line))) ?? null;
@@ -513,12 +420,8 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
   const downloadLine = lines.find((line) => /DESCARGA?\s+CONFIRMADA/i.test(normalizeTicketText(line))) ?? null;
 
   const salesAmounts = [qValid.amount, toqueValid.amount, ...otherGames.map((game) => game.amount)];
-  // En una foto térmica algunos renglones secundarios pueden quedar ilegibles.
-  // Validar la suma de todos los importes efectivamente reconocidos contra TOTAL
-  // GENERAL; si coincide, las líneas no reconocidas no se cargan ni se inventan.
-  const knownSalesAmounts = salesAmounts.filter((value): value is number => value !== null);
-  const salesTotalsMatch = knownSalesAmounts.length > 0 && generalTotal.amount !== null
-    ? cents(knownSalesAmounts.reduce<number>((sum, value) => sum + value, 0)) === cents(generalTotal.amount)
+  const salesTotalsMatch = salesAmounts.every((value) => value !== null) && generalTotal.amount !== null
+    ? cents(salesAmounts.reduce<number>((sum, value) => sum + (value ?? 0), 0)) === cents(generalTotal.amount)
     : null;
   const prizeAmounts = [qPrizes.amount, toquePrizes.amount, otherGamesPrizes.amount];
   const prizeTotalsMatch = prizeAmounts.every((value) => value !== null) && totalPrizes.amount !== null
@@ -531,7 +434,7 @@ export function parseTicketClosure(text: string, assumeEndOfDay = false): Ticket
     agencyCode,
     subagentCode,
     machineCode,
-    address: correctTicketAddressOcr(address?.trim() ?? null),
+    address: address?.trim() ?? null,
     terminalId,
     printedAt,
     openDraws,
@@ -587,7 +490,7 @@ export function mapTicketClosureAmounts(receipt: TicketClosureData, games: { id:
   for (const entry of entries) {
     if (entry.amount === null) continue;
     const game = games.find((candidate) => entry.match(normalizeTicketText(candidate.name)));
-    if (game) mapped[game.id] = entry.amount.toFixed(2);
+    if (game) mapped[game.id] = String(Math.round(entry.amount));
   }
   return mapped;
 }
