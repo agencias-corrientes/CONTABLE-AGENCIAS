@@ -36,6 +36,25 @@ function formatTicketMoney(value: number) {
 }
 
 let paddleOcrEnginePromise: Promise<any> | null = null;
+let tesseractOcrWorkerPromise: Promise<any> | null = null;
+
+async function getTesseractOcrWorker(onProgress: (progress: number) => void): Promise<any> {
+  if (!tesseractOcrWorkerPromise) {
+    tesseractOcrWorkerPromise = import("tesseract.js")
+      .then(({ createWorker }) => createWorker("spa+eng", 1, {
+        logger: (message) => {
+          if (message.status === "recognizing text" && typeof message.progress === "number") {
+            onProgress(message.progress);
+          }
+        },
+      }))
+      .catch((error) => {
+        tesseractOcrWorkerPromise = null;
+        throw error;
+      });
+  }
+  return tesseractOcrWorkerPromise;
+}
 
 async function loadPaddleOcrSdk(): Promise<any> {
   const browserWindow = window as any;
@@ -1315,15 +1334,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         const paddlePartialText = recognizedText;
         setProgress("Activando lector de respaldo…");
         setProgressPercent(42);
-        const { createWorker } = await import("tesseract.js");
-        const worker = await createWorker("spa+eng", 1, {
-          logger: (message) => {
-            if (message.status === "recognizing text" && typeof message.progress === "number") {
-              const percent = Math.min(96, 42 + Math.round(message.progress * 52));
-              setProgressPercent(percent);
-              setProgress("Reconociendo ticket…");
-            }
-          },
+        const worker = await getTesseractOcrWorker((progress) => {
+          const percent = Math.min(96, 42 + Math.round(progress * 52));
+          setProgressPercent(percent);
+          setProgress("Reconociendo ticket…");
         });
         try {
           const result = await worker.recognize(file, {}, { blocks: true });
@@ -1333,8 +1347,12 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           if (ocrTextHasEnoughSignals(tesseractText, closureReadExpected) || tesseractText.length >= paddlePartialText.length) {
             recognizedText = tesseractText;
           }
-        } finally {
-          await worker.terminate();
+        } catch (error) {
+          // Si el worker queda en un estado inválido, descartarlo para recrearlo
+          // en la siguiente lectura. No cambiar el texto ni el criterio de respaldo.
+          tesseractOcrWorkerPromise = null;
+          await worker.terminate().catch(() => undefined);
+          throw error;
         }
       }
 
