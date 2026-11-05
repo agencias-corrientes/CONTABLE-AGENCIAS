@@ -1240,6 +1240,61 @@ export function AppShell({
           }
         }
 
+        /* En PC, conservar el menú en la misma barra lateral pero con tarjetas casi cuadradas en dos columnas. */
+        @media (min-width: 1001px) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list) {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            grid-auto-rows: minmax(132px, auto) !important;
+            align-items: stretch !important;
+            gap: 9px !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item) {
+            position: relative !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: center !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            min-height: 132px !important;
+            aspect-ratio: 1 / 1 !important;
+            box-sizing: border-box !important;
+            padding: 24px 7px 10px !important;
+            gap: 7px !important;
+            text-align: center !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-icon),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-icon) {
+            flex: 0 0 34px !important;
+            width: 34px !important;
+            height: 34px !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-copy),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-copy) {
+            flex: 0 1 auto !important;
+            width: 100% !important;
+            align-items: center !important;
+            text-align: center !important;
+            gap: 3px !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-copy strong),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-copy strong) {
+            font-size: 12px !important;
+            line-height: 1.2 !important;
+            overflow-wrap: anywhere !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-copy small),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-copy small) {
+            display: block !important;
+            font-size: 10px !important;
+            line-height: 1.2 !important;
+            white-space: normal !important;
+          }
+        }
+
+
       `}</style>
     </div>
   );
