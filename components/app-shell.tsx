@@ -100,7 +100,7 @@ export function AppShell({
             <strong>Panel general</strong>
           </div>
         </section>
-        <nav className="nav-list" aria-label="Menú principal">
+        <nav id="agency-panel-navigation" className="nav-list" aria-label="Menú principal">
           {visibleNav.map(([slug, label, iconPath, description, number], index) => {
             const href = `/${slug}`;
             const active = pathname.startsWith(href) || (pathname === "/inicio" && selectedSection === slug);
@@ -1431,94 +1431,6 @@ export function AppShell({
           :global(.app-shell.mobile-navigation-home .sidebar .sidebar-footer .button),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .sidebar-footer .button) {
             min-height: 36px !important;
-          }
-        }
-
-        /* En PC, el contenido de las tarjetas permanece inmóvil en hover, foco,
-           selección y presión: sólo puede variar el color de fondo. */
-        @media (min-width: 1001px) {
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:hover),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:focus),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:focus-visible),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:active),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item.active),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item.active:hover),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item.active:focus-visible),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:hover),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:focus),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:focus-visible),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:active),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item.active),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item.active:hover),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item.active:focus-visible) {
-            transform: none !important;
-            translate: none !important;
-            animation: none !important;
-            transition: background-color .12s ease, border-color .12s ease, box-shadow .12s ease !important;
-            padding: 32px 10px 7px !important;
-            align-items: stretch !important;
-            justify-content: flex-start !important;
-          }
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item .panel-nav-copy),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:hover .panel-nav-copy),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:focus .panel-nav-copy),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:active .panel-nav-copy),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item.active .panel-nav-copy),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item .panel-nav-copy),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:hover .panel-nav-copy),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:focus .panel-nav-copy),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:active .panel-nav-copy),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item.active .panel-nav-copy) {
-            position: relative !important;
-            inset: auto !important;
-            transform: none !important;
-            translate: none !important;
-            animation: none !important;
-            transition: none !important;
-            margin: 0 !important;
-            padding: 0 1px !important;
-            gap: 4px !important;
-            align-items: flex-start !important;
-            justify-content: flex-start !important;
-          }
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item .panel-nav-copy strong),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:hover .panel-nav-copy strong),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:active .panel-nav-copy strong),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item.active .panel-nav-copy strong),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item .panel-nav-copy strong),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:hover .panel-nav-copy strong),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:active .panel-nav-copy strong),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item.active .panel-nav-copy strong),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item .panel-nav-copy small),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:hover .panel-nav-copy small),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:active .panel-nav-copy small),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item.active .panel-nav-copy small),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item .panel-nav-copy small),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:hover .panel-nav-copy small),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:active .panel-nav-copy small),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item.active .panel-nav-copy small) {
-            position: static !important;
-            inset: auto !important;
-            transform: none !important;
-            translate: none !important;
-            animation: none !important;
-            transition: none !important;
-            margin: 0 !important;
-          }
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item .panel-nav-icon),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:hover .panel-nav-icon),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item:active .panel-nav-icon),
-          :global(html body .app-shell.mobile-navigation-home aside.sidebar nav.nav-list > a.nav-item.active .panel-nav-icon),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item .panel-nav-icon),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:hover .panel-nav-icon),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item:active .panel-nav-icon),
-          :global(html body .app-shell:not(.mobile-navigation-home) aside.sidebar nav.nav-list > a.nav-item.active .panel-nav-icon) {
-            transform: none !important;
-            translate: none !important;
-            animation: none !important;
-            transition: none !important;
           }
         }
 
