@@ -1295,6 +1295,101 @@ export function AppShell({
         }
 
 
+        /* Tarjetas compactas en PC: mantener todo el panel y el cierre de sesión a la vista. */
+        @media (min-width: 1001px) {
+          :global(.app-shell.mobile-navigation-home .sidebar),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar) {
+            display: flex !important;
+            flex-direction: column !important;
+            height: 100vh !important;
+            height: 100dvh !important;
+            min-height: 0 !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            padding: 10px 10px 12px !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .sidebar-brand),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .sidebar-brand) {
+            flex: 0 0 auto !important;
+            padding: 2px 6px 4px !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .panel-general-summary),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .panel-general-summary) {
+            flex: 0 0 auto !important;
+            margin: 6px 2px 8px !important;
+            padding: 8px 10px !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .panel-general-summary-title > strong),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .panel-general-summary-title > strong) {
+            font-size: 16px !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list) {
+            display: grid !important;
+            flex: 0 0 auto !important;
+            min-height: 0 !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            grid-template-rows: none !important;
+            grid-auto-rows: clamp(76px, calc((100dvh - 365px) / 3), 108px) !important;
+            align-content: start !important;
+            gap: 7px !important;
+            margin: 0 0 8px !important;
+            padding: 0 !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item) {
+            height: 100% !important;
+            min-height: 0 !important;
+            aspect-ratio: auto !important;
+            box-sizing: border-box !important;
+            padding: 17px 6px 6px !important;
+            gap: 5px !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-number),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-number) {
+            top: 6px !important;
+            right: 7px !important;
+            min-width: 26px !important;
+            min-height: 18px !important;
+            padding: 2px 4px !important;
+            font-size: 9px !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-icon),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-icon) {
+            flex: 0 0 28px !important;
+            width: 28px !important;
+            height: 28px !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-copy strong),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-copy strong) {
+            font-size: 11px !important;
+            line-height: 1.15 !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-copy small),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-copy small) {
+            font-size: 9px !important;
+            line-height: 1.15 !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .sidebar-footer),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .sidebar-footer) {
+            flex: 0 0 auto !important;
+            margin-top: auto !important;
+            padding-top: 0 !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .central-return-button),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .central-return-button) {
+            min-height: 36px !important;
+            margin-top: 4px !important;
+            margin-bottom: 6px !important;
+            padding: 6px 8px !important;
+            font-size: 11px !important;
+          }
+          :global(.app-shell.mobile-navigation-home .sidebar .sidebar-footer .button),
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .sidebar-footer .button) {
+            min-height: 36px !important;
+          }
+        }
+
       `}</style>
     </div>
   );
