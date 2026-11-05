@@ -2386,3 +2386,109 @@ body .app-shell .sidebar .nav-list .nav-item:active .panel-nav-number {
 .landing-app-exit-confirm{background:#343a40;color:#fff}
 .landing-app-exit-actions-single{grid-template-columns:1fr}
 @media(max-width:520px){.landing-app-exit-dialog{padding:20px 17px}.landing-app-exit-dialog h2{font-size:20px}}
+
+
+/* FIX FINAL: texto de las tarjetas sin desplazamiento al pasar el mouse o seleccionar. */
+@media (min-width:1001px) {
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:is(:hover,:focus,:focus-visible,:active,.active) {
+    position:relative!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    justify-content:flex-start!important;
+    gap:0!important;
+    padding:32px 10px 7px!important;
+    transform:none!important;
+    translate:none!important;
+    rotate:none!important;
+    scale:none!important;
+    animation:none!important;
+    transition:background-color .12s ease,border-color .12s ease,box-shadow .12s ease!important;
+    will-change:auto!important;
+  }
+
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:is(:hover,:focus,:focus-visible,:active,.active) .panel-nav-copy {
+    position:relative!important;
+    inset:auto!important;
+    top:auto!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+    display:flex!important;
+    flex:1 1 auto!important;
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    justify-content:flex-start!important;
+    align-self:stretch!important;
+    width:100%!important;
+    min-width:0!important;
+    gap:4px!important;
+    margin:0!important;
+    padding:0 1px!important;
+    text-align:left!important;
+    transform:none!important;
+    translate:none!important;
+    rotate:none!important;
+    scale:none!important;
+    animation:none!important;
+    transition:none!important;
+    will-change:auto!important;
+  }
+
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:is(:hover,:focus,:focus-visible,:active,.active) .panel-nav-copy strong,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy small,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:is(:hover,:focus,:focus-visible,:active,.active) .panel-nav-copy small {
+    position:static!important;
+    inset:auto!important;
+    top:auto!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+    display:block!important;
+    flex:none!important;
+    width:100%!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:0!important;
+    transform:none!important;
+    translate:none!important;
+    rotate:none!important;
+    scale:none!important;
+    animation:none!important;
+    transition:none!important;
+    will-change:auto!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+  }
+
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy strong {
+    font-size:10.5px!important;
+    font-weight:800!important;
+    line-height:1.25!important;
+    letter-spacing:.005em!important;
+  }
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-copy small {
+    font-size:9px!important;
+    font-weight:650!important;
+    line-height:1.25!important;
+    letter-spacing:.005em!important;
+  }
+
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-icon,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:is(:hover,:focus,:focus-visible,:active,.active) .panel-nav-icon,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-number,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:is(:hover,:focus,:focus-visible,:active,.active) .panel-nav-number,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item .panel-nav-accent,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:is(:hover,:focus,:focus-visible,:active,.active) .panel-nav-accent {
+    transform:none!important;
+    translate:none!important;
+    rotate:none!important;
+    scale:none!important;
+    animation:none!important;
+    transition:none!important;
+    will-change:auto!important;
+  }
+}
