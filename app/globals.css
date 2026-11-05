@@ -2386,3 +2386,50 @@ body .app-shell .sidebar .nav-list .nav-item:active .panel-nav-number {
 .landing-app-exit-confirm{background:#343a40;color:#fff}
 .landing-app-exit-actions-single{grid-template-columns:1fr}
 @media(max-width:520px){.landing-app-exit-dialog{padding:20px 17px}.landing-app-exit-dialog h2{font-size:20px}}
+
+
+/* PC: los accesos del panel conservan exactamente su apariencia inicial
+   también cuando el enlace queda seleccionado o recibe foco/presión. */
+@media (min-width:1001px) {
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:hover,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:focus,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:focus-visible,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:active,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item.active,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item.active:hover,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item.active:focus,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item.active:focus-visible,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item.active:active {
+    background:var(--panel-card-bg,#f8f2e7)!important;
+    background-color:var(--panel-card-bg,#f8f2e7)!important;
+    background-image:none!important;
+    color:var(--panel-card-fg,#4b4137)!important;
+    border:1px solid #292929!important;
+    border-bottom-width:1px!important;
+    border-radius:14px!important;
+    box-shadow:0 2px 6px rgba(40,35,25,.10)!important;
+    transform:none!important;
+    translate:none!important;
+    scale:none!important;
+    filter:none!important;
+    outline:none!important;
+    transition:none!important;
+    animation:none!important;
+  }
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item.active .panel-nav-icon,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:active .panel-nav-icon {
+    background:rgba(255,255,255,.58)!important;
+    border-color:rgba(65,55,40,.18)!important;
+    color:var(--panel-card-fg)!important;
+    box-shadow:none!important;
+  }
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item.active .panel-nav-copy strong,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item.active .panel-nav-copy small,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:active .panel-nav-copy strong,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:active .panel-nav-copy small,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item.active .panel-nav-number,
+  html body .app-shell aside.sidebar nav.nav-list > a.panel-general-item:active .panel-nav-number {
+    color:var(--panel-card-fg)!important;
+  }
+}
