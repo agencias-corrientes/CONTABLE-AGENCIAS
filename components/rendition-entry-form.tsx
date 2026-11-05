@@ -37,14 +37,16 @@ function formatTicketMoney(value: number) {
 
 let paddleOcrEnginePromise: Promise<any> | null = null;
 let tesseractOcrWorkerPromise: Promise<any> | null = null;
+let tesseractOcrProgressHandler: (progress: number) => void = () => undefined;
 
 async function getTesseractOcrWorker(onProgress: (progress: number) => void): Promise<any> {
+  tesseractOcrProgressHandler = onProgress;
   if (!tesseractOcrWorkerPromise) {
     tesseractOcrWorkerPromise = import("tesseract.js")
       .then(({ createWorker }) => createWorker("spa+eng", 1, {
         logger: (message) => {
           if (message.status === "recognizing text" && typeof message.progress === "number") {
-            onProgress(message.progress);
+            tesseractOcrProgressHandler(message.progress);
           }
         },
       }))
