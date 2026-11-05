@@ -830,14 +830,18 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
   useEffect(() => {
     if (!busy) return;
     const timer = window.setInterval(() => {
-      setProgressPercent((current) => {
-        if (current >= 100) return current;
-        if (current >= 97) return 97;
-        return Math.min(97, current + Math.max(0.15, (97 - current) * 0.025));
-      });
-    }, 500);
+      setProgressPercent((current) => Math.min(92, current + Math.max(0.35, (92 - current) * 0.045)));
+    }, 300);
     return () => window.clearInterval(timer);
   }, [busy]);
+
+  // Publicar cada etapa y ceder un frame al navegador para que el número y la
+  // barra se actualicen antes de continuar con el procesamiento siguiente.
+  async function showOcrStage(label: string, percent: number) {
+    setProgress(label);
+    setProgressPercent((current) => Math.max(current, percent));
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+  }
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [confirmationError, setConfirmationError] = useState("");
@@ -1330,15 +1334,19 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         recognizedText = "";
       }
 
+      // Mostrar el cierre de la etapa OCR antes de comenzar el análisis estructural.
+      if (ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
+        await showOcrStage("Texto reconocido. Organizando juegos e importes…", 48);
+      }
+
       // Tesseract vuelve a ser el respaldo cuando la primera lectura no obtiene
       // suficiente texto. Se conservan también sus cajas para no repetirlo luego.
       if (!ocrTextHasEnoughSignals(recognizedText, closureReadExpected)) {
         const paddlePartialText = recognizedText;
-        setProgress("Activando lector de respaldo…");
-        setProgressPercent(42);
+        await showOcrStage("Activando lector de respaldo…", 42);
         const worker = await getTesseractOcrWorker((progress) => {
           const percent = Math.min(96, 42 + Math.round(progress * 52));
-          setProgressPercent(percent);
+          setProgressPercent((current) => Math.max(current, percent));
           setProgress("Reconociendo ticket…");
         });
         try {
@@ -1365,8 +1373,10 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
       }
       if (closureReadExpected) closureTextCandidates = [recognizedText];
 
+      await showOcrStage("Analizando los juegos y sus importes…", 58);
       const activeGames = games.filter((game) => game.enabled !== false);
       let parsed = parseTicketText(recognizedText, activeGames, recoveredPeriodNumber, dailyMode || receiptOnlyMode || batchMode);
+      await showOcrStage("Verificando los importes y los totales…", 68);
       // Elegir la pasada OCR por la información real que logra extraer del cierre,
       // no solo por cantidad de renglones o rótulos reconocidos.
       if (closureTextCandidates.length && (dailyMode || receiptOnlyMode || batchMode)) {
@@ -1489,6 +1499,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
           periodNumber: initialPaddleMetadata.periodNumber ?? parsed.receiptData.periodNumber ?? undefined,
         };
       }
+      await showOcrStage("Comprobando los datos identificatorios del cupón…", 76);
       const metadataStillMissing = parsed.receiptData && (
         !(focusedClosureMetadata.agencyCode ?? parsed.receiptData.agencyCode) ||
         !(focusedClosureMetadata.subagentCode ?? parsed.receiptData.subagentCode) ||
@@ -1545,6 +1556,7 @@ export function RenditionEntryForm({ agentId, games, today, periods, allPeriods,
         }
       }
 
+      await showOcrStage("Preparando los datos reconocidos para revisión…", 92);
       if (parsed.receiptData) {
         const commissionRates = Object.fromEntries(periodGames.map((game) => [
           normalize(game.name),
