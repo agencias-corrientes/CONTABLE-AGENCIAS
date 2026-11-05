@@ -1161,19 +1161,28 @@ export function AppShell({
         }
 
 
-        /* El menú del panel general conserva la misma tarjeta, tipografía y geometría
-           tanto en Inicio como dentro de Rendiciones y del resto de las funciones. */
+        /* Una sola geometría para los botones del panel general, tanto en Inicio
+           como al navegar por Rendiciones y las demás secciones. */
         @media (min-width: 1001px) {
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list) {
             display: grid !important;
             grid-template-columns: minmax(0, 1fr) !important;
-            grid-auto-rows: minmax(64px, auto) !important;
+            grid-auto-rows: minmax(46px, auto) !important;
             grid-template-rows: none !important;
             align-items: stretch !important;
             gap: 7px !important;
             margin: 8px 0 !important;
             padding: 0 !important;
           }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:focus-visible),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item:active),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:hover),
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item.active:focus-visible),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:hover),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:focus),
@@ -1181,53 +1190,53 @@ export function AppShell({
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item:active),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:hover),
-          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:focus),
-          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:focus-visible),
-          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:active) {
-            display: grid !important;
-            grid-template-columns: 34px minmax(0, 1fr) !important;
-            grid-template-rows: auto auto !important;
-            min-height: 64px !important;
+          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item.active:focus-visible) {
+            display: flex !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            min-height: 46px !important;
             height: auto !important;
             aspect-ratio: auto !important;
             box-sizing: border-box !important;
             align-items: center !important;
-            justify-content: stretch !important;
-            padding: 9px 30px 9px 10px !important;
+            justify-content: flex-start !important;
+            padding: 8px 10px !important;
             margin: 0 !important;
-            gap: 2px 8px !important;
-            font-size: 13px !important;
+            gap: 8px !important;
+            font-size: 16px !important;
+            font-weight: 800 !important;
             line-height: 1.15 !important;
             transform: none !important;
             transition: none !important;
             animation: none !important;
             outline: none !important;
           }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-icon),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-icon) {
-            grid-column: 1 !important;
-            grid-row: 1 / 3 !important;
+            flex: 0 0 30px !important;
             width: 30px !important;
             height: 30px !important;
-            flex: 0 0 30px !important;
           }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-copy),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-copy) {
-            grid-column: 2 !important;
-            grid-row: 1 / 3 !important;
+            display: flex !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            flex-direction: column !important;
             justify-items: start !important;
             align-self: center !important;
             gap: 2px !important;
             text-align: left !important;
           }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-copy strong),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-copy strong) {
-            font-size: 13px !important;
-            line-height: 1.15 !important;
+            font-size: 14px !important;
+            line-height: 1.25 !important;
           }
+          :global(.app-shell.mobile-navigation-home .sidebar .nav-list .nav-item .panel-nav-copy small),
           :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-copy small) {
-            font-size: 10px !important;
-            line-height: 1.2 !important;
-          }
-          :global(.app-shell:not(.mobile-navigation-home) .sidebar .nav-list .nav-item .panel-nav-accent) {
-            display: none !important;
+            font-size: 11px !important;
+            line-height: 1.25 !important;
           }
         }
 
