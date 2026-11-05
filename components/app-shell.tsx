@@ -1330,7 +1330,7 @@ export function AppShell({
             min-height: 0 !important;
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
             grid-template-rows: none !important;
-            grid-auto-rows: clamp(82px, calc((100dvh - 347px) / 3), 114px) !important;
+            grid-auto-rows: clamp(88px, calc((100dvh - 329px) / 3), 120px) !important;
             align-content: start !important;
             gap: 7px !important;
             margin: 0 0 8px !important;
